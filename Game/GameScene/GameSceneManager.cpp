@@ -28,8 +28,9 @@ bool GameSceneManager::IsPushLeft() const {
 		if (Input::PushKey(key)) return true;
 	}
 	for (int btn : keyConfig_.leftPadButtons) {
-		if (GamePadInput::PushButton(btn)) return true;
+		if (GamePadInput::PushButton(static_cast<WORD>(btn))) return true;
 	}
+	if (GamePadInput::PushLeftStickLeft()) return true;
 	return false;
 }
 
@@ -38,8 +39,9 @@ bool GameSceneManager::IsPushRight() const {
 		if (Input::PushKey(key)) return true;
 	}
 	for (int btn : keyConfig_.rightPadButtons) {
-		if (GamePadInput::PushButton(btn)) return true;
+		if (GamePadInput::PushButton(static_cast<WORD>(btn))) return true;
 	}
+	if (GamePadInput::PushLeftStickRight()) return true;
 	return false;
 }
 
@@ -48,8 +50,9 @@ bool GameSceneManager::IsPushJump() const {
 		if (Input::PushKey(key)) return true;
 	}
 	for (int btn : keyConfig_.jumpPadButtons) {
-		if (GamePadInput::PushButton(btn)) return true;
+		if (GamePadInput::PushButton(static_cast<WORD>(btn))) return true;
 	}
+	if (GamePadInput::PushLeftStickUp()) return true;
 	return false;
 }
 
@@ -58,7 +61,10 @@ bool GameSceneManager::IsPushRoll() const {
 		if (Input::PushKey(key)) return true;
 	}
 	for (int btn : keyConfig_.rollPadButtons) {
-		if (GamePadInput::PushButton(btn)) return true;
+		// ボス戦中はBボタンを右レーンの跳ね返し専用にするため、ロール判定から除外
+		if (isInBossBattle_ && btn == XINPUT_GAMEPAD_B) continue;
+		if (GamePadInput::PushButton(static_cast<WORD>(btn))) return true;
 	}
+	if (GamePadInput::PushLeftStickDown()) return true;
 	return false;
 }

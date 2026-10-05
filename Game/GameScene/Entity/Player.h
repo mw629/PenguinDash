@@ -129,6 +129,8 @@ public:
   void SetLaneChangeSpeed(float speed) { laneChangeSpeed_ = speed; }
   float GetRollDuration() const { return rollDuration_; }
   void SetRollDuration(float duration) { rollDuration_ = duration; }
+  float GetBaseHeight() const { return baseHeight_; }
+  void SetBaseHeight(float height) { baseHeight_ = height; }
 
   bool GetHasBarrier() const { return hasBarrier_; }
   void SetHasBarrier(bool hasBarrier);

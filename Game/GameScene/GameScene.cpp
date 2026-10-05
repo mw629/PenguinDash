@@ -735,6 +735,7 @@ void GameScene::ResetGame() {
   stageSettings_->SetLaneCountImmediate(3);
   stageSettings_->SetSpawningPaused(false);
   player_->SetInvertedControls(false);
+  GameSceneManager::GetInstance()->SetInBossBattle(false);
 
   crashTimer_ = 0.0f;
   if (crashSprite_) {
@@ -1078,8 +1079,8 @@ void GameScene::Update() {
   }
 #endif // _DEBUG
 
-  // F2キーでPlayerの一人称固定モードの切り替え
-  if (Input::PushKey(DIK_F2)) {
+  // F2キー または コントローラーBACKボタン/右スティック押し込みでPlayerの一人称固定モードの切り替え
+  if (Input::PushKey(DIK_F2) || GamePadInput::PushButton(XINPUT_GAMEPAD_BACK) || GamePadInput::PushButton(XINPUT_GAMEPAD_RIGHT_THUMB)) {
     isFirstPersonView_ = !isFirstPersonView_;
     if (!isFirstPersonView_) {
       camera_->SetTransform(cameraTransform_);
@@ -1127,13 +1128,13 @@ void GameScene::Update() {
   } else if (gameState_ == GameState::Playing) {
     PlayingUpdate();
 
-    if (Input::PushKey(DIK_ESCAPE)) {
+    if (Input::PushKey(DIK_ESCAPE) || GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
       gameState_ = GameState::Paused;
       SoundManager::GetInstance()->PauseBGM();
     }
   } else if (gameState_ == GameState::Paused) {
     PausedUpdate();
-    if (Input::PushKey(DIK_ESCAPE)) {
+    if (Input::PushKey(DIK_ESCAPE) || GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
       gameState_ = GameState::Playing;
       SoundManager::GetInstance()->ResumeBGM();
     }
@@ -1142,11 +1143,11 @@ void GameScene::Update() {
   } else if (gameState_ == GameState::GameOver) {
     if (resultTransition_ == ResultTransition::None && !fade_->IsFading()) {
       // 1キー または ゲームパッドAボタンでリスタート
-      if (Input::PushKey(DIK_1) || GamePadInput::PressButton(XINPUT_GAMEPAD_A)) {
+      if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
         StartResultTransition(ResultTransition::Restart);
       }
       // 2キー または ゲームパッドBボタンでタイトルへ
-      if (Input::PushKey(DIK_2) || GamePadInput::PressButton(XINPUT_GAMEPAD_B)) {
+      if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
         StartResultTransition(ResultTransition::Title);
       }
     }
@@ -1216,7 +1217,7 @@ void GameScene::DrawHUD(class Draw &draw) {
         "イディング走るポーズキーもう一度遊ぶプレイメニュー"
         "ペンギンダッシュ―—"
         "操作方法十字説明攻略倒し方緑赤色迫る直撃減少命中削切回避手前当てろ避け"
-        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称");
+        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続");
   }
 
   if (gameState_ == GameState::Title) {
@@ -1427,9 +1428,9 @@ void GameScene::DrawBossHUD(class Draw &draw) {
 
   // 反撃（跳ね返し）基本操作ガイド (パネル中央揃え)
   const char *guideStr =
-      "[1] 左レーン  |  [2] 中央レーン  |  [3] 右レーン (魚を押して敵へ飛ばす)";
+      "[1 / X] 左レーン  |  [2 / Y] 中央レーン  |  [3 / B] 右レーン (魚を押して敵へ飛ばす)";
   const float guideSize = 20.0f;
-  float guideW = tr ? tr->MeasureString(guideStr, guideSize).x : 608.0f;
+  float guideW = tr ? tr->MeasureString(guideStr, guideSize).x : 680.0f;
   float guideX = panelX + (panelW - guideW) * 0.5f;
   draw.DrawMSDFString(guideStr, Vector2(guideX, 92.0f), guideSize,
                       Vector4(0.8f, 0.95f, 0.5f, 1.0f), true,
@@ -1451,9 +1452,9 @@ void GameScene::DrawBossHUD(class Draw &draw) {
         int lane = 1;
         // ボス戦カメラ（Y回転180度）ではワールド+Xが画面左（[1]キー）、ワールド-Xが画面右（[3]キー）に見える
         if (obsX > laneW / 2.0f)
-          lane = 0; // 画面左レーン（[1]キー）
+          lane = 0; // 画面左レーン（[1]キー / Xボタン）
         else if (obsX < -laneW / 2.0f)
-          lane = 2; // 画面右レーン（[3]キー）
+          lane = 2; // 画面右レーン（[3]キー / Bボタン）
         reflectLane = lane;
         break;
       }
@@ -1462,19 +1463,19 @@ void GameScene::DrawBossHUD(class Draw &draw) {
 
   // 反撃チャンスのアラート点滅表示 (中央揃え)
   if (reflectLane != -1) {
-    const char *keyName = (reflectLane == 0)   ? "1"
-                          : (reflectLane == 1) ? "2"
-                                               : "3";
+    const char *keyName = (reflectLane == 0)   ? "1 / X"
+                          : (reflectLane == 1) ? "2 / Y"
+                                               : "3 / B";
     const char *laneName = (reflectLane == 0)   ? "左レーン"
                            : (reflectLane == 1) ? "中央レーン"
                                                 : "右レーン";
     char alertBuf[96];
     snprintf(alertBuf, sizeof(alertBuf),
-             ">>> 反撃チャンス！ [%s] キーで%sの魚を敵に飛ばせ！ <<<", keyName,
+             ">>> 反撃チャンス！ [%s] で%sの魚を敵に飛ばせ！ <<<", keyName,
              laneName);
 
     float pulseScale = 0.8f + 0.2f * std::sin(uiTimer_ * 12.0f);
-    const float alertW = 700.0f;
+    const float alertW = 740.0f;
     const float alertX = 640.0f - alertW * 0.5f;
     draw.DrawFillRect(Vector2(alertX, 125.0f), Vector2(alertW, 40.0f),
                       Vector4(0.2f, 0.1f, 0.0f, 0.85f));
@@ -1529,7 +1530,7 @@ void GameScene::DrawBossHUD(class Draw &draw) {
                         Vector2(guideX + 16.0f, guideY + 104.0f), 19.0f,
                         Vector4(0.3f, 1.0f, 0.6f, 1.0f), true,
                         Vector4(0.0f, 0.2f, 0.1f, 1.0f), 0.10f, 0.06f);
-    draw.DrawMSDFString("   魚が手前に来たら [1]左 / [2]中 / [3]右",
+    draw.DrawMSDFString("   魚が手前に来たら [1/X]左 / [2/Y]中 / [3/B]右",
                         Vector2(guideX + 16.0f, guideY + 129.0f), 16.0f,
                         Vector4(1.0f, 0.95f, 0.65f, 0.95f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
@@ -1593,26 +1594,28 @@ void GameScene::DrawBossHUD(class Draw &draw) {
 
 void GameScene::DrawControlsGuide(class Draw &draw) {
   draw.DrawFillRect(Vector2(20.0f, 672.0f), Vector2(1240.0f, 36.0f),
-                    Vector4(0.04f, 0.07f, 0.12f, 0.85f));
+                    Vector4(0.03f, 0.06f, 0.11f, 0.88f));
   draw.DrawFillRect(Vector2(20.0f, 672.0f), Vector2(1240.0f, 2.0f),
-                    Vector4(0.3f, 0.5f, 0.7f, 0.8f));
+                    Vector4(0.3f, 0.6f, 0.9f, 0.85f));
+
+  // 左端のピルバッジ [ KEY / PAD ]
+  draw.DrawFillRect(Vector2(26.0f, 676.0f), Vector2(100.0f, 26.0f),
+                    Vector4(0.12f, 0.30f, 0.55f, 0.9f));
+  draw.DrawMSDFString("KEY / PAD", Vector2(32.0f, 680.0f), 16.0f,
+                      Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 
   const char *guideText = "";
   if (playingState_ == PlayingState::ThreeLane) {
-    guideText = "[A / D] レーン移動    [SPACE / W] ジャンプ    [S] スライド    "
-                "[ESC] ポーズ";
+    guideText = "移動: [A/D / Lスティック・十字]    ジャンプ: [SPACE / Aボタン]    スライド: [S / Bボタン]    ポーズ: [ESC / START]";
   } else if (playingState_ == PlayingState::OneLane) {
-    guideText = "[SPACE / W] ジャンプ    [S] スライド    [ESC] ポーズ  "
-                "(※1レーン固定中)";
+    guideText = "ジャンプ: [SPACE / Aボタン]    スライド: [S / Bボタン]    ポーズ: [ESC / START]    (※1レーン固定中)";
   } else if (playingState_ == PlayingState::Boss) {
-    guideText =
-        "【ボスの倒し方】障害物をよけて魚がいるレーンを押して敵に飛ばす！ "
-        "[1/2/3] 魚飛ばし  "
-        "[A/D] 移動  [SPACE] ジャンプ  [S] スライド  [ESC] ポーズ";
+    guideText = "【ボス反撃】 魚跳ね返し: [1 / X]左  [2 / Y]中  [3 / B]右    |    移動: [A/D / Lスティック]    |    ポーズ: [ESC / START]";
   }
 
-  draw.DrawMSDFString(guideText, Vector2(30.0f, 680.0f), 18.0f,
-                      Vector4(0.85f, 0.9f, 0.95f, 0.9f), true,
+  draw.DrawMSDFString(guideText, Vector2(138.0f, 680.0f), 17.5f,
+                      Vector4(0.92f, 0.96f, 1.0f, 0.95f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
 }
 
@@ -1655,16 +1658,16 @@ void GameScene::DrawPauseHUD(class Draw &draw) {
   draw.DrawFillRect(Vector2(400.0f, 400.0f), Vector2(480.0f, 2.0f),
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
-  draw.DrawMSDFString("[ ESC ] ゲームを再開 (RESUME)", Vector2(430.0f, 425.0f),
+  draw.DrawMSDFString("[ ESC / START ] ゲームを再開 (RESUME)", Vector2(410.0f, 425.0f),
                       24.0f, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
-  draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
-                      Vector2(430.0f, 465.0f), 24.0f,
+  draw.DrawMSDFString("[  1  /  Aボタン  ] 最初からリスタート (RESTART)",
+                      Vector2(410.0f, 465.0f), 24.0f,
                       Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
-  draw.DrawMSDFString("[  2  ] タイトルへ戻る (TITLE)", Vector2(430.0f, 505.0f),
+  draw.DrawMSDFString("[  2  /  Bボタン  ] タイトルへ戻る (TITLE)", Vector2(410.0f, 505.0f),
                       24.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 }
@@ -1872,15 +1875,15 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
   // --- タイトル右下: 操作方法パネル ---
   float guideAlpha = isTitleExiting_ ? std::clamp(1.0f - (titleExitTimer_ / 0.4f), 0.0f, 1.0f) : mainAlpha;
   if (guideAlpha > 0.01f) {
-    const float guideCardX = 880.0f;
-    const float guideCardY = 430.0f;
-    const float guideCardW = 380.0f;
-    const float guideCardH = 265.0f;
+    const float guideCardX = 770.0f;
+    const float guideCardY = 400.0f;
+    const float guideCardW = 490.0f;
+    const float guideCardH = 300.0f;
 
-    // パネル背景（半透明ダークブルー）
+    // パネル背景（半透明ダークネイビー）
     draw.DrawFillRect(Vector2(guideCardX, guideCardY),
                       Vector2(guideCardW, guideCardH),
-                      Vector4(0.04f, 0.07f, 0.12f, 0.82f * guideAlpha));
+                      Vector4(0.03f, 0.06f, 0.11f, 0.88f * guideAlpha));
     // 上部アクセントバー（アイスブルー）
     draw.DrawFillRect(Vector2(guideCardX, guideCardY),
                       Vector2(guideCardW, 3.0f),
@@ -1888,38 +1891,96 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
 
     // ヘッダータイトル
     draw.DrawMSDFString("【 操作方法 / CONTROLS 】",
-                        Vector2(guideCardX + 16.0f, guideCardY + 12.0f), 22.0f,
+                        Vector2(guideCardX + 16.0f, guideCardY + 10.0f), 20.0f,
                         Vector4(0.4f, 0.85f, 1.0f, guideAlpha), true,
                         Vector4(0.0f, 0.1f, 0.25f, guideAlpha), 0.12f, 0.08f);
 
+    // コントローラー接続状態インジケーター (右上に表示)
+    bool isPadConnected = GamePadInput::IsConnected();
+    const char *padStatusText = isPadConnected ? "● PAD: 接続中" : "○ PAD: 未接続";
+    Vector4 padStatusColor = isPadConnected ? Vector4(0.3f, 1.0f, 0.5f, guideAlpha)
+                                            : Vector4(0.6f, 0.65f, 0.7f, guideAlpha * 0.75f);
+    draw.DrawMSDFString(padStatusText,
+                        Vector2(guideCardX + 355.0f, guideCardY + 13.0f), 14.0f,
+                        padStatusColor, true,
+                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
+
+    // 列ヘッダー（Action / Keyboard / GamePad）
+    draw.DrawFillRect(Vector2(guideCardX + 10.0f, guideCardY + 36.0f),
+                      Vector2(guideCardW - 20.0f, 22.0f),
+                      Vector4(0.08f, 0.14f, 0.24f, 0.75f * guideAlpha));
+
+    draw.DrawMSDFString("アクション", Vector2(guideCardX + 18.0f, guideCardY + 39.0f), 13.5f,
+                        Vector4(0.75f, 0.82f, 0.92f, 0.9f * guideAlpha), true,
+                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.06f);
+
+    draw.DrawMSDFString("キーボード (KEY)", Vector2(guideCardX + 125.0f, guideCardY + 39.0f), 13.5f,
+                        Vector4(1.0f, 0.88f, 0.45f, 0.95f * guideAlpha), true,
+                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.06f);
+
+    draw.DrawMSDFString("コントローラー (PAD)", Vector2(guideCardX + 290.0f, guideCardY + 39.0f), 13.5f,
+                        Vector4(0.4f, 0.98f, 0.65f, 0.95f * guideAlpha), true,
+                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.06f);
+
     // 区切りライン
-    draw.DrawFillRect(Vector2(guideCardX + 14.0f, guideCardY + 42.0f),
-                      Vector2(guideCardW - 28.0f, 1.0f),
+    draw.DrawFillRect(Vector2(guideCardX + 10.0f, guideCardY + 59.0f),
+                      Vector2(guideCardW - 20.0f, 1.0f),
                       Vector4(0.2f, 0.4f, 0.6f, 0.6f * guideAlpha));
 
     // 操作リスト
-    struct ControlItem {
+    struct ControlRow {
+      const char *action;
       const char *key;
-      const char *desc;
+      const char *pad;
+      bool isHighlight;
     };
-    ControlItem items[] = {{"[A / D] / [← →]", "レーン移動 (PAD: 十字キー)"},
-                           {"[SPACE / W / ↑]", "ジャンプ   (PAD: Aボタン)"},
-                           {"[S] / [↓]", "スライド   (PAD: Bボタン)"},
-                           {"[F2]", "一人称視点 切り替え"},
-                           {"[ESC]", "ポーズ / メニュー"},
-                           {"[1] / [2] / [3]", "魚を敵に飛ばす (ボス戦時)"}};
+    ControlRow rows[] = {
+      {"レーン移動", "[A/D] / [← →]", "Lスティック / 十字", false},
+      {"ジャンプ",   "[SPACE / W]",    "[A] ボタン / ↑",     false},
+      {"スライド",   "[S] / [↓]",      "[B] ボタン / ↓",     false},
+      {"一人称視点", "[F2]",           "[BACK] / Rスティック", false},
+      {"ポーズ",     "[ESC]",          "[START] ボタン",      false},
+      {"ボス魚反射", "[1] / [2] / [3]", "[X]左 / [Y]中 / [B]右", true}
+    };
 
-    float itemY = guideCardY + 52.0f;
-    for (const auto &item : items) {
-      // キー名（目立つライトゴールド/イエロー）
-      draw.DrawMSDFString(item.key, Vector2(guideCardX + 16.0f, itemY), 17.0f,
-                          Vector4(1.0f, 0.9f, 0.35f, guideAlpha), true,
-                          Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.10f, 0.06f);
-      // 説明（ホワイト）
-      draw.DrawMSDFString(item.desc, Vector2(guideCardX + 155.0f, itemY), 16.0f,
-                          Vector4(0.9f, 0.95f, 1.0f, 0.9f * guideAlpha), true,
+    float rowY = guideCardY + 63.0f;
+    const float rowH = 37.0f;
+    for (size_t i = 0; i < sizeof(rows) / sizeof(rows[0]); ++i) {
+      const auto &row = rows[i];
+
+      // 偶数行またはハイライト行の背景帯
+      if (row.isHighlight) {
+        draw.DrawFillRect(Vector2(guideCardX + 10.0f, rowY),
+                          Vector2(guideCardW - 20.0f, rowH - 2.0f),
+                          Vector4(0.20f, 0.12f, 0.04f, 0.70f * guideAlpha));
+      } else if (i % 2 == 1) {
+        draw.DrawFillRect(Vector2(guideCardX + 10.0f, rowY),
+                          Vector2(guideCardW - 20.0f, rowH - 2.0f),
+                          Vector4(0.06f, 0.10f, 0.18f, 0.45f * guideAlpha));
+      }
+
+      // アクション名
+      Vector4 actionColor = row.isHighlight ? Vector4(1.0f, 0.85f, 0.3f, guideAlpha)
+                                            : Vector4(0.92f, 0.95f, 1.0f, 0.9f * guideAlpha);
+      draw.DrawMSDFString(row.action, Vector2(guideCardX + 18.0f, rowY + 7.0f), 15.0f,
+                          actionColor, true,
                           Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
-      itemY += 34.0f;
+
+      // キーボード
+      Vector4 keyColor = row.isHighlight ? Vector4(1.0f, 0.95f, 0.45f, guideAlpha)
+                                         : Vector4(1.0f, 0.90f, 0.40f, guideAlpha);
+      draw.DrawMSDFString(row.key, Vector2(guideCardX + 125.0f, rowY + 7.0f), 15.0f,
+                          keyColor, true,
+                          Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
+
+      // コントローラー
+      Vector4 padColor = row.isHighlight ? Vector4(0.30f, 1.00f, 0.90f, guideAlpha)
+                                         : Vector4(0.40f, 0.98f, 0.65f, guideAlpha);
+      draw.DrawMSDFString(row.pad, Vector2(guideCardX + 290.0f, rowY + 7.0f), 15.0f,
+                          padColor, true,
+                          Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
+
+      rowY += rowH;
     }
   }
 
@@ -2033,6 +2094,8 @@ void GameScene::PlayerHitUpdate() {
 }
 
 void GameScene::PlayingUpdate() {
+  GameSceneManager::GetInstance()->SetInBossBattle(playingState_ == PlayingState::Boss);
+
   float timeScale = EditorManager::GetPlaySpeed();
   float speedMultiplier = 1.0f;
   if (stageSettings_->GetBaseScrollSpeed() > 0.0f) {
@@ -2103,10 +2166,16 @@ void GameScene::PlayingUpdate() {
         }
       }
 
-      // 跳ね返し入力判定
-      bool push1 = Input::PushKey(DIK_1) || Input::PushKey(DIK_NUMPAD1);
-      bool push2 = Input::PushKey(DIK_2) || Input::PushKey(DIK_NUMPAD2);
-      bool push3 = Input::PushKey(DIK_3) || Input::PushKey(DIK_NUMPAD3);
+      // 跳ね返し入力判定 (キーボード 1/2/3 または コントローラー X/Y/B)
+      // 画面左: 1キー または Xボタン
+      // 画面中央: 2キー または Yボタン
+      // 画面右: 3キー または Bボタン
+      bool push1 = Input::PushKey(DIK_1) || Input::PushKey(DIK_NUMPAD1) ||
+                   GamePadInput::PushButton(XINPUT_GAMEPAD_X);
+      bool push2 = Input::PushKey(DIK_2) || Input::PushKey(DIK_NUMPAD2) ||
+                   GamePadInput::PushButton(XINPUT_GAMEPAD_Y);
+      bool push3 = Input::PushKey(DIK_3) || Input::PushKey(DIK_NUMPAD3) ||
+                   GamePadInput::PushButton(XINPUT_GAMEPAD_B);
 
       AABB bossAABB =
           Collision::MakeAABB(boss_->GetTransform(), 5.0f, 5.0f, 5.0f);
@@ -2127,12 +2196,12 @@ void GameScene::PlayingUpdate() {
           float obsX = obs->GetTransform().translate.x;
           float laneW = stageSettings_->GetLaneWidth();
           int lane =
-              1; // 0:画面左([1]キー), 1:画面中央([2]キー), 2:画面右([3]キー)
+              1; // 0:画面左([1]/X), 1:画面中央([2]/Y), 2:画面右([3]/B)
           // ボス戦カメラ（Y回転180度）ではワールド+Xが画面左、ワールド-Xが画面右に見える
           if (obsX > laneW / 2.0f)
-            lane = 0; // 画面左（[1]キー対応）
+            lane = 0; // 画面左（[1]キー / Xボタン対応）
           else if (obsX < -laneW / 2.0f)
-            lane = 2; // 画面右（[3]キー対応）
+            lane = 2; // 画面右（[3]キー / Bボタン対応）
 
           // プレイヤーの手前にいる時に跳ね返せる
           float z = obs->GetTransform().translate.z;
@@ -2145,6 +2214,7 @@ void GameScene::PlayingUpdate() {
               obs->SetReflectedTarget(boss_->GetTransform().translate);
               SoundManager::GetInstance()->PlaySE(
                   SoundManager::SE::BossReflect);
+              GamePadInput::Rumble(0.18f, 32000, 32000); // 跳ね返しフィードバック振動
             }
           }
         } else if (obs->GetIsReflected()) {
@@ -2165,6 +2235,7 @@ void GameScene::PlayingUpdate() {
 
             if (boss_->GetState() == BossState::Defeat) {
               SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossDefeat);
+              GamePadInput::Rumble(0.5f, 65535, 65535); // 撃破の大迫力振動
               // 画面内のボス攻撃をすべて消す
               for (int k = 0; k < stageSettings_->GetMaxObstacles(); k++) {
                 Obstacle *o = stageSettings_->GetObstacle(k);
@@ -2271,10 +2342,11 @@ void GameScene::TitleUpdate() {
       StartPlaying();
     }
   } else {
-    // スペースキーまたはゲームパッドAボタンでゲーム開始シーケンス突入 (フェード中は誤操作防止)
+    // スペースキーまたはゲームパッドAボタン・STARTボタンでゲーム開始シーケンス突入 (フェード中は誤操作防止)
     if ((!fade_ || !fade_->IsFading()) &&
         (Input::PushKey(DIK_SPACE) ||
-         GamePadInput::PressButton(XINPUT_GAMEPAD_A))) {
+         GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+         GamePadInput::PushButton(XINPUT_GAMEPAD_START))) {
       StartGame();
     }
   }
@@ -2466,14 +2538,14 @@ void GameScene::CheckTitleCollisions() {
 
 void GameScene::PausedUpdate() {
   pauseSystem_->Update();
-  if (Input::PushKey(DIK_1)) {
+  if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
     ResetGame();
     gameState_ = GameState::Playing;
     isTitleExiting_ = false;
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
     SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
   }
-  if (Input::PushKey(DIK_2)) {
+  if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
     ReturnToTitle();
   }
 }
@@ -2603,6 +2675,7 @@ void GameScene::CheckCollisions() {
         crashSprite_->SettingWvp();
       }
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
+      GamePadInput::Rumble(0.35f, 48000, 48000); // 被弾時の衝撃振動
       if (playingState_ == PlayingState::Boss && boss_->GetIsActive()) {
         boss_->ChangeState(BossState::Victory);
       }
@@ -2858,9 +2931,12 @@ void GameScene::UpdateTitleCamera() {
   float timeScale = EditorManager::GetPlaySpeed();
   float dt = (1.0f / 60.0f) * timeScale;
 
-  Vector3 playerPos = player_->GetTransform().translate;
-  Vector3 targetPos = {playerPos.x, playerPos.y + titleTargetOffsetY_,
-                       playerPos.z};
+  // プレイヤーが中心（中央レーン・地面）にいるときの座標を基準・注視点とする
+  // （左右移動やジャンプ・スライディングによるカメラの急激なブレやカクつきを防止）
+  Vector3 centerPos = {0.0f, player_->GetBaseHeight(),
+                       player_->GetTransform().translate.z};
+  Vector3 targetPos = {centerPos.x, centerPos.y + titleTargetOffsetY_,
+                       centerPos.z};
 
   Transform defaultCamTransform;
   defaultCamTransform.scale = {1.0f, 1.0f, 1.0f};

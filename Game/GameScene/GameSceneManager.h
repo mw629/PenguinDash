@@ -28,7 +28,12 @@ private:
 	// キーコンフィグ
 	KeyConfig keyConfig_;
 	
+	// ボス戦中フラグ（ボス戦中はBボタンを跳ね返し専用にするため）
+	bool isInBossBattle_ = false;
+
 public:
+	void SetInBossBattle(bool inBoss) { isInBossBattle_ = inBoss; }
+	bool GetInBossBattle() const { return isInBossBattle_; }
 
 	static GameSceneManager* GetInstance();
 

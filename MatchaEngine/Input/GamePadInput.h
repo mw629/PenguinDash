@@ -34,6 +34,9 @@ public:
 	XINPUT_GAMEPAD_DPAD_RIGHT
 	*/
 
+	// 接続状態チェック
+	static bool IsConnected();
+
 	// ボタン入力チェック
 	
 	static bool PushButton(WORD button);
@@ -51,10 +54,33 @@ public:
 	static float GetRightStickX();
 	static float GetRightStickY();
 
+	// スティックを倒した瞬間（Push）の入力チェック
+	static bool PushLeftStickLeft();
+	static bool PushLeftStickRight();
+	static bool PushLeftStickUp();
+	static bool PushLeftStickDown();
+
+	static bool PushRightStickLeft();
+	static bool PushRightStickRight();
+	static bool PushRightStickUp();
+	static bool PushRightStickDown();
+
+	// トリガーの入力チェック
+	static bool PushLeftTrigger();
+	static bool PushRightTrigger();
+	static bool PressLeftTrigger();
+	static bool PressRightTrigger();
+
 	// コントローラーを振動させる（0〜65535）
 	static void SetVibration(WORD leftMotorSpeed, WORD rightMotorSpeed);
 
+	// 指定時間（秒）コントローラーを振動させる（自動停止）
+	static void Rumble(float durationSeconds, WORD leftMotor = 32000, WORD rightMotor = 32000);
+
 	void SetPad();
 
+private:
+	DWORD userIndex_ = 0;
+	bool isConnected_ = false;
 };
 
