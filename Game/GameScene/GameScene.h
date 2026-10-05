@@ -15,6 +15,7 @@
 #include <System/CollisionManager.h>
 #include <System/PauseSystem.h>
 #include "../Direction/Fade.h"
+#include "../Direction/FreezeTransition.h"
 #include <memory>
 
 class GameScene : public IScene {

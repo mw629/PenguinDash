@@ -187,6 +187,7 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Ring.cpp" />
     <ClCompile Include="MatchaEngine\GameObjects\Effect\Emitter.cpp" />
     <ClCompile Include="Game\Direction\Fade.cpp" />
+    <ClCompile Include="Game\Direction\FreezeTransition.cpp" />
     <ClCompile Include="MatchaEngine\GameObjects\Camera\Camera.cpp" />
     <ClCompile Include="Game\GameScene\GameScene.cpp" />
     <ClCompile Include="Game\GameScene\Effect\GameSceneEffect.cpp" />
@@ -410,6 +411,7 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Ring.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Effect\Emitter.h" />
     <ClInclude Include="Game\Direction\Fade.h" />
+    <ClInclude Include="Game\Direction\FreezeTransition.h" />
     <ClInclude Include="Game\IScene.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h" />
     <ClInclude Include="Game\GameScene\GameScene.h" />

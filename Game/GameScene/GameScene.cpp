@@ -67,6 +67,9 @@ void GameScene::ImGui() {
         StartResultTransition(ResultTransition::Title);
       }
       ImGui::SliderFloat("Fade Duration", &fadeDuration_, 0.1f, 2.0f, "%.2f s");
+      if (ImGui::Button("Test Freeze & Shatter Transition", ImVec2(240, 32))) {
+        FreezeTransition::GetInstance()->Start(0.75f, 0.75f, nullptr);
+      }
       ImGui::Separator();
     }
   }
@@ -802,12 +805,21 @@ void GameScene::StartPlaying() {
 }
 
 void GameScene::StartResultTransition(ResultTransition target) {
-  if (fade_->IsFading() || resultTransition_ != ResultTransition::None) {
+  if (FreezeTransition::GetInstance()->IsActive() || resultTransition_ != ResultTransition::None) {
     return;
   }
   resultTransition_ = target;
-  fade_->StartFadeOut(fadeDuration_);
-  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
+  FreezeTransition::GetInstance()->Start(0.75f, 0.75f, [this, target]() {
+    if (target == ResultTransition::Restart) {
+      ResetGame();
+      gameState_ = GameState::Playing;
+      isTitleExiting_ = false;
+      SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
+    } else if (target == ResultTransition::Title) {
+      ReturnToTitle();
+    }
+    resultTransition_ = ResultTransition::None;
+  });
 }
 
 void GameScene::ReturnToTitle() {
@@ -1089,6 +1101,13 @@ void GameScene::Update() {
     }
   }
 
+  // F3キーでいつでも氷結・破砕トランジションをテスト発動
+  if (Input::PushKey(DIK_F3)) {
+    if (!FreezeTransition::GetInstance()->IsActive()) {
+      FreezeTransition::GetInstance()->Start(0.75f, 0.75f, nullptr);
+    }
+  }
+
   // PostEffect::SetActivePostEffect(PostEffect::Type::GaussianFilter);
 
   // Engine側のPlay/Stop状態に同期してゲームステートを切り替え
@@ -1141,7 +1160,7 @@ void GameScene::Update() {
   } else if (gameState_ == GameState::PlayerHit) {
     PlayerHitUpdate();
   } else if (gameState_ == GameState::GameOver) {
-    if (resultTransition_ == ResultTransition::None && !fade_->IsFading()) {
+    if (resultTransition_ == ResultTransition::None && !fade_->IsFading() && !FreezeTransition::GetInstance()->IsActive()) {
       // 1キー または ゲームパッドAボタンでリスタート
       if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
         StartResultTransition(ResultTransition::Restart);
