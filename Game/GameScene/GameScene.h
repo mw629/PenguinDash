@@ -54,8 +54,9 @@ private:
   float titleExitTimer_ = 0.0f;
   const float kTitleExitDuration_ = 3.0f;
 
-  // タイトル用ペンギン疾走演出 (5体)
-  std::unique_ptr<Sprite> titlePenguinSprites_[5];
+  // タイトル用ペンギン疾走演出 (15体)
+  static constexpr int kTitlePenguinCount = 15;
+  std::unique_ptr<Sprite> titlePenguinSprites_[kTitlePenguinCount];
   int titlePenguinTextureHandle_ = -1;
 
   // クラッシュ演出用
@@ -201,7 +202,7 @@ public:
   void DrawBossHUD(class Draw &draw);
   void DrawPauseHUD(class Draw &draw);
   void DrawGameOverHUD(class Draw &draw);
-  void DrawControlsGuide(class Draw &draw);
+  void DrawControlsGuide(class Draw &draw, float alpha = 1.0f);
 
   float uiTimer_ = 0.0f;
 

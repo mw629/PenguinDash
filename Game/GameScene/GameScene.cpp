@@ -833,10 +833,10 @@ void GameScene::ReturnToTitle() {
   isTitleExiting_ = false;
   titleExitTimer_ = 0.0f;
   titleCameraAngle_ = 0.0f;
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < kTitlePenguinCount; ++i) {
     if (titlePenguinSprites_[i]) {
       Transform pt = titlePenguinSprites_[i]->GetTransform();
-      pt.translate = {-300.0f, 460.0f, 0.0f};
+      pt.translate = {-300.0f, 360.0f, 0.0f};
       pt.rotate = {0.0f, 0.0f, 0.0f};
       titlePenguinSprites_[i]->SetTransform(pt);
       titlePenguinSprites_[i]->SettingWvp();
@@ -850,12 +850,12 @@ void GameScene::Initialize() {
   fade_->Initialize();
   resultTransition_ = ResultTransition::None;
 
-  // タイトル用ペンギン走りスプライトの生成 (5体 ＞の字隊形用)
+  // タイトル用ペンギン走りスプライトの生成 (15体 画面上から下の＞の字フォーメーション用)
   titlePenguinTextureHandle_ = texture_->CreateTexture("Resources/Texture/penguin_run.png");
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < kTitlePenguinCount; ++i) {
     SpriteData penguinSpriteData;
     penguinSpriteData.transform.scale = {1.0f, 1.0f, 1.0f};
-    penguinSpriteData.transform.translate = {-300.0f, 460.0f, 0.0f};
+    penguinSpriteData.transform.translate = {-300.0f, 360.0f, 0.0f};
     penguinSpriteData.transform.rotate = {0.0f, 0.0f, 0.0f};
     penguinSpriteData.size = {130.0f, 130.0f};
     penguinSpriteData.pivot = {0.5f, 0.5f};
@@ -1446,8 +1446,10 @@ void GameScene::DrawBossHUD(class Draw &draw) {
                       Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.07f);
 
   // 反撃（跳ね返し）基本操作ガイド (パネル中央揃え)
-  const char *guideStr =
-      "[1 / X] 左レーン  |  [2 / Y] 中央レーン  |  [3 / B] 右レーン (魚を押して敵へ飛ばす)";
+  bool isPad = GamePadInput::IsConnected();
+  const char *guideStr = isPad
+      ? "[X] 左レーン  |  [Y] 中央レーン  |  [B] 右レーン (魚を押して敵へ飛ばす)"
+      : "[1] 左レーン  |  [2] 中央レーン  |  [3] 右レーン (魚を押して敵へ飛ばす)";
   const float guideSize = 20.0f;
   float guideW = tr ? tr->MeasureString(guideStr, guideSize).x : 680.0f;
   float guideX = panelX + (panelW - guideW) * 0.5f;
@@ -1482,9 +1484,16 @@ void GameScene::DrawBossHUD(class Draw &draw) {
 
   // 反撃チャンスのアラート点滅表示 (中央揃え)
   if (reflectLane != -1) {
-    const char *keyName = (reflectLane == 0)   ? "1 / X"
-                          : (reflectLane == 1) ? "2 / Y"
-                                               : "3 / B";
+    const char *keyName = "";
+    if (isPad) {
+      keyName = (reflectLane == 0)   ? "Xボタン"
+                : (reflectLane == 1) ? "Yボタン"
+                                     : "Bボタン";
+    } else {
+      keyName = (reflectLane == 0)   ? "1キー"
+                : (reflectLane == 1) ? "2キー"
+                                     : "3キー";
+    }
     const char *laneName = (reflectLane == 0)   ? "左レーン"
                            : (reflectLane == 1) ? "中央レーン"
                                                 : "右レーン";
@@ -1549,7 +1558,10 @@ void GameScene::DrawBossHUD(class Draw &draw) {
                         Vector2(guideX + 16.0f, guideY + 104.0f), 19.0f,
                         Vector4(0.3f, 1.0f, 0.6f, 1.0f), true,
                         Vector4(0.0f, 0.2f, 0.1f, 1.0f), 0.10f, 0.06f);
-    draw.DrawMSDFString("   魚が手前に来たら [1/X]左 / [2/Y]中 / [3/B]右",
+    const char *step2Str = isPad
+        ? "   魚が手前に来たら [X]左 / [Y]中 / [B]右"
+        : "   魚が手前に来たら [1]左 / [2]中 / [3]右";
+    draw.DrawMSDFString(step2Str,
                         Vector2(guideX + 16.0f, guideY + 129.0f), 16.0f,
                         Vector4(1.0f, 0.95f, 0.65f, 0.95f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
@@ -1585,7 +1597,10 @@ void GameScene::DrawBossHUD(class Draw &draw) {
                         Vector4(1.0f, 0.5f, 0.5f, alpha), true,
                         Vector4(0.2f, 0.0f, 0.0f, alpha), 0.10f, 0.06f);
 
-    draw.DrawMSDFString("② 魚がいるレーンを手前で [1] [2] [3] キーで押せ！",
+    const char *mission2Str = isPad
+        ? "② 魚がいるレーンを手前で [X] [Y] [B] ボタンで押せ！"
+        : "② 魚がいるレーンを手前で [1] [2] [3] キーで押せ！";
+    draw.DrawMSDFString(mission2Str,
                         Vector2(290.0f, 345.0f), 21.0f,
                         Vector4(0.3f, 1.0f, 0.6f, alpha), true,
                         Vector4(0.0f, 0.2f, 0.1f, alpha), 0.10f, 0.06f);
@@ -1611,31 +1626,56 @@ void GameScene::DrawBossHUD(class Draw &draw) {
   }
 }
 
-void GameScene::DrawControlsGuide(class Draw &draw) {
-  draw.DrawFillRect(Vector2(20.0f, 672.0f), Vector2(1240.0f, 36.0f),
-                    Vector4(0.03f, 0.06f, 0.11f, 0.88f));
-  draw.DrawFillRect(Vector2(20.0f, 672.0f), Vector2(1240.0f, 2.0f),
-                    Vector4(0.3f, 0.6f, 0.9f, 0.85f));
+void GameScene::DrawControlsGuide(class Draw &draw, float alpha) {
+  if (alpha <= 0.01f) return;
 
-  // 左端のピルバッジ [ KEY / PAD ]
-  draw.DrawFillRect(Vector2(26.0f, 676.0f), Vector2(100.0f, 26.0f),
-                    Vector4(0.12f, 0.30f, 0.55f, 0.9f));
-  draw.DrawMSDFString("KEY / PAD", Vector2(32.0f, 680.0f), 16.0f,
-                      Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+  bool isPad = GamePadInput::IsConnected();
+
+  draw.DrawFillRect(Vector2(20.0f, 672.0f), Vector2(1240.0f, 36.0f),
+                    Vector4(0.03f, 0.06f, 0.11f, 0.88f * alpha));
+  draw.DrawFillRect(Vector2(20.0f, 672.0f), Vector2(1240.0f, 2.0f),
+                    Vector4(0.3f, 0.6f, 0.9f, 0.85f * alpha));
+
+  // 左端のバッジ [ PAD ] または [ KEYBOARD ]
+  const char *badgeText = isPad ? "PAD" : "KEYBOARD";
+  float badgeW = isPad ? 72.0f : 110.0f;
+  // 外枠 (1px)
+  draw.DrawFillRect(Vector2(25.0f, 675.0f), Vector2(badgeW + 2.0f, 28.0f),
+                    Vector4(0.35f, 0.40f, 0.48f, 0.75f * alpha));
+  // 内側背景（視認性の高いダークチャコール）
+  draw.DrawFillRect(Vector2(26.0f, 676.0f), Vector2(badgeW, 26.0f),
+                    Vector4(0.07f, 0.09f, 0.13f, 0.95f * alpha));
+
+  Vector4 badgeColor = isPad ? Vector4(0.35f, 1.0f, 0.75f, alpha)
+                             : Vector4(1.0f, 0.88f, 0.35f, alpha);
+  float badgeTextX = isPad ? 43.0f : 32.0f;
+  draw.DrawMSDFString(badgeText, Vector2(badgeTextX, 680.0f), 15.5f,
+                      badgeColor, true,
+                      Vector4(0.0f, 0.0f, 0.0f, alpha), 0.08f);
 
   const char *guideText = "";
-  if (playingState_ == PlayingState::ThreeLane) {
-    guideText = "移動: [A/D / Lスティック・十字]    ジャンプ: [SPACE / Aボタン]    スライド: [S / Bボタン]    ポーズ: [ESC / START]";
-  } else if (playingState_ == PlayingState::OneLane) {
-    guideText = "ジャンプ: [SPACE / Aボタン]    スライド: [S / Bボタン]    ポーズ: [ESC / START]    (※1レーン固定中)";
-  } else if (playingState_ == PlayingState::Boss) {
-    guideText = "【ボス反撃】 魚跳ね返し: [1 / X]左  [2 / Y]中  [3 / B]右    |    移動: [A/D / Lスティック]    |    ポーズ: [ESC / START]";
+  if (isPad) {
+    if (playingState_ == PlayingState::ThreeLane || gameState_ == GameState::Title) {
+      guideText = "移動: [Lスティック / 十字]    ジャンプ: [Aボタン]    スライド: [Bボタン]    ポーズ: [START]";
+    } else if (playingState_ == PlayingState::OneLane) {
+      guideText = "ジャンプ: [Aボタン]    スライド: [Bボタン]    ポーズ: [START]    (※1レーン固定中)";
+    } else if (playingState_ == PlayingState::Boss) {
+      guideText = "【ボス反撃】 魚跳ね返し: [X]左  [Y]中  [B]右    |    移動: [Lスティック]    |    ポーズ: [START]";
+    }
+  } else {
+    if (playingState_ == PlayingState::ThreeLane || gameState_ == GameState::Title) {
+      guideText = "移動: [A/D / ← →]    ジャンプ: [SPACE / W]    スライド: [S / ↓]    ポーズ: [ESC]";
+    } else if (playingState_ == PlayingState::OneLane) {
+      guideText = "ジャンプ: [SPACE / W]    スライド: [S / ↓]    ポーズ: [ESC]    (※1レーン固定中)";
+    } else if (playingState_ == PlayingState::Boss) {
+      guideText = "【ボス反撃】 魚跳ね返し: [1]左  [2]中  [3]右    |    移動: [A/D]    |    ポーズ: [ESC]";
+    }
   }
 
-  draw.DrawMSDFString(guideText, Vector2(138.0f, 680.0f), 17.5f,
-                      Vector4(0.92f, 0.96f, 1.0f, 0.95f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+  float guideTextX = 26.0f + badgeW + 14.0f;
+  draw.DrawMSDFString(guideText, Vector2(guideTextX, 680.0f), 17.5f,
+                      Vector4(0.92f, 0.96f, 1.0f, 0.95f * alpha), true,
+                      Vector4(0.0f, 0.0f, 0.0f, alpha), 0.06f);
 }
 
 void GameScene::DrawPauseHUD(class Draw &draw) {
@@ -1677,18 +1717,30 @@ void GameScene::DrawPauseHUD(class Draw &draw) {
   draw.DrawFillRect(Vector2(400.0f, 400.0f), Vector2(480.0f, 2.0f),
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
-  draw.DrawMSDFString("[ ESC / START ] ゲームを再開 (RESUME)", Vector2(410.0f, 425.0f),
-                      24.0f, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-
-  draw.DrawMSDFString("[  1  /  Aボタン  ] 最初からリスタート (RESTART)",
-                      Vector2(410.0f, 465.0f), 24.0f,
-                      Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-
-  draw.DrawMSDFString("[  2  /  Bボタン  ] タイトルへ戻る (TITLE)", Vector2(410.0f, 505.0f),
-                      24.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  bool isPausePad = GamePadInput::IsConnected();
+  if (isPausePad) {
+    draw.DrawMSDFString("[ START ] ゲームを再開 (RESUME)", Vector2(410.0f, 425.0f),
+                        24.0f, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Aボタン ] 最初からリスタート (RESTART)",
+                        Vector2(410.0f, 465.0f), 24.0f,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Bボタン ] タイトルへ戻る (TITLE)", Vector2(410.0f, 505.0f),
+                        24.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  } else {
+    draw.DrawMSDFString("[ ESC ] ゲームを再開 (RESUME)", Vector2(410.0f, 425.0f),
+                        24.0f, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
+                        Vector2(410.0f, 465.0f), 24.0f,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  2  ] タイトルへ戻る (TITLE)", Vector2(410.0f, 505.0f),
+                        24.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
 }
 
 void GameScene::DrawGameOverHUD(class Draw &draw) {
@@ -1781,11 +1833,20 @@ void GameScene::DrawGameOverHUD(class Draw &draw) {
   draw.DrawFillRect(Vector2(240.0f, 470.0f), Vector2(800.0f, 2.0f),
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
-  draw.DrawMSDFString("[ 1 / Aボタン ] もう一度プレイ (RESTART)   |   [ 2 / Bボタン ] "
-                      "タイトルへ戻る (TITLE)",
-                      Vector2(245.0f, 505.0f), 22.0f,
-                      Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  bool isOverPad = GamePadInput::IsConnected();
+  if (isOverPad) {
+    draw.DrawMSDFString("[ Aボタン ] もう一度プレイ (RESTART)   |   [ Bボタン ] "
+                        "タイトルへ戻る (TITLE)",
+                        Vector2(245.0f, 505.0f), 22.0f,
+                        Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  } else {
+    draw.DrawMSDFString("[ 1キー ] もう一度プレイ (RESTART)   |   [ 2キー ] "
+                        "タイトルへ戻る (TITLE)",
+                        Vector2(245.0f, 505.0f), 22.0f,
+                        Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
 }
 
 void GameScene::DrawTitleHUD(class Draw &draw) {
@@ -1794,11 +1855,12 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
   // タイトル文字およびアニメーション計算
   const std::string titleText = "ペンギンダッシュ";
   const std::string subTitleText = "― PENGUIN DASH ―";
-  const std::string startText = "PRESS SPACE OR [A] BUTTON TO START";
+  bool isTitlePad = GamePadInput::IsConnected();
+  const std::string startText = isTitlePad ? "PRESS [A] BUTTON TO START" : "PRESS SPACE TO START";
 
-  const float fontSize = 82.0f;
-  const float subFontSize = 24.0f;
-  const float startFontSize = 26.0f;
+  const float fontSize = 112.0f;
+  const float subFontSize = 32.0f;
+  const float startFontSize = 34.0f;
 
   // テキストサイズの計測とセンタリング
   float titleWidth = 0.0f;
@@ -1812,19 +1874,19 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
         draw.GetTextRenderer()->MeasureString(startText, startFontSize).x;
   }
   if (titleWidth <= 0.0f)
-    titleWidth = 560.0f;
+    titleWidth = 760.0f;
   if (subWidth <= 0.0f)
-    subWidth = 260.0f;
+    subWidth = 350.0f;
   if (startWidth <= 0.0f)
-    startWidth = 500.0f;
+    startWidth = 640.0f;
 
   float titleX = (1280.0f - titleWidth) * 0.5f;
   float subX = (1280.0f - subWidth) * 0.5f;
   float startX = (1280.0f - startWidth) * 0.5f;
 
   // 基準Y座標
-  const float baseTitleY = 210.0f;
-  const float baseSubY = baseTitleY + 95.0f;
+  const float baseTitleY = 170.0f;
+  const float baseSubY = baseTitleY + 125.0f;
   const float baseStartY = 570.0f;
 
   float currentTitleY = baseTitleY;
@@ -1864,7 +1926,7 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
   if (mainAlpha > 0.01f) {
     // ドロップシャドウ
     Vector4 shadowColor = Vector4(0.01f, 0.04f, 0.12f, 0.8f * mainAlpha);
-    draw.DrawMSDFString(titleText, Vector2(titleX + 4.0f, currentTitleY + 5.0f),
+    draw.DrawMSDFString(titleText, Vector2(titleX + 5.0f, currentTitleY + 6.0f),
                         fontSize, shadowColor, false, {0.0f, 0.0f, 0.0f, 0.0f},
                         0.0f, 0.18f);
 
@@ -1891,153 +1953,54 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
                         0.08f);
   }
 
-  // --- タイトル右下: 操作方法パネル ---
+  // --- タイトル操作方法バー（ゲームシーンと統一された下部バー） ---
   float guideAlpha = isTitleExiting_ ? std::clamp(1.0f - (titleExitTimer_ / 0.4f), 0.0f, 1.0f) : mainAlpha;
-  if (guideAlpha > 0.01f) {
-    const float guideCardX = 770.0f;
-    const float guideCardY = 400.0f;
-    const float guideCardW = 490.0f;
-    const float guideCardH = 300.0f;
+  DrawControlsGuide(draw, guideAlpha);
 
-    // パネル背景（半透明ダークネイビー）
-    draw.DrawFillRect(Vector2(guideCardX, guideCardY),
-                      Vector2(guideCardW, guideCardH),
-                      Vector4(0.03f, 0.06f, 0.11f, 0.88f * guideAlpha));
-    // 上部アクセントバー（アイスブルー）
-    draw.DrawFillRect(Vector2(guideCardX, guideCardY),
-                      Vector2(guideCardW, 3.0f),
-                      Vector4(0.3f, 0.7f, 1.0f, 0.95f * guideAlpha));
-
-    // ヘッダータイトル
-    draw.DrawMSDFString("【 操作方法 / CONTROLS 】",
-                        Vector2(guideCardX + 16.0f, guideCardY + 10.0f), 20.0f,
-                        Vector4(0.4f, 0.85f, 1.0f, guideAlpha), true,
-                        Vector4(0.0f, 0.1f, 0.25f, guideAlpha), 0.12f, 0.08f);
-
-    // コントローラー接続状態インジケーター (右上に表示)
-    bool isPadConnected = GamePadInput::IsConnected();
-    const char *padStatusText = isPadConnected ? "● PAD: 接続中" : "○ PAD: 未接続";
-    Vector4 padStatusColor = isPadConnected ? Vector4(0.3f, 1.0f, 0.5f, guideAlpha)
-                                            : Vector4(0.6f, 0.65f, 0.7f, guideAlpha * 0.75f);
-    draw.DrawMSDFString(padStatusText,
-                        Vector2(guideCardX + 355.0f, guideCardY + 13.0f), 14.0f,
-                        padStatusColor, true,
-                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
-
-    // 列ヘッダー（Action / Keyboard / GamePad）
-    draw.DrawFillRect(Vector2(guideCardX + 10.0f, guideCardY + 36.0f),
-                      Vector2(guideCardW - 20.0f, 22.0f),
-                      Vector4(0.08f, 0.14f, 0.24f, 0.75f * guideAlpha));
-
-    draw.DrawMSDFString("アクション", Vector2(guideCardX + 18.0f, guideCardY + 39.0f), 13.5f,
-                        Vector4(0.75f, 0.82f, 0.92f, 0.9f * guideAlpha), true,
-                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.06f);
-
-    draw.DrawMSDFString("キーボード (KEY)", Vector2(guideCardX + 125.0f, guideCardY + 39.0f), 13.5f,
-                        Vector4(1.0f, 0.88f, 0.45f, 0.95f * guideAlpha), true,
-                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.06f);
-
-    draw.DrawMSDFString("コントローラー (PAD)", Vector2(guideCardX + 290.0f, guideCardY + 39.0f), 13.5f,
-                        Vector4(0.4f, 0.98f, 0.65f, 0.95f * guideAlpha), true,
-                        Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.06f);
-
-    // 区切りライン
-    draw.DrawFillRect(Vector2(guideCardX + 10.0f, guideCardY + 59.0f),
-                      Vector2(guideCardW - 20.0f, 1.0f),
-                      Vector4(0.2f, 0.4f, 0.6f, 0.6f * guideAlpha));
-
-    // 操作リスト
-    struct ControlRow {
-      const char *action;
-      const char *key;
-      const char *pad;
-      bool isHighlight;
-    };
-    ControlRow rows[] = {
-      {"レーン移動", "[A/D] / [← →]", "Lスティック / 十字", false},
-      {"ジャンプ",   "[SPACE / W]",    "[A] ボタン / ↑",     false},
-      {"スライド",   "[S] / [↓]",      "[B] ボタン / ↓",     false},
-      {"一人称視点", "[F2]",           "[BACK] / Rスティック", false},
-      {"ポーズ",     "[ESC]",          "[START] ボタン",      false},
-      {"ボス魚反射", "[1] / [2] / [3]", "[X]左 / [Y]中 / [B]右", true}
-    };
-
-    float rowY = guideCardY + 63.0f;
-    const float rowH = 37.0f;
-    for (size_t i = 0; i < sizeof(rows) / sizeof(rows[0]); ++i) {
-      const auto &row = rows[i];
-
-      // 偶数行またはハイライト行の背景帯
-      if (row.isHighlight) {
-        draw.DrawFillRect(Vector2(guideCardX + 10.0f, rowY),
-                          Vector2(guideCardW - 20.0f, rowH - 2.0f),
-                          Vector4(0.20f, 0.12f, 0.04f, 0.70f * guideAlpha));
-      } else if (i % 2 == 1) {
-        draw.DrawFillRect(Vector2(guideCardX + 10.0f, rowY),
-                          Vector2(guideCardW - 20.0f, rowH - 2.0f),
-                          Vector4(0.06f, 0.10f, 0.18f, 0.45f * guideAlpha));
-      }
-
-      // アクション名
-      Vector4 actionColor = row.isHighlight ? Vector4(1.0f, 0.85f, 0.3f, guideAlpha)
-                                            : Vector4(0.92f, 0.95f, 1.0f, 0.9f * guideAlpha);
-      draw.DrawMSDFString(row.action, Vector2(guideCardX + 18.0f, rowY + 7.0f), 15.0f,
-                          actionColor, true,
-                          Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
-
-      // キーボード
-      Vector4 keyColor = row.isHighlight ? Vector4(1.0f, 0.95f, 0.45f, guideAlpha)
-                                         : Vector4(1.0f, 0.90f, 0.40f, guideAlpha);
-      draw.DrawMSDFString(row.key, Vector2(guideCardX + 125.0f, rowY + 7.0f), 15.0f,
-                          keyColor, true,
-                          Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
-
-      // コントローラー
-      Vector4 padColor = row.isHighlight ? Vector4(0.30f, 1.00f, 0.90f, guideAlpha)
-                                         : Vector4(0.40f, 0.98f, 0.65f, guideAlpha);
-      draw.DrawMSDFString(row.pad, Vector2(guideCardX + 290.0f, rowY + 7.0f), 15.0f,
-                          padColor, true,
-                          Vector4(0.0f, 0.0f, 0.0f, guideAlpha), 0.08f, 0.05f);
-
-      rowY += rowH;
-    }
-  }
-
-  // --- スタート時のペンギン疾走演出 (5体 ＞の字フォーメーション) ---
+  // --- スタート時のペンギン疾走演出 (15体 画面上から下への＞の字フォーメーション) ---
   if (isTitleExiting_ && titlePenguinSprites_[0]) {
     float progress = std::clamp(titleExitTimer_ / kTitleExitDuration_, 0.0f, 1.0f);
 
     // ゆっくり等速〜なだらかなイーズで心地よいスピード感で右へ進む
     float runProgress = progress * progress * (3.0f - 2.0f * progress) * 0.15f + progress * 0.85f;
-    float runStartX = -160.0f; // 先頭の開始X（一番後ろのペンギンも画面左外からスタート）
-    float runEndX = 1580.0f;   // 先頭の終了X（一番後ろのペンギンも画面右外へ完全に抜ける）
+    float runStartX = -100.0f; // 先頭の開始X（一番後ろのペンギンも画面左外からスタート）
+    float runEndX = 1620.0f;   // 先頭の終了X（一番後ろのペンギンも画面右外へ完全に抜ける）
     float leaderX = runStartX + (runEndX - runStartX) * runProgress;
 
-    const float baseY = 460.0f;
+    const float baseY = 360.0f; // 画面中央(縦720pxの真ん中)
 
-    // 「＞の字」隊形定義 (先頭が中央、上下斜め後ろに広がる)
+    // 画面上から下への「＞」の字フォーメーション (15体: i=0 最上段 〜 i=7 中央先頭 〜 i=14 最下段)
     struct FormationParam {
       float offsetX;
       float offsetY;
       float animTimeOffset; // コマ送りの時間ズレ（群れとしての自然な躍動感）
-      float scale;          // 遠近感
+      float scale;          // 遠近感スケール (等倍比率)
     };
 
-    const FormationParam kFormations[5] = {
-      {   0.0f,    0.0f, 0.00f, 1.05f }, // 0: 中央先頭（リーダー・少し大きめ）
-      { -75.0f,  -48.0f, 0.08f, 0.98f }, // 1: 斜め上（前）
-      { -75.0f,   48.0f, 0.16f, 0.98f }, // 2: 斜め下（前）
-      { -150.0f, -96.0f, 0.24f, 0.90f }, // 3: 最上（後ろ）
-      { -150.0f,  96.0f, 0.32f, 0.90f }, // 4: 最下（後ろ）
-    };
+    const float stepY = 41.5f;  // 画面の上端(Y≈70px)から下端(Y≈650px)まで均等に展開
+    const float slopeX = 26.0f; // 中央先頭から上下斜め後ろへの「＞」の傾き
 
-    // 描画順序: 後ろのペンギンから描画して、手前の先頭が一番手前に重なるようにする
-    const int drawOrder[5] = { 3, 4, 1, 2, 0 };
+    FormationParam formations[kTitlePenguinCount];
+    for (int i = 0; i < kTitlePenguinCount; ++i) {
+      int distFromCenter = std::abs(i - 7); // 0(中央先頭) 〜 7(上下端)
+      float offsetY = (i - 7) * stepY;
+      float offsetX = -distFromCenter * slopeX;
 
-    for (int idx : drawOrder) {
+      // 奥(上部)から手前(下部)への自然な遠近感、中央リーダーは少し大きめ
+      float depth = 0.92f + (offsetY / 290.5f) * 0.10f;
+      float scale = (i == 7) ? 1.10f : (1.00f * depth);
+
+      // 中央先頭から外側へ波打つように走るアニメーションオフセット
+      float animTimeOffset = distFromCenter * 0.09f;
+
+      formations[i] = { offsetX, offsetY, animTimeOffset, scale };
+    }
+
+    // 描画: 奥(上側 i=0)から手前(下側 i=14)へ順に描画して自然な重なりにする
+    for (int idx = 0; idx < kTitlePenguinCount; ++idx) {
       if (!titlePenguinSprites_[idx]) continue;
 
-      const auto& form = kFormations[idx];
+      const auto& form = formations[idx];
       float posX = leaderX + form.offsetX;
       float posY = baseY + form.offsetY;
 
@@ -2054,8 +2017,8 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
       }
 
       // 上下のボビング（跳ね）と少しの前傾姿勢
-      float bobbing = (animFrame == 1) ? -5.0f * form.scale : 0.0f;
-      float tilt = -0.06f;
+      float bobbing = (animFrame == 1) ? -4.0f * (form.scale / 1.00f) : 0.0f;
+      float tilt = -0.05f;
 
       Transform pTransform;
       pTransform.scale = {form.scale, form.scale, 1.0f};
@@ -2069,9 +2032,9 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
 
       // 各ペンギンの背後に風の疾走ラインを描画（画面内にいる時）
       if (posX > 0.0f && posX < 1360.0f) {
-        float trailAlpha = std::clamp(runProgress * 1.5f, 0.0f, 0.75f) * form.scale;
-        draw.DrawFillRect(Vector2(posX - 90.0f * form.scale, posY + 5.0f + bobbing),
-                          Vector2(70.0f * form.scale, 2.5f),
+        float trailAlpha = std::clamp(runProgress * 1.5f, 0.0f, 0.65f) * form.scale;
+        draw.DrawFillRect(Vector2(posX - 65.0f * form.scale, posY + 5.0f + bobbing),
+                          Vector2(55.0f * form.scale, 2.5f),
                           Vector4(0.85f, 0.95f, 1.0f, trailAlpha * 0.7f));
       }
 
