@@ -1153,6 +1153,7 @@ void GameScene::Update() {
     }
   } else if (gameState_ == GameState::Paused) {
     PausedUpdate();
+    effectManager_->EditorUpdate(view);
     if (Input::PushKey(DIK_ESCAPE) || GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
       gameState_ = GameState::Playing;
       SoundManager::GetInstance()->ResumeBGM();
@@ -1160,6 +1161,7 @@ void GameScene::Update() {
   } else if (gameState_ == GameState::PlayerHit) {
     PlayerHitUpdate();
   } else if (gameState_ == GameState::GameOver) {
+    effectManager_->PlayerHitUpdate(view);
     if (resultTransition_ == ResultTransition::None && !fade_->IsFading() && !FreezeTransition::GetInstance()->IsActive()) {
       // 1キー または ゲームパッドAボタンでリスタート
       if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {

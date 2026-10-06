@@ -94,7 +94,8 @@ void DebugCamera::Pan(float deltaX, float deltaY) {
 }
 
 void DebugCamera::Zoom(float wheelDelta) {
-    radius_ -= wheelDelta * k_zoomSpeed;
+    float zoomFactor = (std::max)(radius_ * 0.1f, 0.3f);
+    radius_ -= wheelDelta * zoomFactor;
     if (radius_ < 0.2f) radius_ = 0.2f;
 
     eye_.x = target_.x + radius_ * std::sin(theta_) * std::cos(phi_);

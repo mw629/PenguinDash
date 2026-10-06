@@ -10,6 +10,7 @@
 #endif // _USE_IMGUI
 
 #include "../../../Editer/LanguageManager.h"
+#include "Core/LogHandler.h"
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -591,17 +592,28 @@ void Emitter::SyncGpuParticleParameters(bool emitNow) {
 }
 
 void Emitter::LoadFromJson(const std::string &name) {
-  std::string filepath = "Resources/Json/Particle/" + name;
+  std::string filepath = name;
+  if (filepath.find("Resources/Json/Particle/") == std::string::npos &&
+      filepath.find("Resources\\Json\\Particle\\") == std::string::npos) {
+    filepath = "Resources/Json/Particle/" + filepath;
+  }
   if (filepath.find(".json") == std::string::npos) {
     filepath += ".json";
   }
 
   std::ifstream file(filepath);
-  if (!file.is_open())
+  if (!file.is_open()) {
+    LOG_ERROR(std::format("Emitter::LoadFromJson: Failed to open JSON file '{}'", filepath));
     return;
+  }
 
   nlohmann::json root;
-  file >> root;
+  try {
+    file >> root;
+  } catch (const std::exception& e) {
+    LOG_ERROR(std::format("Emitter::LoadFromJson: JSON parse error in '{}': {}", filepath, e.what()));
+    return;
+  }
 
   if (root.contains("emitter")) {
     if (root["emitter"].contains("type")) {
@@ -875,6 +887,25 @@ void Emitter::LoadFromJson(const std::string &name) {
       SetUseGpuParticle(root["visual"]["useGpuParticle"].get<bool>());
     }
   }
+
+  // ロード完了後のリセットと即時プレビュー射出
+  ClearParticles();
+  emitter_.frequencyTime = 0.0f;
+  emitterSphere_.frequencyTime = 0.0f;
+  emitterCircle_.frequencyTime = 0.0f;
+  emitterCone_.frequencyTime = 0.0f;
+  isStop_ = false;
+
+  if (isLoop_) {
+    Emit();
+  } else {
+    TriggerBurst();
+  }
+  if (GetUseGpuParticle()) {
+    SyncGpuParticleParameters(true);
+  }
+  LOG_INFO(std::format("Emitter::LoadFromJson: Successfully loaded particle from '{}' (isLoop={}, type={}, activeParticles={})",
+                       filepath, isLoop_, static_cast<int>(emitterType_), effectDefinitionData_.size()));
 }
 
 void Emitter::Initialize(EffectShape shape) {
@@ -1348,6 +1379,13 @@ EffectDefinitionData Emitter::MakeNewParticle() {
   if (enableScaleOverLifetime_) {
     if (scaleCurveType_ == 1) {
       data.transform.scale = {0.0f, 0.0f, 0.0f};
+      if (startScale_.x > 0.0f || startScale_.y > 0.0f || startScale_.z > 0.0f) {
+        data.baseScale = startScale_;
+      } else if (data.baseScale.x <= 0.0f && data.baseScale.y <= 0.0f && data.baseScale.z <= 0.0f) {
+        if (endScale_.x > 0.0f || endScale_.y > 0.0f || endScale_.z > 0.0f) {
+          data.baseScale = endScale_;
+        }
+      }
     } else {
       data.transform.scale = startScale_;
       data.baseScale = startScale_;

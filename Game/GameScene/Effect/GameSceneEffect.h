@@ -19,6 +19,8 @@ public:
 
   void EmitDust(const Vector3 &playerPos);
 
+  Emitter* GetSnowEffect() const { return snowEffect_.get(); }
+
   // バリア演出
   void EmitBarrier(const Vector3 &playerPos);
   void BreakBarrier(const Vector3 &playerPos);
@@ -33,6 +35,7 @@ private:
                      float deltaTime = 1.0f / 60.0f);
 
   std::unique_ptr<Emitter> dustEffect_;
+  std::unique_ptr<Emitter> snowEffect_;
 
   // バリア
   std::unique_ptr<HexBarrier> barrier_;

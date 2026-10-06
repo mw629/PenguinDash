@@ -994,7 +994,7 @@ void EditorManager::Update(Engine* engine)
 				center = ped.transform.translate + pBasePos;
 				maxDim = (std::max)({ ped.transform.scale.x, ped.transform.scale.y, ped.transform.scale.z, 3.0f });
 			}
-			float distance = (std::max)(maxDim * 1.5f, 8.0f);
+			float distance = (std::clamp)(maxDim * 1.2f, 5.0f, 25.0f);
 			previewCamera_->Focus(center, distance);
 		};
 
@@ -1010,7 +1010,11 @@ void EditorManager::Update(Engine* engine)
 			previewGrid_->CreateGrid();
 
 			previewParticle_->Initialize();
-			previewParticle_->LoadFromJson("snow");
+			if (std::filesystem::exists("Resources/Json/Particle/Snowparticle.json")) {
+				previewParticle_->LoadFromJson("Snowparticle");
+			} else if (std::filesystem::exists("Resources/Json/Particle/Dustparticle.json")) {
+				previewParticle_->LoadFromJson("Dustparticle");
+			}
 
 			previewCamera_->GetDebugCameraRef().SetEnableInput(false);
 			previewCamera_->SetAspectRatio(1.0f);
@@ -1243,6 +1247,36 @@ void EditorManager::Update(Engine* engine)
 			ImGui::Checkbox(LanguageManager::Tr("Show Grid"), &showGridInViewer_);
 			ImGui::SameLine();
 			ImGui::Checkbox(LanguageManager::Tr("Show Emitter Cube"), &showEmitterCube_);
+
+			// プレビュー再生コントロール
+			ImGui::Separator();
+			ImGui::Text(LanguageManager::Tr("Playback:"));
+			if (ImGui::Button(LanguageManager::Tr("Restart / Emit"))) {
+				previewParticle_->ClearParticles();
+				if (previewParticle_->GetLoop()) {
+					previewParticle_->Emit();
+				} else {
+					previewParticle_->TriggerBurst();
+				}
+			}
+			ImGui::SameLine();
+			static bool autoReplayOneShot = true;
+			static float oneShotTimer = 0.0f;
+			if (!previewParticle_->GetLoop()) {
+				ImGui::Checkbox(LanguageManager::Tr("Auto Replay (One-Shot)"), &autoReplayOneShot);
+				if (autoReplayOneShot) {
+					oneShotTimer += 1.0f / 60.0f;
+					if (previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() == 0 || oneShotTimer >= 2.0f) {
+						previewParticle_->TriggerBurst();
+						oneShotTimer = 0.0f;
+					}
+				}
+			} else {
+				bool isStop = previewParticle_->GetStop();
+				if (ImGui::Checkbox(LanguageManager::Tr("Pause Emission"), &isStop)) {
+					previewParticle_->SetStop(isStop);
+				}
+			}
 			
 			ImGui::Separator();
 			ImGui::Text(LanguageManager::Tr("Gizmo Operation:"));

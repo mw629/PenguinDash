@@ -6,6 +6,7 @@
 
 GameSceneEffect::GameSceneEffect() {
   dustEffect_ = std::make_unique<Emitter>();
+  snowEffect_ = std::make_unique<Emitter>();
   barrier_ = std::make_unique<HexBarrier>();
 }
 
@@ -26,6 +27,15 @@ void GameSceneEffect::Initialize() {
   strncpy_s(dustEffect_->saveFileName_, sizeof(dustEffect_->saveFileName_),
             "Dustparticle", _TRUNCATE);
 
+  // 雪パーティクルの初期化
+  snowEffect_->Initialize();
+  snowEffect_->LoadFromJson("Snowparticle");
+  snowEffect_->name_ = "Snow Effect";
+  snowEffect_->generatorBehavior = nullptr; // JSONの設定に従う
+  snowEffect_->SetStop(false);              // 常時自動発生
+  snowEffect_->SetLoop(true);
+  strncpy_s(snowEffect_->saveFileName_, sizeof(snowEffect_->saveFileName_),
+            "Snowparticle", _TRUNCATE);
 }
 
 void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,
@@ -34,6 +44,11 @@ void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,
   if (dustEffect_) {
     dustEffect_->Update(view);
   }
+  if (snowEffect_) {
+    Vector3 snowPos = {playerPos.x * 0.2f, 9.0f, playerPos.z + 5.0f};
+    snowEffect_->SetPosition(snowPos);
+    snowEffect_->Update(view);
+  }
 }
 
 void GameSceneEffect::PlayerHitUpdate(const Matrix4x4 &view) {
@@ -41,12 +56,18 @@ void GameSceneEffect::PlayerHitUpdate(const Matrix4x4 &view) {
   if (dustEffect_) {
     dustEffect_->Update(view);
   }
+  if (snowEffect_) {
+    snowEffect_->Update(view);
+  }
 }
 
 void GameSceneEffect::EditorUpdate(const Matrix4x4 &view) {
   UpdateBarrier(view, lastPlayerPos_);
   if (dustEffect_) {
     dustEffect_->SettingWvp(view);
+  }
+  if (snowEffect_) {
+    snowEffect_->SettingWvp(view);
   }
 }
 
@@ -181,6 +202,11 @@ void GameSceneEffect::Draw(class Draw &draw) {
     dustEffect_->Draw(draw);
   }
 
+  // 雪パーティクルの描画
+  if (snowEffect_) {
+    snowEffect_->Draw(draw);
+  }
+
   // バリア描画
   if (barrier_ && barrierState_ != BarrierEffectState::Inactive) {
     draw.DrawObj(barrier_.get());
@@ -245,6 +271,8 @@ void GameSceneEffect::ImGui() {
   if (ImGui::CollapsingHeader("Particles")) {
     if (dustEffect_)
       dustEffect_->ImGui();
+    if (snowEffect_)
+      snowEffect_->ImGui();
   }
 #endif
 }
