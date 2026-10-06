@@ -485,6 +485,68 @@ void GameScene::ImGui() {
       stageSettings_->SetRoadColor(
           {roadColorArr[0], roadColorArr[1], roadColorArr[2], roadColorArr[3]});
     }
+
+    bool driftIceEnabled = stageSettings_->GetDriftIceEnabled();
+    if (ImGui::Checkbox("Enable Drift Ice (流氷)", &driftIceEnabled)) {
+      stageSettings_->SetDriftIceEnabled(driftIceEnabled);
+    }
+    if (driftIceEnabled) {
+      Vector4 driftIceColor = stageSettings_->GetDriftIceColor();
+      float driftIceColorArr[4] = {driftIceColor.x, driftIceColor.y, driftIceColor.z, driftIceColor.w};
+      if (ImGui::ColorEdit4("Drift Ice Color", driftIceColorArr)) {
+        stageSettings_->SetDriftIceColor(
+            {driftIceColorArr[0], driftIceColorArr[1], driftIceColorArr[2], driftIceColorArr[3]});
+      }
+      float bobbingScale = stageSettings_->GetDriftIceBobbingScale();
+      if (ImGui::SliderFloat("Drift Ice Bobbing Scale (揺れ幅)", &bobbingScale, 0.0f, 3.0f, "%.2f")) {
+        stageSettings_->SetDriftIceBobbingScale(bobbingScale);
+      }
+      float bobbingSpeed = stageSettings_->GetDriftIceBobbingSpeedScale();
+      if (ImGui::SliderFloat("Drift Ice Bobbing Speed (揺れ速度)", &bobbingSpeed, 0.0f, 3.0f, "%.2f")) {
+        stageSettings_->SetDriftIceBobbingSpeedScale(bobbingSpeed);
+      }
+      float sizeScale = stageSettings_->GetDriftIceSizeScale();
+      if (ImGui::SliderFloat("Drift Ice Size Scale (大きさ倍率)", &sizeScale, 0.1f, 3.0f, "%.2f")) {
+        stageSettings_->SetDriftIceSizeScale(sizeScale);
+      }
+      float thicknessScale = stageSettings_->GetDriftIceThicknessScale();
+      if (ImGui::SliderFloat("Drift Ice Thickness (厚み・縦の太さ)", &thicknessScale, 0.5f, 6.0f, "%.2f")) {
+        stageSettings_->SetDriftIceThicknessScale(thicknessScale);
+      }
+      float heightOffset = stageSettings_->GetDriftIceHeightOffset();
+      if (ImGui::SliderFloat("Drift Ice Height (浮遊高さ)", &heightOffset, -1.0f, 5.0f, "%.2f m")) {
+        stageSettings_->SetDriftIceHeightOffset(heightOffset);
+      }
+      float distOffset = stageSettings_->GetDriftIceDistanceOffset();
+      if (ImGui::SliderFloat("Drift Ice Distance (地面からの離れ具合)", &distOffset, 0.0f, 20.0f, "%.1f m")) {
+        stageSettings_->SetDriftIceDistanceOffset(distOffset);
+      }
+      bool lighting = stageSettings_->GetDriftIceLighting();
+      if (ImGui::Checkbox("Drift Ice Lighting (ライティング)", &lighting)) {
+        stageSettings_->SetDriftIceLighting(lighting);
+      }
+      float sealSpin = stageSettings_->GetBabySealSpinSpeed();
+      if (ImGui::SliderFloat("Baby Seal Spin Speed (アザラシ回転速度)", &sealSpin, 0.0f, 10.0f, "%.1f rad/s")) {
+        stageSettings_->SetBabySealSpinSpeed(sealSpin);
+      }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Road Backwards: %d chunks (-%.0f m)",
+                stageSettings_->GetBackwardChunks(),
+                static_cast<float>(stageSettings_->GetBackwardChunks()) * stageSettings_->GetChunkLength());
+    float waterForwardExt = stageSettings_->GetWaterForwardExtension();
+    if (ImGui::SliderFloat("Water Forward Ext (波の奥への拡張)", &waterForwardExt, 50.0f, 1200.0f, "%.0f m")) {
+      stageSettings_->SetWaterForwardExtension(waterForwardExt);
+    }
+    float waterBackwardExt = stageSettings_->GetWaterBackwardExtension();
+    if (ImGui::SliderFloat("Water Backward Ext (波の手前への拡張)", &waterBackwardExt, 50.0f, 800.0f, "%.0f m")) {
+      stageSettings_->SetWaterBackwardExtension(waterBackwardExt);
+    }
+    float waterWidthScale = stageSettings_->GetWaterWidthScale();
+    if (ImGui::SliderFloat("Water Width Scale (波の横幅)", &waterWidthScale, 50.0f, 400.0f, "%.0f m")) {
+      stageSettings_->SetWaterWidthScale(waterWidthScale);
+    }
   }
 
   // アイテムクールタイム設定パネル

@@ -427,6 +427,7 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
       itemFloatTimer_ += 0.05f;
       drawTransform.translate.y += std::sin(itemFloatTimer_ + transform_.translate.x * 2.0f) * 0.15f;
     }
+
     currentModel_->SetTransform(drawTransform);
     currentModel_->SettingWvp(view);
   }

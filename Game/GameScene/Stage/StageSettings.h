@@ -35,9 +35,9 @@ private:
   float scrollAcceleration_ = 0.0001f; // 毎フレームの加速量
 
   // 道路チャンク
-  static const int kBackwardChunks_ = 6; // プレイヤーより手前（カメラ側・背後）のチャンク数
+  static const int kBackwardChunks_ = 20; // プレイヤーより手前（カメラ側・背後）のチャンク数（従来の6から20に拡張）
   static const int kForwardChunks_ = 14; // プレイヤーより奥（進行方向）のチャンク数
-  static const int kChunkCount_ = kBackwardChunks_ + kForwardChunks_; // チャンクの総数 (20)
+  static const int kChunkCount_ = kBackwardChunks_ + kForwardChunks_; // チャンクの総数 (34)
   float chunkLength_ = 10.0f; // 1チャンクの奥行き（Z軸方向のサイズ）
 
 public:
@@ -58,6 +58,63 @@ private:
   // サイドプレーン用
   std::shared_ptr<RenderObject> sidePlanes_[2];
   ModelData planeModelData_;
+  float waterForwardExtension_ = 500.0f;  // 道路奥端からさらに奥への波の拡張距離（m）
+  float waterBackwardExtension_ = 200.0f; // 道路手前端からさらに手前への波の拡張距離（m）
+  float waterWidthScale_ = 120.0f;        // 波の横幅スケール（片側、m）
+
+  // 海に浮かべる流氷・アザラシ（Drift Ice / Baby Seal）
+public:
+  struct DriftIce {
+    enum class Type {
+      DriftIce,
+      BabySeal
+    };
+    Type type = Type::DriftIce;
+
+    std::shared_ptr<RenderObject> renderObj;
+    std::shared_ptr<Model> iceModel;
+    std::shared_ptr<Model> sealModel;
+
+    float posX = 0.0f;
+    float posZ = 0.0f;
+    float baseY = 0.3f;
+    Vector3 scale = {1.0f, 1.0f, 1.0f};
+    float floatingHeight = 0.25f;
+    float rotY = 0.0f;
+    float rotSpeed = 0.0f;             // ゆっくりとした自転ドリフト (rad/s)
+    float driftAmount = 0.0f;          // 潮流・波による横方向の揺らぎ振幅 (m)
+    float driftSpeed = 0.0f;           // 横方向の揺らぎ周期速度 (rad/s)
+    float driftPhase = 0.0f;           // 横方向の揺らぎ初期位相
+    float driftVelocityX = 0.0f;       // 斜め方向への緩やかな潮流移動速度 (m/s)
+    float bobbingPhase = 0.0f;
+    float bobbingSpeed = 1.0f;
+    float bobbingAmount = 0.06f;
+    float speedMultiplier = 1.0f;
+    float rollPitchMultiplier = 1.0f;
+  };
+
+private:
+  static constexpr int kDriftIceCount_ = 72;
+  std::vector<DriftIce> driftIces_;
+  bool driftIceEnabled_ = true;
+  Vector4 driftIceColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+  float driftIceBobbingScale_ = 1.0f;
+  float driftIceBobbingSpeedScale_ = 1.0f;
+  float driftIceSizeScale_ = 1.0f;
+  float driftIceThicknessScale_ = 1.0f; // size.y（縦の厚み）倍率
+  float driftIceHeightOffset_ = 0.0f;
+  float driftIceDistanceOffset_ = 0.0f;
+  bool driftIceLighting_ = false;
+  float waterTime_ = 0.0f;
+  ModelData driftIceModelData_;
+  ModelData babySealModelData_;
+  float babySealSpinSpeed_ = 3.5f; // アザラシが水面をスピンする速度 (rad/s)
+
+  float CalculateWaterHeight(float x, float z, float time) const;
+  void GenerateDriftIce(Matrix4x4 view = IdentityMatrix());
+  void UpdateDriftIce(Matrix4x4 view, float currentScroll, float timeScale);
+  void ResetDriftIce();
+  void SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int index);
 
   ModelData roadModelData_;
   Vector4 roadColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -271,6 +328,37 @@ public:
 
   // 障害物を一掃する（ゲーム開始時用）
   void ClearObstacles(float safeDistance = 15.0f);
+
+  // 流氷（Drift Ice）の設定・取得
+  bool GetDriftIceEnabled() const { return driftIceEnabled_; }
+  void SetDriftIceEnabled(bool enabled);
+  const Vector4 &GetDriftIceColor() const { return driftIceColor_; }
+  void SetDriftIceColor(const Vector4 &color);
+  float GetDriftIceBobbingScale() const { return driftIceBobbingScale_; }
+  void SetDriftIceBobbingScale(float scale) { driftIceBobbingScale_ = scale; }
+  float GetDriftIceBobbingSpeedScale() const { return driftIceBobbingSpeedScale_; }
+  void SetDriftIceBobbingSpeedScale(float scale) { driftIceBobbingSpeedScale_ = scale; }
+  float GetDriftIceSizeScale() const { return driftIceSizeScale_; }
+  void SetDriftIceSizeScale(float scale);
+  float GetDriftIceThicknessScale() const { return driftIceThicknessScale_; }
+  void SetDriftIceThicknessScale(float scale);
+  float GetDriftIceHeightOffset() const { return driftIceHeightOffset_; }
+  void SetDriftIceHeightOffset(float offset) { driftIceHeightOffset_ = offset; }
+  float GetDriftIceDistanceOffset() const { return driftIceDistanceOffset_; }
+  void SetDriftIceDistanceOffset(float offset) { driftIceDistanceOffset_ = offset; }
+  bool GetDriftIceLighting() const { return driftIceLighting_; }
+  void SetDriftIceLighting(bool enabled);
+  float GetBabySealSpinSpeed() const { return babySealSpinSpeed_; }
+  void SetBabySealSpinSpeed(float speed);
+
+  // 波（海面プレーン）の範囲設定・取得
+  float GetWaterForwardExtension() const { return waterForwardExtension_; }
+  void SetWaterForwardExtension(float ext);
+  float GetWaterBackwardExtension() const { return waterBackwardExtension_; }
+  void SetWaterBackwardExtension(float ext);
+  float GetWaterWidthScale() const { return waterWidthScale_; }
+  void SetWaterWidthScale(float scale);
+  void UpdateSidePlanesTransform(Matrix4x4 view = IdentityMatrix());
 
   // リセット
   void Reset();

@@ -25,12 +25,19 @@ void StageSettings::Initialize(
 
   planeModelData_ =
       AssetManager::LoadModel("Resources/Model/obj", "ocean_plane.obj");
+  driftIceModelData_ =
+      AssetManager::LoadModel("Resources/Model/DriftIce", "DriftIce.obj");
+  babySealModelData_ =
+      AssetManager::LoadModel("Resources/Model/BabySeal", "BabySeal.obj");
 
   roadModelData_ = roadModelData;
   manager_ = manager;
 
   // 道路チャンクの初期化
   GenerateRoadChunks();
+
+  // 海に浮かぶ流氷の初期化
+  GenerateDriftIce();
 
   // 障害物の初期化
   for (int i = 0; i < kMaxObstacles_; i++) {
@@ -201,6 +208,83 @@ void StageSettings::SetRoadColor(const Vector4 &color) {
   }
 }
 
+void StageSettings::SetDriftIceColor(const Vector4 &color) {
+  driftIceColor_ = color;
+  for (auto &ice : driftIces_) {
+    if (ice.iceModel) ice.iceModel->SetColor(driftIceColor_);
+    if (ice.sealModel) ice.sealModel->SetColor(driftIceColor_);
+  }
+}
+
+void StageSettings::SetDriftIceEnabled(bool enabled) {
+  driftIceEnabled_ = enabled;
+  for (auto &ice : driftIces_) {
+    if (ice.renderObj) {
+      ice.renderObj->SetIsActive(enabled);
+    }
+  }
+}
+
+void StageSettings::SetDriftIceSizeScale(float scale) {
+  if (scale <= 0.05f)
+    scale = 0.05f;
+  float ratio = scale / (std::max)(driftIceSizeScale_, 0.05f);
+  driftIceSizeScale_ = scale;
+  float halfModelH = (driftIceModelData_.localAABB.max.y - driftIceModelData_.localAABB.min.y) * 0.5f;
+  if (halfModelH <= 0.001f) halfModelH = 0.25f;
+  for (auto &ice : driftIces_) {
+    ice.scale.x *= ratio;
+    ice.scale.y *= ratio;
+    ice.scale.z *= ratio;
+    float topY = ice.baseY + (ice.scale.y / ratio * halfModelH);
+    ice.baseY = topY - (ice.scale.y * halfModelH);
+  }
+}
+
+void StageSettings::SetDriftIceThicknessScale(float scale) {
+  if (scale <= 0.05f)
+    scale = 0.05f;
+  float ratio = scale / (std::max)(driftIceThicknessScale_, 0.05f);
+  driftIceThicknessScale_ = scale;
+  for (auto &ice : driftIces_) {
+    ice.scale.y *= ratio;
+  }
+}
+
+void StageSettings::SetDriftIceLighting(bool enabled) {
+  driftIceLighting_ = enabled;
+  for (auto &ice : driftIces_) {
+    if (ice.iceModel) ice.iceModel->SetLighting(enabled);
+    if (ice.sealModel) ice.sealModel->SetLighting(enabled);
+  }
+}
+
+void StageSettings::SetBabySealSpinSpeed(float speed) {
+  babySealSpinSpeed_ = speed;
+  for (auto &ice : driftIces_) {
+    if (ice.type == DriftIce::Type::BabySeal) {
+      float sign = (ice.rotSpeed >= 0.0f) ? 1.0f : -1.0f;
+      float speedVariation = 0.85f + static_cast<float>(std::rand() % 31) / 100.0f;
+      ice.rotSpeed = sign * babySealSpinSpeed_ * speedVariation;
+    }
+  }
+}
+
+void StageSettings::SetWaterForwardExtension(float ext) {
+  waterForwardExtension_ = (std::max)(0.0f, ext);
+  UpdateSidePlanesTransform();
+}
+
+void StageSettings::SetWaterBackwardExtension(float ext) {
+  waterBackwardExtension_ = (std::max)(0.0f, ext);
+  UpdateSidePlanesTransform();
+}
+
+void StageSettings::SetWaterWidthScale(float scale) {
+  waterWidthScale_ = (std::max)(10.0f, scale);
+  UpdateSidePlanesTransform();
+}
+
 void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
                                     Matrix4x4 view) {
   if (rowIndex < 0 || rowIndex >= kChunkCount_)
@@ -330,12 +414,6 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
   }
 
   // サイドプレーンの生成/更新
-  float effectiveLaneWidth = GetEffectiveLaneWidth();
-  float bounds[2] = {static_cast<float>(minLaneIndex_) * effectiveLaneWidth -
-                         (effectiveLaneWidth / 2.0f),
-                     static_cast<float>(maxLaneIndex_) * effectiveLaneWidth +
-                         (effectiveLaneWidth / 2.0f)};
-  float offsets[2] = {-50.0f, 50.0f};
   const char *planeNames[2] = {"SidePlaneL", "SidePlaneR"};
 
   for (int i = 0; i < 2; ++i) {
@@ -360,19 +438,357 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
       if (manager_)
         manager_->AddObject(sidePlanes_[i]);
     }
-    Transform t;
-    float roadLength = static_cast<float>(kChunkCount_) * chunkLength_;
-    float minRoadZ = -static_cast<float>(kBackwardChunks_) * chunkLength_;
-    float maxRoadZ = static_cast<float>(kForwardChunks_) * chunkLength_;
-    float centerRoadZ = (minRoadZ + maxRoadZ) * 0.5f;
+  }
 
-    t.scale = {
-        80.0f, roadLength * 0.6f,
-        1.0f}; // plane.objは2x2なので、Yスケール*2=長さ。道路全体を余裕を持ってカバー
+  UpdateSidePlanesTransform(view);
+}
+
+void StageSettings::UpdateSidePlanesTransform(Matrix4x4 view) {
+  float effectiveLaneWidth = GetEffectiveLaneWidth();
+  float bounds[2] = {static_cast<float>(minLaneIndex_) * effectiveLaneWidth -
+                         (effectiveLaneWidth / 2.0f),
+                     static_cast<float>(maxLaneIndex_) * effectiveLaneWidth +
+                         (effectiveLaneWidth / 2.0f)};
+  float offsets[2] = {-(waterWidthScale_ * 0.5f), waterWidthScale_ * 0.5f};
+
+  float minRoadZ = -static_cast<float>(kBackwardChunks_) * chunkLength_;
+  float maxRoadZ = static_cast<float>(kForwardChunks_) * chunkLength_;
+
+  // 波のZ範囲：手前・奥ともに道路を大きく超えてカバー
+  float minSeaZ = minRoadZ - waterBackwardExtension_;
+  float maxSeaZ = maxRoadZ + waterForwardExtension_;
+  float seaLength = maxSeaZ - minSeaZ;
+  float centerSeaZ = (minSeaZ + maxSeaZ) * 0.5f;
+
+  for (int i = 0; i < 2; ++i) {
+    if (!sidePlanes_[i])
+      continue;
+    Transform t;
+    // plane.objは2x2 (-1〜+1) なので、Yスケール * 2 = seaLength
+    t.scale = {waterWidthScale_, seaLength * 0.5f, 1.0f};
     t.rotate = {-1.570796f, 0.0f, 0.0f};
-    t.translate = {bounds[i] + offsets[i], 0.0f, centerRoadZ};
+    t.translate = {bounds[i] + offsets[i], 0.0f, centerSeaZ};
     sidePlanes_[i]->SetTransform(t);
     sidePlanes_[i]->Update(view, 0.0f);
+  }
+}
+
+float StageSettings::CalculateWaterHeight(float x, float z, float time) const {
+  struct WaveParam {
+    Vector2 dir;
+    float amplitude;
+    float wavelength;
+    float speed;
+  };
+  static const WaveParam waves[4] = {
+    { { 1.0f,   0.25f }, 0.60f, 20.0f, 1.2f },
+    { {-0.35f,  0.93f }, 0.35f, 11.0f, 1.4f },
+    { { 0.80f, -0.60f }, 0.18f,  5.5f, 1.8f },
+    { {-0.50f, -0.86f }, 0.08f,  2.2f, 2.4f },
+  };
+
+  constexpr float kPI = 3.14159265f;
+  float totalY = 0.0f;
+  for (int i = 0; i < 4; ++i) {
+    const auto &w = waves[i];
+    float len = std::sqrt(w.dir.x * w.dir.x + w.dir.y * w.dir.y);
+    float dx = (len > 0.0001f) ? (w.dir.x / len) : 1.0f;
+    float dz = (len > 0.0001f) ? (w.dir.y / len) : 0.0f;
+
+    float k = 2.0f * kPI / w.wavelength;
+    float c = std::sqrt(9.8f / k) * w.speed;
+    float phase = k * (dx * x + dz * z - c * time);
+    totalY += w.amplitude * std::sin(phase);
+  }
+  return totalY;
+}
+
+void StageSettings::GenerateDriftIce(Matrix4x4 view) {
+  auto createModel = [&](const ModelData &mData) {
+    auto model = std::make_shared<Model>();
+    model->Initialize(mData);
+    if (mData.subMeshes.empty() || mData.subMeshes[0].textureIndex == -1) {
+      if (auto matComp = model->GetComponent<MaterialComponent>()) {
+        matComp->SetTexturePath("Resources/Texture/white64x64.png");
+      }
+      model->SetTexture(texture_->TextureData("Resources/Texture/white64x64.png"));
+    }
+    model->SetLighting(driftIceLighting_);
+    model->SetColor(driftIceColor_);
+    model->SetBlend(kBlendModeNormal);
+    return model;
+  };
+
+  if (driftIces_.empty()) {
+    driftIces_.resize(kDriftIceCount_);
+    for (int i = 0; i < kDriftIceCount_; ++i) {
+      driftIces_[i].iceModel = createModel(driftIceModelData_);
+      driftIces_[i].sealModel = createModel(babySealModelData_);
+
+      auto renderObj = std::make_shared<RenderObject>(driftIces_[i].iceModel);
+      renderObj->SetName("DriftIce_" + std::to_string(i));
+      renderObj->SetIsActive(driftIceEnabled_);
+      if (manager_) {
+        manager_->AddObject(renderObj);
+      }
+      driftIces_[i].renderObj = renderObj;
+      SetupSingleDriftIce(driftIces_[i], false, i);
+    }
+  } else {
+    for (int i = 0; i < kDriftIceCount_; ++i) {
+      SetupSingleDriftIce(driftIces_[i], false, i);
+    }
+  }
+
+  UpdateDriftIce(view, 0.0f, 0.0f);
+}
+
+void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*index*/) {
+  // アザラシの出現確率（約15%：およそ6〜7個に1個の割合で時々アザラシが流れてくる）
+  bool isSeal = (std::rand() % 100 < 15);
+  ice.type = isSeal ? DriftIce::Type::BabySeal : DriftIce::Type::DriftIce;
+
+  const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
+  auto currentModel = (ice.type == DriftIce::Type::BabySeal) ? ice.sealModel : ice.iceModel;
+  if (ice.renderObj && currentModel) {
+    ice.renderObj->SetObjectBase(currentModel);
+  }
+
+  float modelWidth = modelData.localAABB.max.x - modelData.localAABB.min.x;
+  float modelHeight = modelData.localAABB.max.y - modelData.localAABB.min.y;
+  float modelDepth = modelData.localAABB.max.z - modelData.localAABB.min.z;
+  if (modelWidth <= 0.001f) modelWidth = 1.0f;
+  if (modelHeight <= 0.001f) modelHeight = 0.5f;
+  if (modelDepth <= 0.001f) modelDepth = 1.0f;
+
+  // Z座標:
+  // 規則性を排除し、完全ランダムな広がりで奥から流れてくるように配置
+  if (spawnFarAway) {
+    float forwardZ = static_cast<float>(kForwardChunks_) * chunkLength_; // 140.0f
+    float randomOffset = static_cast<float>(std::rand() % 1000) / 10.0f; // 0.0 〜 100.0m
+    ice.posZ = forwardZ + randomOffset;
+  } else {
+    // 初回配置: 手前 -60m から 奥 160m にかけて一様にランダム配置
+    float minZ = -static_cast<float>(kBackwardChunks_) * chunkLength_; // -60.0f
+    float totalLength = static_cast<float>(kChunkCount_ + 2) * chunkLength_; // 220.0f
+    ice.posZ = minZ + static_cast<float>(std::rand() % static_cast<int>(totalLength * 10)) / 10.0f;
+  }
+
+  float targetWidth = 1.5f;
+  float targetDepth = 1.5f;
+  float targetHeight = 1.0f;
+  float floatingHeight = 0.25f;
+
+  if (ice.type == DriftIce::Type::BabySeal) {
+    // 流氷に乗ったアザラシのサイズ感
+    targetWidth = 2.0f + static_cast<float>(std::rand() % 12) / 10.0f;      // 2.0m 〜 3.1m
+    targetDepth = 2.0f + static_cast<float>(std::rand() % 14) / 10.0f;      // 2.0m 〜 3.3m
+    targetHeight = 0.90f + static_cast<float>(std::rand() % 41) / 100.0f;   // 0.9m 〜 1.3m
+    floatingHeight = 0.25f + static_cast<float>(std::rand() % 15) / 100.0f; // 25〜39cm水上に出す
+  } else {
+    // 通常の流氷のサイズ設計 (極小 45%, 小〜中 35%, 中〜大型 20%)
+    int sizeCategory = std::rand() % 100;
+    if (sizeCategory < 45) {
+      // 極小〜小型流氷塊: 幅1.2〜2.2m, 奥行1.2〜2.4m, 厚み0.6〜0.9m
+      targetWidth = 1.2f + static_cast<float>(std::rand() % 11) / 10.0f;
+      targetDepth = 1.2f + static_cast<float>(std::rand() % 13) / 10.0f;
+      targetHeight = 0.60f + static_cast<float>(std::rand() % 31) / 100.0f; // 0.6m 〜 0.9m
+      floatingHeight = 0.20f + static_cast<float>(std::rand() % 11) / 100.0f; // 20〜30cm水上に出す
+    } else if (sizeCategory < 80) {
+      // 中型流氷塊: 幅2.2〜3.8m, 奥行2.2〜4.2m, 厚み0.9〜1.3m
+      targetWidth = 2.2f + static_cast<float>(std::rand() % 17) / 10.0f;
+      targetDepth = 2.2f + static_cast<float>(std::rand() % 21) / 10.0f;
+      targetHeight = 0.90f + static_cast<float>(std::rand() % 41) / 100.0f; // 0.9m 〜 1.3m
+      floatingHeight = 0.25f + static_cast<float>(std::rand() % 16) / 100.0f; // 25〜40cm水上に出す
+    } else {
+      // 大型流氷塊: 幅3.5〜6.5m, 奥行3.5〜7.0m, 厚み1.2〜1.8m
+      targetWidth = 3.5f + static_cast<float>(std::rand() % 31) / 10.0f;
+      targetDepth = 3.5f + static_cast<float>(std::rand() % 36) / 10.0f;
+      targetHeight = 1.20f + static_cast<float>(std::rand() % 61) / 100.0f; // 1.2m 〜 1.8m
+      floatingHeight = 0.30f + static_cast<float>(std::rand() % 21) / 100.0f; // 30〜50cm水上に出す
+    }
+  }
+
+  // 全体サイズ倍率 & 厚み倍率を適用
+  targetWidth *= driftIceSizeScale_;
+  targetDepth *= driftIceSizeScale_;
+  targetHeight *= driftIceSizeScale_ * driftIceThicknessScale_;
+
+  ice.scale = {
+    targetWidth / modelWidth,
+    targetHeight / modelHeight,
+    targetDepth / modelDepth
+  };
+
+  ice.floatingHeight = floatingHeight;
+
+  // 潮流・波による横方向の揺らぎ（ドリフト）
+  ice.driftAmount = 0.2f + static_cast<float>(std::rand() % 60) / 100.0f; // 0.2m 〜 0.8m
+  ice.driftSpeed = 0.3f + static_cast<float>(std::rand() % 60) / 100.0f;  // 0.3 〜 0.9 rad/s
+  ice.driftPhase = static_cast<float>(std::rand() % 628) / 100.0f;
+
+  // 流れる向きの多様化：斜め方向への微小な潮流移動（-0.12m/s 〜 +0.12m/s）
+  ice.driftVelocityX = static_cast<float>(std::rand() % 241 - 120) / 1000.0f;
+
+  // 左右の振り分け（左右均等にランダム配置）
+  bool isLeft = (std::rand() % 100 < 50);
+  float sideSign = isLeft ? -1.0f : 1.0f;
+
+  // 【レーンの床には絶対に来ないようにX座標を決定】
+  // そのZ座標での道路端と、将来の最大レーン数を考慮した道路半幅を計算
+  auto rowInfo = GetChunkRowInfoAtZ(ice.posZ);
+  float roadEdgeAtZ = (std::max)(std::abs(rowInfo.minLaneIndex - 0.5f), std::abs(rowInfo.maxLaneIndex + 0.5f)) * rowInfo.effectiveLaneWidth;
+  float targetRoadEdge = (static_cast<float>(targetLaneCount_) * 0.5f) * laneWidth_;
+  float roadBoundary = (std::max)(roadEdgeAtZ, targetRoadEdge);
+
+  // 道路端 + 流氷の半径(halfWidth) + 最大横揺れ幅 + 安全マージン(1.5m)
+  float halfWidth = targetWidth * 0.5f;
+  float minClearance = roadBoundary + halfWidth + ice.driftAmount + 1.5f;
+
+  // 最小クリアランスから外洋側（+30m）へ滑らかに分布
+  float dist = minClearance + static_cast<float>(std::rand() % 300) / 10.0f;
+  ice.posX = sideSign * dist;
+
+  // 【流れる向きなどのバラバラ化】
+  // 初期の向き（回転角度Y）：0〜360度ランダム
+  ice.rotY = static_cast<float>(std::rand() % 628) / 100.0f;
+  if (ice.type == DriftIce::Type::BabySeal) {
+    // アザラシは水面をくるくるとスピン（自転）しながら流れる
+    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
+    float speedVariation = 0.85f + static_cast<float>(std::rand() % 31) / 100.0f; // 0.85〜1.15倍
+    ice.rotSpeed = dir * babySealSpinSpeed_ * speedVariation;
+  } else {
+    // 通常の流氷も右回り・左回り、回転速度にバリエーションを持たせて向きの変化を豊かに
+    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
+    ice.rotSpeed = dir * (0.04f + static_cast<float>(std::rand() % 120) / 1000.0f); // ±0.04 〜 ±0.16 rad/s (毎秒2.3〜9.2度)
+  }
+
+  // 上下の揺れ（ボビング）
+  ice.bobbingPhase = static_cast<float>(std::rand() % 628) / 100.0f;
+  ice.bobbingSpeed = 0.5f + static_cast<float>(std::rand() % 80) / 100.0f; // 0.5〜1.3 rad/s
+  ice.bobbingAmount = 0.05f + static_cast<float>(std::rand() % 70) / 1000.0f; // 0.05〜0.12m
+  ice.rollPitchMultiplier = 0.012f + static_cast<float>(std::rand() % 18) / 1000.0f;
+
+  // 【流れるスピードは全部同じ（1.0倍に統一）】
+  ice.speedMultiplier = 1.0f;
+}
+
+void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float timeScale) {
+  if (!driftIceEnabled_) return;
+
+  float dt = (1.0f / 60.0f) * timeScale;
+  waterTime_ += dt;
+  float backwardThreshold = -static_cast<float>(kBackwardChunks_ + 1) * chunkLength_ - 15.0f;
+
+  for (size_t i = 0; i < driftIces_.size(); ++i) {
+    auto &ice = driftIces_[i];
+    if (!ice.renderObj) continue;
+
+    const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
+    float modelWidth = modelData.localAABB.max.x - modelData.localAABB.min.x;
+    float modelHeight = modelData.localAABB.max.y - modelData.localAABB.min.y;
+    float modelDepth = modelData.localAABB.max.z - modelData.localAABB.min.z;
+    if (modelWidth <= 0.001f) modelWidth = 1.0f;
+    if (modelHeight <= 0.001f) modelHeight = 0.5f;
+    if (modelDepth <= 0.001f) modelDepth = 1.0f;
+
+    // 【流れるスピードは全部同じ】全流氷等速でスクロール
+    ice.posZ -= currentScroll;
+
+    // 画面手前を通り過ぎたら奥へリスポーン
+    if (ice.posZ < backwardThreshold) {
+      SetupSingleDriftIce(ice, true, static_cast<int>(i));
+    }
+
+    // 自転ドリフト（アザラシはスピン、流氷も多様に向きが変化）
+    ice.rotY += ice.rotSpeed * dt;
+    if (ice.rotY > 6.283185f) {
+      ice.rotY -= 6.283185f;
+    } else if (ice.rotY < 0.0f) {
+      ice.rotY += 6.283185f;
+    }
+
+    // 斜め方向への緩やかな潮流移動
+    ice.posX += ice.driftVelocityX * dt;
+
+    // 波による揺れ（上下・傾き）の更新
+    ice.bobbingPhase += ice.bobbingSpeed * driftIceBobbingSpeedScale_ * dt;
+    if (ice.bobbingPhase > 6.283185f * 10.0f) {
+      ice.bobbingPhase -= 6.283185f * 10.0f;
+    }
+
+    float currentBobbing = sinf(ice.bobbingPhase) * ice.bobbingAmount * driftIceBobbingScale_;
+    float pitch = sinf(ice.bobbingPhase * 0.7f) * ice.rollPitchMultiplier * driftIceBobbingScale_;
+    float roll = cosf(ice.bobbingPhase * 0.8f) * ice.rollPitchMultiplier * driftIceBobbingScale_;
+
+    // 横方向（X軸）の漂流
+    float sideSign = (ice.posX >= 0.0f) ? 1.0f : -1.0f;
+    float drift = sinf(ice.driftPhase + waterTime_ * ice.driftSpeed) * ice.driftAmount;
+    float rawX = ice.posX + sideSign * driftIceDistanceOffset_ + drift;
+
+    // 流氷の厚み・幅・奥行きの半分
+    float halfWidth = ice.scale.x * (modelWidth * 0.5f);
+    float halfDepth = ice.scale.z * (modelDepth * 0.5f);
+    float halfHeight = ice.scale.y * (modelHeight * 0.5f);
+
+    // 【レーンの床には絶対に来ないようにリアルタイム安全ガード】
+    auto rowInfo = GetChunkRowInfoAtZ(ice.posZ);
+    float roadEdgeAtZ = (std::max)(std::abs(rowInfo.minLaneIndex - 0.5f), std::abs(rowInfo.maxLaneIndex + 0.5f)) * rowInfo.effectiveLaneWidth;
+    float targetRoadEdge = (static_cast<float>(targetLaneCount_) * 0.5f) * laneWidth_;
+    float roadBoundary = (std::max)(roadEdgeAtZ, targetRoadEdge);
+    constexpr float kRoadSafeMargin = 1.0f; // 床端からの確実な安全余白 (1.0m)
+    float minSafeX = roadBoundary + halfWidth + kRoadSafeMargin;
+
+    float posXWithOffset = rawX;
+    if (sideSign > 0.0f) {
+      if (posXWithOffset < minSafeX) {
+        posXWithOffset = minSafeX;
+        // 斜め潮流で内側へ寄りすぎた場合は外側へ反転
+        if (ice.driftVelocityX < 0.0f) ice.driftVelocityX = -ice.driftVelocityX;
+      }
+    } else {
+      if (posXWithOffset > -minSafeX) {
+        posXWithOffset = -minSafeX;
+        // 斜め潮流で内側へ寄りすぎた場合は外側へ反転
+        if (ice.driftVelocityX > 0.0f) ice.driftVelocityX = -ice.driftVelocityX;
+      }
+    }
+
+    // 流氷の中心および四隅における波の高さをサンプリングし、最大波高を取得
+    float maxWaterY = CalculateWaterHeight(posXWithOffset, ice.posZ, waterTime_);
+    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset - halfWidth, ice.posZ - halfDepth, waterTime_));
+    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset + halfWidth, ice.posZ - halfDepth, waterTime_));
+    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset - halfWidth, ice.posZ + halfDepth, waterTime_));
+    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset + halfWidth, ice.posZ + halfDepth, waterTime_));
+
+    // 目標上面高さ:
+    // 波の最高点 + 浮遊高さ + 上下ボビング揺れ + 高さオフセット
+    float targetTopY = maxWaterY + ice.floatingHeight + driftIceHeightOffset_ + currentBobbing;
+
+    // 【絶対に沈まない下限ガード】
+    // 最低でも波の最高地点より 0.15m (15cm) 以上は上面が水面から常に出ていることを保証
+    float minAllowedTopY = maxWaterY + 0.15f;
+    if (targetTopY < minAllowedTopY) {
+      targetTopY = minAllowedTopY;
+    }
+
+    // 中心Y座標を計算（分厚い氷塊の大部分が水面下に潜り、上面が頭を出す）
+    float centerY = targetTopY - halfHeight;
+
+    Transform t;
+    t.scale = ice.scale;
+    t.rotate = {pitch, ice.rotY, roll};
+    t.translate = {posXWithOffset, centerY, ice.posZ};
+
+    ice.renderObj->SetTransform(t);
+    ice.renderObj->Update(view, 0.0f);
+  }
+}
+
+void StageSettings::ResetDriftIce() {
+  waterTime_ = 0.0f;
+  for (int i = 0; i < static_cast<int>(driftIces_.size()); ++i) {
+    SetupSingleDriftIce(driftIces_[i], false, i);
   }
 }
 
@@ -433,6 +849,9 @@ void StageSettings::Update(Matrix4x4 view, float timeScale) {
     }
   }
 
+  // 海に浮かぶ流氷の更新
+  UpdateDriftIce(view, currentScroll, timeScale);
+
   // アイテムのクールタイム減算（実時間・秒単位）
   float dt = (1.0f / 60.0f) * timeScale;
   for (auto &pair : itemCoolDowns_) {
@@ -474,6 +893,9 @@ void StageSettings::EditorUpdate(Matrix4x4 view) {
     GenerateRoadChunks(view);
     isDirty_ = false;
   }
+
+  // 海に浮かぶ流氷の更新（スクロールなしで揺れのみ更新）
+  UpdateDriftIce(view, 0.0f, 1.0f);
 
   // Editor中はスクロールさせないため、スピードを0として更新（WVPのみ更新させる）
   for (int i = 0; i < kMaxObstacles_; i++) {
@@ -715,6 +1137,9 @@ void StageSettings::Reset() {
     float z = static_cast<float>(i - kBackwardChunks_) * chunkLength_;
     RebuildChunkRow(i, 3, z, IdentityMatrix());
   }
+
+  // 海に浮かぶ流氷のリセット
+  ResetDriftIce();
 
   // 障害物を全て非アクティブに
   for (int i = 0; i < kMaxObstacles_; i++) {
