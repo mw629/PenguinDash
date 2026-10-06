@@ -55,6 +55,7 @@ const ShaderName AnimationObj = "AnimationObj";
 const ShaderName ParticleShader = "ParticleShader";
 const ShaderName SmokeShader = "SmokeShader";
 const ShaderName ToonParticleShader = "ToonParticleShader";
+const ShaderName SnowSparkleShader = "SnowSparkleShader";
 const ShaderName LineShader = "LineShader";
 const ShaderName LineShaderNoDepth = "LineShaderNoDepth";
 const ShaderName SkyBoxShader = "SkyBoxShader";

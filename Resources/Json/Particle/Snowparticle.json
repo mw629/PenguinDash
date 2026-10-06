@@ -178,7 +178,7 @@
         "ringDivide": 32,
         "ringInnerRadius": 0.800000011920929,
         "ringOuterRadius": 1.0,
-        "shader": "ParticleShader",
+        "shader": "SnowSparkleShader",
         "shape": 0,
         "texturePath": "Resources/Texture/circle.png",
         "useGpuParticle": false

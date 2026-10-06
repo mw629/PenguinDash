@@ -351,6 +351,7 @@
     <FxCompile Include="resources\Shader\SkyBox.VS.hlsl" />
     <FxCompile Include="resources\Shader\SkinningObject3d.CS.hlsl" />
     <FxCompile Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl" />
+    <FxCompile Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl" />
     <FxCompile Include="Resources\Shader\ComputeShader\Particle.CS.hlsl" />
     <FxCompile Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl" />
   </ItemGroup>
