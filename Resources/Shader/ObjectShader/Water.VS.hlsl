@@ -106,9 +106,10 @@ VertexShaderOutput main(VertexShaderInput input, uint32_t instanceID : SV_Instan
         // ローカル法線方向(高さ)へのサイン波変位
         localDisplacement += heightAxis * (w.amplitude * sinP);
         
-        // 水平方向の変位 (Gerstner波の引き寄せ効果)
-        localDisplacement += tangentAxis * (q * w.amplitude * d.x * cosP);
-        localDisplacement += binormalAxis * (q * w.amplitude * d.y * cosP);
+        // ※メッシュのスケーリング(100倍)によって水平変位が数十m肥大化して波と流氷の位置がズレるのを防ぐため、
+        //   変位は純粋な高さ(垂直)変位とし、CPU計算と100%完全一致させます
+        // localDisplacement += tangentAxis * (q * w.amplitude * d.x * cosP);
+        // localDisplacement += binormalAxis * (q * w.amplitude * d.y * cosP);
         
         // 偏微分による接線・従接線の傾き蓄積
         float wa = k * w.amplitude;

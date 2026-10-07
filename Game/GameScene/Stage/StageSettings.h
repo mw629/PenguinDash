@@ -192,8 +192,8 @@ public:
                   ModelData bonusModelData, class GameObjectManager *manager);
   void Initialize(ModelData roadModelData, ModelData obstacleModelData,
                   ModelData bonusModelData, class GameObjectManager *manager);
-  void Update(Matrix4x4 view, float timeScale = 1.0f);
-  void EditorUpdate(Matrix4x4 view);
+  void Update(Matrix4x4 view, float timeScale = 1.0f, float waterTime = -1.0f);
+  void EditorUpdate(Matrix4x4 view, float waterTime = -1.0f);
   void Draw(class Draw &draw);
 
   // ゲッター
@@ -350,6 +350,9 @@ public:
   void SetDriftIceLighting(bool enabled);
   float GetBabySealSpinSpeed() const { return babySealSpinSpeed_; }
   void SetBabySealSpinSpeed(float speed);
+
+  float GetWaterTime() const { return waterTime_; }
+  void SetWaterTime(float time) { waterTime_ = time; }
 
   // 波（海面プレーン）の範囲設定・取得
   float GetWaterForwardExtension() const { return waterForwardExtension_; }

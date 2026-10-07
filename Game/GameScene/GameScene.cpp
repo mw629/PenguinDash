@@ -2312,7 +2312,8 @@ void GameScene::PlayingUpdate() {
   // オブジェクトの一括更新
   gameObjectManager_->UpdateAll(view, speedMultiplier * timeScale);
 
-  stageSettings_->Update(view, timeScale);
+  float activeWaterTime = gameCamera_ ? gameCamera_->GetTotalTime() : (camera_ ? camera_->GetTotalTime() : 0.0f);
+  stageSettings_->Update(view, timeScale, activeWaterTime);
 
   // 以前の当たり判定チェック
   CheckCollisions();
@@ -2357,7 +2358,8 @@ void GameScene::TitleUpdate() {
   gameObjectManager_->UpdateAll(view, speedMultiplier * timeScale);
 
   // 4. ステージ・障害物のスクロール更新
-  stageSettings_->Update(view, timeScale);
+  float activeWaterTime = gameCamera_ ? gameCamera_->GetTotalTime() : (camera_ ? camera_->GetTotalTime() : 0.0f);
+  stageSettings_->Update(view, timeScale, activeWaterTime);
 
   // 5. タイトル専用の衝突判定（ゲームオーバーにならず、雪だるまは吹っ飛び、通常障害物も安全処理）
   CheckTitleCollisions();
@@ -2600,7 +2602,8 @@ void GameScene::EditorUpdate() {
   // Editor mode doesn't progress the game scroll or obstacle positions.
   // But we still want to update objects (like their transforms).
   gameObjectManager_->UpdateAll(view, 0.0f);
-  stageSettings_->EditorUpdate(view);
+  float activeWaterTime = camera_ ? camera_->GetTotalTime() : 0.0f;
+  stageSettings_->EditorUpdate(view, activeWaterTime);
 
   // パーティクルがデバッグカメラに対応するように、EditorUpdate() を呼び出す
   effectManager_->EditorUpdate(view);

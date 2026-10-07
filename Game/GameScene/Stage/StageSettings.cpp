@@ -677,7 +677,6 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
   if (!driftIceEnabled_) return;
 
   float dt = (1.0f / 60.0f) * timeScale;
-  waterTime_ += dt;
   float backwardThreshold = -static_cast<float>(kBackwardChunks_ + 1) * chunkLength_ - 15.0f;
 
   for (size_t i = 0; i < driftIces_.size(); ++i) {
@@ -710,16 +709,6 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
 
     // 斜め方向への緩やかな潮流移動
     ice.posX += ice.driftVelocityX * dt;
-
-    // 波による揺れ（上下・傾き）の更新
-    ice.bobbingPhase += ice.bobbingSpeed * driftIceBobbingSpeedScale_ * dt;
-    if (ice.bobbingPhase > 6.283185f * 10.0f) {
-      ice.bobbingPhase -= 6.283185f * 10.0f;
-    }
-
-    float currentBobbing = sinf(ice.bobbingPhase) * ice.bobbingAmount * driftIceBobbingScale_;
-    float pitch = sinf(ice.bobbingPhase * 0.7f) * ice.rollPitchMultiplier * driftIceBobbingScale_;
-    float roll = cosf(ice.bobbingPhase * 0.8f) * ice.rollPitchMultiplier * driftIceBobbingScale_;
 
     // 横方向（X軸）の漂流
     float sideSign = (ice.posX >= 0.0f) ? 1.0f : -1.0f;
@@ -754,31 +743,109 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
       }
     }
 
-    // 流氷の中心および四隅における波の高さをサンプリングし、最大波高を取得
-    float maxWaterY = CalculateWaterHeight(posXWithOffset, ice.posZ, waterTime_);
-    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset - halfWidth, ice.posZ - halfDepth, waterTime_));
-    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset + halfWidth, ice.posZ - halfDepth, waterTime_));
-    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset - halfWidth, ice.posZ + halfDepth, waterTime_));
-    maxWaterY = (std::max)(maxWaterY, CalculateWaterHeight(posXWithOffset + halfWidth, ice.posZ + halfDepth, waterTime_));
+    // 【波の傾斜（前後左右の勾配）をサンプリングして波乗り姿勢（pitch/roll）を算出】
+    float sampleDistX = (std::max)(halfWidth * 0.8f, 1.0f);
+    float sampleDistZ = (std::max)(halfDepth * 0.8f, 1.0f);
 
-    // 目標上面高さ:
-    // 波の最高点 + 浮遊高さ + 上下ボビング揺れ + 高さオフセット
-    float targetTopY = maxWaterY + ice.floatingHeight + driftIceHeightOffset_ + currentBobbing;
+    float hCenter = CalculateWaterHeight(posXWithOffset, ice.posZ, waterTime_);
+    float hFront  = CalculateWaterHeight(posXWithOffset, ice.posZ + sampleDistZ, waterTime_);
+    float hBack   = CalculateWaterHeight(posXWithOffset, ice.posZ - sampleDistZ, waterTime_);
+    float hRight  = CalculateWaterHeight(posXWithOffset + sampleDistX, ice.posZ, waterTime_);
+    float hLeft   = CalculateWaterHeight(posXWithOffset - sampleDistX, ice.posZ, waterTime_);
 
-    // 【絶対に沈まない下限ガード】
-    // 最低でも波の最高地点より 0.15m (15cm) 以上は上面が水面から常に出ていることを保証
-    float minAllowedTopY = maxWaterY + 0.15f;
-    if (targetTopY < minAllowedTopY) {
-      targetTopY = minAllowedTopY;
+    // 波の斜面に沿ったワールド基準ピッチ・ロール
+    float waveSlopePitch = -std::atan2(hFront - hBack, 2.0f * sampleDistZ);
+    float waveSlopeRoll  =  std::atan2(hRight - hLeft, 2.0f * sampleDistX);
+
+    // 【自転（ice.rotY）を考慮したローカル軸への射影】
+    // 流氷が自転しているため、ワールド空間の傾斜勾配を自転角に合わせてローカルのピッチ・ロールに射影する
+    float cosYaw = std::cos(ice.rotY);
+    float sinYaw = std::sin(ice.rotY);
+    float localWavePitch = (waveSlopePitch * cosYaw - waveSlopeRoll * sinYaw);
+    float localWaveRoll  = (waveSlopeRoll * cosYaw + waveSlopePitch * sinYaw);
+    localWavePitch = Clamp(localWavePitch, -0.22f, 0.22f);
+    localWaveRoll  = Clamp(localWaveRoll,  -0.22f, 0.22f);
+
+    // 波による揺れ（上下・傾き）の更新
+    ice.bobbingPhase += ice.bobbingSpeed * driftIceBobbingSpeedScale_ * dt;
+    if (ice.bobbingPhase > 6.283185f * 10.0f) {
+      ice.bobbingPhase -= 6.283185f * 10.0f;
     }
 
-    // 中心Y座標を計算（分厚い氷塊の大部分が水面下に潜り、上面が頭を出す）
-    float centerY = targetTopY - halfHeight;
+    // 独自の上下揺れ
+    float bobbing = sinf(ice.bobbingPhase) * ice.bobbingAmount * driftIceBobbingScale_;
+
+    // 波が上昇している（波の山にいる）ときは、下向きのボビング揺れをソフトに減衰させて水面への沈み込みを防ぐ
+    if (hCenter > 0.0f && bobbing < 0.0f) {
+      float damping = 1.0f - Clamp(hCenter / 0.6f, 0.0f, 0.85f);
+      bobbing *= damping;
+    }
+
+    // 波乗り傾斜に独自の微小揺らぎを加算
+    float pitchSway = sinf(ice.bobbingPhase * 0.7f) * ice.rollPitchMultiplier * driftIceBobbingScale_;
+    float rollSway  = cosf(ice.bobbingPhase * 0.8f) * ice.rollPitchMultiplier * driftIceBobbingScale_;
+
+    float pitch = localWavePitch * 0.60f + pitchSway;
+    float roll  = localWaveRoll  * 0.60f + rollSway;
+
+    // 回転行列の計算
+    Matrix4x4 rotMatrix = Rotation(Vector3(pitch, ice.rotY, roll));
+
+    // 【上面9点（中央・四隅・四辺中点）のワールド高さを検証し、絶対に水面に潜らない下限translateYを算出】
+    float minX = modelData.localAABB.min.x * ice.scale.x;
+    float maxX = modelData.localAABB.max.x * ice.scale.x;
+    float minZ = modelData.localAABB.min.z * ice.scale.z;
+    float maxZ = modelData.localAABB.max.z * ice.scale.z;
+    float maxY = modelData.localAABB.max.y * ice.scale.y; // ローカル上面 (全高)
+
+    Vector3 topPoints[9] = {
+      { 0.0f, maxY, 0.0f },
+      { minX, maxY, minZ },
+      { maxX, maxY, minZ },
+      { minX, maxY, maxZ },
+      { maxX, maxY, maxZ },
+      { 0.0f, maxY, minZ },
+      { 0.0f, maxY, maxZ },
+      { minX, maxY, 0.0f },
+      { maxX, maxY, 0.0f }
+    };
+
+    // 最低でも上面のどの角・端も水面から常に出ていることを保証する安全余白
+    // 流氷の厚みに応じて、最低でも 40cm〜厚みの60%以上は水面から上に露出させる
+    float minSafeAboveWater = (std::max)(0.40f, halfHeight * 0.6f);
+    float minAllowedTranslateY = -999999.0f;
+
+    for (int pIdx = 0; pIdx < 9; ++pIdx) {
+      Vector3 rotOffset = TransformNormal(topPoints[pIdx], rotMatrix);
+      float ptWorldX = posXWithOffset + rotOffset.x;
+      float ptWorldZ = ice.posZ + rotOffset.z;
+      float waterYAtPt = CalculateWaterHeight(ptWorldX, ptWorldZ, waterTime_);
+
+      // ptWorldY = translateY + rotOffset.y >= waterYAtPt + minSafeAboveWater
+      // => translateY >= waterYAtPt + minSafeAboveWater - rotOffset.y
+      float reqTranslateY = waterYAtPt + minSafeAboveWater - rotOffset.y;
+      if (reqTranslateY > minAllowedTranslateY) {
+        minAllowedTranslateY = reqTranslateY;
+      }
+    }
+
+    // 通常時の目標上面高さ（元のしっかり浮く高さを完全復元）:
+    // 上面中心が波より halfHeight + floatingHeight + driftIceHeightOffset_ + bobbing 高い位置になる
+    Vector3 centerTopRot = TransformNormal({0.0f, maxY, 0.0f}, rotMatrix);
+    float targetTopCenterY = hCenter + halfHeight + ice.floatingHeight + driftIceHeightOffset_ + bobbing;
+    float targetTranslateY = targetTopCenterY - centerTopRot.y;
+
+    // 【絶対に潜らない下限ガード】
+    // 波が上に行くとき、流氷が下に行くとき、または傾きによって角が下がったときでも、
+    // 上面のすべての点が水面より上に露出することを 100% 保証
+    if (targetTranslateY < minAllowedTranslateY) {
+      targetTranslateY = minAllowedTranslateY;
+    }
 
     Transform t;
     t.scale = ice.scale;
     t.rotate = {pitch, ice.rotY, roll};
-    t.translate = {posXWithOffset, centerY, ice.posZ};
+    t.translate = {posXWithOffset, targetTranslateY, ice.posZ};
 
     ice.renderObj->SetTransform(t);
     ice.renderObj->Update(view, 0.0f);
@@ -786,13 +853,18 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
 }
 
 void StageSettings::ResetDriftIce() {
-  waterTime_ = 0.0f;
   for (int i = 0; i < static_cast<int>(driftIces_.size()); ++i) {
     SetupSingleDriftIce(driftIces_[i], false, i);
   }
 }
 
-void StageSettings::Update(Matrix4x4 view, float timeScale) {
+void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
+  if (waterTime >= 0.0f) {
+    waterTime_ = waterTime;
+  } else {
+    waterTime_ += (1.0f / 60.0f) * timeScale;
+  }
+
   if (isDirty_) {
     GenerateRoadChunks(view);
     isDirty_ = false;
@@ -888,7 +960,13 @@ void StageSettings::Update(Matrix4x4 view, float timeScale) {
   }
 }
 
-void StageSettings::EditorUpdate(Matrix4x4 view) {
+void StageSettings::EditorUpdate(Matrix4x4 view, float waterTime) {
+  if (waterTime >= 0.0f) {
+    waterTime_ = waterTime;
+  } else {
+    waterTime_ += 1.0f / 60.0f;
+  }
+
   if (isDirty_) {
     GenerateRoadChunks(view);
     isDirty_ = false;

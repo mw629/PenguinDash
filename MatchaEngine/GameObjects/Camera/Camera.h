@@ -72,6 +72,8 @@ public:
 	
 	ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
 
+	float GetTotalTime() const { return totalTime_; }
+
 	const Frustum& GetFrustum() const { return frustum_; }
 
 private:
