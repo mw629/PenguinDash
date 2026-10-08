@@ -264,6 +264,12 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="Game\TestScene\TestScene.cpp" />
     <ClCompile Include="Game\GameScene\System\PauseSystem.cpp" />
     <ClCompile Include="Game\GameScene\System\SoundManager.cpp" />
+    <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp" />
+    <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp" />
+    <ClCompile Include="Game\GameScene\System\BossBattleController.cpp" />
+    <ClCompile Include="Game\GameScene\System\ScoreManager.cpp" />
+    <ClCompile Include="Game\GameScene\System\TitleDirector.cpp" />
+    <ClCompile Include="Game\GameScene\UI\GameHUD.cpp" />
     <ClCompile Include="MatchaEngine\Graphics\Font\MsdfGenerator.cpp" />
     <ClCompile Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp" />
     <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp" />
@@ -423,6 +429,12 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="Game\IScene.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h" />
     <ClInclude Include="Game\GameScene\GameScene.h" />
+    <ClInclude Include="Game\GameScene\Camera\GameCameraController.h" />
+    <ClInclude Include="Game\GameScene\Effect\CrashEffect.h" />
+    <ClInclude Include="Game\GameScene\System\BossBattleController.h" />
+    <ClInclude Include="Game\GameScene\System\ScoreManager.h" />
+    <ClInclude Include="Game\GameScene\System\TitleDirector.h" />
+    <ClInclude Include="Game\GameScene\UI\GameHUD.h" />
     <ClInclude Include="Game\GameScene\Effect\GameSceneEffect.h" />
     <ClInclude Include="MatchaEngine\Core\VariableTypes\Matrix4x4.h" />
     <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector3.h" />
