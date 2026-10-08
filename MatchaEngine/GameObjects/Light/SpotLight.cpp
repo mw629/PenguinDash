@@ -29,7 +29,7 @@ void SpotLight::ImGui(bool drawTransform)
 void SpotLight::Draw(class Draw& draw)
 {
 #ifdef _USE_IMGUI
-	if (!EditorManager::IsPlaying() && draw.GetLineRenderer() && GameObject::selectedObject_ == this) {
+	if (!EditorManager::IsPlaying() && draw.GetLineRenderer() && GameObject::GetSelectedObject() == this) {
 		Vector3 start = transform_.translate;
 		Matrix4x4 rot = Rotation(transform_.rotate);
 		Vector3 baseDir = { 0.0f, -1.0f, 0.0f };

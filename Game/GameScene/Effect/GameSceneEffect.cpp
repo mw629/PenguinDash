@@ -20,22 +20,20 @@ void GameSceneEffect::Initialize() {
 
   dustEffect_->Initialize();
   dustEffect_->LoadFromJson("Dustparticle");
-  dustEffect_->name_ = "Dust Effect";
+  dustEffect_->SetName("Dust Effect");
   dustEffect_->generatorBehavior = nullptr; // JSONの設定に完全に従う
   dustEffect_->SetStop(
       true); // 自動発生を停止（スクリプトから手動でのみEmitする）
-  strncpy_s(dustEffect_->saveFileName_, sizeof(dustEffect_->saveFileName_),
-            "Dustparticle", _TRUNCATE);
+  dustEffect_->SetSaveFileName("Dustparticle");
 
   // 雪パーティクルの初期化
   snowEffect_->Initialize();
   snowEffect_->LoadFromJson("Snowparticle");
-  snowEffect_->name_ = "Snow Effect";
+  snowEffect_->SetName("Snow Effect");
   snowEffect_->generatorBehavior = nullptr; // JSONの設定に従う
   snowEffect_->SetStop(false);              // 常時自動発生
   snowEffect_->SetLoop(true);
-  strncpy_s(snowEffect_->saveFileName_, sizeof(snowEffect_->saveFileName_),
-            "Snowparticle", _TRUNCATE);
+  snowEffect_->SetSaveFileName("Snowparticle");
 }
 
 void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,

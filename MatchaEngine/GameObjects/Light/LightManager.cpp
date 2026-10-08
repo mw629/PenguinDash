@@ -66,32 +66,32 @@ void LightManager::UpdateLights(const std::vector<std::shared_ptr<GameObject>>& 
 
         if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(obj)) {
             if (dirCount < kMaxLightCount) {
-                directionalLightData_->lights[dirCount].color = dirLight->color_;
+                directionalLightData_->lights[dirCount].color = dirLight->GetColor();
                 
                 Matrix4x4 rot = Rotation(dirLight->GetTransform().rotate);
                 Vector3 baseDir = { 0.0f, -1.0f, 0.0f };
                 Vector3 dir = TransformMatrix(baseDir, rot);
                 directionalLightData_->lights[dirCount].direction = Normalize(dir);
                 
-                directionalLightData_->lights[dirCount].intensity = dirLight->intensity_;
+                directionalLightData_->lights[dirCount].intensity = dirLight->GetIntensity();
                 directionalLightData_->lights[dirCount].active = 1;
                 dirCount++;
             }
         }
         else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(obj)) {
             if (pointCount < kMaxLightCount) {
-                pointLightData_->lights[pointCount].color = pointLight->color_;
+                pointLightData_->lights[pointCount].color = pointLight->GetColor();
                 pointLightData_->lights[pointCount].position = pointLight->GetTransform().translate;
-                pointLightData_->lights[pointCount].intensity = pointLight->intensity_;
-                pointLightData_->lights[pointCount].radius = pointLight->radius_;
-                pointLightData_->lights[pointCount].decay = pointLight->decay_;
+                pointLightData_->lights[pointCount].intensity = pointLight->GetIntensity();
+                pointLightData_->lights[pointCount].radius = pointLight->GetRadius();
+                pointLightData_->lights[pointCount].decay = pointLight->GetDecay();
                 pointLightData_->lights[pointCount].active = 1;
                 pointCount++;
             }
         }
         else if (auto spotLight = std::dynamic_pointer_cast<SpotLight>(obj)) {
             if (spotCount < kMaxLightCount) {
-                spotLightData_->lights[spotCount].color = spotLight->color_;
+                spotLightData_->lights[spotCount].color = spotLight->GetColor();
                 spotLightData_->lights[spotCount].position = spotLight->GetTransform().translate;
                 
                 Matrix4x4 rot = Rotation(spotLight->GetTransform().rotate);
@@ -99,11 +99,11 @@ void LightManager::UpdateLights(const std::vector<std::shared_ptr<GameObject>>& 
                 Vector3 dir = TransformMatrix(baseDir, rot);
                 spotLightData_->lights[spotCount].direction = Normalize(dir);
                 
-                spotLightData_->lights[spotCount].intensity = spotLight->intensity_;
-                spotLightData_->lights[spotCount].distance = spotLight->distance_;
-                spotLightData_->lights[spotCount].decay = spotLight->decay_;
-                spotLightData_->lights[spotCount].cosAngle = spotLight->cosAngle_;
-                spotLightData_->lights[spotCount].cosFalloffStart = spotLight->cosFalloffStart_;
+                spotLightData_->lights[spotCount].intensity = spotLight->GetIntensity();
+                spotLightData_->lights[spotCount].distance = spotLight->GetDistance();
+                spotLightData_->lights[spotCount].decay = spotLight->GetDecay();
+                spotLightData_->lights[spotCount].cosAngle = spotLight->GetCosAngle();
+                spotLightData_->lights[spotCount].cosFalloffStart = spotLight->GetCosFalloffStart();
                 spotLightData_->lights[spotCount].active = 1;
                 spotCount++;
             }

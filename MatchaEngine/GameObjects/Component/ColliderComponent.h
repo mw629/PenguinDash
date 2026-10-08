@@ -40,7 +40,13 @@ public:
 	void ImGui() override;
 #endif
 
+private:
 	static bool s_isDrawDebug_;
+
+public:
+	static bool IsDrawDebug() { return s_isDrawDebug_; }
+	static void SetDrawDebug(bool draw) { s_isDrawDebug_ = draw; }
+	static void ToggleDrawDebug() { s_isDrawDebug_ = !s_isDrawDebug_; }
 
 	ColliderShape GetShape() const { return shape_; }
 	

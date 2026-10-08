@@ -54,6 +54,9 @@ private:
   std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>
       subMeshSkinningInfoResources_;
 
+  std::vector<float> instancingAnimationTimes_;
+  std::vector<float> instancingPreviousAnimationTimes_;
+
 public:
   ~CharacterAnimator() override;
   CharacterAnimator();
@@ -123,8 +126,9 @@ public:
 
   void CreateSkinCluster();
 
-  std::vector<float> instancingAnimationTimes_;
-  std::vector<float> instancingPreviousAnimationTimes_;
+  const std::vector<float>& GetInstancingAnimationTimes() const { return instancingAnimationTimes_; }
+  const std::vector<float>& GetInstancingPreviousAnimationTimes() const { return instancingPreviousAnimationTimes_; }
+
   void AddInstanceAnimator(Transform transform, float animationTime) {
     AddInstanceTransform(transform);
     instancingAnimationTimes_.push_back(animationTime);

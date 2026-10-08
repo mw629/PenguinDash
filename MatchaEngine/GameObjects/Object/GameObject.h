@@ -15,14 +15,19 @@
 
 class GameObject
 {
-public:
-    std::string name_ = "GameObject";
+private:
     static inline GameObject* selectedObject_ = nullptr;
+
 protected:
+    std::string name_ = "GameObject";
     Transform transform_{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
     bool isActive_ = true;
     bool isLocked_ = false;
     std::vector<std::shared_ptr<Component>> components_;
+
+public:
+    static GameObject* GetSelectedObject() { return selectedObject_; }
+    static void SetSelectedObject(GameObject* obj) { selectedObject_ = obj; }
 
 public:
     GameObject() {}

@@ -83,7 +83,7 @@ void GameScene::Initialize() {
   skyBox_->SetFrustumCullingEnabled(false);
   skyBox_->SetLighting(false);
   skyBox_->SetTransform(skyBoxTransform_);
-  skyBox_->name_ = "SkyBox";
+  skyBox_->SetName("SkyBox");
 
   // プレイヤーの初期化
   ModelData playerModelData =
@@ -128,7 +128,7 @@ void GameScene::Initialize() {
             ModelData modelData = AssetManager::LoadModel(dirPath, fileName);
             auto model = std::make_shared<Model>();
             model->Initialize(modelData);
-            model->name_ = fileName;
+            model->SetName(fileName);
 
             auto renderObj = std::make_shared<RenderObject>(model);
             renderObj->SetName(fileName);
@@ -287,7 +287,7 @@ void GameScene::Update() {
     ChangePlayingState(PlayingState::OneLane);
   }
   if (Input::PushKey(DIK_F1)) {
-    ColliderComponent::s_isDrawDebug_ = !ColliderComponent::s_isDrawDebug_;
+    ColliderComponent::ToggleDrawDebug();
   }
 #endif
 

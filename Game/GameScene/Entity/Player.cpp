@@ -54,7 +54,7 @@ void Player::Initialize(ModelData modelData) {
   model_->LoadAdditionalAnimation("Resources/gltf/Penguin", "SlidePenguin.gltf",
                                   "sneakWalk");
   model_->SetAnimation("walk");
-  model_->name_ = "Player Penguin Animation Model";
+  model_->SetName("Player Penguin Animation Model");
   model_->SetVisibleBones(false);
 
   // 手のボーンを登録
@@ -64,7 +64,7 @@ void Player::Initialize(ModelData modelData) {
   // Axeの初期化
   ModelData axeData = AssimpLoadObjFile("Resources/Model/Axe", "Axe.obj");
   axe_->Initialize(axeData);
-  axe_->name_ = "Player Axe Model";
+  axe_->SetName("Player Axe Model");
   axeOffset_.scale = kDefaultAxeScale;
   axeOffset_.rotate = {0.0f, 0.0f, 0.0f};
   axeOffset_.translate = {0.0f, 0.0f, 0.0f};

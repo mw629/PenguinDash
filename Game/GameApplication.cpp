@@ -36,14 +36,14 @@ void GameApplication::Run() {
     sceneManager.get()->ImGui();
 
     // 4. メインシーン描画
-    sceneManager.get()->Draw(*engine->draw);
+    sceneManager.get()->Draw(*engine->GetDraw());
 #else
     // Release/Developmentでは直接シーンを描画
-    sceneManager.get()->Draw(*engine->draw);
+    sceneManager.get()->Draw(*engine->GetDraw());
 #endif
 
     engine.get()->EndFrame(
-        [&]() { sceneManager.get()->DrawUI(*engine->draw); });
+        [&]() { sceneManager.get()->DrawUI(*engine->GetDraw()); });
   }
   engine.get()->End();
 }

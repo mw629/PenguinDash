@@ -118,11 +118,11 @@ void JsonScene::Initialize()
 						ModelData modelData = AssetManager::LoadModel(dirPath, fileName);
 						auto model = std::make_shared<Model>();
 						model->Initialize(modelData);
-						model->name_ = fileName;
+						model->SetName(fileName);
 						
 						auto renderObj = std::make_shared<RenderObject>(model);
 						renderObj->SetName(fileName);
-						renderObj->modelFilePath_ = dirPath + "/" + fileName;
+						renderObj->SetModelFilePath(dirPath + "/" + fileName);
 						gameObjectManager_->AddObject(renderObj);
 					} catch (const std::exception& e) {
 					}

@@ -230,6 +230,28 @@ public:
     return effectDefinitionData_;
   }
 
+  ID3D12Resource *GetGpuParticleResource() {
+    return gpuParticleResource_.Get();
+  }
+
+  void SetUseGpuParticle(bool enable) { useGpuParticle_ = enable; }
+  bool GetUseGpuParticle() const { return useGpuParticle_; }
+
+  void SetIsBoxEmitter(bool isBox) { isBoxEmitter_ = isBox; }
+  bool GetIsBoxEmitter() const { return isBoxEmitter_; }
+
+  void SetGpuEmitterBoxData(const struct EmitterBoxForGPU &data);
+  void SetGpuEmitterSphereData(const struct EmitterSphereForGPU &data);
+  void SetGpuPerFrameData(const struct PerFrameForGPU &data);
+
+  void InitializeGPUParticle(ID3D12GraphicsCommandList *commandList,
+                             class ComputePipeline *cp);
+  void DispatchGPUParticle(ID3D12GraphicsCommandList *commandList,
+                           class ComputePipeline *cp,
+                           float deltaTime = 1.0f / 60.0f);
+  bool IsGpuInitialized() const { return isGpuInitialized_; }
+
+private:
   bool isGpuInitialized_ = false;
   float gpuParticleTime_ = 0.0f;
   D3D12_RESOURCE_STATES gpuParticleState_ = D3D12_RESOURCE_STATE_COMMON;
@@ -256,30 +278,9 @@ public:
   struct EmitterSphereForGPU pendingSphereData_{};
   struct PerFrameForGPU pendingPerFrameData_{};
 
-  ID3D12Resource *GetGpuParticleResource() {
-    return gpuParticleResource_.Get();
-  }
-
   bool useGpuParticle_ = false;
-  void SetUseGpuParticle(bool enable) { useGpuParticle_ = enable; }
-  bool GetUseGpuParticle() const { return useGpuParticle_; }
-
   bool isBoxEmitter_ = false;
-  void SetIsBoxEmitter(bool isBox) { isBoxEmitter_ = isBox; }
-  bool GetIsBoxEmitter() const { return isBoxEmitter_; }
 
-  void SetGpuEmitterBoxData(const struct EmitterBoxForGPU &data);
-  void SetGpuEmitterSphereData(const struct EmitterSphereForGPU &data);
-  void SetGpuPerFrameData(const struct PerFrameForGPU &data);
-
-  void InitializeGPUParticle(ID3D12GraphicsCommandList *commandList,
-                             class ComputePipeline *cp);
-  void DispatchGPUParticle(ID3D12GraphicsCommandList *commandList,
-                           class ComputePipeline *cp,
-                           float deltaTime = 1.0f / 60.0f);
-  bool IsGpuInitialized() const { return isGpuInitialized_; }
-
-private:
   ShaderName shader_ = "ParticleShader";
   BlendMode blend_ = BlendMode::kBlendModeAdd;
 

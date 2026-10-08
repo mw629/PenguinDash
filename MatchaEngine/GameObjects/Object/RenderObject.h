@@ -7,22 +7,24 @@
 class RenderObject : public GameObject {
 private:
     std::shared_ptr<ObjectBase> objectBase_;
-public:
     std::string modelFilePath_ = "";
 
 public:
     RenderObject() {}
     RenderObject(std::shared_ptr<ObjectBase> obj) : objectBase_(obj) {
         if (objectBase_) {
-            name_ = objectBase_->name_;
+            name_ = objectBase_->GetName();
             transform_ = objectBase_->GetTransform();
         }
     }
 
+    const std::string& GetModelFilePath() const { return modelFilePath_; }
+    void SetModelFilePath(const std::string& path) { modelFilePath_ = path; }
+
     void SetObjectBase(std::shared_ptr<ObjectBase> obj) {
         objectBase_ = obj;
         if (objectBase_) {
-            name_ = objectBase_->name_;
+            name_ = objectBase_->GetName();
             transform_ = objectBase_->GetTransform();
         }
     }
@@ -30,7 +32,7 @@ public:
     void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override {
         GameObject::Update(view, speedMultiplier);
         if (objectBase_) {
-            if (objectBase_->name_ == "SkyBox" || objectBase_->GetShader() == SkyBoxShader) {
+            if (objectBase_->GetName() == "SkyBox" || objectBase_->GetShader() == SkyBoxShader) {
                 transform_ = objectBase_->GetTransform();
             } else {
                 objectBase_->SetTransform(transform_);

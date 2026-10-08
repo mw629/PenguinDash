@@ -274,8 +274,8 @@ static float GetCPUUsageSmooth() {
 static void GetGPUMemoryInfo(Engine* engine, float& currentUsageMB, float& budgetMB) {
     currentUsageMB = 0.0f;
     budgetMB = 0.0f;
-    if (!engine || !engine->graphics) return;
-    IDXGIAdapter4* adapter = engine->graphics->GetUseAdapter();
+    if (!engine || !engine->GetGraphics()) return;
+    IDXGIAdapter4* adapter = engine->GetGraphics()->GetUseAdapter();
     if (!adapter) return;
 
     DXGI_QUERY_VIDEO_MEMORY_INFO info{};
@@ -1005,8 +1005,8 @@ void EditorManager::Update(Engine* engine)
 			previewCamera_ = std::make_unique<Camera>();
 			previewGrid_ = std::make_unique<Grid>();
 
-			particleRenderTexture_->Initialize(engine->graphics->GetDevice(), 512, 512, engine->descriptorHeap->GetSrvDescriptorHeap(), engine->descriptorHeap->GetDescriptorSizeSRV());
-			particleDepthStencil_->CreateDepthStencil(engine->graphics->GetDevice(), 512, 512);
+			particleRenderTexture_->Initialize(engine->GetGraphics()->GetDevice(), 512, 512, engine->GetDescriptorHeap()->GetSrvDescriptorHeap(), engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
+			particleDepthStencil_->CreateDepthStencil(engine->GetGraphics()->GetDevice(), 512, 512);
 			previewGrid_->CreateGrid();
 
 			previewParticle_->Initialize();
@@ -1336,8 +1336,8 @@ void EditorManager::Update(Engine* engine)
 		previewParticle_->SetCustomProjectionMatrix(projMat);
 		previewParticle_->Update(previewCamera_->GetViewMatrix());
 
-		auto cmdList = engine->command->GetCommandList();
-		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->descriptorHeap->GetSrvDescriptorHeap() };
+		auto cmdList = engine->GetCommand()->GetCommandList();
+		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->GetDescriptorHeap()->GetSrvDescriptorHeap() };
 		cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
 		particleRenderTexture_->TransitionToRenderTarget(cmdList);
@@ -1352,10 +1352,10 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
-		engine->draw->SetCamera(previewCamera_.get());
+		engine->GetDraw()->SetCamera(previewCamera_.get());
 		if (showGridInViewer_) {
 			previewGrid_->SettingWvp(previewCamera_->GetViewMatrix(), &projMat);
-			engine->draw->DrawGrid(previewGrid_.get());
+			engine->GetDraw()->DrawGrid(previewGrid_.get());
 		}
 
 		static int s_viewerFrameCount = 0;
@@ -1369,15 +1369,15 @@ void EditorManager::Update(Engine* engine)
 				pcamT.translate.x, pcamT.translate.y, pcamT.translate.z));
 		}
 
-		previewParticle_->Draw(*engine->draw);
+		previewParticle_->Draw(*engine->GetDraw());
 
 		particleRenderTexture_->TransitionToShaderResource(cmdList);
 
 		// Restore engine's main render target
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
-		engine->depthStencil->SetDSV(cmdList, &mainRtv);
-		cmdList->RSSetViewports(1, engine->viewportScissor->GetViewport());
-		cmdList->RSSetScissorRects(1, engine->viewportScissor->GetScissorRect());
+		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
+		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
+		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
 	}
 
 	// Model Viewer Window
@@ -1389,8 +1389,8 @@ void EditorManager::Update(Engine* engine)
 			modelCamera_ = std::make_unique<Camera>();
 			modelGrid_ = std::make_unique<Grid>();
 
-			modelRenderTexture_->Initialize(engine->graphics->GetDevice(), 512, 512, engine->descriptorHeap->GetSrvDescriptorHeap(), engine->descriptorHeap->GetDescriptorSizeSRV());
-			modelDepthStencil_->CreateDepthStencil(engine->graphics->GetDevice(), 512, 512);
+			modelRenderTexture_->Initialize(engine->GetGraphics()->GetDevice(), 512, 512, engine->GetDescriptorHeap()->GetSrvDescriptorHeap(), engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
+			modelDepthStencil_->CreateDepthStencil(engine->GetGraphics()->GetDevice(), 512, 512);
 			modelGrid_->CreateGrid();
 
 			modelCamera_->SetAspectRatio(1.0f);
@@ -1425,7 +1425,7 @@ void EditorManager::Update(Engine* engine)
 							data = AssimpLoadObjFile(dir, file);
 						}
 						previewModel_->Initialize(data);
-						previewModel_->name_ = "Preview Model";
+						previewModel_->SetName("Preview Model");
 					}
 				}
 				ImGui::EndDragDropTarget();
@@ -1503,7 +1503,7 @@ void EditorManager::Update(Engine* engine)
 			previewModel_->SettingWvp(modelCamera_->GetViewMatrix(), &modelProjMat);
 		}
 
-		auto cmdList = engine->command->GetCommandList();
+		auto cmdList = engine->GetCommand()->GetCommandList();
 		modelRenderTexture_->TransitionToRenderTarget(cmdList);
 		modelRenderTexture_->Clear(cmdList);
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = modelRenderTexture_->GetRtvHandle();
@@ -1514,22 +1514,22 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
-		engine->draw->SetCamera(modelCamera_.get());
+		engine->GetDraw()->SetCamera(modelCamera_.get());
 		if (showGridInModelViewer_) {
 			modelGrid_->SettingWvp(modelCamera_->GetViewMatrix(), &modelProjMat);
-			engine->draw->DrawGrid(modelGrid_.get());
+			engine->GetDraw()->DrawGrid(modelGrid_.get());
 		}
 		if (!currentModelPath_.empty()) {
-			engine->draw->DrawModel(previewModel_.get());
+			engine->GetDraw()->DrawModel(previewModel_.get());
 		}
 
 		modelRenderTexture_->TransitionToShaderResource(cmdList);
 
 		// Restore main
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
-		engine->depthStencil->SetDSV(cmdList, &mainRtv);
-		cmdList->RSSetViewports(1, engine->viewportScissor->GetViewport());
-		cmdList->RSSetScissorRects(1, engine->viewportScissor->GetScissorRect());
+		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
+		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
+		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
 	}
 
 	// Game View Window
@@ -1538,17 +1538,17 @@ void EditorManager::Update(Engine* engine)
 			for (int i = 0; i < 2; ++i) {
 				gameViewRenderTextures_[i] = std::make_unique<RenderTexture>();
 				gameViewRenderTextures_[i]->Initialize(
-					engine->graphics->GetDevice(),
+					engine->GetGraphics()->GetDevice(),
 					WindowConfig::kDefaultClientWidth, WindowConfig::kDefaultClientHeight,
-					engine->descriptorHeap->GetSrvDescriptorHeap(),
-					engine->descriptorHeap->GetDescriptorSizeSRV());
+					engine->GetDescriptorHeap()->GetSrvDescriptorHeap(),
+					engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
 			}
 			gameViewDepthStencil_ = std::make_unique<DepthStencil>();
 			gameViewDepthStencil_->CreateDepthStencil(
-				engine->graphics->GetDevice(),
+				engine->GetGraphics()->GetDevice(),
 				WindowConfig::kDefaultClientWidth, WindowConfig::kDefaultClientHeight,
-				engine->descriptorHeap->GetSrvDescriptorHeap(),
-				engine->descriptorHeap->GetDescriptorSizeSRV());
+				engine->GetDescriptorHeap()->GetSrvDescriptorHeap(),
+				engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
 			isGameViewInitialized_ = true;
 		}
 
@@ -1578,7 +1578,7 @@ void EditorManager::Update(Engine* engine)
 		ImGui::End();
 
 		// Draw into Game View Render Texture
-		auto cmdList = engine->command->GetCommandList();
+		auto cmdList = engine->GetCommand()->GetCommandList();
 		gameViewRenderTextures_[0]->TransitionToRenderTarget(cmdList);
 		gameViewRenderTextures_[0]->Clear(cmdList);
 		gameViewDepthStencil_->TransitionToDepthWrite(cmdList);
@@ -1599,11 +1599,11 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
-		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->descriptorHeap->GetSrvDescriptorHeap() };
+		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->GetDescriptorHeap()->GetSrvDescriptorHeap() };
 		cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
 		if (s_gameViewDrawCallback_) {
-			s_gameViewDrawCallback_(*engine->draw);
+			s_gameViewDrawCallback_(*engine->GetDraw());
 
 			gameViewRenderTextures_[0]->TransitionToShaderResource(cmdList);
 			gameViewDepthStencil_->TransitionToShaderResource(cmdList);
@@ -1625,7 +1625,7 @@ void EditorManager::Update(Engine* engine)
 
 				cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
-				engine->draw->DrawPostEffect(
+				engine->GetDraw()->DrawPostEffect(
 					gameViewRenderTextures_[currentRT]->GetSrvHandleGPU(),
 					effect->GetActiveShaderName(),
 					effect.get(),
@@ -1648,7 +1648,7 @@ void EditorManager::Update(Engine* engine)
 
 				cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
-				s_gameViewUIDrawCallback_(*engine->draw);
+				s_gameViewUIDrawCallback_(*engine->GetDraw());
 
 				gameViewRenderTextures_[currentRT]->TransitionToShaderResource(cmdList);
 				gameViewDepthStencil_->TransitionToShaderResource(cmdList);
@@ -1662,9 +1662,9 @@ void EditorManager::Update(Engine* engine)
 
 		// Restore engine's main render target
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
-		engine->depthStencil->SetDSV(cmdList, &mainRtv);
-		cmdList->RSSetViewports(1, engine->viewportScissor->GetViewport());
-		cmdList->RSSetScissorRects(1, engine->viewportScissor->GetScissorRect());
+		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
+		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
+		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
 		cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 	}
 

@@ -26,6 +26,6 @@ public:
     std::shared_ptr<GameObject> GetSelectedObject() const { return selectedObject_; }
     void SetSelectedObject(std::shared_ptr<GameObject> obj) {
         selectedObject_ = obj;
-        GameObject::selectedObject_ = obj.get();
+        GameObject::SetSelectedObject(obj.get());
     }
 };

@@ -50,6 +50,9 @@ public:
   static constexpr const char *kShaderSuffix = "Shader";
 
 private:
+  static std::vector<PostEffect *> s_instances;
+  static std::vector<std::pair<std::string, std::string>> s_registeredEffects;
+
   Microsoft::WRL::ComPtr<ID3D12Resource> constantBufferResource_;
   PostEffectShaderData *cbData_ = nullptr;
 
@@ -150,12 +153,9 @@ public:
 
   void ImGuiWindow();
 
-  // ---- アクティブポストエフェクト管理 ----
-  static std::vector<PostEffect *> s_instances;
-
-  // スキャン済みのシェーダー名リスト（表示名 → シェーダー名）
-  // 例: "GrayScale" → "GrayScaleShader"
-  static std::vector<std::pair<std::string, std::string>> s_registeredEffects;
+  static const std::vector<std::pair<std::string, std::string>>& GetRegisteredEffects() {
+    return s_registeredEffects;
+  }
 
   // PostEffectフォルダをスキャンしてs_registeredEffectsを構築する（起動時に1回呼ぶ）
   static void ScanPostEffectShaders(

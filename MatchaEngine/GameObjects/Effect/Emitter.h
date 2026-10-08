@@ -128,12 +128,22 @@ private:
 	// Orientation
 	bool alignToVelocity_ = false;
 
-public:
 	std::string name_ = "Particle";
 	char saveFileName_[256] = "particle";
 
+public:
 	// 生成時の振る舞いを注入する関数
 	std::function<void(EffectDefinitionData&)> generatorBehavior = nullptr;
+
+	const std::string& GetName() const { return name_; }
+	void SetName(const std::string& name) { name_ = name; }
+
+	const char* GetSaveFileName() const { return saveFileName_; }
+	void SetSaveFileName(const std::string& name) {
+		strncpy_s(saveFileName_, sizeof(saveFileName_), name.c_str(), _TRUNCATE);
+	}
+	char* GetSaveFileNameBuffer() { return saveFileName_; }
+	size_t GetSaveFileNameBufferSize() const { return sizeof(saveFileName_); }
 
 	void SetEmitterType(EmitterType type) { emitterType_ = type; }
 	EmitterType GetEmitterType() const { return emitterType_; }
