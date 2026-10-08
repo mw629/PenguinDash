@@ -54,11 +54,13 @@ private:
         Vector2 initialPos;
         Vector2 currentPos;
         Vector2 velocity;
-        float rotation = 0.0f;
-        float angularVelocity = 0.0f;
+        Vector3 rotation{ 0.0f, 0.0f, 0.0f };       // 3D回転 (X, Y, Z)
+        Vector3 angularVelocity{ 0.0f, 0.0f, 0.0f };// 3D回転速度 (X, Y, Z)
         float scale = 1.0f;
-        Vector2 size;
         float alpha = 1.0f;
+        Vector4 baseColor{ 0.92f, 0.97f, 1.0f, 1.0f }; // ガラス基本色
+        float shineSpeed = 1.0f;
+        float mass = 1.0f;
     };
 
     struct IceSparkle {
@@ -76,6 +78,7 @@ private:
     float freezeDuration_ = 0.75f;
     float crackDuration_ = 0.12f;
     float shatterDuration_ = 0.75f;
+    float shatterFlashTimer_ = 0.0f; // 破砕瞬間の閃光フラッシュタイマー
 
     std::function<void()> onMidpointCallback_ = nullptr;
     bool midpointExecuted_ = false;
@@ -92,13 +95,12 @@ private:
     std::unique_ptr<Sprite> surfaceSprite_; // 画面全体を覆う氷の板
     std::unique_ptr<Sprite> crackSprite_;   // ひび割れ (クラック)
 
-    // 破片 (シャード)
-    static constexpr int kGridCols = 12;
-    static constexpr int kGridRows = 8;
-    static constexpr int kTotalShards = kGridCols * kGridRows;
+    // ガラス破片 (シャード)
+    static constexpr int kMeshCols = 14;
+    static constexpr int kMeshRows = 9;
     std::vector<Shard> shards_;
 
-    // キラキラ光る氷粉パーティクル
+    // キラキラ光る氷粉・ガラスダストパーティクル
     std::vector<IceSparkle> sparkles_;
 
     bool isInitialized_ = false;

@@ -111,6 +111,30 @@ void Sprite::UpdateVertexBuffer()
 	vertexData_[3].texcoord = { textureArea_[1].x, textureArea_[0].y };
 }
 
+void Sprite::SetCustomTriangleVertices(const Vector2 positions[3], const Vector2 uvs[3])
+{
+	if (!vertexData_) return;
+
+	// 1枚目の三角形 (0, 1, 2)
+	vertexData_[0].position = { positions[0].x, positions[0].y, 0.0f, 1.0f };
+	vertexData_[0].texcoord = uvs[0];
+	vertexData_[0].normal = { 0.0f, 0.0f, -1.0f };
+
+	vertexData_[1].position = { positions[1].x, positions[1].y, 0.0f, 1.0f };
+	vertexData_[1].texcoord = uvs[1];
+	vertexData_[1].normal = { 0.0f, 0.0f, -1.0f };
+
+	vertexData_[2].position = { positions[2].x, positions[2].y, 0.0f, 1.0f };
+	vertexData_[2].texcoord = uvs[2];
+	vertexData_[2].normal = { 0.0f, 0.0f, -1.0f };
+
+	// 2枚目の三角形 (1, 3, 2)
+	// 頂点3を頂点1と同一座標・UVに設定することで面積0の縮退三角形とし、GPU描画をスキップ
+	vertexData_[3].position = { positions[1].x, positions[1].y, 0.0f, 1.0f };
+	vertexData_[3].texcoord = uvs[1];
+	vertexData_[3].normal = { 0.0f, 0.0f, -1.0f };
+}
+
 void Sprite::CreateVertexData()
 {
 	// Sprite用の頂点リソースを作る

@@ -101,6 +101,7 @@ public:
 
 	void SettingWvp();
 	void UpdateVertexBuffer();
+	void SetCustomTriangleVertices(const Vector2 positions[3], const Vector2 uvs[3]);
 
 	void SetTransform(Transform transform);
 	void SetSize(Vector2 size);
