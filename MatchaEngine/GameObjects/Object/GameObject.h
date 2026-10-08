@@ -9,6 +9,7 @@
 #include "../Component/MaterialComponent.h"
 #include "../Component/ColliderComponent.h"
 #include <nlohmann/json.hpp>
+#include "../../Math/Calculation.h"
 
 #ifdef _USE_IMGUI
 #include <imgui.h>
@@ -25,6 +26,15 @@ protected:
     bool isActive_ = true;
     bool isLocked_ = false;
     std::vector<std::shared_ptr<Component>> components_;
+
+    // --- Dirty Flag パターン ---
+    // Transformが変更された時のみフラグを立て、GetWorldMatrix()呼び出し時に遅延評価で再計算する
+    mutable Matrix4x4 worldMatrix_ = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+    mutable bool isWorldMatrixDirty_ = true;
+
+    // シーングラフ（親子関係）: 親のTransform変更時に子のDirty Flagを再帰的に伝播
+    GameObject* parent_ = nullptr;
+    std::vector<GameObject*> children_;
 
 public:
     static GameObject* GetSelectedObject() { return selectedObject_; }
@@ -187,7 +197,75 @@ public:
     void SetName(const std::string& name) { name_ = name; }
 
     const Transform& GetTransform() const { return transform_; }
-    virtual void SetTransform(const Transform& transform) { transform_ = transform; }
+    virtual void SetTransform(const Transform& transform) {
+        transform_ = transform;
+        MarkDirty();
+    }
+
+    void SetPosition(const Vector3& pos) {
+        transform_.translate = pos;
+        MarkDirty();
+    }
+    void SetRotation(const Vector3& rot) {
+        transform_.rotate = rot;
+        MarkDirty();
+    }
+    void SetScale(const Vector3& scale) {
+        transform_.scale = scale;
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Dirty Flag: ワールド行列の再計算フラグを立てる。
+    /// 親オブジェクトのTransformが変更された場合、すべての子オブジェクトにも再帰的にフラグを伝播します。
+    /// </summary>
+    virtual void MarkDirty() {
+        isWorldMatrixDirty_ = true;
+        for (auto* child : children_) {
+            if (child) {
+                child->MarkDirty();
+            }
+        }
+    }
+
+    bool IsDirty() const { return isWorldMatrixDirty_; }
+
+    /// <summary>
+    /// Dirty Flag: キャッシュされたワールド行列を取得。
+    /// isWorldMatrixDirty_ が true の場合のみ再計算を行い、静止時の無駄な行列再計算をスキップします。
+    /// </summary>
+    virtual const Matrix4x4& GetWorldMatrix() const {
+        if (isWorldMatrixDirty_) {
+            UpdateWorldMatrix();
+        }
+        return worldMatrix_;
+    }
+
+    virtual void UpdateWorldMatrix() const {
+        Matrix4x4 localMat = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+        if (parent_) {
+            worldMatrix_ = MultiplyMatrix4x4(localMat, parent_->GetWorldMatrix());
+        } else {
+            worldMatrix_ = localMat;
+        }
+        isWorldMatrixDirty_ = false;
+    }
+
+    // シーングラフ（親子関係）
+    void SetParent(GameObject* parent) {
+        if (parent_ == parent) return;
+        if (parent_) {
+            auto& pc = parent_->children_;
+            pc.erase(std::remove(pc.begin(), pc.end(), this), pc.end());
+        }
+        parent_ = parent;
+        if (parent_) {
+            parent_->children_.push_back(this);
+        }
+        MarkDirty();
+    }
+    GameObject* GetParent() const { return parent_; }
+    const std::vector<GameObject*>& GetChildren() const { return children_; }
 
     virtual bool HasMaterial() const {
         return GetComponent<MaterialComponent>() != nullptr;

@@ -161,6 +161,7 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="Game\GameScene\Entity\Boss.cpp" />
     <ClCompile Include="Editer\EditorUI.cpp" />
     <ClCompile Include="Editer\EditorManager.cpp" />
+    <ClCompile Include="Editer\Command\CommandManager.cpp" />
     <ClCompile Include="Editer\LanguageManager.cpp" />
     <ClCompile Include="Game\GameScene\GameSceneManager.cpp" />
     <ClCompile Include="Game\JsonScene\JsonScene.cpp" />
@@ -396,7 +397,11 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="Game\GameScene\Entity\Boss.h" />
     <ClInclude Include="Editer\EditorUI.h" />
     <ClInclude Include="Editer\EditorManager.h" />
+    <ClInclude Include="Editer\Command\ICommand.h" />
+    <ClInclude Include="Editer\Command\CommandManager.h" />
+    <ClInclude Include="Editer\Command\EditorCommands.h" />
     <ClInclude Include="Editer\LanguageManager.h" />
+    <ClInclude Include="MatchaEngine\Common\ObjectPool.h" />
     <ClInclude Include="Game\GameScene\GameSceneManager.h" />
     <ClInclude Include="Game\JsonScene\JsonScene.h" />
     <ClInclude Include="MatchaEngine\Graphics\Render\LineRenderer.h" />

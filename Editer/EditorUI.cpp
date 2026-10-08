@@ -8,6 +8,8 @@
 
 #include "LanguageManager.h"
 #include "EditorManager.h"
+#include "Command/CommandManager.h"
+#include "Command/EditorCommands.h"
 #include "../MatchaEngine/GameObjects/Object/Animation/CharacterAnimator.h"
 #include "../MatchaEngine/GameObjects/Object/RenderObject.h"
 #include "../MatchaEngine/GameObjects/Object/3d/Sphere.h"
@@ -148,6 +150,14 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
         &world.m[0][0]
     );
 
+    static bool s_wasGizmoUsing = false;
+    static Transform s_gizmoStartTransform;
+
+    if (!s_wasGizmoUsing && ImGuizmo::IsUsing()) {
+        s_gizmoStartTransform = selectedObject_->GetTransform();
+        s_wasGizmoUsing = true;
+    }
+
     if (ImGuizmo::IsUsing()) {
         // 分解してTransformに戻す
         float translation[3], rotation[3], scale[3];
@@ -163,6 +173,23 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
         }
 
         selectedObject_->SetTransform(t);
+    } else if (s_wasGizmoUsing) {
+        // ギズモ操作終了: 差分があれば CommandManager に登録
+        Transform endTransform = selectedObject_->GetTransform();
+        if (s_gizmoStartTransform.translate.x != endTransform.translate.x ||
+            s_gizmoStartTransform.translate.y != endTransform.translate.y ||
+            s_gizmoStartTransform.translate.z != endTransform.translate.z ||
+            s_gizmoStartTransform.rotate.x != endTransform.rotate.x ||
+            s_gizmoStartTransform.rotate.y != endTransform.rotate.y ||
+            s_gizmoStartTransform.rotate.z != endTransform.rotate.z ||
+            s_gizmoStartTransform.scale.x != endTransform.scale.x ||
+            s_gizmoStartTransform.scale.y != endTransform.scale.y ||
+            s_gizmoStartTransform.scale.z != endTransform.scale.z) {
+            CommandManager::GetInstance().PushExecutedCommand(
+                std::make_unique<TransformCommand>(selectedObject_, s_gizmoStartTransform, endTransform)
+            );
+        }
+        s_wasGizmoUsing = false;
     }
 #endif
 }
@@ -171,6 +198,20 @@ void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view,
 {
 #ifdef _USE_IMGUI
     if (!gameObjectManager) return;
+
+    // ショートカットキー: Ctrl+Z (Undo), Ctrl+Y / Ctrl+Shift+Z (Redo)
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.KeyCtrl && !io.KeyAlt) {
+        if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+            if (io.KeyShift) {
+                CommandManager::GetInstance().Redo();
+            } else {
+                CommandManager::GetInstance().Undo();
+            }
+        } else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
+            CommandManager::GetInstance().Redo();
+        }
+    }
 
     // マウスピッキング
     ProcessMousePicking(gameObjectManager, view, projection);
@@ -336,25 +377,25 @@ void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view,
         if (ImGui::MenuItem("Create Empty")) {
             auto emptyObj = std::make_shared<GameObject>();
             emptyObj->SetName("GameObject");
-            gameObjectManager->AddObject(emptyObj);
+            CommandManager::GetInstance().ExecuteCommand(std::make_unique<CreateObjectCommand>(gameObjectManager, emptyObj));
         }
         if (ImGui::MenuItem("Create Directional Light")) {
             auto light = std::make_shared<DirectionalLight>();
-            gameObjectManager->AddObject(light);
+            CommandManager::GetInstance().ExecuteCommand(std::make_unique<CreateObjectCommand>(gameObjectManager, light));
         }
         if (ImGui::MenuItem("Create Point Light")) {
             auto light = std::make_shared<PointLight>();
-            gameObjectManager->AddObject(light);
+            CommandManager::GetInstance().ExecuteCommand(std::make_unique<CreateObjectCommand>(gameObjectManager, light));
         }
         if (ImGui::MenuItem("Create Spot Light")) {
             auto light = std::make_shared<SpotLight>();
-            gameObjectManager->AddObject(light);
+            CommandManager::GetInstance().ExecuteCommand(std::make_unique<CreateObjectCommand>(gameObjectManager, light));
         }
         ImGui::EndPopup();
     }
 
     if (objToDelete) {
-        gameObjectManager->RemoveObject(objToDelete);
+        CommandManager::GetInstance().ExecuteCommand(std::make_unique<DeleteObjectCommand>(gameObjectManager, objToDelete));
         if (selectedObject_ == objToDelete) {
             SetSelectedObject(nullptr);
         }

@@ -40,7 +40,7 @@ public:
 
 
 	void SetShape();
-	void SetTransform(Transform transform) { transform_ = transform; }
+	void SetTransform(const Transform& transform) override { GameObject::SetTransform(transform); }
 	void SetVertex(Vector4 vertex[3]);
 	void SetMaterialLighting(bool isActive) { 
 		auto matComp = GetComponent<MaterialComponent>();

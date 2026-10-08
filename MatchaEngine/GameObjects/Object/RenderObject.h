@@ -15,7 +15,7 @@ public:
     RenderObject(std::shared_ptr<ObjectBase> obj) : objectBase_(obj) {
         if (objectBase_) {
             name_ = objectBase_->GetName();
-            transform_ = objectBase_->GetTransform();
+            SetTransform(objectBase_->GetTransform());
         }
     }
 
@@ -28,7 +28,7 @@ public:
         objectBase_ = obj;
         if (objectBase_) {
             name_ = objectBase_->GetName();
-            transform_ = objectBase_->GetTransform();
+            SetTransform(objectBase_->GetTransform());
         }
     }
 
@@ -90,7 +90,7 @@ public:
         GameObject::Update(view, speedMultiplier);
         if (objectBase_) {
             if (objectBase_->GetName() == "SkyBox" || objectBase_->GetShader() == SkyBoxShader) {
-                transform_ = objectBase_->GetTransform();
+                SetTransform(objectBase_->GetTransform());
             } else {
                 objectBase_->SetTransform(transform_);
             }
@@ -106,7 +106,7 @@ public:
     }
 
     void SetTransform(const Transform& transform) override {
-        transform_ = transform;
+        GameObject::SetTransform(transform);
         if (objectBase_) {
             objectBase_->SetTransform(transform_);
         }

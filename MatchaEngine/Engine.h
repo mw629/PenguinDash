@@ -7,6 +7,7 @@
 
 //Common
 #include "CommandContext.h"
+#include "Common/ObjectPool.h"
 
 //Core
 #include "LogHandler.h"

@@ -15,6 +15,7 @@
 #include "../MatchaEngine/Core/LogHandler.h"
 #include "../MatchaEngine/Resource/Texture.h"
 #include "LanguageManager.h"
+#include "Command/CommandManager.h"
 #include <unordered_map>
 #include <algorithm>
 
@@ -328,6 +329,27 @@ void EditorManager::Update(Engine* engine)
 			ImGui::Separator();
 			if (ImGui::MenuItem(LanguageManager::Tr("Exit"))) {
 				Engine::SetEnd(true);
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu(LanguageManager::Tr("Edit"))) {
+			std::string undoLabel = CommandManager::GetInstance().CanUndo()
+				? (std::string(LanguageManager::Tr("Undo")) + " (" + CommandManager::GetInstance().GetUndoCommandName() + ")")
+				: std::string(LanguageManager::Tr("Undo"));
+			if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, CommandManager::GetInstance().CanUndo())) {
+				CommandManager::GetInstance().Undo();
+			}
+
+			std::string redoLabel = CommandManager::GetInstance().CanRedo()
+				? (std::string(LanguageManager::Tr("Redo")) + " (" + CommandManager::GetInstance().GetRedoCommandName() + ")")
+				: std::string(LanguageManager::Tr("Redo"));
+			if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Y", false, CommandManager::GetInstance().CanRedo())) {
+				CommandManager::GetInstance().Redo();
+			}
+
+			ImGui::Separator();
+			if (ImGui::MenuItem(LanguageManager::Tr("Clear History"), nullptr, false, CommandManager::GetInstance().CanUndo() || CommandManager::GetInstance().CanRedo())) {
+				CommandManager::GetInstance().Clear();
 			}
 			ImGui::EndMenu();
 		}
@@ -802,6 +824,75 @@ void EditorManager::Update(Engine* engine)
 					ImGui::BulletText(LanguageManager::Tr("Sprites / UI / Billboards: Cull None (Double-sided)"));
 					ImGui::BulletText(LanguageManager::Tr("Per-object / Per-material CullMode can be changed in Inspector."));
 				}
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem(LanguageManager::Tr("Design Patterns"))) {
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "=== 1. Object Pool Pattern ===");
+				struct DemoParticle {
+					int id = 0;
+					bool active = false;
+					void Reset() { active = false; id = 0; }
+				};
+				static Matcha::ObjectPool<DemoParticle> s_demoPool(10);
+				static std::vector<DemoParticle*> s_acquiredList;
+
+				ImGui::Text("Capacity: %zu | Active: %zu | Free: %zu",
+					s_demoPool.GetCapacity(), s_demoPool.GetActiveCount(), s_demoPool.GetFreeCount());
+				float poolUsage = s_demoPool.GetCapacity() > 0 ? (float)s_demoPool.GetActiveCount() / (float)s_demoPool.GetCapacity() : 0.0f;
+				ImGui::ProgressBar(poolUsage, ImVec2(-1.0f, 0.0f));
+
+				if (ImGui::Button("Acquire (貸出)")) {
+					auto* p = s_demoPool.Acquire();
+					if (p) {
+						p->active = true;
+						p->id = static_cast<int>(s_acquiredList.size() + 1);
+						s_acquiredList.push_back(p);
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Release (返却)") && !s_acquiredList.empty()) {
+					auto* p = s_acquiredList.back();
+					s_acquiredList.pop_back();
+					s_demoPool.Release(p);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Release All (一括返却)")) {
+					s_demoPool.ReleaseAll();
+					s_acquiredList.clear();
+				}
+
+				ImGui::Separator();
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "=== 2. Dirty Flag Pattern ===");
+				GameObject* sel = GameObject::GetSelectedObject();
+				if (sel) {
+					ImGui::Text("Selected: %s", sel->GetName().c_str());
+					ImGui::Text("Is WorldMatrix Dirty: %s", sel->IsDirty() ? "TRUE (Needs recalculation)" : "FALSE (Cached)");
+					if (ImGui::Button("Force Mark Dirty")) {
+						sel->MarkDirty();
+					}
+				} else {
+					ImGui::TextDisabled("Select an object to inspect Dirty Flag.");
+				}
+
+				ImGui::Separator();
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "=== 3. Command Pattern (Undo / Redo) ===");
+				CommandManager& cmdMgr = CommandManager::GetInstance();
+				ImGui::Text("Undo Stack: %zu | Redo Stack: %zu", cmdMgr.GetUndoCount(), cmdMgr.GetRedoCount());
+				ImGui::Text("Next Undo: %s", cmdMgr.CanUndo() ? cmdMgr.GetUndoCommandName().c_str() : "(None)");
+				ImGui::Text("Next Redo: %s", cmdMgr.CanRedo() ? cmdMgr.GetRedoCommandName().c_str() : "(None)");
+				if (ImGui::Button("Undo (Ctrl+Z)") && cmdMgr.CanUndo()) {
+					cmdMgr.Undo();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Redo (Ctrl+Y)") && cmdMgr.CanRedo()) {
+					cmdMgr.Redo();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Clear History")) {
+					cmdMgr.Clear();
+				}
+
 				ImGui::EndTabItem();
 			}
 

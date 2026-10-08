@@ -84,7 +84,7 @@ void ObjectBase::SettingWvp(Matrix4x4 viewMatrix)
 			wvpData_[s_wvpIndex][i].numBones = 0;
 		}
 	} else {
-		Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+		Matrix4x4 worldMatrix = GetWorldMatrix();
 		Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 		Matrix4x4 worldInverseTranspose = TransposeMatrix4x4(Inverse(worldMatrix)); // 法線変換用の行列を計算
 
@@ -123,13 +123,13 @@ D3D12_VERTEX_BUFFER_VIEW* ObjectBase::GetVertexBufferView()
 
 AABB ObjectBase::GetWorldAABB() const
 {
-	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrix = GetWorldMatrix();
 	return TransformAABB(localAABB_, worldMatrix);
 }
 
 BoundingSphere ObjectBase::GetWorldBoundingSphere() const
 {
-	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrix = GetWorldMatrix();
 	return TransformBoundingSphere(localSphere_, worldMatrix);
 }
 

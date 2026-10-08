@@ -88,7 +88,8 @@ void Model::SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection) 
 		worldMatrixObj.m[3][2] = transform_.translate.z;
 		worldMatrixObj.m[3][3] = 1.0f;
 	} else {
-		worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+		// Dirty Flag: Transform変更時のみ再計算されるキャッシュ済みワールド行列を利用
+		worldMatrixObj = GetWorldMatrix();
 	}
 
 	Matrix4x4 worldViewProjectionMatrixObj = MultiplyMatrix4x4(worldMatrixObj, MultiplyMatrix4x4(viewMatrix, projectionMatri));
@@ -121,7 +122,7 @@ AABB Model::GetWorldAABB() const
 		aabb.max = { transform_.translate.x + maxScale, transform_.translate.y + maxScale, transform_.translate.z + maxScale };
 		return aabb;
 	}
-	Matrix4x4 worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrixObj = GetWorldMatrix();
 	Matrix4x4 worldMatrix = MultiplyMatrix4x4(rootNode_.localMatrix, worldMatrixObj);
 	return TransformAABB(localAABB_, worldMatrix);
 }
@@ -135,7 +136,7 @@ BoundingSphere Model::GetWorldBoundingSphere() const
 		sphere.radius = maxScale * 1.5f;
 		return sphere;
 	}
-	Matrix4x4 worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrixObj = GetWorldMatrix();
 	Matrix4x4 worldMatrix = MultiplyMatrix4x4(rootNode_.localMatrix, worldMatrixObj);
 	return TransformBoundingSphere(localSphere_, worldMatrix);
 }
