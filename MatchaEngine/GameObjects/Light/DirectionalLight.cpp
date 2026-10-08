@@ -1,4 +1,5 @@
 #include "DirectionalLight.h"
+#include "LightManager.h"
 #include "Graphics/Render/Draw.h"
 #include "Math/Calculation.h"
 #include "../../../Editer/EditorManager.h"
@@ -6,6 +7,26 @@
 DirectionalLight::DirectionalLight()
 {
 	name_ = "Directional Light";
+}
+
+std::shared_ptr<GameObject> DirectionalLight::Clone() const
+{
+	auto copy = std::make_shared<DirectionalLight>();
+	copy->SetName(name_);
+	copy->SetTransform(transform_);
+	copy->SetIsActive(isActive_);
+	copy->SetIsLocked(isLocked_);
+	copy->SetColor(color_);
+	copy->SetIntensity(intensity_);
+	return copy;
+}
+
+void DirectionalLight::ApplyToLightManager(LightManager& manager)
+{
+	Matrix4x4 rot = Rotation(transform_.rotate);
+	Vector3 baseDir = { 0.0f, -1.0f, 0.0f };
+	Vector3 dir = Normalize(TransformMatrix(baseDir, rot));
+	manager.AddDirectionalLight(color_, dir, intensity_);
 }
 
 void DirectionalLight::ImGui(bool drawTransform)

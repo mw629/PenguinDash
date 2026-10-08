@@ -1,4 +1,5 @@
 #include "PointLight.h"
+#include "LightManager.h"
 #include "Graphics/Render/Draw.h"
 #include "Math/Calculation.h"
 #include "../../../Editer/EditorManager.h"
@@ -7,6 +8,39 @@
 PointLight::PointLight()
 {
 	name_ = "Point Light";
+}
+
+std::shared_ptr<GameObject> PointLight::Clone() const
+{
+	auto copy = std::make_shared<PointLight>();
+	copy->SetName(name_);
+	copy->SetTransform(transform_);
+	copy->SetIsActive(isActive_);
+	copy->SetIsLocked(isLocked_);
+	copy->SetColor(color_);
+	copy->SetIntensity(intensity_);
+	copy->SetRadius(radius_);
+	copy->SetDecay(decay_);
+	return copy;
+}
+
+void PointLight::ApplyToLightManager(LightManager& manager)
+{
+	manager.AddPointLight(color_, transform_.translate, intensity_, radius_, decay_);
+}
+
+void PointLight::Serialize(nlohmann::json& out) const
+{
+	BaseLight::Serialize(out);
+	out["radius"] = radius_;
+	out["decay"] = decay_;
+}
+
+void PointLight::Deserialize(const nlohmann::json& in)
+{
+	BaseLight::Deserialize(in);
+	if (in.contains("radius")) radius_ = in["radius"];
+	if (in.contains("decay")) decay_ = in["decay"];
 }
 
 void PointLight::ImGui(bool drawTransform)

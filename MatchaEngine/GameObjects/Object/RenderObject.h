@@ -3,6 +3,7 @@
 #include <memory>
 #include "Graphics/Render/Draw.h"
 #include "Model.h"
+#include "Resource/AssetManager.h"
 
 class RenderObject : public GameObject {
 private:
@@ -18,6 +19,8 @@ public:
         }
     }
 
+    std::string GetTypeName() const override { return "RenderObject"; }
+
     const std::string& GetModelFilePath() const { return modelFilePath_; }
     void SetModelFilePath(const std::string& path) { modelFilePath_ = path; }
 
@@ -26,6 +29,60 @@ public:
         if (objectBase_) {
             name_ = objectBase_->GetName();
             transform_ = objectBase_->GetTransform();
+        }
+    }
+
+    std::shared_ptr<GameObject> Clone() const override {
+        std::shared_ptr<RenderObject> copy = nullptr;
+        if (!modelFilePath_.empty()) {
+            size_t lastSlash = modelFilePath_.find_last_of("/\\");
+            if (lastSlash != std::string::npos) {
+                std::string dirPath = modelFilePath_.substr(0, lastSlash);
+                std::string fileName = modelFilePath_.substr(lastSlash + 1);
+                try {
+                    ModelData modelData = AssetManager::LoadModel(dirPath, fileName);
+                    auto model = std::make_shared<Model>();
+                    model->Initialize(modelData);
+                    model->SetName(fileName);
+                    copy = std::make_shared<RenderObject>(model);
+                    copy->SetModelFilePath(modelFilePath_);
+                } catch (...) {}
+            }
+        }
+        if (!copy) {
+            copy = std::make_shared<RenderObject>();
+            if (objectBase_) copy->SetObjectBase(objectBase_);
+        }
+        copy->SetName(name_);
+        copy->SetTransform(transform_);
+        copy->SetIsActive(isActive_);
+        copy->SetIsLocked(isLocked_);
+        return copy;
+    }
+
+    void Serialize(nlohmann::json& out) const override {
+        GameObject::Serialize(out);
+        out["modelFilePath"] = modelFilePath_;
+    }
+
+    void Deserialize(const nlohmann::json& in) override {
+        GameObject::Deserialize(in);
+        if (in.contains("modelFilePath")) {
+            modelFilePath_ = in.value("modelFilePath", "");
+            if (!modelFilePath_.empty() && !objectBase_) {
+                size_t lastSlash = modelFilePath_.find_last_of("/\\");
+                if (lastSlash != std::string::npos) {
+                    std::string dirPath = modelFilePath_.substr(0, lastSlash);
+                    std::string fileName = modelFilePath_.substr(lastSlash + 1);
+                    try {
+                        ModelData modelData = AssetManager::LoadModel(dirPath, fileName);
+                        auto model = std::make_shared<Model>();
+                        model->Initialize(modelData);
+                        model->SetName(fileName);
+                        SetObjectBase(model);
+                    } catch (...) {}
+                }
+            }
         }
     }
 
@@ -44,11 +101,7 @@ public:
     void Draw(class Draw& draw) override {
         GameObject::Draw(draw);
         if (objectBase_) {
-            if (auto model = dynamic_cast<Model*>(objectBase_.get())) {
-                draw.DrawModel(model);
-            } else {
-                draw.DrawObj(objectBase_.get());
-            }
+            objectBase_->Render(draw);
         }
     }
 
@@ -76,6 +129,14 @@ public:
 
     bool HasMaterial() const override {
         return objectBase_ && objectBase_->GetComponent<MaterialComponent>() != nullptr || GameObject::HasMaterial();
+    }
+
+    void SetColor(const Vector4& color) {
+        if (objectBase_) {
+            if (auto model = dynamic_cast<Model*>(objectBase_.get())) {
+                model->SetColor(color);
+            }
+        }
     }
 
     std::shared_ptr<ObjectBase> GetObjectBase() const { return objectBase_; }

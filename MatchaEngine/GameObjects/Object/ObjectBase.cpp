@@ -1,5 +1,6 @@
 #include "ObjectBase.h"
 #include "Calculation.h"
+#include "Graphics/Render/Draw.h"
 
 #ifdef _USE_IMGUI
 #include <imgui.h>
@@ -160,5 +161,10 @@ void ObjectBase::ImGuiInnerComponents()
 		}
 	}
 #endif
+}
+
+void ObjectBase::Render(class Draw& draw)
+{
+	draw.DrawObj(this);
 }
 

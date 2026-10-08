@@ -29,6 +29,7 @@ public:
 	void SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection);
 	
 	void CreateObject()override;
+	void Render(class Draw& draw) override;
 
 	void SetBillboard(bool isBillboard) { isBillboard_ = isBillboard; }
 	bool GetBillboard() const { return isBillboard_; }

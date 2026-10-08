@@ -479,6 +479,9 @@
     <ClInclude Include="MatchaEngine\Graphics\DescriptorHeap.h">
       <Filter>MatchaEngine\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\BaseLight.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Light\DirectionalLight.h">
       <Filter>MatchaEngine\Graphics</Filter>
     </ClInclude>
@@ -612,6 +615,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\System\GameObjectManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\System\GameObjectFactory.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Resource\AssetManager.h">

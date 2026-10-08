@@ -8,6 +8,7 @@
 #include "../Component/Component.h"
 #include "../Component/MaterialComponent.h"
 #include "../Component/ColliderComponent.h"
+#include <nlohmann/json.hpp>
 
 #ifdef _USE_IMGUI
 #include <imgui.h>
@@ -75,8 +76,44 @@ public:
     }
     virtual void OnCollision(GameObject* /*other*/) {}
 
-    virtual std::shared_ptr<GameObject> Clone() {
-        return nullptr; // 基底クラスではnullptr。必要に応じて派生クラスで実装
+    virtual std::string GetTypeName() const { return "GameObject"; }
+
+    virtual std::shared_ptr<GameObject> Clone() const {
+        auto copy = std::make_shared<GameObject>();
+        copy->SetName(name_);
+        copy->SetTransform(transform_);
+        copy->SetIsActive(isActive_);
+        copy->SetIsLocked(isLocked_);
+        return copy;
+    }
+
+    virtual void Serialize(nlohmann::json& out) const {
+        out["name"] = name_;
+        out["type"] = GetTypeName();
+        out["isActive"] = isActive_;
+        out["isLocked"] = isLocked_;
+        out["transform"]["translate"] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
+        out["transform"]["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
+        out["transform"]["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
+    }
+
+    virtual void Deserialize(const nlohmann::json& in) {
+        if (in.contains("name")) name_ = in["name"];
+        if (in.contains("isActive")) isActive_ = in["isActive"];
+        if (in.contains("isLocked")) isLocked_ = in["isLocked"];
+        if (in.contains("transform")) {
+            const auto& t = in["transform"];
+            if (t.contains("translate") && t["translate"].size() >= 3) {
+                transform_.translate = { t["translate"][0], t["translate"][1], t["translate"][2] };
+            }
+            if (t.contains("rotate") && t["rotate"].size() >= 3) {
+                transform_.rotate = { t["rotate"][0], t["rotate"][1], t["rotate"][2] };
+            }
+            if (t.contains("scale") && t["scale"].size() >= 3) {
+                transform_.scale = { t["scale"][0], t["scale"][1], t["scale"][2] };
+            }
+            SetTransform(transform_);
+        }
     }
 
     virtual void Draw(class Draw& draw) {
@@ -128,8 +165,11 @@ public:
                         ImGui::TextDisabled("MaterialComponent (Added)");
                     }
                     if (!GetComponent<ColliderComponent>()) {
-                        if (ImGui::Selectable("ColliderComponent")) {
-                            AddComponent<ColliderComponent>();
+                        if (ImGui::Selectable("BoxColliderComponent")) {
+                            AddComponent<BoxColliderComponent>();
+                        }
+                        if (ImGui::Selectable("SphereColliderComponent")) {
+                            AddComponent<SphereColliderComponent>();
                         }
                     } else {
                         ImGui::TextDisabled("ColliderComponent (Added)");

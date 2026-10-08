@@ -70,8 +70,7 @@ void Player::Initialize(ModelData modelData) {
   axeOffset_.translate = {0.0f, 0.0f, 0.0f};
 
   // コライダーの初期化（判定サイズは一切変更しない！）
-  auto collider = AddComponent<ColliderComponent>();
-  collider->SetShape(ColliderShape::Box);
+  auto collider = AddComponent<BoxColliderComponent>();
   collider->SetSize({kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth});
 
   UpdateDrawTransform(0.0f);

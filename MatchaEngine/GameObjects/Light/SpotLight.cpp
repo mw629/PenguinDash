@@ -1,4 +1,5 @@
 #include "SpotLight.h"
+#include "LightManager.h"
 #include "Graphics/Render/Draw.h"
 #include "Math/Calculation.h"
 #include "../../../Editer/EditorManager.h"
@@ -7,6 +8,48 @@
 SpotLight::SpotLight()
 {
 	name_ = "Spot Light";
+}
+
+std::shared_ptr<GameObject> SpotLight::Clone() const
+{
+	auto copy = std::make_shared<SpotLight>();
+	copy->SetName(name_);
+	copy->SetTransform(transform_);
+	copy->SetIsActive(isActive_);
+	copy->SetIsLocked(isLocked_);
+	copy->SetColor(color_);
+	copy->SetIntensity(intensity_);
+	copy->SetDistance(distance_);
+	copy->SetDecay(decay_);
+	copy->SetCosAngle(cosAngle_);
+	copy->SetCosFalloffStart(cosFalloffStart_);
+	return copy;
+}
+
+void SpotLight::ApplyToLightManager(LightManager& manager)
+{
+	Matrix4x4 rot = Rotation(transform_.rotate);
+	Vector3 baseDir = { 0.0f, -1.0f, 0.0f };
+	Vector3 dir = Normalize(TransformMatrix(baseDir, rot));
+	manager.AddSpotLight(color_, transform_.translate, dir, intensity_, distance_, decay_, cosAngle_, cosFalloffStart_);
+}
+
+void SpotLight::Serialize(nlohmann::json& out) const
+{
+	BaseLight::Serialize(out);
+	out["distance"] = distance_;
+	out["decay"] = decay_;
+	out["cosAngle"] = cosAngle_;
+	out["cosFalloffStart"] = cosFalloffStart_;
+}
+
+void SpotLight::Deserialize(const nlohmann::json& in)
+{
+	BaseLight::Deserialize(in);
+	if (in.contains("distance")) distance_ = in["distance"];
+	if (in.contains("decay")) decay_ = in["decay"];
+	if (in.contains("cosAngle")) cosAngle_ = in["cosAngle"];
+	if (in.contains("cosFalloffStart")) cosFalloffStart_ = in["cosFalloffStart"];
 }
 
 void SpotLight::ImGui(bool drawTransform)

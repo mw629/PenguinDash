@@ -31,22 +31,7 @@ void CollisionManager::UpdateCollisions(GameObjectManager* manager)
 			if (!colA->GetGameObject() || !colA->GetGameObject()->GetIsActive()) continue;
 			if (!colB->GetGameObject() || !colB->GetGameObject()->GetIsActive()) continue;
 
-			bool hit = false;
-			ColliderShape shapeA = colA->GetShape();
-			ColliderShape shapeB = colB->GetShape();
-
-			if (shapeA == ColliderShape::Box && shapeB == ColliderShape::Box) {
-				hit = Collision::CheckAABB(colA->GetWorldAABB(), colB->GetWorldAABB());
-			}
-			else if (shapeA == ColliderShape::Sphere && shapeB == ColliderShape::Sphere) {
-				hit = Collision::CheckSphere(colA->GetWorldSphere(), colB->GetWorldSphere());
-			}
-			else if (shapeA == ColliderShape::Box && shapeB == ColliderShape::Sphere) {
-				hit = Collision::CheckAABBSphere(colA->GetWorldAABB(), colB->GetWorldSphere());
-			}
-			else if (shapeA == ColliderShape::Sphere && shapeB == ColliderShape::Box) {
-				hit = Collision::CheckAABBSphere(colB->GetWorldAABB(), colA->GetWorldSphere());
-			}
+			bool hit = colA->IntersectsWith(colB);
 
 			if (hit) {
 				// 衝突発生時、それぞれの親オブジェクトに通知

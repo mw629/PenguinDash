@@ -3,11 +3,7 @@
 #include <imgui.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include "../GameObjects/Object/RenderObject.h"
-#include "Resource/AssetManager.h"
-#include "../GameObjects/Light/DirectionalLight.h"
-#include "../GameObjects/Light/PointLight.h"
-#include "../GameObjects/Light/SpotLight.h"
+#include "GameObjectFactory.h"
 #include "Graphics/Render/Draw.h"
 
 void GameObjectManager::AddObject(std::shared_ptr<GameObject> obj)
@@ -28,120 +24,10 @@ void GameObjectManager::RemoveObject(std::shared_ptr<GameObject> obj)
 void GameObjectManager::CopyObject(std::shared_ptr<GameObject> obj)
 {
     if (!obj) return;
-
-    nlohmann::json objJson;
-    objJson["name"] = obj->GetName() + " (Copy)";
-    objJson["isActive"] = obj->GetIsActive();
-    objJson["isLocked"] = obj->GetIsLocked();
-    
-    const Transform& t = obj->GetTransform();
-    objJson["transform"]["translate"] = { t.translate.x, t.translate.y, t.translate.z };
-    objJson["transform"]["rotate"] = { t.rotate.x, t.rotate.y, t.rotate.z };
-    objJson["transform"]["scale"] = { t.scale.x, t.scale.y, t.scale.z };
-    
-    std::string type = "";
-    if (auto renderObj = std::dynamic_pointer_cast<RenderObject>(obj)) {
-        type = "RenderObject";
-        objJson["type"] = "RenderObject";
-        objJson["modelFilePath"] = renderObj->GetModelFilePath();
-    }
-    else if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(obj)) {
-        type = "DirectionalLight";
-        objJson["type"] = "DirectionalLight";
-        objJson["lightColor"] = { dirLight->GetColor().x, dirLight->GetColor().y, dirLight->GetColor().z, dirLight->GetColor().w };
-        objJson["intensity"] = dirLight->GetIntensity();
-    }
-    else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(obj)) {
-        type = "PointLight";
-        objJson["type"] = "PointLight";
-        objJson["lightColor"] = { pointLight->GetColor().x, pointLight->GetColor().y, pointLight->GetColor().z, pointLight->GetColor().w };
-        objJson["intensity"] = pointLight->GetIntensity();
-        objJson["radius"] = pointLight->GetRadius();
-        objJson["decay"] = pointLight->GetDecay();
-    }
-    else if (auto spotLight = std::dynamic_pointer_cast<SpotLight>(obj)) {
-        type = "SpotLight";
-        objJson["type"] = "SpotLight";
-        objJson["lightColor"] = { spotLight->GetColor().x, spotLight->GetColor().y, spotLight->GetColor().z, spotLight->GetColor().w };
-        objJson["intensity"] = spotLight->GetIntensity();
-        objJson["distance"] = spotLight->GetDistance();
-        objJson["decay"] = spotLight->GetDecay();
-        objJson["cosAngle"] = spotLight->GetCosAngle();
-        objJson["cosFalloffStart"] = spotLight->GetCosFalloffStart();
-    }
-
-    std::shared_ptr<GameObject> targetObj = nullptr;
-
-    if (type == "RenderObject") {
-        std::string filePath = objJson.value("modelFilePath", "");
-        size_t lastSlash = filePath.find_last_of("/\\");
-        if (lastSlash != std::string::npos) {
-            std::string dirPath = filePath.substr(0, lastSlash);
-            std::string fileName = filePath.substr(lastSlash + 1);
-            try {
-                ModelData modelData = AssetManager::LoadModel(dirPath, fileName);
-                auto model = std::make_shared<Model>();
-                model->Initialize(modelData);
-                model->SetName(fileName);
-                
-                auto renderObj = std::make_shared<RenderObject>(model);
-                renderObj->SetName(objJson["name"]);
-                renderObj->SetModelFilePath(filePath);
-                targetObj = renderObj;
-                objects_.push_back(targetObj);
-            } catch (...) {}
-        }
-    } else if (type == "DirectionalLight") {
-        auto light = std::make_shared<DirectionalLight>();
-        light->SetColor({ objJson["lightColor"][0], objJson["lightColor"][1], objJson["lightColor"][2], objJson["lightColor"][3] });
-        light->SetIntensity(objJson["intensity"]);
-        targetObj = light;
-        targetObj->SetName(objJson["name"]);
-        objects_.push_back(targetObj);
-    } else if (type == "PointLight") {
-        auto light = std::make_shared<PointLight>();
-        light->SetColor({ objJson["lightColor"][0], objJson["lightColor"][1], objJson["lightColor"][2], objJson["lightColor"][3] });
-        light->SetIntensity(objJson["intensity"]);
-        light->SetRadius(objJson["radius"]);
-        light->SetDecay(objJson["decay"]);
-        targetObj = light;
-        targetObj->SetName(objJson["name"]);
-        objects_.push_back(targetObj);
-    } else if (type == "SpotLight") {
-        auto light = std::make_shared<SpotLight>();
-        light->SetColor({ objJson["lightColor"][0], objJson["lightColor"][1], objJson["lightColor"][2], objJson["lightColor"][3] });
-        light->SetIntensity(objJson["intensity"]);
-        light->SetDistance(objJson["distance"]);
-        light->SetDecay(objJson["decay"]);
-        light->SetCosAngle(objJson["cosAngle"]);
-        light->SetCosFalloffStart(objJson["cosFalloffStart"]);
-        targetObj = light;
-        targetObj->SetName(objJson["name"]);
-        objects_.push_back(targetObj);
-    } else {
-        targetObj = std::make_shared<GameObject>();
-        targetObj->SetName(objJson["name"]);
-        objects_.push_back(targetObj);
-    }
-
-    if (targetObj) {
-        targetObj->SetIsActive(objJson["isActive"]);
-        targetObj->SetIsLocked(objJson["isLocked"]);
-        
-        Transform t2;
-        t2.translate.x = objJson["transform"]["translate"][0];
-        t2.translate.y = objJson["transform"]["translate"][1];
-        t2.translate.z = objJson["transform"]["translate"][2];
-        
-        t2.rotate.x = objJson["transform"]["rotate"][0];
-        t2.rotate.y = objJson["transform"]["rotate"][1];
-        t2.rotate.z = objJson["transform"]["rotate"][2];
-        
-        t2.scale.x = objJson["transform"]["scale"][0];
-        t2.scale.y = objJson["transform"]["scale"][1];
-        t2.scale.z = objJson["transform"]["scale"][2];
-        
-        targetObj->SetTransform(t2);
+    auto copy = obj->Clone();
+    if (copy) {
+        copy->SetName(obj->GetName() + " (Copy)");
+        objects_.push_back(copy);
     }
 }
 
@@ -197,41 +83,7 @@ void GameObjectManager::SaveScene(const std::string& filepath)
     for (const auto& obj : objects_) {
         if (!obj) continue;
         nlohmann::json objJson;
-        objJson["name"] = obj->GetName();
-        objJson["isActive"] = obj->GetIsActive();
-        objJson["isLocked"] = obj->GetIsLocked();
-        
-        const Transform& t = obj->GetTransform();
-        objJson["transform"]["translate"] = { t.translate.x, t.translate.y, t.translate.z };
-        objJson["transform"]["rotate"] = { t.rotate.x, t.rotate.y, t.rotate.z };
-        objJson["transform"]["scale"] = { t.scale.x, t.scale.y, t.scale.z };
-        
-        if (auto renderObj = std::dynamic_pointer_cast<RenderObject>(obj)) {
-            objJson["type"] = "RenderObject";
-            objJson["modelFilePath"] = renderObj->GetModelFilePath();
-        }
-        else if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(obj)) {
-            objJson["type"] = "DirectionalLight";
-            objJson["lightColor"] = { dirLight->GetColor().x, dirLight->GetColor().y, dirLight->GetColor().z, dirLight->GetColor().w };
-            objJson["intensity"] = dirLight->GetIntensity();
-        }
-        else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(obj)) {
-            objJson["type"] = "PointLight";
-            objJson["lightColor"] = { pointLight->GetColor().x, pointLight->GetColor().y, pointLight->GetColor().z, pointLight->GetColor().w };
-            objJson["intensity"] = pointLight->GetIntensity();
-            objJson["radius"] = pointLight->GetRadius();
-            objJson["decay"] = pointLight->GetDecay();
-        }
-        else if (auto spotLight = std::dynamic_pointer_cast<SpotLight>(obj)) {
-            objJson["type"] = "SpotLight";
-            objJson["lightColor"] = { spotLight->GetColor().x, spotLight->GetColor().y, spotLight->GetColor().z, spotLight->GetColor().w };
-            objJson["intensity"] = spotLight->GetIntensity();
-            objJson["distance"] = spotLight->GetDistance();
-            objJson["decay"] = spotLight->GetDecay();
-            objJson["cosAngle"] = spotLight->GetCosAngle();
-            objJson["cosFalloffStart"] = spotLight->GetCosFalloffStart();
-        }
-        
+        obj->Serialize(objJson);
         objectsArray.push_back(objJson);
     }
     
@@ -255,8 +107,8 @@ void GameObjectManager::LoadScene(const std::string& filepath)
         std::vector<std::shared_ptr<GameObject>> usedObjects;
 
         for (const auto& objJson : root["objects"]) {
-            std::string name = objJson["name"];
-            std::string type = objJson.contains("type") ? objJson["type"].get<std::string>() : "";
+            std::string name = objJson.value("name", "");
+            std::string type = objJson.value("type", "");
             std::shared_ptr<GameObject> targetObj = nullptr;
 
             for (auto& obj : objects_) {
@@ -270,88 +122,16 @@ void GameObjectManager::LoadScene(const std::string& filepath)
             }
 
             if (!targetObj) {
-                if (type == "RenderObject") {
-                    std::string filePath = objJson.value("modelFilePath", "");
-                    size_t lastSlash = filePath.find_last_of("/\\");
-                    if (lastSlash != std::string::npos) {
-                        std::string dirPath = filePath.substr(0, lastSlash);
-                        std::string fileName = filePath.substr(lastSlash + 1);
-                        try {
-                            ModelData modelData = AssetManager::LoadModel(dirPath, fileName);
-                            auto model = std::make_shared<Model>();
-                            model->Initialize(modelData);
-                            model->SetName(fileName);
-                            
-                            auto renderObj = std::make_shared<RenderObject>(model);
-                            renderObj->SetName(name);
-                            renderObj->SetModelFilePath(filePath);
-                            targetObj = renderObj;
-                            objects_.push_back(targetObj);
-                            usedObjects.push_back(targetObj);
-                        } catch (...) {}
-                    }
-                }
-                else if (type == "DirectionalLight") {
-                    auto light = std::make_shared<DirectionalLight>();
-                    light->SetName(name);
-                    if (objJson.contains("lightColor")) {
-                        light->SetColor({ objJson["lightColor"][0], objJson["lightColor"][1], objJson["lightColor"][2], objJson["lightColor"][3] });
-                    }
-                    if (objJson.contains("intensity")) light->SetIntensity(objJson["intensity"]);
-                    targetObj = light;
-                    objects_.push_back(targetObj);
-                    usedObjects.push_back(targetObj);
-                }
-                else if (type == "PointLight") {
-                    auto light = std::make_shared<PointLight>();
-                    light->SetName(name);
-                    if (objJson.contains("lightColor")) {
-                        light->SetColor({ objJson["lightColor"][0], objJson["lightColor"][1], objJson["lightColor"][2], objJson["lightColor"][3] });
-                    }
-                    if (objJson.contains("intensity")) light->SetIntensity(objJson["intensity"]);
-                    if (objJson.contains("radius")) light->SetRadius(objJson["radius"]);
-                    if (objJson.contains("decay")) light->SetDecay(objJson["decay"]);
-                    targetObj = light;
-                    objects_.push_back(targetObj);
-                    usedObjects.push_back(targetObj);
-                }
-                else if (type == "SpotLight") {
-                    auto light = std::make_shared<SpotLight>();
-                    light->SetName(name);
-                    if (objJson.contains("lightColor")) {
-                        light->SetColor({ objJson["lightColor"][0], objJson["lightColor"][1], objJson["lightColor"][2], objJson["lightColor"][3] });
-                    }
-                    if (objJson.contains("intensity")) light->SetIntensity(objJson["intensity"]);
-                    if (objJson.contains("distance")) light->SetDistance(objJson["distance"]);
-                    if (objJson.contains("decay")) light->SetDecay(objJson["decay"]);
-                    if (objJson.contains("cosAngle")) light->SetCosAngle(objJson["cosAngle"]);
-                    if (objJson.contains("cosFalloffStart")) light->SetCosFalloffStart(objJson["cosFalloffStart"]);
-                    targetObj = light;
+                targetObj = GameObjectFactory::Create(type);
+                if (targetObj) {
+                    targetObj->SetName(name);
                     objects_.push_back(targetObj);
                     usedObjects.push_back(targetObj);
                 }
             }
 
             if (targetObj) {
-                targetObj->SetIsActive(objJson["isActive"]);
-                if (objJson.contains("isLocked")) targetObj->SetIsLocked(objJson["isLocked"]);
-                
-                if (objJson.contains("transform")) {
-                    Transform t;
-                    t.translate.x = objJson["transform"]["translate"][0];
-                    t.translate.y = objJson["transform"]["translate"][1];
-                    t.translate.z = objJson["transform"]["translate"][2];
-                    
-                    t.rotate.x = objJson["transform"]["rotate"][0];
-                    t.rotate.y = objJson["transform"]["rotate"][1];
-                    t.rotate.z = objJson["transform"]["rotate"][2];
-                    
-                    t.scale.x = objJson["transform"]["scale"][0];
-                    t.scale.y = objJson["transform"]["scale"][1];
-                    t.scale.z = objJson["transform"]["scale"][2];
-                    
-                    targetObj->SetTransform(t);
-                }
+                targetObj->Deserialize(objJson);
             }
         }
     }

@@ -162,4 +162,24 @@ public:
   float GetCollisionWidth() const { return collisionWidth_; }
   float GetCollisionHeight() const { return collisionHeight_; }
   float GetCollisionDepth() const { return collisionDepth_; }
+
+  // ポリモーフィズム用メソッド
+  virtual bool IsRegularObstacle() const {
+    return type_ == Type::Low || type_ == Type::High || type_ == Type::Wall;
+  }
+  virtual bool IsItem() const {
+    return type_ == Type::CameraItem || type_ == Type::BarrierItem ||
+           type_ == Type::ClearItem || type_ == Type::BossItem;
+  }
+  virtual bool CanRollUnder() const {
+    return type_ == Type::High;
+  }
+  virtual bool RequiresLaneChangeToAvoid() const {
+    return type_ == Type::Wall || type_ == Type::BossAttack || type_ == Type::BossAttackReflectable;
+  }
+
+  /// <summary>
+  /// プレイヤーとの衝突処理
+  /// </summary>
+  virtual bool OnPlayerCollision(class GameScene* scene, class Player* player);
 };

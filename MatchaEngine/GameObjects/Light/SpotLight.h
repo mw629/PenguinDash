@@ -1,13 +1,11 @@
 #pragma once
-#include "../Object/GameObject.h"
+#include "BaseLight.h"
 #include <cmath>
 #include <numbers>
 
-class SpotLight : public GameObject
+class SpotLight : public BaseLight
 {
 private:
-	Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-	float intensity_ = 7.0f;
 	float distance_ = 4.0f;
 	float decay_ = 2.0f;
 	float cosAngle_ = std::cos(std::numbers::pi_v<float> / 3.0f);
@@ -15,14 +13,15 @@ private:
 
 public:
 	SpotLight();
+	std::string GetTypeName() const override { return "SpotLight"; }
+	std::shared_ptr<GameObject> Clone() const override;
+
 	void ImGui(bool drawTransform = true) override;
 	void Draw(class Draw& draw) override;
+	void ApplyToLightManager(class LightManager& manager) override;
 
-	const Vector4& GetColor() const { return color_; }
-	void SetColor(const Vector4& color) { color_ = color; }
-
-	float GetIntensity() const { return intensity_; }
-	void SetIntensity(float intensity) { intensity_ = intensity; }
+	void Serialize(nlohmann::json& out) const override;
+	void Deserialize(const nlohmann::json& in) override;
 
 	float GetDistance() const { return distance_; }
 	void SetDistance(float distance) { distance_ = distance; }

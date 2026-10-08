@@ -55,6 +55,7 @@ public:
 	virtual void CreateObject();
 
 	virtual void SettingWvp(Matrix4x4 viewMatrix);
+	virtual void Render(class Draw& draw);
 
 
 	void SetTransform(Transform transform) { transform_ = transform; }  // バグ修正: transform_ = transform_ → transform_ = transform

@@ -118,4 +118,12 @@ public:
   void PausedUpdate();
   void PlayerHitUpdate();
   void EditorUpdate();
+
+  class ScoreManager* GetScoreManager() { return scoreManager_.get(); }
+  class GameSceneEffect* GetEffectManager() { return effectManager_.get(); }
+  class StageSettings* GetStageSettings() { return stageSettings_.get(); }
+  class Player* GetPlayer() { return player_.get(); }
+  class Boss* GetBoss() { return boss_.get(); }
+  PlayingState GetPlayingState() const { return playingState_; }
+  void TriggerPlayerHit(bool isTrip);
 };

@@ -479,3 +479,97 @@ void Obstacle::ImGuiInnerComponents() {
   }
 #endif
 }
+
+#include "../GameScene.h"
+#include "Player.h"
+#include "../System/ScoreManager.h"
+#include "../Stage/StageSettings.h"
+#include "../Effect/GameSceneEffect.h"
+#include "../System/SoundManager.h"
+
+bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
+{
+  if (!scene || !player) return false;
+
+  if (type_ == Type::GuideFloor) {
+    player->StartForceToCenter(30.0f);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
+    return false;
+  }
+
+  if (type_ == Type::Bonus) {
+    OnBlowAway();
+    if (scene->GetScoreManager()) {
+      scene->GetScoreManager()->AddBonusEnemyHit();
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
+    return false;
+  }
+
+  if (type_ == Type::CameraItem) {
+    OnHit();
+    scene->ChangePlayingState(GameScene::PlayingState::OneLane);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    return false;
+  }
+
+  if (type_ == Type::BarrierItem) {
+    OnHit();
+    player->SetHasBarrier(true);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitBarrier(player->GetTransform().translate);
+    }
+    return false;
+  }
+
+  if (type_ == Type::ClearItem) {
+    OnHit();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
+        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
+          obs->OnBlowAway();
+        }
+      }
+    }
+    return false;
+  }
+
+  if (type_ == Type::BossItem) {
+    OnHit();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
+        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
+          obs->OnBlowAway();
+        }
+      }
+    }
+    scene->ChangePlayingState(GameScene::PlayingState::Boss);
+    return false;
+  }
+
+  if (type_ == Type::BossAttack || type_ == Type::BossAttackReflectable) {
+    if (isReflected_ || isFalling_) {
+      return false;
+    }
+  }
+
+  if (player->GetHasBarrier()) {
+    player->SetHasBarrier(false);
+    OnBlowAway();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->BreakBarrier(player->GetTransform().translate);
+    }
+    return false;
+  }
+
+  // 被弾
+  bool isTrip = (type_ == Type::Low);
+  scene->TriggerPlayerHit(isTrip);
+  return true;
+}

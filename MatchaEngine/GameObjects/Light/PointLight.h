@@ -1,24 +1,23 @@
 #pragma once
-#include "../Object/GameObject.h"
+#include "BaseLight.h"
 
-class PointLight : public GameObject
+class PointLight : public BaseLight
 {
 private:
-	Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-	float intensity_ = 1.0f;
 	float radius_ = 10.0f;
 	float decay_ = 2.0f;
 
 public:
 	PointLight();
+	std::string GetTypeName() const override { return "PointLight"; }
+	std::shared_ptr<GameObject> Clone() const override;
+
 	void ImGui(bool drawTransform = true) override;
 	void Draw(class Draw& draw) override;
+	void ApplyToLightManager(class LightManager& manager) override;
 
-	const Vector4& GetColor() const { return color_; }
-	void SetColor(const Vector4& color) { color_ = color; }
-
-	float GetIntensity() const { return intensity_; }
-	void SetIntensity(float intensity) { intensity_ = intensity; }
+	void Serialize(nlohmann::json& out) const override;
+	void Deserialize(const nlohmann::json& in) override;
 
 	float GetRadius() const { return radius_; }
 	void SetRadius(float radius) { radius_ = radius; }

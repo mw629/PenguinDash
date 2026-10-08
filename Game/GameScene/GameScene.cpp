@@ -537,95 +537,28 @@ void GameScene::CheckCollisions() {
         obstacle->GetCollisionHeight(), obstacle->GetCollisionDepth());
 
     if (Collision::CheckAABB(playerAABB, obstacleAABB)) {
-      if (obstacle->GetType() == Obstacle::Type::GuideFloor) {
-        player_->StartForceToCenter(30.0f);
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
-        continue;
+      if (obstacle->OnPlayerCollision(this, player_.get())) {
+        break;
       }
-
-      if (obstacle->GetType() == Obstacle::Type::Bonus) {
-        obstacle->OnBlowAway();
-        scoreManager_->AddBonusEnemyHit();
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
-        continue;
-      }
-
-      if (obstacle->GetType() == Obstacle::Type::CameraItem) {
-        obstacle->OnHit();
-        ChangePlayingState(PlayingState::OneLane);
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
-        continue;
-      }
-
-      if (obstacle->GetType() == Obstacle::Type::BarrierItem) {
-        obstacle->OnHit();
-        player_->SetHasBarrier(true);
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
-        effectManager_->EmitBarrier(player_->GetTransform().translate);
-        continue;
-      }
-
-      if (obstacle->GetType() == Obstacle::Type::ClearItem) {
-        obstacle->OnHit();
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
-        for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
-          Obstacle *obs = stageSettings_->GetObstacle(j);
-          if (obs->GetIsActive() && (obs->GetType() == Obstacle::Type::Low ||
-                                     obs->GetType() == Obstacle::Type::High ||
-                                     obs->GetType() == Obstacle::Type::Wall)) {
-            obs->OnBlowAway();
-          }
-        }
-        continue;
-      }
-
-      if (obstacle->GetType() == Obstacle::Type::BossItem) {
-        obstacle->OnHit();
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
-        for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
-          Obstacle *obs = stageSettings_->GetObstacle(j);
-          if (obs->GetIsActive() && (obs->GetType() == Obstacle::Type::Low ||
-                                     obs->GetType() == Obstacle::Type::High ||
-                                     obs->GetType() == Obstacle::Type::Wall)) {
-            obs->OnBlowAway();
-          }
-        }
-        ChangePlayingState(PlayingState::Boss);
-        continue;
-      }
-
-      if (obstacle->GetType() == Obstacle::Type::BossAttack ||
-          obstacle->GetType() == Obstacle::Type::BossAttackReflectable) {
-        if (obstacle->GetIsReflected() || obstacle->GetIsFalling())
-          continue;
-      }
-
-      if (player_->GetHasBarrier()) {
-        player_->SetHasBarrier(false);
-        obstacle->OnBlowAway();
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
-        effectManager_->BreakBarrier(player_->GetTransform().translate);
-        continue;
-      }
-
-      // 被弾
-      gameState_ = GameState::PlayerHit;
-      crashEffect_->Trigger();
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
-      GamePadInput::Rumble(0.35f, 48000, 48000);
-
-      if (playingState_ == PlayingState::Boss && boss_->GetIsActive()) {
-        boss_->ChangeState(BossState::Victory);
-      }
-
-      stageSettings_->SetGameOver(true);
-      bool isTrip = (obstacle->GetType() == Obstacle::Type::Low);
-      player_->OnHit(isTrip);
-
-      scoreManager_->RecordCurrentScores();
-      break;
+      continue;
     }
   }
+}
+
+void GameScene::TriggerPlayerHit(bool isTrip) {
+  gameState_ = GameState::PlayerHit;
+  crashEffect_->Trigger();
+  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
+  GamePadInput::Rumble(0.35f, 48000, 48000);
+
+  if (playingState_ == PlayingState::Boss && boss_->GetIsActive()) {
+    boss_->ChangeState(BossState::Victory);
+  }
+
+  stageSettings_->SetGameOver(true);
+  player_->OnHit(isTrip);
+
+  scoreManager_->RecordCurrentScores();
 }
 
 void GameScene::CheckKeepRolling() {
@@ -638,7 +571,7 @@ void GameScene::CheckKeepRolling() {
       Obstacle *obstacle = stageSettings_->GetObstacle(i);
       if (!obstacle->GetIsActive() || obstacle->GetIsHit()) continue;
 
-      if (obstacle->GetType() == Obstacle::Type::High) {
+      if (obstacle->CanRollUnder()) {
         AABB obstacleAABB = Collision::MakeAABB(
             obstacle->GetTransform(), obstacle->GetCollisionWidth(),
             obstacle->GetCollisionHeight(), obstacle->GetCollisionDepth());
@@ -1180,10 +1113,7 @@ void GameScene::ImGui() {
     if (ImGui::Button("Clear All Obstacles (全障害物吹き飛ばし)")) {
       for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
         Obstacle *obs = stageSettings_->GetObstacle(j);
-        if (obs && obs->GetIsActive() &&
-            (obs->GetType() == Obstacle::Type::Low ||
-             obs->GetType() == Obstacle::Type::High ||
-             obs->GetType() == Obstacle::Type::Wall)) {
+        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
           obs->OnBlowAway();
         }
       }
@@ -1196,9 +1126,7 @@ void GameScene::ImGui() {
     if (ImGui::Button("Trigger Boss Item (ボス戦移行)")) {
       for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
         Obstacle *obs = stageSettings_->GetObstacle(j);
-        if (obs->GetIsActive() && (obs->GetType() == Obstacle::Type::Low ||
-                                   obs->GetType() == Obstacle::Type::High ||
-                                   obs->GetType() == Obstacle::Type::Wall)) {
+        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
           obs->OnBlowAway();
         }
       }

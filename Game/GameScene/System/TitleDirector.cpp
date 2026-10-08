@@ -125,9 +125,7 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
       lanes[idx].minObs = obs;
     }
 
-    if (obs->GetType() == Obstacle::Type::Wall ||
-        obs->GetType() == Obstacle::Type::BossAttack ||
-        obs->GetType() == Obstacle::Type::BossAttackReflectable) {
+    if (obs->RequiresLaneChangeToAvoid()) {
       if (relZ < lanes[idx].minWallDistZ) {
         lanes[idx].minWallDistZ = relZ;
       }

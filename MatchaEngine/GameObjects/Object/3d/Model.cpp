@@ -1,5 +1,6 @@
 #include "Model.h"
 #include "GraphicsDevice.h"
+#include "Graphics/Render/Draw.h"
 #include "Calculation.h"
 #include "Load.h"
 #include "Texture.h"
@@ -137,6 +138,11 @@ BoundingSphere Model::GetWorldBoundingSphere() const
 	Matrix4x4 worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
 	Matrix4x4 worldMatrix = MultiplyMatrix4x4(rootNode_.localMatrix, worldMatrixObj);
 	return TransformBoundingSphere(localSphere_, worldMatrix);
+}
+
+void Model::Render(class Draw& draw)
+{
+	draw.DrawModel(this);
 }
 
 

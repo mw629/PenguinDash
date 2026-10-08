@@ -401,6 +401,7 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="Game\JsonScene\JsonScene.h" />
     <ClInclude Include="MatchaEngine\Graphics\Render\LineRenderer.h" />
     <ClInclude Include="MatchaEngine\System\GameObjectManager.h" />
+    <ClInclude Include="MatchaEngine\System\GameObjectFactory.h" />
     <ClInclude Include="MatchaEngine\System\CollisionManager.h" />
     <ClInclude Include="MatchaEngine\Resource\AssetManager.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Object\GameObject.h" />
@@ -446,6 +447,7 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="MatchaEngine\GameObjects\Line\Grid.h" />
     <ClInclude Include="MatchaEngine\Graphics\DepthStencil.h" />
     <ClInclude Include="MatchaEngine\Graphics\DescriptorHeap.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Light\BaseLight.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Light\DirectionalLight.h" />
     <ClInclude Include="MatchaEngine\Graphics\GpuSyncManager.h" />
     <ClInclude Include="MatchaEngine\Graphics\GpuProfiler.h" />
