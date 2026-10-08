@@ -10,6 +10,45 @@ enum class BossState {
   Victory     // 勝利（プレイヤー敗北）
 };
 
+class Boss;
+
+class IBossState {
+public:
+  virtual ~IBossState() = default;
+  virtual BossState GetType() const = 0;
+  virtual void Enter(Boss &/*boss*/) {}
+  virtual void Update(Boss &boss, float speedMultiplier) = 0;
+  virtual void Exit(Boss &/*boss*/) {}
+};
+
+class BossAppearanceState : public IBossState {
+public:
+  BossState GetType() const override { return BossState::Appearance; }
+  void Enter(Boss &boss) override;
+  void Update(Boss &boss, float speedMultiplier) override;
+};
+
+class BossBattleState : public IBossState {
+public:
+  BossState GetType() const override { return BossState::Battle; }
+  void Enter(Boss &boss) override;
+  void Update(Boss &boss, float speedMultiplier) override;
+};
+
+class BossDefeatState : public IBossState {
+public:
+  BossState GetType() const override { return BossState::Defeat; }
+  void Enter(Boss &boss) override;
+  void Update(Boss &boss, float speedMultiplier) override;
+};
+
+class BossVictoryState : public IBossState {
+public:
+  BossState GetType() const override { return BossState::Victory; }
+  void Enter(Boss &boss) override;
+  void Update(Boss &boss, float speedMultiplier) override;
+};
+
 class Boss : public GameObject {
 public:
   static constexpr int kMaxHP = 5;
@@ -26,7 +65,7 @@ private:
   int hp_ = kMaxHP;
   bool isHit_ = false;
   float hitTimer_ = 0.0f;
-  BossState state_ = BossState::Appearance;
+  std::unique_ptr<IBossState> currentState_;
   float stateTimer_ = 0.0f;
   float battleAnimTimer_ = 0.0f;
 
@@ -54,11 +93,19 @@ public:
   int GetHP() const { return hp_; }
   int GetMaxHP() const { return kMaxHP; }
 
-  BossState GetState() const { return state_; }
+  BossState GetState() const;
   float GetStateTimer() const { return stateTimer_; }
   void ChangeState(BossState nextState);
+  void ChangeState(std::unique_ptr<IBossState> nextState);
+
+  Transform &GetTransformRef() { return transform_; }
 
   Vector3 GetTargetPos() const { return targetPos_; }
   void SetTargetPos(const Vector3 &targetPos) { targetPos_ = targetPos; }
   Vector3 &GetTargetPosRef() { return targetPos_; }
+
+  const Vector3 &GetStartPos() const { return startPos_; }
+  void SetStartPos(const Vector3 &startPos) { startPos_ = startPos; }
+
+  float &GetBattleAnimTimerRef() { return battleAnimTimer_; }
 };

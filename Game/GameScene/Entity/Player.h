@@ -6,6 +6,65 @@
 #include "GameObject.h"
 #include <CharacterAnimator.h>
 
+enum class PlayerActionType {
+  Run,
+  Jump,
+  Roll,
+  Hit,
+  ForcedCenter
+};
+
+class Player;
+
+class IPlayerState {
+public:
+  virtual ~IPlayerState() = default;
+  virtual PlayerActionType GetType() const = 0;
+  virtual void Enter(Player &/*player*/) {}
+  virtual void Update(Player &player, float speedMultiplier) = 0;
+  virtual void Exit(Player &/*player*/) {}
+  virtual bool CanAct() const { return true; }
+};
+
+class PlayerRunState : public IPlayerState {
+public:
+  PlayerActionType GetType() const override { return PlayerActionType::Run; }
+  void Enter(Player &player) override;
+  void Update(Player &player, float speedMultiplier) override;
+};
+
+class PlayerJumpState : public IPlayerState {
+public:
+  PlayerActionType GetType() const override { return PlayerActionType::Jump; }
+  void Enter(Player &player) override;
+  void Update(Player &player, float speedMultiplier) override;
+};
+
+class PlayerRollState : public IPlayerState {
+public:
+  PlayerActionType GetType() const override { return PlayerActionType::Roll; }
+  void Enter(Player &player) override;
+  void Update(Player &player, float speedMultiplier) override;
+  void Exit(Player &player) override;
+};
+
+class PlayerHitState : public IPlayerState {
+public:
+  PlayerActionType GetType() const override { return PlayerActionType::Hit; }
+  void Enter(Player &player) override;
+  void Update(Player &player, float speedMultiplier) override;
+  void Exit(Player &player) override;
+  bool CanAct() const override { return false; }
+};
+
+class PlayerForcedCenterState : public IPlayerState {
+public:
+  PlayerActionType GetType() const override { return PlayerActionType::ForcedCenter; }
+  void Enter(Player &player) override;
+  void Update(Player &player, float speedMultiplier) override;
+  bool CanAct() const override { return false; }
+};
+
 class Player : public GameObject {
 private:
   enum MoveDirection { Left, Right, None };
@@ -60,7 +119,6 @@ private:
   // ペンギンモデルのスケール・オフセット（GLTFモデルの0.01スケールを等身大に補正）
   Transform modelOffset_{
       kDefaultModelScale, {0.0f, 0.0f, 0.0f}, kDefaultModelTranslate};
-  // transform_ is inherited from GameObject
 
   // レーン移動のための変数
   int laneIndex_ = 0;       // 現在のレーン位置
@@ -76,14 +134,16 @@ private:
   int maxLane_ = kDefaultMaxLane;
   float laneWidth_ = kDefaultLaneWidth;
 
-  // アクション用の変数
-  bool isJumping_ = false;
+  // アクションステート管理
+  std::unique_ptr<IPlayerState> currentState_;
+  float currentSpeedMultiplier_ = 1.0f;
+
+  // アクション用の物理・タイマー変数
   float velocityY_ = 0.0f;
   float gravity_ = kDefaultGravity;
   float jumpPower_ = kDefaultJumpPower;
   float baseHeight_ = kDefaultBaseHeight; // 地面の高さ（Y座標）
 
-  bool isRolling_ = false;
   float rollTimer_ = 0.0f;
   float rollDuration_ = kDefaultRollDuration; // 転がりの継続フレーム数（約0.5秒）
   bool keepRolling_ = false;   // 強制的にしゃがみを維持するフラグ
@@ -99,14 +159,12 @@ private:
   float currentRecoveryTimer_ = 0.0f; // 現在の硬直タイマー
 
   // ヒット時の演出用変数
-  bool isHit_ = false;
   bool isTrip_ = false;
   float hitTimer_ = 0.0f;
   float hitDuration_ = 90.0f; // ノックバックにかかるフレーム数
   Vector3 knockbackVelocity_{0.0f, 0.0f, 0.0f}; // ノックバック速度
 
   // 強制中央移動用の変数
-  bool isForcedCentering_ = false;
   float forcedCenterTimer_ = 0.0f;
   float forcedCenterDuration_ = 30.0f; // 中央に到達するまでのフレーム数
   float forcedCenterStartX_ = 0.0f;
@@ -134,8 +192,9 @@ public:
 
   void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override;
 
-  void PlayerMove(float speedMultiplier);
-  void HitUpdate(float speedMultiplier);
+  // レーン移動ロジック
+  void ProcessLaneInput();
+  void UpdateLaneMovement(float speedMultiplier);
 
   void SetLaneLimits(int minLane, int maxLane, float laneWidth) {
     minLane_ = minLane;
@@ -151,10 +210,20 @@ public:
            GameObject::HasMaterial();
   }
 
-  // GetTransform() is inherited from GameObject
-  bool GetIsRolling() const { return isRolling_; }
+  // ステート関連
+  PlayerActionType GetActionType() const {
+    return currentState_ ? currentState_->GetType() : PlayerActionType::Run;
+  }
+  IPlayerState *GetCurrentActionState() const { return currentState_.get(); }
+  float GetCurrentSpeedMultiplier() const { return currentSpeedMultiplier_; }
+  void ChangeActionState(std::unique_ptr<IPlayerState> newState);
+  void ChangeActionState(PlayerActionType nextType);
+
+  bool GetIsRolling() const { return GetActionType() == PlayerActionType::Roll; }
   void SetKeepRolling(bool keep) { keepRolling_ = keep; }
-  bool GetIsJumping() const { return isJumping_; }
+  bool GetIsJumping() const { return GetActionType() == PlayerActionType::Jump; }
+  bool GetIsHit() const { return GetActionType() == PlayerActionType::Hit; }
+  bool GetIsForcedCentering() const { return GetActionType() == PlayerActionType::ForcedCenter; }
 
   float GetJumpPower() const { return jumpPower_; }
   void SetJumpPower(float power) { jumpPower_ = power; }
@@ -190,7 +259,9 @@ public:
   int GetLaneIndex() const { return laneIndex_; }
   int GetTargetLaneIndex() const { return targetLaneIndex_; }
   bool IsChangingLane() const { return laneIndex_ != targetLaneIndex_; }
-  bool CanAct() const { return currentRecoveryTimer_ <= 0.0f; }
+  bool CanAct() const {
+    return (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
+  }
 
   // ヒット演出用
   void OnHit(bool isTrip = false);
@@ -198,4 +269,33 @@ public:
 
   // 狭まる区間で強制的に中央へ寄せる
   void StartForceToCenter(float duration);
+
+  // ステートクラス向けのアクセサ
+  Transform &GetTransformRef() { return transform_; }
+  CharacterAnimator *GetModel() { return model_.get(); }
+  float &GetVelocityYRef() { return velocityY_; }
+  float &GetRollTimerRef() { return rollTimer_; }
+  bool GetKeepRolling() const { return keepRolling_; }
+  float GetRollTransitionDuration() const { return rollTransitionDuration_; }
+  float GetWalkTransitionDuration() const { return walkTransitionDuration_; }
+  float &GetCurrentRecoveryTimerRef() { return currentRecoveryTimer_; }
+  float GetJumpRecovery() const { return jumpRecovery_; }
+  float GetRollRecovery() const { return rollRecovery_; }
+  float GetLaneChangeRecovery() const { return laneChangeRecovery_; }
+  float &GetHitTimerRef() { return hitTimer_; }
+  float GetHitDuration() const { return hitDuration_; }
+  Vector3 &GetKnockbackVelocityRef() { return knockbackVelocity_; }
+  bool GetIsTrip() const { return isTrip_; }
+  void SetIsTrip(bool trip) { isTrip_ = trip; }
+  float &GetForcedCenterTimerRef() { return forcedCenterTimer_; }
+  float GetForcedCenterDuration() const { return forcedCenterDuration_; }
+  void SetForcedCenterDuration(float d) { forcedCenterDuration_ = d; }
+  float &GetForcedCenterStartXRef() { return forcedCenterStartX_; }
+  void SetLaneIndex(int lane) { laneIndex_ = lane; }
+  void SetTargetLaneIndex(int lane) { targetLaneIndex_ = lane; }
+  float &GetStartXRef() { return startX_; }
+  float &GetLerpTimeRef() { return lerpTime_; }
+  int GetMinLane() const { return minLane_; }
+  int GetMaxLane() const { return maxLane_; }
+  float GetLaneWidth() const { return laneWidth_; }
 };

@@ -23,7 +23,7 @@ void Player::UpdateDrawTransform(float speedMultiplier) {
   // 平行移動オフセットの適用
   drawTransform.translate.x += modelOffset_.translate.x;
   drawTransform.translate.y +=
-      modelOffset_.translate.y + (isRolling_ ? kDefaultRollingHeightOffset : 0.0f);
+      modelOffset_.translate.y + (GetIsRolling() ? kDefaultRollingHeightOffset : 0.0f);
   drawTransform.translate.z += modelOffset_.translate.z;
 
   // 回転オフセットの適用
@@ -76,6 +76,215 @@ void Player::Initialize(ModelData modelData) {
   UpdateDrawTransform(0.0f);
 }
 
+// ==========================================
+// Player States Implementation
+// ==========================================
+
+// --- PlayerRunState ---
+void PlayerRunState::Enter(Player &player) {
+  player.GetTransformRef().scale.y = 1.0f;
+  player.GetTransformRef().translate.y = player.GetBaseHeight();
+  if (player.GetModel()) {
+    player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+  }
+}
+
+void PlayerRunState::Update(Player &player, float speedMultiplier) {
+  if (speedMultiplier <= 0.0f) {
+    return;
+  }
+
+  // レーン入力処理
+  player.ProcessLaneInput();
+
+  // アクション判定
+  if (player.CanAct() && !player.GetAutoPilot()) {
+    if (GameSceneManager::GetInstance()->IsPushJump()) {
+      player.ChangeActionState(PlayerActionType::Jump);
+      if (player.GetCurrentActionState()) {
+        player.GetCurrentActionState()->Update(player, speedMultiplier);
+      }
+      return;
+    }
+    if (GameSceneManager::GetInstance()->IsPushRoll()) {
+      player.ChangeActionState(PlayerActionType::Roll);
+      if (player.GetCurrentActionState()) {
+        player.GetCurrentActionState()->Update(player, speedMultiplier);
+      }
+      return;
+    }
+  }
+
+  // 通常レーン移動更新
+  player.UpdateLaneMovement(speedMultiplier);
+}
+
+// --- PlayerJumpState ---
+void PlayerJumpState::Enter(Player &player) {
+  float mult = player.GetCurrentSpeedMultiplier() > 0.0f ? player.GetCurrentSpeedMultiplier() : 1.0f;
+  player.GetVelocityYRef() = player.GetJumpPower() * mult;
+  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
+}
+
+void PlayerJumpState::Update(Player &player, float speedMultiplier) {
+  if (speedMultiplier <= 0.0f) {
+    return;
+  }
+
+  // 空中でもレーン移動入力・更新は有効
+  player.ProcessLaneInput();
+  player.UpdateLaneMovement(speedMultiplier);
+
+  // 垂直ジャンプ物理
+  Transform &t = player.GetTransformRef();
+  t.translate.y += player.GetVelocityYRef();
+  player.GetVelocityYRef() -= player.GetGravity() * (speedMultiplier * speedMultiplier);
+
+  // 地面に着地
+  if (t.translate.y <= player.GetBaseHeight()) {
+    t.translate.y = player.GetBaseHeight();
+    player.GetVelocityYRef() = 0.0f;
+    player.GetCurrentRecoveryTimerRef() = player.GetJumpRecovery();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
+    player.ChangeActionState(PlayerActionType::Run);
+  }
+}
+
+// --- PlayerRollState ---
+void PlayerRollState::Enter(Player &player) {
+  player.GetRollTimerRef() = player.GetRollDuration();
+  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
+  if (player.GetModel()) {
+    player.GetModel()->SetAnimation("sneakWalk", player.GetRollTransitionDuration());
+  }
+  player.GetTransformRef().translate.y = player.GetBaseHeight() - 0.5f;
+}
+
+void PlayerRollState::Update(Player &player, float speedMultiplier) {
+  if (speedMultiplier <= 0.0f) {
+    return;
+  }
+
+  // 転がり中でもジャンプでキャンセル可能
+  if (player.CanAct() && !player.GetAutoPilot()) {
+    if (GameSceneManager::GetInstance()->IsPushJump()) {
+      if (!player.GetKeepRolling()) {
+        player.ChangeActionState(PlayerActionType::Jump);
+        if (player.GetCurrentActionState()) {
+          player.GetCurrentActionState()->Update(player, speedMultiplier);
+        }
+        return;
+      }
+    }
+  }
+
+  // レーン入力処理（横移動が開始されたら転がりを解除）
+  int prevTarget = player.GetTargetLaneIndex();
+  player.ProcessLaneInput();
+  if (player.GetTargetLaneIndex() != prevTarget && !player.GetKeepRolling()) {
+    player.ChangeActionState(PlayerActionType::Run);
+    player.UpdateLaneMovement(speedMultiplier);
+    return;
+  }
+  player.UpdateLaneMovement(speedMultiplier);
+
+  // 転がりタイマー減算
+  player.GetRollTimerRef() -= speedMultiplier;
+  if (player.GetRollTimerRef() <= 0.0f && !player.GetKeepRolling()) {
+    player.GetCurrentRecoveryTimerRef() = player.GetRollRecovery();
+    player.ChangeActionState(PlayerActionType::Run);
+  }
+}
+
+void PlayerRollState::Exit(Player &player) {
+  player.GetTransformRef().scale.y = 1.0f;
+  player.GetTransformRef().translate.y = player.GetBaseHeight();
+  if (player.GetModel()) {
+    player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+  }
+}
+
+// --- PlayerHitState ---
+void PlayerHitState::Enter(Player &player) {
+  player.GetTransformRef().scale = {1.0f, 1.0f, 1.0f};
+  if (player.GetModel()) {
+    player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+  }
+  player.GetCurrentRecoveryTimerRef() = 0.0f;
+  player.GetHitTimerRef() = 0.0f;
+
+  float randX = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+  if (player.GetIsTrip()) {
+    player.GetKnockbackVelocityRef() = {randX, 0.3f, 0.8f};
+  } else {
+    player.GetKnockbackVelocityRef() = {randX, 0.4f, -0.6f};
+  }
+}
+
+void PlayerHitState::Update(Player &player, float speedMultiplier) {
+  if (speedMultiplier == 0.0f) {
+    return;
+  }
+
+  player.GetHitTimerRef() += 1.0f;
+  Transform &transform = player.GetTransformRef();
+  Vector3 &knockback = player.GetKnockbackVelocityRef();
+
+  transform.translate.x += knockback.x;
+  transform.translate.y += knockback.y;
+  transform.translate.z += knockback.z;
+
+  knockback.y -= player.GetGravity() * 2.0f;
+  if (player.GetIsTrip()) {
+    transform.rotate.x += 0.2f;
+  } else {
+    transform.rotate.x -= 0.1f;
+  }
+
+  if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
+    transform.translate.y = player.GetBaseHeight();
+    knockback.y = 0.0f;
+    knockback.x *= 0.8f;
+    knockback.z *= 0.8f;
+  }
+}
+
+void PlayerHitState::Exit(Player &player) {
+  player.GetTransformRef().rotate.x = 0.0f;
+  player.GetKnockbackVelocityRef() = {0.0f, 0.0f, 0.0f};
+}
+
+// --- PlayerForcedCenterState ---
+void PlayerForcedCenterState::Enter(Player &player) {
+  player.GetForcedCenterTimerRef() = 0.0f;
+  player.GetForcedCenterStartXRef() = player.GetTransformRef().translate.x;
+}
+
+void PlayerForcedCenterState::Update(Player &player, float speedMultiplier) {
+  if (speedMultiplier <= 0.0f) {
+    return;
+  }
+
+  player.GetForcedCenterTimerRef() += speedMultiplier;
+  float t = player.GetForcedCenterTimerRef() / player.GetForcedCenterDuration();
+  if (t > 1.0f) {
+    t = 1.0f;
+  }
+
+  float easeT = t * t * (3.0f - 2.0f * t);
+  player.GetTransformRef().translate.x = Lerp(player.GetForcedCenterStartXRef(), 0.0f, easeT);
+
+  if (t >= 1.0f) {
+    player.SetLaneIndex(0);
+    player.SetTargetLaneIndex(0);
+    player.ChangeActionState(PlayerActionType::Run);
+  }
+}
+
+// ==========================================
+// Player Implementation
+// ==========================================
+
 void Player::Reset() {
   transform_.scale = {1.0f, 1.0f, 1.0f};
   transform_.rotate = {0.0f, 0.0f, 0.0f};
@@ -87,19 +296,15 @@ void Player::Reset() {
   startX_ = 0.0f;
   moveDirection_ = MoveDirection::None;
 
-  isJumping_ = false;
   velocityY_ = 0.0f;
-  isRolling_ = false;
   rollTimer_ = 0.0f;
   keepRolling_ = false;
   currentRecoveryTimer_ = 0.0f;
 
-  isHit_ = false;
   isTrip_ = false;
   hitTimer_ = 0.0f;
   knockbackVelocity_ = {0.0f, 0.0f, 0.0f};
 
-  isForcedCentering_ = false;
   forcedCenterTimer_ = 0.0f;
   forcedCenterDuration_ = kDefaultForcedCenterDuration;
   forcedCenterStartX_ = 0.0f;
@@ -109,23 +314,120 @@ void Player::Reset() {
   isAutoPilot_ = false;
   isVisible_ = true;
 
-  model_->SetAnimation("walk", 0.0f);
+  ChangeActionState(PlayerActionType::Run);
+
+  if (model_) {
+    model_->SetAnimation("walk", 0.0f);
+  }
 
   UpdateDrawTransform(0.0f);
 }
 
-void Player::Update(Matrix4x4 view, float speedMultiplier) {
-  if (isHit_) {
-    // SpeedMultiplier is ignored for hit update so animation plays consistently
-    // even if the game scroll stops.
-    if (speedMultiplier > 0.0f) {
-      HitUpdate(1.0f);
-    } else {
-      HitUpdate(0.0f);
-    }
-  } else {
-    PlayerMove(speedMultiplier);
+void Player::ChangeActionState(PlayerActionType nextType) {
+  switch (nextType) {
+  case PlayerActionType::Run:
+    ChangeActionState(std::make_unique<PlayerRunState>());
+    break;
+  case PlayerActionType::Jump:
+    ChangeActionState(std::make_unique<PlayerJumpState>());
+    break;
+  case PlayerActionType::Roll:
+    ChangeActionState(std::make_unique<PlayerRollState>());
+    break;
+  case PlayerActionType::Hit:
+    ChangeActionState(std::make_unique<PlayerHitState>());
+    break;
+  case PlayerActionType::ForcedCenter:
+    ChangeActionState(std::make_unique<PlayerForcedCenterState>());
+    break;
   }
+}
+
+void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
+  if (currentState_) {
+    currentState_->Exit(*this);
+  }
+  currentState_ = std::move(newState);
+  if (currentState_) {
+    currentState_->Enter(*this);
+  }
+}
+
+void Player::ProcessLaneInput() {
+  if (laneIndex_ != targetLaneIndex_) {
+    return; // 移動中は入力を受け付けない
+  }
+  if (!CanAct() || isAutoPilot_) {
+    return;
+  }
+
+  bool pushLeft = GameSceneManager::GetInstance()->IsPushLeft();
+  bool pushRight = GameSceneManager::GetInstance()->IsPushRight();
+  if (isInvertedControls_) {
+    if (pushLeft)
+      targetLaneIndex_ = laneIndex_ + 1;
+    if (pushRight)
+      targetLaneIndex_ = laneIndex_ - 1;
+  } else {
+    if (pushLeft)
+      targetLaneIndex_ = laneIndex_ - 1;
+    if (pushRight)
+      targetLaneIndex_ = laneIndex_ + 1;
+  }
+
+  if (targetLaneIndex_ < minLane_)
+    targetLaneIndex_ = minLane_;
+  if (targetLaneIndex_ > maxLane_)
+    targetLaneIndex_ = maxLane_;
+
+  if (targetLaneIndex_ != laneIndex_) {
+    startX_ = transform_.translate.x;
+    lerpTime_ = 0.0f;
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+  }
+}
+
+void Player::UpdateLaneMovement(float speedMultiplier) {
+  if (laneIndex_ == targetLaneIndex_) {
+    return;
+  }
+
+  lerpTime_ += laneChangeSpeed_ * speedMultiplier;
+  if (lerpTime_ > 1.0f) {
+    lerpTime_ = 1.0f;
+  }
+
+  float targetX = static_cast<float>(targetLaneIndex_) * laneWidth_;
+  transform_.translate.x = Lerp(startX_, targetX, lerpTime_);
+
+  if (lerpTime_ >= 1.0f) {
+    laneIndex_ = targetLaneIndex_;
+    currentRecoveryTimer_ = laneChangeRecovery_;
+  }
+}
+
+void Player::Update(Matrix4x4 view, float speedMultiplier) {
+  currentSpeedMultiplier_ = speedMultiplier;
+
+  // 硬直タイマーの更新
+  if (currentRecoveryTimer_ > 0.0f) {
+    currentRecoveryTimer_ -= (speedMultiplier > 0.0f ? speedMultiplier : 1.0f);
+    if (currentRecoveryTimer_ < 0.0f) {
+      currentRecoveryTimer_ = 0.0f;
+    }
+  }
+
+  // ステート更新
+  if (currentState_) {
+    if (GetIsHit()) {
+      currentState_->Update(*this, speedMultiplier > 0.0f ? 1.0f : 0.0f);
+    } else {
+      currentState_->Update(*this, speedMultiplier);
+    }
+  }
+
+  // モデルの配置更新
+  UpdateDrawTransform(speedMultiplier);
 
   // アニメーション更新（走っている際）
   if (speedMultiplier > 0.0f) {
@@ -148,170 +450,15 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
     axe_->SettingWvp(view);
   }
 
+  // コライダーサイズ設定
   if (auto collider = GetComponent<ColliderComponent>()) {
     collider->SetSize({kDefaultColliderWidth,
-                       isRolling_ ? kDefaultColliderHeightRoll
-                                  : kDefaultColliderHeightStand,
+                       GetIsRolling() ? kDefaultColliderHeightRoll
+                                      : kDefaultColliderHeightStand,
                        kDefaultColliderDepth});
   }
+
   GameObject::Update(view, speedMultiplier);
-}
-
-void Player::PlayerMove(float speedMultiplier) {
-  if (speedMultiplier <= 0.0f) {
-    UpdateDrawTransform(0.0f);
-    return;
-  }
-
-  // 硬直タイマーの更新
-  if (currentRecoveryTimer_ > 0.0f) {
-    currentRecoveryTimer_ -= speedMultiplier;
-    if (currentRecoveryTimer_ < 0.0f) {
-      currentRecoveryTimer_ = 0.0f;
-    }
-  }
-
-  bool canAct = (currentRecoveryTimer_ <= 0.0f);
-
-  // 強制中央移動の処理
-  if (isForcedCentering_) {
-    forcedCenterTimer_ += speedMultiplier;
-    float t = forcedCenterTimer_ / forcedCenterDuration_;
-    if (t > 1.0f) {
-      t = 1.0f;
-    }
-
-    // スムーズな補間（EaseInOut）
-    float easeT = t * t * (3.0f - 2.0f * t);
-    transform_.translate.x = Lerp(forcedCenterStartX_, 0.0f, easeT);
-
-    if (t >= 1.0f) {
-      isForcedCentering_ = false;
-      laneIndex_ = 0; // 中央レーンに確定
-      targetLaneIndex_ = 0;
-    }
-  }
-  // レーンの移動中ではなかったら（強制移動中でない時のみ入力受付）
-  else if (laneIndex_ == targetLaneIndex_) {
-    // キー入力で目標レーンを設定
-    if (canAct && !isAutoPilot_) {
-      bool pushLeft = GameSceneManager::GetInstance()->IsPushLeft();
-      bool pushRight = GameSceneManager::GetInstance()->IsPushRight();
-      if (isInvertedControls_) {
-        // ボス戦等でカメラが正面（180度反転）を向いている場合、
-        // 画面の見た目通りに動くように操作を反転（左入力で画面左/ワールド+Xへ、右入力で画面右/ワールド-Xへ）
-        if (pushLeft) {
-          targetLaneIndex_ = laneIndex_ + 1;
-        }
-        if (pushRight) {
-          targetLaneIndex_ = laneIndex_ - 1;
-        }
-      } else {
-        if (pushLeft) {
-          targetLaneIndex_ = laneIndex_ - 1;
-        }
-        if (pushRight) {
-          targetLaneIndex_ = laneIndex_ + 1;
-        }
-      }
-    }
-
-    // レーンの範囲制限
-    if (targetLaneIndex_ < minLane_)
-      targetLaneIndex_ = minLane_;
-    if (targetLaneIndex_ > maxLane_)
-      targetLaneIndex_ = maxLane_;
-
-    // 移動が開始される場合、初期値を保存
-    if (targetLaneIndex_ != laneIndex_) {
-      startX_ = transform_.translate.x;
-      lerpTime_ = 0.0f;
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-
-      // 横移動時にしゃがみ（転がり）をキャンセルして硬直をなくす
-      if (isRolling_ && !keepRolling_) {
-        isRolling_ = false;
-        transform_.scale.y = 1.0f;
-        transform_.translate.y = baseHeight_;
-        model_->SetAnimation("walk", walkTransitionDuration_);
-      }
-    }
-  }
-  // レーンの移動中だったら
-  else {
-    // 線形補間で移動
-    lerpTime_ += laneChangeSpeed_ * speedMultiplier;
-    if (lerpTime_ > 1.0f) {
-      lerpTime_ = 1.0f;
-    }
-
-    float targetX = static_cast<float>(targetLaneIndex_) * laneWidth_;
-    transform_.translate.x = Lerp(startX_, targetX, lerpTime_);
-
-    // 移動が完了したら現在のレーンを更新
-    if (lerpTime_ >= 1.0f) {
-      laneIndex_ = targetLaneIndex_;
-      currentRecoveryTimer_ = laneChangeRecovery_;
-    }
-  }
-
-  // === アクション（ジャンプと転がり） ===
-  // 地上にいてジャンプ中でなければアクション可能（転がり中でもジャンプでキャンセル可能）
-  if (!isJumping_ && canAct && !isAutoPilot_) {
-    if (GameSceneManager::GetInstance()->IsPushJump()) {
-      if (!(isRolling_ && keepRolling_)) {
-        isJumping_ = true;
-        velocityY_ = jumpPower_ * speedMultiplier;
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
-
-        // ジャンプ時にしゃがみをキャンセル
-        if (isRolling_) {
-          isRolling_ = false;
-          transform_.scale.y = 1.0f;
-          transform_.translate.y = baseHeight_;
-          model_->SetAnimation("walk", walkTransitionDuration_);
-        }
-      }
-    } else if (!isRolling_ && GameSceneManager::GetInstance()->IsPushRoll()) {
-      isRolling_ = true;
-      rollTimer_ = rollDuration_;
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
-      model_->SetAnimation("sneakWalk", rollTransitionDuration_);
-      // 重心が変わる分、Y座標を少し下げる（原点が中心の場合）
-      transform_.translate.y = baseHeight_ - 0.5f;
-    }
-  }
-
-  // ジャンプ処理
-  if (isJumping_) {
-    transform_.translate.y += velocityY_;
-    velocityY_ -= gravity_ * (speedMultiplier * speedMultiplier);
-
-    // 地面に着地
-    if (transform_.translate.y <= baseHeight_) {
-      transform_.translate.y = baseHeight_;
-      isJumping_ = false;
-      velocityY_ = 0.0f;
-      currentRecoveryTimer_ = jumpRecovery_;
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
-    }
-  }
-
-  // 転がり処理
-  if (isRolling_) {
-    rollTimer_ -= speedMultiplier;
-    if (rollTimer_ <= 0.0f && !keepRolling_) {
-      isRolling_ = false;
-      // 姿勢を元に戻す
-      transform_.scale.y = 1.0f;
-      transform_.translate.y = baseHeight_;
-      model_->SetAnimation("walk", walkTransitionDuration_);
-      currentRecoveryTimer_ = rollRecovery_;
-    }
-  }
-
-  // トランスフォームをモデルに適用
-  UpdateDrawTransform(speedMultiplier);
 }
 
 void Player::Draw(class Draw &draw) {
@@ -340,6 +487,14 @@ void Player::ImGuiInnerComponents() {
   ImGui::Checkbox("Draw Axe", &isDrawAxe_);
 
   ImGui::Separator();
+  const char *stateNames[] = {"Run", "Jump", "Roll", "Hit", "ForcedCenter"};
+  ImGui::Text("Player State: %s", stateNames[static_cast<int>(GetActionType())]);
+  ImGui::Text("Rolling: %s", GetIsRolling() ? "YES" : "NO");
+  ImGui::Text("Jumping: %s", GetIsJumping() ? "YES" : "NO");
+  ImGui::Text("Can Act: %s", CanAct() ? "YES" : "NO");
+  ImGui::Text("Current Recovery: %.2f", currentRecoveryTimer_);
+
+  ImGui::Separator();
   ImGui::Text("Player Movement Parameters");
   ImGui::SliderFloat("Jump Power", &jumpPower_, 0.10f, 0.40f, "%.3f");
   ImGui::SliderFloat("Gravity", &gravity_, 0.005f, 0.040f, "%.4f");
@@ -365,83 +520,21 @@ void Player::ImGuiInnerComponents() {
 #endif
 }
 
-void Player::HitUpdate(float speedMultiplier) {
-  // ノックバック処理
-  if (isHit_) {
-    if (speedMultiplier == 0.0f) {
-      UpdateDrawTransform(0.0f);
-      return;
-    }
-
-    hitTimer_ += 1.0f;
-
-    transform_.translate.x += knockbackVelocity_.x;
-    transform_.translate.y += knockbackVelocity_.y;
-    transform_.translate.z += knockbackVelocity_.z;
-
-    // 重力と回転（後ろに飛ぶか前に転がるか）
-    knockbackVelocity_.y -= gravity_ * 2.0f;
-    if (isTrip_) {
-      transform_.rotate.x += 0.2f; // 前に転がる回転
-    } else {
-      transform_.rotate.x -= 0.1f; // 後ろに飛ぶ回転
-    }
-
-    // 地面に着地したらバウンドなどを抑える
-    if (transform_.translate.y <= baseHeight_ && knockbackVelocity_.y < 0.0f) {
-      transform_.translate.y = baseHeight_;
-      knockbackVelocity_.y = 0.0f;
-      knockbackVelocity_.x *= 0.8f;
-      knockbackVelocity_.z *= 0.8f;
-    }
-
-    UpdateDrawTransform(0.0f);
-  }
-}
-
 void Player::OnHit(bool isTrip) {
-  isHit_ = true;
   isTrip_ = isTrip;
-  hitTimer_ = 0.0f;
-
-  // 姿勢をリセット
-  isRolling_ = false;
-  isJumping_ = false;
-  transform_.scale = {1.0f, 1.0f, 1.0f};
-  model_->SetAnimation("walk", walkTransitionDuration_);
-  currentRecoveryTimer_ = 0.0f;
-
-  float randX = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
-
-  if (isTrip_) {
-    // Lowに当たってつまずいた場合、少し前に転がるようなノックバック
-    knockbackVelocity_ = {randX, 0.3f, 0.8f};
-  } else {
-    // 少し後ろと上に飛ぶノックバック
-    knockbackVelocity_ = {randX, 0.4f, -0.6f};
-  }
+  ChangeActionState(PlayerActionType::Hit);
 }
 
 bool Player::IsHitAnimationFinished() const {
-  return isHit_ && hitTimer_ >= hitDuration_;
+  return GetIsHit() && hitTimer_ >= hitDuration_;
 }
 
 void Player::StartForceToCenter(float duration) {
-  if (isForcedCentering_ || targetLaneIndex_ == 0) {
-    return; // 既に移動中、または既に中央目標の場合は何もしない
+  if (GetIsForcedCentering() || targetLaneIndex_ == 0) {
+    return;
   }
-  isForcedCentering_ = true;
-  forcedCenterTimer_ = 0.0f;
   forcedCenterDuration_ = duration;
-  forcedCenterStartX_ = transform_.translate.x;
-
-  // 転がり中なら解除する（安全のため）
-  if (isRolling_ && !keepRolling_) {
-    isRolling_ = false;
-    transform_.scale.y = 1.0f;
-    transform_.translate.y = baseHeight_;
-    model_->SetAnimation("walk", walkTransitionDuration_);
-  }
+  ChangeActionState(PlayerActionType::ForcedCenter);
 }
 
 void Player::SetHasBarrier(bool hasBarrier) {
@@ -457,38 +550,29 @@ void Player::SetHasBarrier(bool hasBarrier) {
 }
 
 bool Player::TriggerJump() {
-  if (!isJumping_ && (currentRecoveryTimer_ <= 0.0f)) {
-    if (!(isRolling_ && keepRolling_)) {
-      isJumping_ = true;
-      velocityY_ = jumpPower_;
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
-
-      if (isRolling_) {
-        isRolling_ = false;
-        transform_.scale.y = 1.0f;
-        transform_.translate.y = baseHeight_;
-        model_->SetAnimation("walk", walkTransitionDuration_);
-      }
-      return true;
+  if (CanAct() && !(GetIsRolling() && keepRolling_)) {
+    ChangeActionState(PlayerActionType::Jump);
+    if (currentState_) {
+      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f ? currentSpeedMultiplier_ : 1.0f);
     }
+    return true;
   }
   return false;
 }
 
 bool Player::TriggerRoll() {
-  if (!isJumping_ && !isRolling_ && (currentRecoveryTimer_ <= 0.0f)) {
-    isRolling_ = true;
-    rollTimer_ = rollDuration_;
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
-    model_->SetAnimation("sneakWalk", rollTransitionDuration_);
-    transform_.translate.y = baseHeight_ - 0.5f;
+  if (CanAct() && !GetIsRolling() && !GetIsJumping()) {
+    ChangeActionState(PlayerActionType::Roll);
+    if (currentState_) {
+      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f ? currentSpeedMultiplier_ : 1.0f);
+    }
     return true;
   }
   return false;
 }
 
 bool Player::TriggerMoveLeft() {
-  if (laneIndex_ == targetLaneIndex_ && (currentRecoveryTimer_ <= 0.0f) && !isForcedCentering_) {
+  if (laneIndex_ == targetLaneIndex_ && CanAct() && !GetIsForcedCentering()) {
     int nextLane = laneIndex_ - 1;
     if (nextLane >= minLane_) {
       targetLaneIndex_ = nextLane;
@@ -496,11 +580,8 @@ bool Player::TriggerMoveLeft() {
       lerpTime_ = 0.0f;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
 
-      if (isRolling_ && !keepRolling_) {
-        isRolling_ = false;
-        transform_.scale.y = 1.0f;
-        transform_.translate.y = baseHeight_;
-        model_->SetAnimation("walk", walkTransitionDuration_);
+      if (GetIsRolling() && !keepRolling_) {
+        ChangeActionState(PlayerActionType::Run);
       }
       return true;
     }
@@ -509,7 +590,7 @@ bool Player::TriggerMoveLeft() {
 }
 
 bool Player::TriggerMoveRight() {
-  if (laneIndex_ == targetLaneIndex_ && (currentRecoveryTimer_ <= 0.0f) && !isForcedCentering_) {
+  if (laneIndex_ == targetLaneIndex_ && CanAct() && !GetIsForcedCentering()) {
     int nextLane = laneIndex_ + 1;
     if (nextLane <= maxLane_) {
       targetLaneIndex_ = nextLane;
@@ -517,11 +598,8 @@ bool Player::TriggerMoveRight() {
       lerpTime_ = 0.0f;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
 
-      if (isRolling_ && !keepRolling_) {
-        isRolling_ = false;
-        transform_.scale.y = 1.0f;
-        transform_.translate.y = baseHeight_;
-        model_->SetAnimation("walk", walkTransitionDuration_);
+      if (GetIsRolling() && !keepRolling_) {
+        ChangeActionState(PlayerActionType::Run);
       }
       return true;
     }
