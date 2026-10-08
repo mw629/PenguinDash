@@ -38,8 +38,10 @@ void Triangle::Initialize(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
 	vertex_[1] = { 0.0f,0.1f,0.0f,1.0f };
 	vertex_[2] = { 0.1f,-0.1f,0.0f,1.0f };
 
-	AddComponent<MaterialComponent>();
+	localAABB_ = { {-0.1f, -0.1f, -0.01f}, {0.1f, 0.1f, 0.01f} };
+	localSphere_ = { {0.0f, 0.0f, 0.0f}, 0.15f };
 
+	AddComponent<MaterialComponent>();
 }
 
 
@@ -92,7 +94,7 @@ void Triangle::CreateTriangle()
 
 void Triangle::SettingWvp(Matrix4x4 viewMatrix)
 {
-	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 10000.0f);
 	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 	*wvpData_ = { worldViewProjectionMatrix,worldMatrix };
@@ -119,3 +121,16 @@ void Triangle::SetVertex(Vector4 vertex[3])
 		vertex_[i] = vertex[i];
 	}
 }
+
+AABB Triangle::GetWorldAABB() const
+{
+	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	return TransformAABB(localAABB_, worldMatrix);
+}
+
+BoundingSphere Triangle::GetWorldBoundingSphere() const
+{
+	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	return TransformBoundingSphere(localSphere_, worldMatrix);
+}
+

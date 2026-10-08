@@ -33,6 +33,30 @@ Microsoft::WRL::ComPtr<ID3D12Resource> GraphicsDevice::CreateBufferResource(size
 	return Resource;
 }
 
+Microsoft::WRL::ComPtr<ID3D12Resource> GraphicsDevice::CreateUAVBufferResource(size_t sizeInBytes)
+{
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+	
+	D3D12_RESOURCE_DESC ResourceDesc{};
+	ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	sizeInBytes = (sizeInBytes + 255) & ~255;
+	ResourceDesc.Width = sizeInBytes;
+	ResourceDesc.Height = 1;
+	ResourceDesc.DepthOrArraySize = 1;
+	ResourceDesc.MipLevels = 1;
+	ResourceDesc.SampleDesc.Count = 1;
+	ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	ResourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
+	HRESULT hr = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE,
+		&ResourceDesc, D3D12_RESOURCE_STATE_COMMON, nullptr,
+		IID_PPV_ARGS(&Resource));
+	assert(SUCCEEDED(hr));
+	return Resource;
+}
+
 GraphicsDevice::GraphicsDevice(std::ostream& os)
 {
 	Initialize(os);

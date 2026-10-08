@@ -1,0 +1,8 @@
+newmtl tripo_material_fb97d727_77e5_4f51_99a5_a8a62dad0244
+Kd 1.000000000 1.000000000 1.000000000
+d 1.000000000
+illum 2
+map_Kd DriftIce_basecolor.jpg
+Pr 0.500000000
+Pm 0.000000000
+

@@ -38,6 +38,8 @@
 #include "Cube.h"
 #include "Line.h"
 #include "Grid.h"
+#include "LineRenderer.h"
+
 
 //Graphics
 
@@ -51,6 +53,8 @@
 #include "SwapChain.h"
 #include "ViewportScissor.h"
 #include "RenderTexture.h"
+#include "Graphics/GpuProfiler.h"
+#include "Graphics/Font/TextRenderer.h"
 //PSO
 #include "PipelineState.h"
 #include "ShaderCompiler.h"
@@ -115,8 +119,12 @@ public:
 
 	std::unique_ptr<GraphicsPipelineState> graphicsPipelineState;
 	std::unique_ptr<LightManager> lightManager;
+	std::unique_ptr<LineRenderer> lineRenderer;
+	std::unique_ptr<GpuProfiler> gpuProfiler;
+	std::unique_ptr<MatchaEngine::TextRenderer> textRenderer;
 
 	ID3D12DescriptorHeap* descriptorHeaps[1];
+
 
 	static bool isEnd_;
 
@@ -127,11 +135,13 @@ public:
 
 	void Setting();
 
-	void PostDraw();
+	void PostDraw(const std::function<void()>& drawUI = nullptr);
 
 	void NewFrame();
 
-	void EndFrame();
+	void EndFrame(const std::function<void()>& drawUI = nullptr);
+
+	void FlushGpu();
 
 	void End();
 
@@ -145,13 +155,21 @@ public:
 	const std::vector<std::unique_ptr<PostEffect>>& GetPostEffects() { return postEffects_; }
 	LightManager* GetLightManager() { return lightManager.get(); }
 	TextureLoader* GetTextureLoader() { return textureLoader.get(); }
+	Draw* GetDraw() { return draw.get(); }
 	RenderTexture* GetRenderTexture() { return renderTextures[0].get(); } // The main scene is always rendered to renderTextures[0]
 	RenderTexture* GetFinalRenderTexture(); // Return the final texture after all post effects
 	int32_t GetClientWidth() const { return kClientWidth_; }
 	int32_t GetClientHeight() const { return kClientHeight_; }
+	GpuProfiler* GetGpuProfiler() { return gpuProfiler.get(); }
+	MatchaEngine::TextRenderer* GetTextRenderer() { return textRenderer.get(); }
 
 	static void SetEnd(bool isEnd) { isEnd_ = isEnd; }
 	static bool IsEnd() { return isEnd_; }
+
+	void ShowWindow() { window.Show(); }
+	WindowConfig& GetWindow() { return window; }
 };
+
+
 
 

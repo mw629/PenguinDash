@@ -14,7 +14,7 @@ public:
 
 	void ImGui();
 
-	void CreateMartial(bool Lighting = true, float environmentCoefficient = 0);
+	void CreateMartial(bool Lighting = false, float environmentCoefficient = 0);
 
 	void SetColor(Vector4 color) { materialData_->color = color; }
 	void SetMaterialLighting(bool isActive) { materialData_->enableLighting = isActive ? 1 : 0; }

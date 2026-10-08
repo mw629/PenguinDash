@@ -1,4 +1,5 @@
 #include "TextureLoader.h"
+#include "Core/LogHandler.h"
 
 #ifdef _USE_IMGUI
 #include <imgui.h>
@@ -62,16 +63,34 @@ D3D12_GPU_DESCRIPTOR_HANDLE TextureLoader::GetTexture(const std::string& filePat
 	if (it != textureMap_.end()) {
 		return it->second.textureSrvHandleGPU;
 	}
-	return textureMap_[textureKeys_[0]].textureSrvHandleGPU;
+	LOG_WARN(std::format("Texture '{}' not found in TextureLoader. Falling back to default texture.", filePath));
+	if (!textureKeys_.empty()) {
+		return textureMap_[textureKeys_[0]].textureSrvHandleGPU;
+	}
+	return D3D12_GPU_DESCRIPTOR_HANDLE{ 0 };
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE TextureLoader::GetTexture(int index)
 {
-	if (index >= 0 && index < textureKeys_.size()) {
+	if (index >= 0 && index < static_cast<int>(textureKeys_.size())) {
 		return textureMap_[textureKeys_[index]].textureSrvHandleGPU;
 	}
-	return textureMap_[textureKeys_[0]].textureSrvHandleGPU;
+	LOG_WARN(std::format("Texture index {} out of range (count={}). Falling back to default texture.", index, textureKeys_.size()));
+	if (!textureKeys_.empty()) {
+		return textureMap_[textureKeys_[0]].textureSrvHandleGPU;
+	}
+	return D3D12_GPU_DESCRIPTOR_HANDLE{ 0 };
 }
+
+void TextureLoader::ReleaseIntermediateResources()
+{
+	for (auto& [path, tex] : textureMap_) {
+		if (tex.intermediateResource) {
+			tex.intermediateResource.Reset();
+		}
+	}
+}
+
 
 
 

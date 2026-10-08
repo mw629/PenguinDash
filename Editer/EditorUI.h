@@ -22,5 +22,8 @@ public:
     void DrawGizmoInScene(const Matrix4x4& view, const Matrix4x4& projection) { DrawGizmo(view, projection); }
     
     std::shared_ptr<GameObject> GetSelectedObject() const { return selectedObject_; }
-    void SetSelectedObject(std::shared_ptr<GameObject> obj) { selectedObject_ = obj; }
+    void SetSelectedObject(std::shared_ptr<GameObject> obj) {
+        selectedObject_ = obj;
+        GameObject::selectedObject_ = obj.get();
+    }
 };

@@ -62,17 +62,13 @@ void JsonScene::ImGui()
 	camera_->ImGui();
 	ImGui::End();
 
-	Matrix4x4 projection = MakePerspectiveFovMatrix(0.45f, float(1280.0f) / float(720.0f), 0.1f, 100.0f);
+	Matrix4x4 projection = MakePerspectiveFovMatrix(0.45f, float(1280.0f) / float(720.0f), 0.1f, 10000.0f);
 	editorUI_->Draw(gameObjectManager_.get(), view_, projection);
 
-	if (!EditorManager::IsPlaying()) {
-		EditorManager::SetSceneOverlayCallback([this]() {
-			Matrix4x4 proj = MakePerspectiveFovMatrix(0.45f, float(1280.0f) / float(720.0f), 0.1f, 100.0f);
-			editorUI_->DrawGizmoInScene(view_, proj);
-		});
-	} else {
-		EditorManager::ClearSceneOverlayCallback();
-	}
+	EditorManager::SetSceneOverlayCallback([this]() {
+		Matrix4x4 proj = MakePerspectiveFovMatrix(0.45f, float(1280.0f) / float(720.0f), 0.1f, 10000.0f);
+		editorUI_->DrawGizmoInScene(view_, proj);
+	});
 #endif
 }
 
@@ -154,12 +150,12 @@ void JsonScene::Update()
 	gameObjectManager_->UpdateAll(view_, speedMultiplier);
 }
 
-void JsonScene::Draw()
+void JsonScene::Draw(class Draw& draw)
 {
 	if (showInitJsonSelectPopup_) {
 		return;
 	}
 
-	Draw::SetCamera(camera_.get());
-	gameObjectManager_->DrawAll();
+	draw.SetCamera(camera_.get());
+	gameObjectManager_->DrawAll(draw);
 }

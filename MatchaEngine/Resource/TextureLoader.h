@@ -41,5 +41,8 @@ public:
 	D3D12_GPU_DESCRIPTOR_HANDLE GetTexture(const std::string& filePath);
 	D3D12_GPU_DESCRIPTOR_HANDLE GetTexture(int index);
 
+	// GPUアップロード完了後に中間バッファを破棄してVRAMを解放する
+	void ReleaseIntermediateResources();
+
 };
 

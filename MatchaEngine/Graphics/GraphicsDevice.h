@@ -32,6 +32,7 @@ private:
 public:  
 
 	static Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
+	static Microsoft::WRL::ComPtr<ID3D12Resource> CreateUAVBufferResource(size_t sizeInBytes);
 
 	GraphicsDevice(std::ostream& os);
 

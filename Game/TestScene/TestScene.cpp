@@ -1,6 +1,9 @@
 #include "TestScene.h"
+#include "Graphics/Render/Draw.h"
+#include "../../Editer/EditorManager.h"
 #include <imgui.h>
 #include <memory>
+#include <cmath>
 
 TestScene::~TestScene()
 {
@@ -19,21 +22,61 @@ void TestScene::ImGui()
 		ImGui::Spacing();
 		ImGui::Text("SpritePos");
 		ImGui::SliderFloat2("##sprite_pos_slider", &spriteData_.transform.translate.x, -9999.9f, 9999.9f, "%.1f");
-
-		// 表示は整数部4桁・小数1桁風に（幅指定で揃える） 
 		ImGui::Text("Pos: %4.1f, %4.1f", spriteData_.transform.translate.x, spriteData_.transform.translate.y);
-	}
 
-	skyBox_.get()->ImGui();
-	sphere_.get()->ImGui();
-	animation_.get()->ImGui();	
-	model_.get()->ImGui();
+		ImGui::Spacing();
+		ImGui::SliderFloat2("SpriteSize", &spriteData_.size.x, 1.0f, 2000.0f, "%.1f");
+		ImGui::SliderFloat2("Pivot", &spriteData_.pivot.x, 0.0f, 1.0f, "%.2f");
+
+		const char* scaleModeNames[] = { "Fit", "Fill", "Stretch", "None" };
+		int currentScaleMode = static_cast<int>(spriteData_.scaleMode);
+		if (ImGui::Combo("ScaleMode", &currentScaleMode, scaleModeNames, IM_ARRAYSIZE(scaleModeNames))) {
+			spriteData_.scaleMode = static_cast<SpriteScaleMode>(currentScaleMode);
+		}
+
+		const char* anchorNames[] = {
+			"None (Virtual Res)", "TopLeft", "TopCenter", "TopRight",
+			"MiddleLeft", "Center", "MiddleRight",
+			"BottomLeft", "BottomCenter", "BottomRight"
+		};
+		int currentAnchor = static_cast<int>(spriteData_.anchor);
+		if (ImGui::Combo("Anchor", &currentAnchor, anchorNames, IM_ARRAYSIZE(anchorNames))) {
+			spriteData_.anchor = static_cast<SpriteAnchor>(currentAnchor);
+		}
+
+		Vector2 currentScreen = Sprite::GetScreenSize();
+		Vector2 refRes = Sprite::GetReferenceResolution();
+		ImGui::Text("Screen: %.0f x %.0f  |  Ref: %.0f x %.0f", currentScreen.x, currentScreen.y, refRes.x, refRes.y);
+	}
 
 	for (int i = 0, n = static_cast<int>(particle_.size()); i < n; ++i) {
 		particle_[i].get()->ImGui();
 	}
 
+	if (ImGui::CollapsingHeader("Animation Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+		bool isVisibleBones = animation_.get()->GetVisibleBones();
+		if (ImGui::Checkbox("Show Bones", &isVisibleBones)) {
+			animation_.get()->SetVisibleBones(isVisibleBones);
+		}
+	}
+
+	if (ImGui::CollapsingHeader("Axe Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::DragFloat3("Offset Pos", &axeOffset_.translate.x, 0.01f);
+		ImGui::DragFloat3("Offset Rot", &axeOffset_.rotate.x, 0.01f);
+		ImGui::DragFloat3("Offset Scale", &axeOffset_.scale.x, 0.01f);
+	}
+
 	ImGui::End();
+
+	if (editorUI_ && gameObjectManager_) {
+		editorUI_->Draw(gameObjectManager_.get(), camera_->GetViewMatrix(), camera_->GetProjectionMatrix());
+	}
+
+	EditorManager::SetSceneOverlayCallback([this]() {
+		if (editorUI_) {
+			editorUI_->DrawGizmoInScene(camera_->GetViewMatrix(), camera_->GetProjectionMatrix());
+		}
+	});
 
 #endif // _USE_IMGUI
 }
@@ -54,9 +97,23 @@ void TestScene::Initialize() {
 
 
 	//Animationの初期化
-	ModelData animModel = AssimpLoadObjFile("Resources/Model/human", "sneakWalk.gltf");
-	animation_.get()->Initialize(animModel, "Resources/Model/human", "sneakWalk.gltf");
+	ModelData animModel = AssimpLoadObjFile("Resources/gltf/human", "sneakWalk.gltf");
+	animation_.get()->Initialize(animModel, "Resources/gltf/human", "sneakWalk.gltf");
+	animation_->LoadAdditionalAnimation("Resources/gltf/human", "sneakWalk.gltf", "sneakWalk");
+	animation_->LoadAdditionalAnimation("Resources/gltf/human", "walk.gltf", "walk");
+	animation_->SetAnimation("sneakWalk");
 	animation_.get()->name_ = "Animation Model";
+	animation_.get()->SetVisibleBones(true); // ボーンを表示
+
+	// 手のボーンを登録
+	animation_->SetBoneMapping(BoneType::RightHand, "mixamorig:RightHand");
+	animation_->SetBoneMapping(BoneType::LeftHand, "mixamorig:LeftHand");
+
+	// Axeの初期化
+	ModelData axeData = AssimpLoadObjFile("Resources/Model/Axe", "Axe.obj");
+	axe_.get()->Initialize(axeData);
+	axe_.get()->name_ = "Axe Model";
+	axeOffset_.scale = { 100.0f, 100.0f, 100.0f }; // キャラクター(gltf)のスケールが0.01の場合があるので、武器は100倍にして表示サイズを合わせる
 
 	//NoodeAnimationの初期化
 	ModelData cubeModel = AssimpLoadObjFile("Resources/AnimatedCube", "AnimatedCube.gltf");
@@ -74,6 +131,8 @@ void TestScene::Initialize() {
 	skyBoxTexture_ = texture_.get()->CreateTexture("Resources/DDS/rostock_laage_airport_4k.dds");
 	skyBox_.get()->Initialize(skyBoxTexture_);
 	skyBox_.get()->SetShader("SkyBoxShader");
+	skyBox_.get()->SetCullMode(kCullModeFront);
+	skyBox_.get()->SetFrustumCullingEnabled(false);
 	skyBox_.get()->SetLighting(false);
 	skyBox_.get()->SetTransform(skyBoxTransform_);
 	skyBox_.get()->name_ = "SkyBox";
@@ -152,13 +211,24 @@ void TestScene::Initialize() {
 	};
 	particle_.push_back(std::move(particleRing));
 
-
 	int texture = texture_.get()->CreateTexture("Resources/Texture/uvChecker.png");
 	sprite_.get()->Initialize(spriteData_, texture);
 
 	ring_.get()->Initialize(texture);
-   cylinder_.get()->Initialize(texture);
+	cylinder_.get()->Initialize(texture);
 	cylinder_.get()->SetTransform(cylinderTransform_);
+    
+	if (gameObjectManager_) {
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(model_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(animation_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(nodeAnimation_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(sphere_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(skyBox_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(floor));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(ring_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(cylinder_));
+		gameObjectManager_->AddObject(std::make_shared<RenderObject>(axe_));
+	}
 }
 
 void TestScene::Update() {
@@ -191,28 +261,77 @@ void TestScene::Update() {
 		}
 	}
 
-	animation_.get()->Update(view);
+	Transform animationTransform = animation_->GetTransform();
+
+	Vector3 moveInput = GamePadInput::GetLeftStick();
+	Vector3 moveDirection = { moveInput.x, 0.0f, moveInput.y };
+
+	if (Input::PushKey(DIK_SPACE)||GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+		isSneaking_ = !isSneaking_;
+		if (isSneaking_) {
+			animation_->SetAnimation("sneakWalk", 1.0f);
+		} else {
+			animation_->SetAnimation("walk", 1.0f);
+		}
+	}
+
+	if (Input::PressKey(DIK_D) || Input::PressKey(DIK_RIGHT)) moveDirection.x += 1.0f;
+	if (Input::PressKey(DIK_A) || Input::PressKey(DIK_LEFT))  moveDirection.x -= 1.0f;
+	if (Input::PressKey(DIK_W) || Input::PressKey(DIK_UP))    moveDirection.z += 1.0f;
+	if (Input::PressKey(DIK_S) || Input::PressKey(DIK_DOWN))  moveDirection.z -= 1.0f;
+
+	float lengthSq = moveDirection.x * moveDirection.x + moveDirection.z * moveDirection.z;
+	if (lengthSq > 0.0001f) {
+		float length = std::sqrt(lengthSq);
+		moveDirection.x /= length;
+		moveDirection.z /= length;
+		if (length > 1.0f) length = 1.0f;
+
+		float speed = 0.05f;
+		float moveDist = length * speed;
+		animationTransform.translate.x += moveDirection.x * moveDist;
+		animationTransform.translate.z += moveDirection.z * moveDist;
+
+		animationTransform.rotate.y = std::atan2(moveDirection.x, moveDirection.z);
+		animation_->SetTransform(animationTransform);
+
+		float animSpeedScale = 1.0f;
+		animation_.get()->UpdateWithDelta(view, moveDist * animSpeedScale);
+	}
+	else {
+		animation_.get()->SetAnimationTime(0.0f);
+		animation_.get()->UpdateWithDelta(view, 0.0f);
+	}
 	nodeAnimation_.get()->Update(view);
+
+	// Axeのアタッチ処理
+	Transform handTransform = animation_->GetBoneTransform(BoneType::RightHand);
+	Matrix4x4 boneMatrix = MakeAffineMatrix(handTransform.translate, handTransform.scale, handTransform.rotate);
+	Matrix4x4 offsetMatrix = MakeAffineMatrix(axeOffset_.translate, axeOffset_.scale, axeOffset_.rotate);
+	Matrix4x4 finalMatrix = MultiplyMatrix4x4(offsetMatrix, boneMatrix);
+	axe_->SetTransform(DecomposeMatrix(finalMatrix));
+	axe_->SettingWvp(view);
 }
 
-void TestScene::Draw() {
+void TestScene::Draw(class Draw& draw) {
 
-	Draw::SetCamera(camera_.get());
+	draw.SetCamera(camera_.get());
 	// Set the SkyBox texture as environment map
-	Draw::SetEnvironmentTexture(skyBoxTexture_);
+	draw.SetEnvironmentTexture(skyBoxTexture_);
 
-	//Draw::DrawObj(ring_.get());
-	//Draw::DrawObj(cylinder_.get());
+	//draw.DrawObj(ring_.get());
+	//draw.DrawObj(cylinder_.get());
 
-	Draw::DrawObj(skyBox_.get());
-	Draw::DrawObj(model_.get());
-	Draw::DrawObj(floor.get());
-	Draw::DrawObj(nodeAnimation_.get());
-	Draw::DrawAnimation(animation_.get());
+	draw.DrawObj(skyBox_.get());
+	//draw.DrawObj(model_.get());
+	//draw.DrawObj(floor.get());
+	//draw.DrawObj(nodeAnimation_.get());
+	draw.DrawAnimation(animation_.get());
+	draw.DrawModel(axe_.get());
 
-	//Draw::DrawObj(sphere_.get());
+	//draw.DrawObj(sphere_.get());
 	for (int i = 0, n = static_cast<int>(particle_.size()); i < n; ++i) {
-		particle_[i].get()->Draw();
+	//	particle_[i].get()->Draw(draw);
 	}
-	//Draw::DrawSprite(sprite_.get());
+	//draw.DrawSprite(sprite_.get());
 }

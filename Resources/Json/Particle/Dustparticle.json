@@ -1,7 +1,66 @@
 {
+    "colorOverLifetime": {
+        "enable": true,
+        "endColor": [
+            0.8500000238418579,
+            0.8999999761581421,
+            0.9800000190734863,
+            0.0
+        ],
+        "startColor": [
+            0.949999988079071,
+            0.949999988079071,
+            1.0,
+            0.75
+        ]
+    },
     "emitter": {
+        "circle": {
+            "count": 1,
+            "frequency": 9999.0,
+            "innerRadius": 0.0,
+            "outerRadius": 0.5,
+            "radialVelocity": 0.0,
+            "rotate": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "translate": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "cone": {
+            "angle": 0.5,
+            "count": 1,
+            "frequency": 9999.0,
+            "radius": 0.20000000298023224,
+            "rotate": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "speed": 1.0,
+            "translate": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
         "count": 1,
-        "frequency": 0.25,
+        "frequency": 9999.0,
+        "sphere": {
+            "count": 1,
+            "frequency": 9999.0,
+            "radius": 0.5,
+            "translate": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
         "transform": {
             "rotate": [
                 0.0,
@@ -9,9 +68,75 @@
                 0.0
             ],
             "scale": [
-                0.25,
-                0.10000000149011612,
-                0.5
+                0.4000000059604645,
+                0.20000000298023224,
+                0.4000000059604645
+            ],
+            "translate": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "type": 0
+    },
+    "field": {
+        "position": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "strength": 0.0,
+        "type": 0
+    },
+    "movement": {
+        "acceleration": [
+            0.0,
+            -0.0007999999797903001,
+            0.0
+        ],
+        "baseVelocity": [
+            0.0,
+            0.017999999225139618,
+            -0.03999999910593033
+        ],
+        "radialSpeed": 0.0,
+        "radialSpeedVariance": 0.0,
+        "sizeDelta": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "sizeVariance": [
+            0.05000000074505806,
+            0.05000000074505806,
+            0.05000000074505806
+        ],
+        "velocityVariance": [
+            0.02500000037252903,
+            0.012000000104308128,
+            0.019999999552965164
+        ]
+    },
+    "particle": {
+        "alignToVelocity": false,
+        "color": [
+            0.949999988079071,
+            0.949999988079071,
+            1.0,
+            0.75
+        ],
+        "lifeTime": 0.3499999940395355,
+        "transform": {
+            "rotate": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                0.30000001192092896,
+                0.30000001192092896,
+                0.30000001192092896
             ],
             "translate": [
                 0.0,
@@ -20,60 +145,42 @@
             ]
         }
     },
-    "movement": {
-        "acceleration": [
-            0.0,
-            0.00019999999494757503,
-            -0.004000000189989805
+    "scaleOverLifetime": {
+        "curveType": 0,
+        "enable": true,
+        "endScale": [
+            0.6499999761581421,
+            0.6499999761581421,
+            0.6499999761581421
         ],
-        "baseVelocity": [
-            0.0,
-            0.0,
-            0.0
-        ],
-        "sizeDelta": [
-            1.0,
-            1.0,
-            1.0
-        ],
-        "sizeVariance": [
-            0.0,
-            0.0,
-            0.0
-        ],
-        "velocityVariance": [
-            0.0,
-            0.0,
-            0.0
+        "startScale": [
+            0.25,
+            0.25,
+            0.25
         ]
     },
-    "particle": {
-        "color": [
-            1.0,
+    "spawn": {
+        "burstCount": 1,
+        "isLoop": false
+    },
+    "visual": {
+        "blendMode": 2,
+        "cubeSize": [
             1.0,
             1.0,
             1.0
         ],
-        "lifeTime": 1.5,
-        "transform": {
-            "scale": [
-                0.5,
-                0.20000000298023224,
-                0.20000000298023224
-            ]
-        }
-    },
-    "visual": {
-        "blendMode": 1,
         "cylinderBottomRadius": 1.0,
         "cylinderDivide": 32,
         "cylinderHeight": 3.0,
         "cylinderTopRadius": 1.0,
+        "isBillboard": true,
         "ringDivide": 32,
         "ringInnerRadius": 0.800000011920929,
         "ringOuterRadius": 1.0,
-        "shader": "SmokeShader",
+        "shader": "ParticleShader",
         "shape": 0,
-        "texturePath": "resources/Texture/white64x64.png"
+        "texturePath": "Resources/Texture/circle.png",
+        "useGpuParticle": false
     }
 }

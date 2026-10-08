@@ -105,7 +105,7 @@ void Cylinder::CreateIndexResource()
 	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
 
 	// 0,1,2,3,4,5... を順番に詰めるだけ
-	for (uint32_t i = 0; i < indexSize_; ++i) {
+	for (int i = 0; i < indexSize_; ++i) {
 		indexData[i] = i;
 	}
 }

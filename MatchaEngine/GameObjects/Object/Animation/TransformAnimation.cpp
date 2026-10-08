@@ -18,6 +18,9 @@ void TransformAnimation::Initialize(ModelData modelData, const std::string& dire
 {
 	modelData_ = modelData;
 	animation_ = LoadAnimationFile(directoryPath, filename);
+	if (!animation_.animationClips.empty()) {
+		currentAnimationName_ = animation_.animationClips.begin()->first;
+	}
 	textureSrvHandleGPU_ = texture->TextureData(modelData_.textureIndex);
 
 	skeleton_ = CreateSkeleton(modelData_.rootNode);
@@ -34,9 +37,9 @@ void TransformAnimation::SettingWvp(Matrix4x4 viewMatrix) {
 	Matrix4x4 worldInverseTranspose = TransposeMatrix4x4(Inverse(worldViewProjectionMatrix));
 
 
-	wvpData_->WVP = localMatrix_ * worldMatrix * worldViewProjectionMatrix;
-	wvpData_->World = localMatrix_ * worldMatrix;
-	wvpData_->WorldInverseTranspose = worldInverseTranspose;
+	GetWvpData()->WVP = localMatrix_ * worldMatrix * worldViewProjectionMatrix;
+	GetWvpData()->World = localMatrix_ * worldMatrix;
+	GetWvpData()->WorldInverseTranspose = worldInverseTranspose;
 }
 
 Skeleton TransformAnimation::CreateSkeleton(const Node& rootNode)
@@ -77,19 +80,22 @@ int32_t TransformAnimation::CreateJoint(const Node& node, const std::optional<in
 
 void TransformAnimation::Update(Matrix4x4 viewMatrix)
 {
+	float currentDuration = GetDuration();
+	if (currentDuration > 0.0f) {
+		animationTime_ += 1.0f / 60.0f;//時間を進める
+		animationTime_ = std::fmod(animationTime_, currentDuration);//リピート再生
 
-	animationTime_ += 1.0f / 60.0f;//時間を進める
-	animationTime_ = std::fmod(animationTime_, animation_.duration);//リピート再生
-	AnimationNode& rootNodeAnimation = animation_.AnimationNodes[modelData_.rootNode.name];
+		AnimationClip& clip = animation_.animationClips.at(currentAnimationName_);
+		AnimationNode& rootNodeAnimation = clip.AnimationNodes[modelData_.rootNode.name];
 
-	Vector3 translate = CalculateValue(rootNodeAnimation.translate, animationTime_);
-	Quaternion rotate = CalculateValue(rootNodeAnimation.rotate, animationTime_);
+		Vector3 translate = CalculateValue(rootNodeAnimation.translate, animationTime_);
+		Quaternion rotate = CalculateValue(rootNodeAnimation.rotate, animationTime_);
 
-	Vector3 scale = CalculateValue(rootNodeAnimation.scale, animationTime_);
-	localMatrix_ = MakeAffineMatrix(translate, scale, rotate);
+		Vector3 scale = CalculateValue(rootNodeAnimation.scale, animationTime_);
+		localMatrix_ = MakeAffineMatrix(translate, scale, rotate);
+	}
 
 	SettingWvp(viewMatrix);
-
 }
 
 

@@ -24,6 +24,8 @@ public:
 	void SetWindowData(const int32_t kClientWidth, const int32_t kClientHeight);
 
 	void DrawWindow(const int32_t kClientWidth, const int32_t kClientHeight);
+	void Show();
+	bool IsVisible() const;
 
 	void Finalize();
 

@@ -1,0 +1,6 @@
+newmtl tripo_material_fcd6e961_b191_4c2a_9e28_19af7cf75981
+Kd 1.000000000 1.000000000 1.000000000
+d 1.000000000
+illum 2
+map_Kd IceWall_basecolor.jpg
+

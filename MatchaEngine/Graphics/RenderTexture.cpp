@@ -4,10 +4,10 @@
 
 RenderTexture::RenderTexture()
 {
-	clearColor_[0] = 0.0f;
-	clearColor_[1] = 0.0f;
-	clearColor_[2] = 0.0f;
-	clearColor_[3] = 1.0f;
+	clearColor_[0] = 0.1f;
+	clearColor_[1] = 0.25f;
+	clearColor_[2] = 0.5f;
+	clearColor_[3] = 1.0f;//青っぽい色。RGBAの順
 }
 
 void RenderTexture::Initialize(ID3D12Device* device, int width, int height, ID3D12DescriptorHeap* srvDescriptorHeap, uint32_t srvDescriptorSize)

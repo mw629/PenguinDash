@@ -1,11 +1,8 @@
 #include "PauseSystem.h"
+#include "Graphics/Render/Draw.h"
 
-void PauseSystem::Update()
-{
+void PauseSystem::Update() {}
 
-}
-
-void PauseSystem::Draw()
-{
-	// PostEffect::SetActivePostEffect(PostEffect::Type::Smoothing);
+void PauseSystem::Draw(class Draw &draw) {
+  // PostEffect::SetActivePostEffect(PostEffect::Type::Smoothing);
 }

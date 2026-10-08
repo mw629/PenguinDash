@@ -1,10 +1,11 @@
 #include "ColliderComponent.h"
 #include "../Object/GameObject.h"
-#include "../../System/CollisionManager.h"
 #include "../../Graphics/Render/Draw.h"
 #include "../Object/3d/Cube.h"
 #include "../Object/3d/Sphere.h"
 #include <imgui.h>
+
+bool ColliderComponent::s_isDrawDebug_ = false;
 
 ColliderComponent::ColliderComponent()
 {
@@ -12,29 +13,27 @@ ColliderComponent::ColliderComponent()
 
 ColliderComponent::~ColliderComponent()
 {
-	// 破棄時にCollisionManagerから登録解除
-	CollisionManager::GetInstance()->UnregisterCollider(this);
 }
 
 void ColliderComponent::Initialize()
 {
-	// 生成時にCollisionManagerへ登録
-	CollisionManager::GetInstance()->RegisterCollider(this);
+	Component::Initialize();
 
 #ifdef _DEBUG
+	Texture tex;
+	int whiteTex = tex.CreateTexture("Resources/Texture/white64x64.png");
+
 	debugCube_ = std::make_shared<Cube>();
-	debugCube_->Initialize(0);
+	debugCube_->Initialize(whiteTex);
 	if (auto mat = debugCube_->GetComponent<MaterialComponent>()) {
 		mat->SetShader("WireFrameShader");
-		mat->GetMaterialFactory()->SetMaterialLighting(false);
 		mat->GetMaterialFactory()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
 	}
 
 	debugSphere_ = std::make_shared<Sphere>();
-	debugSphere_->Initialize(0);
+	debugSphere_->Initialize(whiteTex);
 	if (auto mat = debugSphere_->GetComponent<MaterialComponent>()) {
 		mat->SetShader("WireFrameShader");
-		mat->GetMaterialFactory()->SetMaterialLighting(false);
 		mat->GetMaterialFactory()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
 	}
 #endif
@@ -73,14 +72,16 @@ void ColliderComponent::Update(Matrix4x4 view, float speedMultiplier)
 #endif
 }
 
-void ColliderComponent::Draw()
+void ColliderComponent::Draw(class Draw& draw)
 {
 #ifdef _DEBUG
+	if (!s_isDrawDebug_) return;
+
 	if (shape_ == ColliderShape::Box && debugCube_) {
-		Draw::DrawObj(debugCube_.get());
+		draw.DrawObj(debugCube_.get());
 	}
 	else if (shape_ == ColliderShape::Sphere && debugSphere_) {
-		Draw::DrawObj(debugSphere_.get());
+		draw.DrawObj(debugSphere_.get());
 	}
 #endif
 }

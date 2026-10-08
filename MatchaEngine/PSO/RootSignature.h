@@ -24,6 +24,8 @@ public:
 	
 	D3D12_ROOT_SIGNATURE_DESC& GetDescriptionRootSignature() { return descriptionRootSignature_; }
 	ID3D12RootSignature* GetRootSignature() { return rootSignature_.Get(); }
-	ID3DBlob* GetsignatureBlob() { return signatureBlob_.Get(); }
-	ID3DBlob* GeterrorBlob() { return errorBlob_.Get(); }
+	ID3DBlob* GetSignatureBlob() { return signatureBlob_.Get(); }
+	ID3DBlob* GetErrorBlob() { return errorBlob_.Get(); }
+	ID3DBlob* GetsignatureBlob() { return GetSignatureBlob(); }
+	ID3DBlob* GeterrorBlob() { return GetErrorBlob(); }
 };

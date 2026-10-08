@@ -24,5 +24,5 @@ public:
 	void ImGui() override;
 	void Initialize() override;
 	void Update() override;
-	void Draw() override;
+	void Draw(class Draw& draw) override;
 };

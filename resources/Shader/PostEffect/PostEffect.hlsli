@@ -19,9 +19,12 @@ struct PostEffectData
     float32_t blurStrength;
     int32_t kernelSize;
     float32_t2 padding;
+    float32_t3 color;
+    float32_t paddingColor;
     float32_t kernel3x3[3][3];
     float32_t kernel5x5[5][5];
     float32_t2 index3x3[3][3];
     float32_t2 index5x5[5][5];
     float32_t4x4 ProjectionInverse;
+    float32_t4x4 ViewInverse;
 };

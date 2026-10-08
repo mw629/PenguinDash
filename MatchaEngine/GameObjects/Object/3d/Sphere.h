@@ -21,7 +21,7 @@ public:
 
 
 
-	uint32_t SetSubdivision(int kSubdivision) { kSubdivision_ = kSubdivision; }
+	void SetSubdivision(int kSubdivision) { kSubdivision_ = kSubdivision; }
 
 	uint32_t GetSubdivision() { return kSubdivision_; }
 

@@ -26,6 +26,7 @@ class ShaderCompile
 private:
 	Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob_;
 	Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
+	Microsoft::WRL::ComPtr<IDxcBlob> computeShaderBlob_;
 public:
 
 	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
@@ -41,6 +42,11 @@ public:
 		Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler);
 
 	void CreateShaderCompile(const PipelineConfig& config, std::ostream& os,
+		Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils,
+		Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler,
+		Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler);
+
+	void CreateComputeShaderCompile(const std::wstring& csPath, std::ostream& os,
 		Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils,
 		Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler,
 		Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler);

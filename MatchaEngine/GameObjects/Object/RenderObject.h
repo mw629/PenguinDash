@@ -13,29 +13,39 @@ public:
 public:
     RenderObject() {}
     RenderObject(std::shared_ptr<ObjectBase> obj) : objectBase_(obj) {
-        if (objectBase_) name_ = objectBase_->name_;
+        if (objectBase_) {
+            name_ = objectBase_->name_;
+            transform_ = objectBase_->GetTransform();
+        }
     }
 
     void SetObjectBase(std::shared_ptr<ObjectBase> obj) {
         objectBase_ = obj;
-        if (objectBase_) name_ = objectBase_->name_;
+        if (objectBase_) {
+            name_ = objectBase_->name_;
+            transform_ = objectBase_->GetTransform();
+        }
     }
 
     void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override {
         GameObject::Update(view, speedMultiplier);
         if (objectBase_) {
-            objectBase_->SetTransform(transform_);
+            if (objectBase_->name_ == "SkyBox" || objectBase_->GetShader() == SkyBoxShader) {
+                transform_ = objectBase_->GetTransform();
+            } else {
+                objectBase_->SetTransform(transform_);
+            }
             objectBase_->SettingWvp(view);
         }
     }
 
-    void Draw() override {
-        GameObject::Draw();
+    void Draw(class Draw& draw) override {
+        GameObject::Draw(draw);
         if (objectBase_) {
             if (auto model = dynamic_cast<Model*>(objectBase_.get())) {
-                Draw::DrawModel(model);
+                draw.DrawModel(model);
             } else {
-                Draw::DrawObj(objectBase_.get());
+                draw.DrawObj(objectBase_.get());
             }
         }
     }
@@ -45,6 +55,15 @@ public:
         if (objectBase_) {
             objectBase_->SetTransform(transform_);
         }
+    }
+
+    void SetFrustumCullingEnabled(bool enable) {
+        if (objectBase_) {
+            objectBase_->SetFrustumCullingEnabled(enable);
+        }
+    }
+    bool IsFrustumCullingEnabled() const {
+        return objectBase_ ? objectBase_->IsFrustumCullingEnabled() : false;
     }
 
     void ImGuiInnerComponents() override {

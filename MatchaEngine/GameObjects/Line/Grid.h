@@ -33,7 +33,7 @@ public:
 
 	void CreateGrid();
 
-	void SettingWvp(Matrix4x4 viewMatrix);
+	void SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection = nullptr);
 
 	D3D12_VERTEX_BUFFER_VIEW* GetVertexBufferView() { return &vertexBufferView_; }
 	ID3D12Resource* GetVertexResource()const { return wvpResource_.Get(); }

@@ -1,69 +1,78 @@
 #include "SpotLight.h"
-#include <GraphicsDevice.h>
-#ifdef _USE_IMGUI
-#include <imgui.h>
-#endif // _USE_IMGUI
+#include "Graphics/Render/Draw.h"
+#include "Math/Calculation.h"
+#include "../../../Editer/EditorManager.h"
+#include <cmath>
 
-void SpotLight::ImGui()
+SpotLight::SpotLight()
 {
-#ifdef _USE_IMGUI
-
-
-	if (::ImGui::TreeNode("SpotLight"))
-	{
-		for (int i = 0; i < kNumLights; ++i)
-		{
-			std::string name = "Light " + std::to_string(i);
-			if (::ImGui::TreeNode(name.c_str()))
-			{
-				::ImGui::Checkbox("Active", &active_[i]);
-				::ImGui::ColorEdit3("Color", &color_[i].x);
-				::ImGui::DragFloat3("Position", &position_[i].x, 0.01f, -100.0f, 100.0f, "%.2f");
-				::ImGui::DragFloat("Intensity", &intensity_[i], 0.01f, 0.0f, 10.0f, "%.2f");
-				::ImGui::DragFloat3("Direction", &direction_[i].x, 0.01f, -100.0f, 100.0f, "%.2f");
-				::ImGui::DragFloat("Distance", &distance_[i], 0.01f, -100.0f, 100.0f, "%.2f");
-				::ImGui::DragFloat("Decay", &decay_[i], 0.01f, -100.0f, 100.0f, "%.2f");
-				::ImGui::DragFloat("CosAngle", &cosAngle_[i], 0.01f, -100.0f, 100.0f, "%.2f");
-				::ImGui::DragFloat("CosFalloffStart", &cosFalloffStart_[i], 0.01f, -100.0f, 100.0f, "%.2f");
-				::ImGui::TreePop();
-			}
-
-			// バッファに反映
-			if (spotLightData_)
-			{
-				spotLightData_[i].color = color_[i];
-				spotLightData_[i].position = position_[i];
-				spotLightData_[i].intensity = intensity_[i];
-				spotLightData_[i].direction = direction_[i];
-				spotLightData_[i].distance = distance_[i];
-				spotLightData_[i].decay = decay_[i];
-				spotLightData_[i].cosAngle = cosAngle_[i];
-				spotLightData_[i].cosFalloffStart = cosFalloffStart_[i];
-				spotLightData_[i].active = active_[i] ? 1 : 0;
-			}
-		}
-
-		::ImGui::TreePop();
-	}
-#endif // _USE_IMGUI
+	name_ = "Spot Light";
 }
 
-void SpotLight::CreatePointLight()
+void SpotLight::ImGui(bool drawTransform)
 {
-	spotLightResource_ = GraphicsDevice::CreateBufferResource( sizeof(SpotLightData) * kNumLights);
-	spotLightData_ = nullptr;
-	spotLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&spotLightData_));
+#ifdef _USE_IMGUI
+	GameObject::ImGui(drawTransform);
 
-	for (int i = 0; i < kNumLights; ++i)
+	if (ImGui::CollapsingHeader(LanguageManager::Tr("Light Settings"), ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		spotLightData_[i].color = color_[i];
-		spotLightData_[i].position = position_[i];
-		spotLightData_[i].intensity = intensity_[i];
-		spotLightData_[i].direction = direction_[i];
-		spotLightData_[i].distance = distance_[i];
-		spotLightData_[i].decay = decay_[i];
-		spotLightData_[i].cosAngle = cosAngle_[i];
-		spotLightData_[i].cosFalloffStart = cosFalloffStart_[i];
-		spotLightData_[i].active = active_[i] ? 1 : 0;
+		ImGui::ColorEdit4(LanguageManager::Tr("Color"), &color_.x);
+		ImGui::DragFloat(LanguageManager::Tr("Intensity"), &intensity_, 0.01f, 0.0f, 10.0f);
+		ImGui::DragFloat(LanguageManager::Tr("Distance"), &distance_, 0.1f, 0.0f, 100.0f);
+		ImGui::DragFloat(LanguageManager::Tr("Decay"), &decay_, 0.1f, 0.0f, 10.0f);
+		ImGui::DragFloat(LanguageManager::Tr("Angle"), &cosAngle_, 0.01f, 0.0f, 1.0f);
+		ImGui::DragFloat(LanguageManager::Tr("Falloff"), &cosFalloffStart_, 0.01f, 0.0f, 1.0f);
 	}
+#endif
+}
+
+void SpotLight::Draw(class Draw& draw)
+{
+#ifdef _USE_IMGUI
+	if (!EditorManager::IsPlaying() && draw.GetLineRenderer() && GameObject::selectedObject_ == this) {
+		Vector3 start = transform_.translate;
+		Matrix4x4 rot = Rotation(transform_.rotate);
+		Vector3 baseDir = { 0.0f, -1.0f, 0.0f };
+		Vector3 dir = Normalize(TransformMatrix(baseDir, rot));
+		Vector3 end = AddVector3(start, ScalarMultiply(dir, distance_));
+		
+		Vector4 col = color_;
+		
+		// Center direction line
+		draw.GetLineRenderer()->AddLine(start, end, col);
+		
+		// Calculate outer ring radius
+		float angle = acosf(cosAngle_);
+		float r = distance_ * tanf(angle);
+		
+		Vector3 right = Normalize(Cross(dir, { 0.0f, 1.0f, 0.0f }));
+		if (Length(right) < 0.01f) {
+			right = Normalize(Cross(dir, { 1.0f, 0.0f, 0.0f }));
+		}
+		Vector3 up = Normalize(Cross(right, dir));
+		
+		// Boundary lines of the cone
+		Vector3 coneEdge1 = AddVector3(end, ScalarMultiply(right, r));
+		Vector3 coneEdge2 = AddVector3(end, ScalarMultiply(right, -r));
+		Vector3 coneEdge3 = AddVector3(end, ScalarMultiply(up, r));
+		Vector3 coneEdge4 = AddVector3(end, ScalarMultiply(up, -r));
+		
+		draw.GetLineRenderer()->AddLine(start, coneEdge1, col);
+		draw.GetLineRenderer()->AddLine(start, coneEdge2, col);
+		draw.GetLineRenderer()->AddLine(start, coneEdge3, col);
+		draw.GetLineRenderer()->AddLine(start, coneEdge4, col);
+		
+		// Outer circle representation
+		const int segments = 16;
+		for (int i = 0; i < segments; ++i) {
+			float theta1 = (float)i * 2.0f * 3.14159265f / (float)segments;
+			float theta2 = (float)(i + 1) * 2.0f * 3.14159265f / (float)segments;
+			
+			Vector3 p1 = AddVector3(end, AddVector3(ScalarMultiply(right, r * cosf(theta1)), ScalarMultiply(up, r * sinf(theta1))));
+			Vector3 p2 = AddVector3(end, AddVector3(ScalarMultiply(right, r * cosf(theta2)), ScalarMultiply(up, r * sinf(theta2))));
+			
+			draw.GetLineRenderer()->AddLine(p1, p2, col);
+		}
+	}
+#endif
 }

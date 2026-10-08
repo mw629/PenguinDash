@@ -11,8 +11,8 @@ void ViewportScissor::CreateViewPort()
 	//ビューポート
 	
 	//クライアント領域のサイズと一緒にして画面全体に表示
-	viewport_.Width = kClientWidth_;
-	viewport_.Height = kClientHeight_;
+	viewport_.Width = static_cast<FLOAT>(kClientWidth_);
+	viewport_.Height = static_cast<FLOAT>(kClientHeight_);
 	viewport_.TopLeftX = 0.0f;
 	viewport_.TopLeftY = 0.0f;
 	viewport_.MinDepth = 0.0f;

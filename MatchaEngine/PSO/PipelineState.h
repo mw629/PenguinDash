@@ -12,6 +12,34 @@ enum BlendMode {
 	kBlendNum,
 };
 
+enum CullMode {
+	kCullModeNone,
+	kCullModeFront,
+	kCullModeBack,
+
+	kCullNum,
+};
+
+inline const char* CullModeToString(CullMode mode)
+{
+	switch (mode) {
+	case kCullModeNone: return "kCullModeNone";
+	case kCullModeFront: return "kCullModeFront";
+	case kCullModeBack: return "kCullModeBack";
+	default: return "UnknownCullMode";
+	}
+}
+
+inline D3D12_CULL_MODE ToD3D12CullMode(CullMode mode)
+{
+	switch (mode) {
+	case kCullModeNone: return D3D12_CULL_MODE_NONE;
+	case kCullModeFront: return D3D12_CULL_MODE_FRONT;
+	case kCullModeBack: return D3D12_CULL_MODE_BACK;
+	default: return D3D12_CULL_MODE_BACK;
+	}
+}
+
 
 #include <string>
 #include <vector>
@@ -20,24 +48,32 @@ enum BlendMode {
 using ShaderName = std::string;
 const ShaderName ObjectShader = "ObjectShader";
 const ShaderName WireFrameShader = "WireFrameShader";
+const ShaderName WireFrameShaderNoDepth = "WireFrameShaderNoDepth";
 const ShaderName IceShader = "IceShader";
+const ShaderName WaterShader = "WaterShader";
 const ShaderName AnimationObj = "AnimationObj";
 const ShaderName ParticleShader = "ParticleShader";
 const ShaderName SmokeShader = "SmokeShader";
+const ShaderName ToonParticleShader = "ToonParticleShader";
+const ShaderName SnowSparkleShader = "SnowSparkleShader";
 const ShaderName LineShader = "LineShader";
+const ShaderName LineShaderNoDepth = "LineShaderNoDepth";
 const ShaderName SkyBoxShader = "SkyBoxShader";
 const ShaderName CopyImageShader = "CopyShader";
 const ShaderName GrayScaleShader = "GrayScaleShader";
 const ShaderName GrayScaleSepiaToneShader = "GrayScaleSepiaToneShader";
 const ShaderName OutLineShader = "OutLineShader";
+const ShaderName LuminanceOutLineShader = "LuminanceOutLineShader";
 const ShaderName SmoothingShader = "SmoothingShader";
 const ShaderName GaussianFilterShader = "GaussianFilterShader";
 const ShaderName VignettingShader = "VignettingShader";
 const ShaderName RadialBlurShader = "RadialBlurShader";
 const ShaderName DissolveShader = "DissolveShader";
 const ShaderName RandomShader = "RandomShader";
+const ShaderName MonochromeShader = "MonochromeShader";
+const ShaderName MSDFShader = "MSDFShader";
 
-static const char* ShaderNameToString(const ShaderName& name)
+inline const char* ShaderNameToString(const ShaderName& name)
 {
 	return name.c_str();
 }
@@ -57,7 +93,7 @@ struct PipelineConfig {
 	D3D12_FILL_MODE fillMode = D3D12_FILL_MODE_SOLID;
 };
 
-static const char* BlendModeToString(BlendMode mode)
+inline const char* BlendModeToString(BlendMode mode)
 {
 	switch (mode) {
 	case kBlendModeNone: return "kBlendModeNone";

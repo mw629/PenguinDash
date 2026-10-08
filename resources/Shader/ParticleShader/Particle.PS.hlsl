@@ -16,10 +16,11 @@ PixelShaderOutput main(VertexShaderOutput input)
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
     output.color = gMaterial.color * textureColor * input.color;
     
-    // 黒背景テクスチャ（circle.png等）の黒い部分を透明にするため、Red値（輝度）をアルファに乗算する
-    output.color.a *= textureColor.r;
+    // テクスチャの輝度またはアルファ値を考慮して透過処理を行う
+    float32_t mask = max(textureColor.a, max(textureColor.r, max(textureColor.g, textureColor.b)));
+    output.color.a *= mask;
 
-    if (output.color.a <= 0.0f)
+    if (output.color.a <= 0.001f)
     {
         discard;
     }

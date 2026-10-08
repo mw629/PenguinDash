@@ -2,36 +2,30 @@
 #include "../GameObjects/Component/ColliderComponent.h"
 #include "../GameObjects/Object/GameObject.h"
 #include "../../Game/GameScene/Entity/Collision.h"
+#include "../System/GameObjectManager.h"
 #include <algorithm>
+#include <vector>
 
-CollisionManager* CollisionManager::GetInstance()
+void CollisionManager::UpdateCollisions(GameObjectManager* manager)
 {
-	static CollisionManager instance;
-	return &instance;
-}
+	if (!manager) return;
 
-void CollisionManager::RegisterCollider(ColliderComponent* collider)
-{
-	if (!collider) return;
-	// 重複登録防止
-	if (std::find(colliders_.begin(), colliders_.end(), collider) == colliders_.end()) {
-		colliders_.push_back(collider);
+	std::vector<ColliderComponent*> colliders;
+	for (const auto& obj : manager->GetObjects()) {
+		if (obj && obj->GetIsActive()) {
+			auto col = obj->GetComponent<ColliderComponent>();
+			if (col) {
+				colliders.push_back(col.get());
+			}
+		}
 	}
-}
 
-void CollisionManager::UnregisterCollider(ColliderComponent* collider)
-{
-	colliders_.erase(std::remove(colliders_.begin(), colliders_.end(), collider), colliders_.end());
-}
-
-void CollisionManager::UpdateCollisions()
-{
 	// 登録されている全コライダーで総当り判定
 	// i と j で重複チェックを避けるため、j は i + 1 から始める
-	for (size_t i = 0; i < colliders_.size(); ++i) {
-		for (size_t j = i + 1; j < colliders_.size(); ++j) {
-			ColliderComponent* colA = colliders_[i];
-			ColliderComponent* colB = colliders_[j];
+	for (size_t i = 0; i < colliders.size(); ++i) {
+		for (size_t j = i + 1; j < colliders.size(); ++j) {
+			ColliderComponent* colA = colliders[i];
+			ColliderComponent* colB = colliders[j];
 
 			// 親オブジェクトが非アクティブ等の場合はスキップ
 			if (!colA->GetGameObject() || !colA->GetGameObject()->GetIsActive()) continue;
@@ -61,9 +55,4 @@ void CollisionManager::UpdateCollisions()
 			}
 		}
 	}
-}
-
-void CollisionManager::Clear()
-{
-	colliders_.clear();
 }

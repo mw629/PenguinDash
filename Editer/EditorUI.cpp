@@ -6,6 +6,15 @@
 #include "ImGuizmo.h"
 #endif
 
+#include "LanguageManager.h"
+#include "EditorManager.h"
+#include "../MatchaEngine/GameObjects/Object/Animation/CharacterAnimator.h"
+#include "../MatchaEngine/GameObjects/Object/RenderObject.h"
+#include "../MatchaEngine/GameObjects/Object/3d/Sphere.h"
+#include "../MatchaEngine/GameObjects/Light/DirectionalLight.h"
+#include "../MatchaEngine/GameObjects/Light/PointLight.h"
+#include "../MatchaEngine/GameObjects/Light/SpotLight.h"
+
 void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const Matrix4x4& view, const Matrix4x4& projection) {
 #ifdef _USE_IMGUI
     if (!gameObjectManager) return;
@@ -13,7 +22,7 @@ void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const M
     // Sceneウィンドウの矩形とホバー状態を取得
     ImVec2 vMin, vMax, windowPos;
     bool isSceneHovered = false;
-    ImGui::Begin("Scene");
+    ImGui::Begin(LanguageManager::Tr("Scene"));
     vMin = ImGui::GetWindowContentRegionMin();
     vMax = ImGui::GetWindowContentRegionMax();
     windowPos = ImGui::GetWindowPos();
@@ -32,9 +41,9 @@ void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const M
     float mx = mousePos.x;
     float my = mousePos.y;
 
-    // Sceneウィンドウの屋根左山の絶対座標とサイズ
-    ImVec2 scenePos = ImVec2(vMin.x + windowPos.x, vMin.y + windowPos.y);
-    ImVec2 sceneSize = ImVec2(vMax.x - vMin.x, vMax.y - vMin.y);
+    // Sceneウィンドウの実際の描画領域（レターボックス等を考慮した絶対座標）
+    ImVec2 scenePos = EditorManager::s_sceneImagePos;
+    ImVec2 sceneSize = EditorManager::s_sceneImageSize;
 
     // NDC変換 (Sceneウィンドウ内を-1〜1にマッピング)
     float ndcX = (2.0f * (mx - scenePos.x)) / sceneSize.x - 1.0f;
@@ -72,17 +81,41 @@ void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const M
                 closestObj  = obj;
             }
         }
+
+        std::shared_ptr<CharacterAnimator> animator = std::dynamic_pointer_cast<CharacterAnimator>(obj);
+        if (!animator) {
+            if (auto renderObj = std::dynamic_pointer_cast<RenderObject>(obj)) {
+                animator = std::dynamic_pointer_cast<CharacterAnimator>(renderObj->GetObjectBase());
+            }
+        }
+
+        if (animator && animator->GetVisibleBones()) {
+            const Skeleton& skeleton = animator->GetSkeleton();
+            for (size_t i = 0; i < skeleton.joints.size(); ++i) {
+                std::shared_ptr<Sphere> sphereObj = animator->GetJointSphere((int32_t)i);
+                if (sphereObj) {
+                    AABB boneAabb = GetAABB(sphereObj->GetTransform(), 0.5f, 0.5f);
+                    float boneDist = 0.0f;
+                    if (CheckRayAABB(ray, boneAabb, boneDist)) {
+                        if (boneDist < closestDist) {
+                            closestDist = boneDist;
+                            closestObj = sphereObj;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     if (closestObj) {
-        selectedObject_ = closestObj;
+        SetSelectedObject(closestObj);
     }
 #endif
 }
 
 void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
 #ifdef _USE_IMGUI
-    if (!selectedObject_) return;
+    if (!selectedObject_ || selectedObject_->GetIsLocked()) return;
 
     // 現在アクティブなウィンドウのContentRegionの座標を取得
     // (SceneウィンドウのBegin/Endの間から呼ばれることを前提とする)
@@ -90,20 +123,27 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
     ImVec2 vMax = ImGui::GetWindowContentRegionMax();
     ImVec2 windowPos = ImGui::GetWindowPos();
 
-    ImVec2 scenePos = ImVec2(vMin.x + windowPos.x, vMin.y + windowPos.y);
-    ImVec2 sceneSize = ImVec2(vMax.x - vMin.x, vMax.y - vMin.y);
+    // Sceneウィンドウの実際の描画領域
+    ImVec2 scenePos = EditorManager::s_sceneImagePos;
+    ImVec2 sceneSize = EditorManager::s_sceneImageSize;
 
     ImGuizmo::SetOrthographic(false);
     ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
     ImGuizmo::SetRect(scenePos.x, scenePos.y, sceneSize.x, sceneSize.y);
+    ImGuizmo::SetGizmoSizeClipSpace(0.15f);
 
     Transform t = selectedObject_->GetTransform();
-    Matrix4x4 world = MakeAffineMatrix(t.translate, t.scale, t.rotate);
+    // ギズモ操作時にスケールが小さいとバグるため、スケールは1にする
+    Matrix4x4 world = MakeAffineMatrix(t.translate, {1.0f, 1.0f, 1.0f}, t.rotate);
+
+    ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+    if (EditorManager::s_gizmoOp == 1) op = ImGuizmo::ROTATE;
+    else if (EditorManager::s_gizmoOp == 2) op = ImGuizmo::SCALE;
 
     ImGuizmo::Manipulate(
         &view.m[0][0],
         &projection.m[0][0],
-        ImGuizmo::TRANSLATE | ImGuizmo::ROTATE | ImGuizmo::SCALE,
+        op,
         ImGuizmo::LOCAL,
         &world.m[0][0]
     );
@@ -117,7 +157,10 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
         float pi = 3.1415926535f;
         t.translate = { translation[0], translation[1], translation[2] };
         t.rotate = { rotation[0] * pi / 180.0f, rotation[1] * pi / 180.0f, rotation[2] * pi / 180.0f };
-        t.scale = { scale[0], scale[1], scale[2] };
+        // スケールはギズモでの操作結果に依存させず元の値を維持（SCALEモード時は必要なら別途対応）
+        if (op == ImGuizmo::SCALE) {
+            t.scale = { scale[0] * t.scale.x, scale[1] * t.scale.y, scale[2] * t.scale.z };
+        }
 
         selectedObject_->SetTransform(t);
     }
@@ -134,11 +177,121 @@ void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view,
     // (ギズモはEngineのSceneウィンドウコールバックから描画される)
 
     // Hierarchy Window
-    ImGui::Begin("Hierarchy");
+    ImGui::Begin(LanguageManager::Tr("Hierarchy"));
+    std::shared_ptr<GameObject> objToDelete = nullptr;
+    std::shared_ptr<GameObject> objToCopy = nullptr;
+
+    static std::shared_ptr<GameObject> s_lastSelectedObject = nullptr;
+    bool bFocusSelection = false;
+    if (selectedObject_ != s_lastSelectedObject) {
+        bFocusSelection = true;
+        s_lastSelectedObject = selectedObject_;
+    }
+
+    auto DrawJoint = [&](auto& self, std::shared_ptr<CharacterAnimator> animator, int32_t jointIndex) -> void {
+        const Skeleton& skeleton = animator->GetSkeleton();
+        if (jointIndex < 0 || jointIndex >= (int32_t)skeleton.joints.size()) return;
+        const Joint& joint = skeleton.joints[jointIndex];
+        
+        std::shared_ptr<Sphere> sphereObj = animator->GetJointSphere(jointIndex);
+        
+        ImGuiTreeNodeFlags jointFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (joint.children.empty()) {
+            jointFlags |= ImGuiTreeNodeFlags_Leaf;
+        }
+        
+        if (sphereObj && selectedObject_ == sphereObj) {
+            jointFlags |= ImGuiTreeNodeFlags_Selected;
+        }
+        
+        bool bContainsSelected = false;
+        if (bFocusSelection && selectedObject_) {
+            auto checkDescendant = [&](auto& checkSelf, int32_t jIdx) -> bool {
+                std::shared_ptr<Sphere> so = animator->GetJointSphere(jIdx);
+                if (so && so == selectedObject_) return true;
+                const Joint& j = skeleton.joints[jIdx];
+                for (int32_t childIdx : j.children) {
+                    if (checkSelf(checkSelf, childIdx)) return true;
+                }
+                return false;
+            };
+            bContainsSelected = checkDescendant(checkDescendant, jointIndex);
+            if (bContainsSelected) {
+                ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            }
+        }
+        
+        ImGui::PushID(&joint);
+        bool isJointOpen = false;
+        if (sphereObj) {
+            isJointOpen = ImGui::TreeNodeEx((void*)sphereObj.get(), jointFlags, "%s", sphereObj->GetName().c_str());
+            if (bContainsSelected && sphereObj == selectedObject_) ImGui::SetScrollHereY();
+            if (ImGui::IsItemClicked(0) || ImGui::IsItemClicked(1)) {
+                SetSelectedObject(sphereObj);
+            }
+        } else {
+            isJointOpen = ImGui::TreeNodeEx((void*)&joint, jointFlags, "%s", joint.name.c_str());
+        }
+        
+        if (isJointOpen) {
+            for (int32_t childIndex : joint.children) {
+                self(self, animator, childIndex);
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    };
+
+
     for (auto& obj : gameObjectManager->GetObjects()) {
         if (!obj) continue;
         
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf;
+        std::shared_ptr<CharacterAnimator> animator = std::dynamic_pointer_cast<CharacterAnimator>(obj);
+        if (!animator) {
+            if (auto renderObj = std::dynamic_pointer_cast<RenderObject>(obj)) {
+                animator = std::dynamic_pointer_cast<CharacterAnimator>(renderObj->GetObjectBase());
+            }
+        }
+
+        bool bContainsSelected = false;
+        if (bFocusSelection && selectedObject_) {
+            if (obj == selectedObject_) {
+                bContainsSelected = true;
+            } else if (animator) {
+                const Skeleton& skeleton = animator->GetSkeleton();
+                if (skeleton.joints.size() > 0) {
+                    auto checkDescendant = [&](auto& checkSelf, int32_t jIdx) -> bool {
+                        std::shared_ptr<Sphere> so = animator->GetJointSphere(jIdx);
+                        if (so && so == selectedObject_) return true;
+                        const Joint& j = skeleton.joints[jIdx];
+                        for (int32_t childIdx : j.children) {
+                            if (checkSelf(checkSelf, childIdx)) return true;
+                        }
+                        return false;
+                    };
+                    bContainsSelected = checkDescendant(checkDescendant, skeleton.root);
+                }
+            }
+            if (bContainsSelected) {
+                ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            }
+        }
+
+        ImGui::AlignTextToFramePadding();
+        bool isLocked = obj->GetIsLocked();
+        ImGui::PushID(obj.get());
+        if (ImGui::Checkbox("##lock", &isLocked)) {
+            obj->SetIsLocked(isLocked);
+        }
+        ImGui::PopID();
+        
+        ImGui::SameLine();
+
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (!animator || animator->GetSkeleton().joints.empty()) {
+            flags |= ImGuiTreeNodeFlags_Leaf;
+        }
+
         if (selectedObject_ == obj) {
             flags |= ImGuiTreeNodeFlags_Selected;
         }
@@ -148,36 +301,98 @@ void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view,
         }
 
         bool isOpen = ImGui::TreeNodeEx((void*)obj.get(), flags, "%s", obj->GetName().c_str());
+        if (bContainsSelected && obj == selectedObject_) ImGui::SetScrollHereY();
         
         if (!obj->GetIsActive()) {
             ImGui::PopStyleColor();
         }
 
-        if (ImGui::IsItemClicked()) {
-            selectedObject_ = obj;
+        if (ImGui::IsItemClicked(0) || ImGui::IsItemClicked(1)) {
+            SetSelectedObject(obj);
+        }
+
+        if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem(LanguageManager::Tr("Copy"))) {
+                objToCopy = obj;
+            }
+            if (ImGui::MenuItem(LanguageManager::Tr("Delete"))) {
+                objToDelete = obj;
+            }
+            ImGui::EndPopup();
         }
 
         if (isOpen) {
+            if (animator) {
+                const Skeleton& skeleton = animator->GetSkeleton();
+                if (skeleton.joints.size() > 0) {
+                    DrawJoint(DrawJoint, animator, skeleton.root);
+                }
+            }
             ImGui::TreePop();
         }
     }
+
+    if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+        if (ImGui::MenuItem("Create Empty")) {
+            auto emptyObj = std::make_shared<GameObject>();
+            emptyObj->SetName("GameObject");
+            gameObjectManager->AddObject(emptyObj);
+        }
+        if (ImGui::MenuItem("Create Directional Light")) {
+            auto light = std::make_shared<DirectionalLight>();
+            gameObjectManager->AddObject(light);
+        }
+        if (ImGui::MenuItem("Create Point Light")) {
+            auto light = std::make_shared<PointLight>();
+            gameObjectManager->AddObject(light);
+        }
+        if (ImGui::MenuItem("Create Spot Light")) {
+            auto light = std::make_shared<SpotLight>();
+            gameObjectManager->AddObject(light);
+        }
+        ImGui::EndPopup();
+    }
+
+    if (objToDelete) {
+        gameObjectManager->RemoveObject(objToDelete);
+        if (selectedObject_ == objToDelete) {
+            SetSelectedObject(nullptr);
+        }
+    }
+    if (objToCopy) {
+        gameObjectManager->CopyObject(objToCopy);
+    }
+
     ImGui::End();
 
     // Inspector Window
-    ImGui::Begin("Inspector");
+    ImGui::Begin(LanguageManager::Tr("Inspector"));
     if (selectedObject_) {
-        ImGui::Text("Name: %s", selectedObject_->GetName().c_str());
+        ImGui::Text(LanguageManager::Tr("Name: %s"), selectedObject_->GetName().c_str());
         ImGui::Separator();
 
         bool isActive = selectedObject_->GetIsActive();
-        if (ImGui::Checkbox("Active", &isActive)) {
+        if (ImGui::Checkbox(LanguageManager::Tr("Active"), &isActive)) {
             selectedObject_->SetIsActive(isActive);
+        }
+        ImGui::SameLine();
+        bool isLocked = selectedObject_->GetIsLocked();
+        if (ImGui::Checkbox(LanguageManager::Tr("Locked"), &isLocked)) {
+            selectedObject_->SetIsLocked(isLocked);
         }
         ImGui::Separator();
 
+        if (selectedObject_->GetIsLocked()) {
+            ImGui::BeginDisabled();
+        }
+
         selectedObject_->ImGui();
+
+        if (selectedObject_->GetIsLocked()) {
+            ImGui::EndDisabled();
+        }
     } else {
-        ImGui::Text("No object selected.");
+        ImGui::Text(LanguageManager::Tr("No object selected."));
     }
     ImGui::End();
 #endif

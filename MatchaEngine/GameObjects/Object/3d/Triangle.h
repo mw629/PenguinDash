@@ -49,20 +49,45 @@ public:
 
 	D3D12_VERTEX_BUFFER_VIEW* GetVertexBufferView() { return &vertexBufferView_; }
 	ID3D12Resource* GetVertexResource()const { return wvpResource_.Get(); }
-	MaterialFactory* GetMartial()const { 
+	MaterialFactory* GetMaterial()const { 
 		auto matComp = GetComponent<MaterialComponent>();
 		return matComp ? matComp->GetMaterialFactory() : nullptr;
 	}
+	[[deprecated("Use GetMaterial instead")]]
+	MaterialFactory* GetMartial()const { return GetMaterial(); }
 	D3D12_GPU_DESCRIPTOR_HANDLE GetTextureSrvHandleGPU()const { return textureSrvHandleGPU_; }
+
+	void SetBlend(BlendMode blend) { blend_ = blend; }
+	ShaderName GetShader() { return shader_; }
+	BlendMode GetBlend() { return blend_; }
+
+	void SetCullMode(CullMode cull) {
+		cullMode_ = cull;
+		if (auto mat = GetComponent<MaterialComponent>()) mat->SetCullMode(cull);
+	}
+	CullMode GetCullMode() const {
+		if (auto mat = GetComponent<MaterialComponent>()) return mat->GetCullMode();
+		return cullMode_;
+	}
+
+	void SetLocalAABB(const AABB& aabb) { localAABB_ = aabb; }
+	const AABB& GetLocalAABB() const { return localAABB_; }
+
+	void SetLocalBoundingSphere(const BoundingSphere& sphere) { localSphere_ = sphere; }
+	const BoundingSphere& GetLocalBoundingSphere() const { return localSphere_; }
+
+	AABB GetWorldAABB() const;
+	BoundingSphere GetWorldBoundingSphere() const;
+
+	void SetFrustumCullingEnabled(bool enable) { isFrustumCullingEnabled_ = enable; }
+	bool IsFrustumCullingEnabled() const { return isFrustumCullingEnabled_; }
 
 private:
 	ShaderName shader_ = "ObjectShader";
 	BlendMode blend_ = BlendMode::kBlendModeNone;
-public:
-	BlendMode SetBlend(BlendMode blend) { blend_ = blend; }
-	ShaderName GetShader() { return shader_; }
-	BlendMode GetBlend() { return blend_; }
-
-
+	CullMode cullMode_ = kCullModeBack;
+	AABB localAABB_{ {-0.1f, -0.1f, -0.01f}, {0.1f, 0.1f, 0.01f} };
+	BoundingSphere localSphere_{ {0.0f, 0.0f, 0.0f}, 0.15f };
+	bool isFrustumCullingEnabled_ = true;
 };
 

@@ -35,10 +35,12 @@ public:
 
 	void Initialize() override;
 	void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override;
-	void Draw() override;
+	void Draw(class Draw& draw) override;
 #ifdef _DEBUG
 	void ImGui() override;
 #endif
+
+	static bool s_isDrawDebug_;
 
 	ColliderShape GetShape() const { return shape_; }
 	

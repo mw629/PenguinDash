@@ -12,7 +12,7 @@ void DescriptorHeap::CreateHeap(ID3D12Device* device)
 {
 	//ディスクリプタヒープの生成
 	rtvDescriptorHeap_ = CreateDescriptorHeep(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
-	srvDescriptorHeap_ = CreateDescriptorHeep(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 512, true);
+	srvDescriptorHeap_ = CreateDescriptorHeep(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 10000, true);
 	dsvDescriptorHeap_ = CreateDescriptorHeep(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 }
 

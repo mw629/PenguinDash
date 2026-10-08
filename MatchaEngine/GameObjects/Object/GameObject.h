@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include "../../../Editer/LanguageManager.h"
 #include "VariableTypes.h"
 #include "../Component/Component.h"
 #include "../Component/MaterialComponent.h"
@@ -16,9 +17,11 @@ class GameObject
 {
 public:
     std::string name_ = "GameObject";
+    static inline GameObject* selectedObject_ = nullptr;
 protected:
     Transform transform_{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
     bool isActive_ = true;
+    bool isLocked_ = false;
     std::vector<std::shared_ptr<Component>> components_;
 
 public:
@@ -65,35 +68,39 @@ public:
             component->Update(view, speedMultiplier);
         }
     }
-    virtual void OnCollision(GameObject* other) {}
+    virtual void OnCollision(GameObject* /*other*/) {}
 
-    virtual void Draw() {
+    virtual std::shared_ptr<GameObject> Clone() {
+        return nullptr; // 基底クラスではnullptr。必要に応じて派生クラスで実装
+    }
+
+    virtual void Draw(class Draw& draw) {
         for (auto& component : components_) {
-            component->Draw();
+            component->Draw(draw);
         }
     }
     virtual void ImGui(bool drawTransform = true) {
 #ifdef _USE_IMGUI
-        if (drawTransform && ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (drawTransform && ImGui::CollapsingHeader(LanguageManager::Tr("Transform"), ImGuiTreeNodeFlags_DefaultOpen)) {
             float t[3] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
-            if (ImGui::DragFloat3("Position", t, 0.1f)) {
+            if (ImGui::DragFloat3(LanguageManager::Tr("Position"), t, 0.1f)) {
                 transform_.translate = { t[0], t[1], t[2] };
                 SetTransform(transform_);
             }
             float r[3] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
-            if (ImGui::DragFloat3("Rotation", r, 0.1f)) {
+            if (ImGui::DragFloat3(LanguageManager::Tr("Rotation"), r, 0.1f)) {
                 transform_.rotate = { r[0], r[1], r[2] };
                 SetTransform(transform_);
             }
             float s[3] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
-            if (ImGui::DragFloat3("Scale", s, 0.1f)) {
+            if (ImGui::DragFloat3(LanguageManager::Tr("Scale"), s, 0.1f)) {
                 transform_.scale = { s[0], s[1], s[2] };
                 SetTransform(transform_);
             }
         }
         bool componentsOpen = true;
         if (drawTransform) {
-            componentsOpen = ImGui::CollapsingHeader("Components", ImGuiTreeNodeFlags_DefaultOpen);
+            componentsOpen = ImGui::CollapsingHeader(LanguageManager::Tr("Components"), ImGuiTreeNodeFlags_DefaultOpen);
         }
 
         if (componentsOpen) {
@@ -104,7 +111,7 @@ public:
             ImGuiInnerComponents();
 
             if (drawTransform) {
-                if (ImGui::Button("Add Component")) {
+                if (ImGui::Button(LanguageManager::Tr("Add Component"))) {
                     ImGui::OpenPopup("AddComponentPopup");
                 }
                 if (ImGui::BeginPopup("AddComponentPopup")) {
@@ -143,4 +150,7 @@ public:
 
     bool GetIsActive() const { return isActive_; }
     void SetIsActive(bool active) { isActive_ = active; }
+
+    bool GetIsLocked() const { return isLocked_; }
+    void SetIsLocked(bool locked) { isLocked_ = locked; }
 };

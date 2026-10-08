@@ -120,6 +120,15 @@ void InputLayout::CreateInputLayout(const PipelineConfig& config)
 
 void RasterizerState::CreateRasterizerState(const PipelineConfig& config)
 {
-	rasterizerDesc_.CullMode = config.cullMode;
 	rasterizerDesc_.FillMode = config.fillMode;
+	rasterizerDesc_.CullMode = config.cullMode;
+	rasterizerDesc_.FrontCounterClockwise = FALSE;
+	rasterizerDesc_.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	rasterizerDesc_.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	rasterizerDesc_.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+	rasterizerDesc_.DepthClipEnable = TRUE;
+	rasterizerDesc_.MultisampleEnable = FALSE;
+	rasterizerDesc_.AntialiasedLineEnable = FALSE;
+	rasterizerDesc_.ForcedSampleCount = 0;
+	rasterizerDesc_.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 }

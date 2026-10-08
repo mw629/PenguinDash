@@ -10,7 +10,7 @@ public:
 	
 	void Update();
 	
-	void Draw();
+	void Draw(class Draw& draw);
 
 };
 

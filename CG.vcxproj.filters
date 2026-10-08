@@ -93,15 +93,6 @@
     <ClCompile Include="MatchaEngine\Core\WindowConfig.cpp">
       <Filter>MatchaEngine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\System\GameObjectManager.cpp">
-      <Filter>MatchaEngine\System</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\System\CollisionManager.cpp">
-      <Filter>MatchaEngine\System</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Component\ColliderComponent.cpp">
-      <Filter>MatchaEngine\GameObjects\Component</Filter>
-    </ClCompile>
     <ClCompile Include="MatchaEngine\Core\ImGuiManager.cpp">
       <Filter>MatchaEngine\Core</Filter>
     </ClCompile>
@@ -147,6 +138,15 @@
     <ClCompile Include="MatchaEngine\Graphics\DepthStencil.cpp">
       <Filter>MatchaEngine\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Font\MsdfGenerator.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="MatchaEngine\Graphics\DescriptorHeap.cpp">
       <Filter>MatchaEngine\Graphics</Filter>
     </ClCompile>
@@ -183,10 +183,13 @@
     <ClCompile Include="Game\GameScene\GameScene.cpp">
       <Filter>Game</Filter>
     </ClCompile>
-    <ClCompile Include="Game\SceneManager.cpp">
+    <ClCompile Include="Game\GameScene\Effect\GameSceneEffect.cpp">
       <Filter>Game</Filter>
     </ClCompile>
-    <ClCompile Include="Game\TitleScene\TitleScene.cpp">
+    <ClCompile Include="Game\GameScene\Effect\HexBarrier.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\SceneManager.cpp">
       <Filter>Game</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\Camera\Camera.cpp">
@@ -202,6 +205,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Game\Direction\Fade.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Direction\FreezeTransition.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\Effect\Emitter.cpp">
@@ -285,6 +291,9 @@
     <ClCompile Include="Game\GameScene\System\PauseSystem.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Game\GameScene\System\SoundManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="MatchaEngine\Graphics\Render\PostEffect.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -295,6 +304,30 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Game\JsonScene\JsonScene.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\System\GameObjectManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\System\CollisionManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Component\ColliderComponent.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Editer\LanguageManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Render\LineRenderer.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\GpuProfiler.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\GameSceneManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Entity\Boss.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -317,6 +350,10 @@
     <FxCompile Include="resources\Shader\SkinningObject3d.VS.hlsl" />
     <FxCompile Include="resources\Shader\SkyBox.VS.hlsl" />
     <FxCompile Include="resources\Shader\SkinningObject3d.CS.hlsl" />
+    <FxCompile Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl" />
+    <FxCompile Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl" />
+    <FxCompile Include="Resources\Shader\ComputeShader\Particle.CS.hlsl" />
+    <FxCompile Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h">
@@ -375,15 +412,6 @@
     </ClInclude>
     <ClInclude Include="MatchaEngine\Core\WindowConfig.h">
       <Filter>MatchaEngine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\System\GameObjectManager.h">
-      <Filter>MatchaEngine\System</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\System\CollisionManager.h">
-      <Filter>MatchaEngine\System</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Component\ColliderComponent.h">
-      <Filter>MatchaEngine\GameObjects\Component</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Core\ImGuiManager.h">
       <Filter>MatchaEngine\Core</Filter>
@@ -466,10 +494,10 @@
     <ClInclude Include="Game\GameScene\GameScene.h">
       <Filter>Game</Filter>
     </ClInclude>
-    <ClInclude Include="Game\SceneManager.h">
+    <ClInclude Include="Game\GameScene\Effect\GameSceneEffect.h">
       <Filter>Game</Filter>
     </ClInclude>
-    <ClInclude Include="Game\TitleScene\TitleScene.h">
+    <ClInclude Include="Game\SceneManager.h">
       <Filter>Game</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h">
@@ -485,6 +513,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Game\Direction\Fade.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Direction\FreezeTransition.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Effect\Emitter.h">
@@ -562,6 +593,9 @@
     <ClInclude Include="MatchaEngine\GameObjects\Object\RenderObject.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\HexBarrier.h">
+      <Filter>Game</Filter>
+    </ClInclude>
     <ClInclude Include="Game\GameScene\Entity\Player.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -577,6 +611,9 @@
     <ClInclude Include="Game\GameScene\System\PauseSystem.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="Game\GameScene\System\SoundManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="MatchaEngine\Graphics\Render\PostEffect.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -587,6 +624,39 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Game\JsonScene\JsonScene.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\System\GameObjectManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\System\CollisionManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Component\ColliderComponent.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Editer\LanguageManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Render\LineRenderer.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\GpuProfiler.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\GameSceneManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Entity\Boss.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Font\MsdfGenerator.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Font\TextRenderer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

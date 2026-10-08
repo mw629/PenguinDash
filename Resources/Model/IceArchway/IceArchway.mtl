@@ -1,0 +1,12 @@
+# Blender 4.4.3 MTL File: 'None'
+# www.blender.org
+
+newmtl tripo_material_95e85870_00e8_493e_8590_fbc0d329fdfc.001
+Ns 1000.000000
+Ka 1.000000 1.000000 1.000000
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd IceArchway_basecolor.jpg

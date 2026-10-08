@@ -1,4 +1,5 @@
 #include "Audio.h"
+#include "Core/LogHandler.h"
 #include <fstream> 
 
 // 静的メンバ変数の実体を定義
@@ -9,15 +10,24 @@ std::vector<Audio::SoundData> Audio::sSoundData;
 void Audio::Initialize() {
     // Media Foundationの初期化 
     HRESULT hr = MFStartup(MF_VERSION);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+        CheckHResult(hr, "MFStartup failed in Audio::Initialize");
+        assert(SUCCEEDED(hr));
+    }
 
     // XAudio2の初期化 (Qiita記事参照)
     hr = XAudio2Create(&sXaudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+        CheckHResult(hr, "XAudio2Create failed in Audio::Initialize");
+        assert(SUCCEEDED(hr));
+    }
 
     // マスターボイスの作成
     hr = sXaudio2->CreateMasteringVoice(&sMasterVoice);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+        CheckHResult(hr, "CreateMasteringVoice failed in Audio::Initialize");
+        assert(SUCCEEDED(hr));
+    }
 }
 
 void Audio::Finalize() {
@@ -53,7 +63,10 @@ int Audio::Load(const std::string& filePath) {
     Microsoft::WRL::ComPtr<IMFSourceReader> pReader;
     std::wstring wFilePath(filePath.begin(), filePath.end());
     HRESULT hr = MFCreateSourceReaderFromURL(wFilePath.c_str(), nullptr, &pReader);
-    if (FAILED(hr)) { return -1; }
+    if (FAILED(hr)) {
+        LOG_ERROR(std::format("Failed to load audio file: {}\nHRESULT: {}", filePath, FormatHResult(hr)));
+        return -1;
+    }
 
     // 2. 出力フォーマットをPCMに設定
     Microsoft::WRL::ComPtr<IMFMediaType> pNativeType;
@@ -72,7 +85,10 @@ int Audio::Load(const std::string& filePath) {
     WAVEFORMATEX* pFormat = nullptr;
     UINT32 formatSize = 0;
     hr = MFCreateWaveFormatExFromMFMediaType(pPcmType.Get(), &pFormat, &formatSize);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+        LOG_ERROR(std::format("Failed to create wave format for audio: {}\nHRESULT: {}", filePath, FormatHResult(hr)));
+        assert(SUCCEEDED(hr));
+    }
 
     // 4. オーディオデータをすべて読み込む
     std::vector<BYTE> mediaData;
@@ -166,6 +182,16 @@ void Audio::Stop(int soundHandle) {
     }
 }
 
+void Audio::StopAll() {
+    for (auto& data : sSoundData) {
+        if (data.pSourceVoice) {
+            data.pSourceVoice->Stop();
+            data.pSourceVoice->DestroyVoice();
+            data.pSourceVoice = nullptr;
+        }
+    }
+}
+
 void Audio::SetPitch(int soundHandle, float pitch)
 {
     if (soundHandle < 0 || soundHandle >= sSoundData.size()) return;
@@ -175,3 +201,26 @@ void Audio::SetPitch(int soundHandle, float pitch)
         data.pSourceVoice->SetFrequencyRatio(pitch);
     }
 }
+
+void Audio::SetVolume(int soundHandle, float volume)
+{
+    if (soundHandle < 0 || soundHandle >= sSoundData.size()) return;
+
+    SoundData& data = sSoundData[soundHandle];
+    if (data.pSourceVoice) {
+        data.pSourceVoice->SetVolume(volume);
+    }
+}
+
+bool Audio::IsPlaying(int soundHandle)
+{
+    if (soundHandle < 0 || soundHandle >= sSoundData.size()) return false;
+
+    SoundData& data = sSoundData[soundHandle];
+    if (!data.pSourceVoice) return false;
+
+    XAUDIO2_VOICE_STATE state;
+    data.pSourceVoice->GetState(&state);
+    return (state.BuffersQueued > 0);
+}
+

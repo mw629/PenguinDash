@@ -3,6 +3,7 @@
 struct Camera
 {
     float32_t3 worldPosition;
+    float32_t time;
 };
 
 struct VertexShaderOutput
@@ -18,6 +19,8 @@ struct TransformationMatrix
     float32_t4x4 WVP;
     float32_t4x4 World;
     float32_t4x4 WorldInverseTranspose;
+    uint32_t numBones;
+    float32_t3 padding;
 };
 
 struct VertexShaderInput

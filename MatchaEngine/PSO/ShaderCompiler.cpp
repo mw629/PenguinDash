@@ -1,5 +1,6 @@
 #include "ShaderCompiler.h"
 #include <cassert>
+#include <unordered_map>
 #include "Core/LogHandler.h"
 
 // ---------------------------------------------------------
@@ -18,6 +19,10 @@ void DirectXShaderCompiler::CreateDXC()
 	assert(SUCCEEDED(hr_));
 }
 
+namespace {
+	std::unordered_map<std::wstring, Microsoft::WRL::ComPtr<IDxcBlob>> s_shaderCache;
+}
+
 // ---------------------------------------------------------
 // ShaderCompile
 // ---------------------------------------------------------
@@ -29,8 +34,14 @@ Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompile::CompileShader(std::ostream& os,
 	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler,
 	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler)
 {
+	std::wstring cacheKey = filePath + L"|" + profile;
+	auto itCache = s_shaderCache.find(cacheKey);
+	if (itCache != s_shaderCache.end()) {
+		Log(os, ConvertString(std::format(L"Shader loaded from cache, [{}], profile:{}\n", filePath, profile)));
+		return itCache->second;
+	}
 
-	//hldlファイルを読み込む//
+	//hlslファイルを読み込む//
 
 	//Shaderのファイル名を取得
 	std::wstring shaderName = filePath.substr(filePath.find_last_of(L"\\/") + 1);
@@ -41,19 +52,20 @@ Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompile::CompileShader(std::ostream& os,
 	Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
 	HRESULT hr = dxcUtils.Get()->LoadFile(filePath.c_str(), nullptr, &shaderSource);
 	//読めなかったら止める
-	if (SUCCEEDED(hr)) {
-		Log(os, ConvertString(std::format(L"File loaded successfully,[{}]\n", shaderName)));
-	} else {
-		Log(os, ConvertString(std::format(L"Failed to load file,[{}]\n", shaderName)));
+	if (FAILED(hr) || !shaderSource) {
+		Log(os, ConvertString(std::format(L"Failed to load file,[{}], path:{}\n", shaderName, filePath)));
+		assert(SUCCEEDED(hr));
+		return nullptr;
 	}
-	assert(SUCCEEDED(hr));
+	Log(os, ConvertString(std::format(L"File loaded successfully,[{}]\n", shaderName)));
+
 	//読み込んだファイルの内容を設定する
 	DxcBuffer shaderSourceBuffer;
 	shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
 	shaderSourceBuffer.Size = shaderSource->GetBufferSize();
 	shaderSourceBuffer.Encoding = DXC_CP_UTF8;//UTF8の文字コードであることを通知
 
-	//Compilする//
+	//Compileする//
 	Log(os, ConvertString(std::format(L"Starting compilation,[{}],profile:{}\n", shaderName, profile)));
 
 	LPCWSTR arguments[] = {
@@ -109,6 +121,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompile::CompileShader(std::ostream& os,
 	assert(SUCCEEDED(hr));
 	//成功したログを出す
 	Log(os, ConvertString(std::format(L"Compile Succeeded,[{}],path:{},profile:{}\n", shaderName, filePath, profile)));
+	//キャッシュに保存
+	s_shaderCache[cacheKey] = shaderBlob;
 	//実行用のバイナリを返却
 	return shaderBlob;
 
@@ -138,3 +152,19 @@ void ShaderCompile::CreateShaderCompile(const PipelineConfig& config, std::ostre
 
 	Log(os, "====== CreateShaderCompile End ======\n");
 }
+
+void ShaderCompile::CreateComputeShaderCompile(const std::wstring& csPath, std::ostream& os, Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils, Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler, Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler)
+{
+	Log(os, "====== CreateComputeShaderCompile Start ======\n");
+	Log(os, "Compiling Compute Shader...\n");
+	computeShaderBlob_ = CompileShader(os, csPath, L"cs_6_0", dxcUtils, dxcCompiler, includeHandler);
+	if (computeShaderBlob_ != nullptr) {
+		Log(os, "Compute Shader compiled successfully\n");
+	} else {
+		Log(os, "Compute Shader compilation failed\n");
+	}
+	assert(computeShaderBlob_ != nullptr);
+	Log(os, "====== CreateComputeShaderCompile End ======\n");
+}
+
+IDxcBlob* ShaderCompile::GetComputeShaderBlob() { return computeShaderBlob_.Get(); }

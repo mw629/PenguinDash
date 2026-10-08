@@ -15,6 +15,9 @@ void Sphere::Initialize(int textureSrvHandle)
 {
 	textureSrvHandleGPU_ = texture.get()->TextureData(textureSrvHandle);
 
+	localAABB_ = { {-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f} };
+	localSphere_ = { {0.0f, 0.0f, 0.0f}, 1.0f };
+
 	AddComponent<MaterialComponent>();
 	
 	CreateObject(); // この行を追加
@@ -147,7 +150,7 @@ void Sphere::CreateIndexResource()
 	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
 
 	// 0,1,2,3,4,5... を順番に詰めるだけ
-	for (uint32_t i = 0; i < indexSize_; ++i) {
+	for (int i = 0; i < indexSize_; ++i) {
 		indexData[i] = i;
 	}
 }

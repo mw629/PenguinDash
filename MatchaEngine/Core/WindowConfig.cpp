@@ -19,6 +19,9 @@ LRESULT WindowConfig::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 #endif // _USE_IMGUI
 	//メッセージに応じてゲーム固有の処理を行う
 	switch (msg) {
+	case WM_ERASEBKGND:
+		// 白い背景でのチラつき・クリアを防ぐため、DirectX描画前に消去させない
+		return 1;
 		//ウィンドウが破棄された
 	case WM_DESTROY:
 		//OSに対して、アプリ終了を伝える
@@ -48,11 +51,13 @@ void WindowConfig::SetWindowData(const int32_t kClientWidth, const int32_t kClie
 	//ウィンドウプロシージャ
 	wc.lpfnWndProc = WindowProc;
 	//ウィンドウクラス名
-	wc.lpszClassName = L"CGWindowClass";
+	wc.lpszClassName = L"ペンギンダッシュ";
 	//インスタンスハンドル
 	wc.hInstance = GetModuleHandle(nullptr);
 	//カーソル
 	wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	//背景ブラシ（デフォルトの白画面を避けるため黒ブラシを設定）
+	wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 
 	//ウィンドウクラスを登録
 	RegisterClass(&wc);
@@ -69,7 +74,7 @@ void WindowConfig::SetWindowData(const int32_t kClientWidth, const int32_t kClie
 	//ウィンドウの作成//
 	hwnd = CreateWindow(
 		wc.lpszClassName, //利用するクラス名
-		L"LE3B_29_ワタナベ_マサト",//タイトルバーの文字
+		L"ペンギンダッシュ",//タイトルバーの文字
 		WS_OVERLAPPEDWINDOW,//よく見るウィンドウスタイル
 		CW_USEDEFAULT,//表示X座標（Windowsに任せる）
 		CW_USEDEFAULT,//表示Y座標（Windowsに任せる）
@@ -86,9 +91,21 @@ void WindowConfig::SetWindowData(const int32_t kClientWidth, const int32_t kClie
 void WindowConfig::DrawWindow(const int32_t kClientWidth, const int32_t kClientHeight)
 {
 	SetWindowData(kClientWidth, kClientHeight);
-	//ウィンドウを表示する
-	ShowWindow(hwnd, SW_SHOW);
+	// 初回フレームの描画（Present）が完了するまで ShowWindow の呼び出しを遅延させ、
+	// 起動時の真っ白な画面表示を防止する
+}
 
+void WindowConfig::Show()
+{
+	if (hwnd && !IsWindowVisible(hwnd)) {
+		ShowWindow(hwnd, SW_SHOW);
+		UpdateWindow(hwnd);
+	}
+}
+
+bool WindowConfig::IsVisible() const
+{
+	return hwnd && IsWindowVisible(hwnd);
 }
 
 void WindowConfig::Finalize() {
