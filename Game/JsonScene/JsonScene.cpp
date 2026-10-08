@@ -58,15 +58,19 @@ void JsonScene::ImGui()
 		return;
 	}
 
+#include "Camera.h"
+
 	ImGui::Begin("JsonScene");
 	camera_->ImGui();
 	ImGui::End();
 
-	Matrix4x4 projection = MakePerspectiveFovMatrix(0.45f, float(1280.0f) / float(720.0f), 0.1f, 10000.0f);
+	Matrix4x4 projection = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, Camera::kDefaultAspectRatio, Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 	editorUI_->Draw(gameObjectManager_.get(), view_, projection);
 
 	EditorManager::SetSceneOverlayCallback([this]() {
-		Matrix4x4 proj = MakePerspectiveFovMatrix(0.45f, float(1280.0f) / float(720.0f), 0.1f, 10000.0f);
+		Matrix4x4 proj = MakePerspectiveFovMatrix(
+			Camera::kDefaultFovY, Camera::kDefaultAspectRatio, Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 		editorUI_->DrawGizmoInScene(view_, proj);
 	});
 #endif

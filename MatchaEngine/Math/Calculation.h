@@ -355,19 +355,17 @@ Matrix4x4 RotationY(float angle);
 Matrix4x4 RotationZ(float angle);
 
 /// <summary>
-/// この関数は、任意の軸を中心に回転する行列を計算します。
+/// この関数は、各軸(X, Y, Z)の回転角度から回転行列を計算します。
 /// </summary>
-/// <param name="angleX">X軸回転角度</param>
-/// <param name="angleY">Y軸回転角度</param>
-/// <param name="angleZ">Z軸回転角度</param>
+/// <param name="angle">各軸の回転角度(X, Y, Z)</param>
 /// <returns>回転行列</returns>
 Matrix4x4 Rotation(Vector3 angle);
 
 /// <summary>
-/// この関数は、ベクトルを行列で変換します。
+/// この関数は、平行移動行列を作成します。
 /// </summary>
-/// <param name="pos">位置</param>
-/// <param name="m">行列</param>
+/// <param name="pos">平行移動量</param>
+/// <returns>平行移動行列</returns>
 Matrix4x4 Translation(Vector3 pos);
 
 Vector3 MakeWorldPos(PolarCoordinates pos);

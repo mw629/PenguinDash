@@ -2,6 +2,7 @@
 #include "../../../Graphics/Render/LineRenderer.h"
 #include "Calculation.h"
 #include "DescriptorHeap.h"
+#include "Camera.h"
 #include <Load.h>
 #include <Sphere.h>
 #include <algorithm>
@@ -10,6 +11,10 @@
 namespace {
 ID3D12Device *device;
 DescriptorHeap *descriptorHeap;
+constexpr uint32_t kDefaultJointSphereSubdivision = 8;
+constexpr Vector4 kDefaultJointSphereColor = {0.0f, 1.0f, 0.0f, 1.0f};
+constexpr Vector3 kDefaultJointSphereScale = {0.01f, 0.01f, 0.01f};
+constexpr float kDefaultAnimationDeltaTime = 1.0f / 60.0f;
 }
 
 CharacterAnimator::~CharacterAnimator() {
@@ -48,11 +53,11 @@ void CharacterAnimator::Initialize(ModelData modelData,
   for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
     jointSpheres_[i] = std::make_shared<Sphere>();
     jointSpheres_[i]->SetMaxInstanceCount(1);
-    jointSpheres_[i]->SetSubdivision(8);
+    jointSpheres_[i]->SetSubdivision(kDefaultJointSphereSubdivision);
     jointSpheres_[i]->Initialize(modelData_.textureIndex);
     jointSpheres_[i]->SetName(skeleton_.joints[i].name);
     if (auto mat = jointSpheres_[i]->GetComponent<MaterialComponent>()) {
-      mat->GetMaterialFactory()->SetColor({0.0f, 1.0f, 0.0f, 1.0f});
+      mat->GetMaterialFactory()->SetColor(kDefaultJointSphereColor);
       mat->SetShader("WireFrameShaderNoDepth");
     }
   }
@@ -72,7 +77,7 @@ void CharacterAnimator::Initialize(ModelData modelData,
       mat.textureSrvHandleGPU = textureSrvHandleGPU_;
     }
     mat.materialFactory = std::make_unique<MaterialFactory>();
-    mat.materialFactory->CreateMartial(false, 0.0f);
+    mat.materialFactory->CreateMaterial(false, 0.0f);
     subMeshMaterials_.push_back(std::move(mat));
   }
   CreateObject();
@@ -95,7 +100,8 @@ void CharacterAnimator::LoadAdditionalAnimation(
 
 void CharacterAnimator::SettingWvp(Matrix4x4 viewMatrix) {
   Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
-      0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+      Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_),
+      Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 
   if (isInstancing_ && !instancingTransforms_.empty()) {
     int count = std::min(maxInstanceCount_,
@@ -424,7 +430,7 @@ void CharacterAnimator::Update(Matrix4x4 viewMatrix) {
       Matrix4x4 currentJointMat =
           skeleton_.joints[i].skeletonSpaceMatrix * worldMatrix;
       Transform t = DecomposeMatrix(currentJointMat);
-      t.scale = {0.01f, 0.01f, 0.01f};
+      t.scale = kDefaultJointSphereScale;
       jointSpheres_[i]->SetTransform(t);
       jointSpheres_[i]->SettingWvp(viewMatrix);
     }
@@ -442,7 +448,7 @@ void CharacterAnimator::UpdateWithDelta(Matrix4x4 viewMatrix,
   }
 
   if (isBlending_) {
-    blendTimer_ += 1.0f / 60.0f; // ブレンドは実際の時間で進行させる
+    blendTimer_ += kDefaultAnimationDeltaTime; // ブレンドは実際の時間で進行させる
     if (blendTimer_ >= blendDuration_) {
       blendTimer_ = blendDuration_;
       isBlending_ = false;

@@ -290,13 +290,15 @@ void EffectDefinition::DeleteParticle(int ParticleNum) {
   }
 }
 
+#include "Camera.h"
+
 void EffectDefinition::SettingWvp(Matrix4x4 viewMatrix) {
   Matrix4x4 projectionMatrix =
       hasCustomProjectionMatrix_
           ? customProjectionMatrix_
-          : MakePerspectiveFovMatrix(0.45f,
+          : MakePerspectiveFovMatrix(Camera::kDefaultFovY,
                                      float(kClientWidth) / float(kClientHeight),
-                                     0.1f, 10000.0f);
+                                     Camera::kDefaultNearClip, Camera::kDefaultFarClip);
   Matrix4x4 viewProjection = MultiplyMatrix4x4(viewMatrix, projectionMatrix);
 
   Matrix4x4 billboard = IdentityMatrix();
@@ -336,7 +338,7 @@ void EffectDefinition::SetData(
   effectDefinitionData_ = std::move(effectDefinitionData);
 }
 
-void EffectDefinition::Updata(
+void EffectDefinition::Update(
     Matrix4x4 viewMatrix,
     std::list<EffectDefinitionData> effectDefinitionData) {
   SetData(effectDefinitionData);

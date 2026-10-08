@@ -151,10 +151,15 @@ private:
     GraphicsPipelineState* pipelineState_ = nullptr;
     std::unique_ptr<DynamicFontAtlas> atlas_;
 
-    float screenWidth_ = 1280.0f;
-    float screenHeight_ = 720.0f;
-    float referenceWidth_ = 1280.0f;
-    float referenceHeight_ = 720.0f;
+public:
+    static constexpr float kDefaultReferenceWidth = 1280.0f;
+    static constexpr float kDefaultReferenceHeight = 720.0f;
+
+private:
+    float screenWidth_ = kDefaultReferenceWidth;
+    float screenHeight_ = kDefaultReferenceHeight;
+    float referenceWidth_ = kDefaultReferenceWidth;
+    float referenceHeight_ = kDefaultReferenceHeight;
     TextScaleMode scaleMode_ = TextScaleMode::Fit;
     float baseBoldness_ = 0.07f; // 全体的なデフォルト太さオフセット (0.0fが標準、0.07fでしっかり太字)
 

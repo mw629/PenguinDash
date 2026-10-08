@@ -23,7 +23,7 @@ void Player::UpdateDrawTransform(float speedMultiplier) {
   // 平行移動オフセットの適用
   drawTransform.translate.x += modelOffset_.translate.x;
   drawTransform.translate.y +=
-      modelOffset_.translate.y + (isRolling_ ? 0.5f : 0.0f);
+      modelOffset_.translate.y + (isRolling_ ? kDefaultRollingHeightOffset : 0.0f);
   drawTransform.translate.z += modelOffset_.translate.z;
 
   // 回転オフセットの適用
@@ -65,14 +65,14 @@ void Player::Initialize(ModelData modelData) {
   ModelData axeData = AssimpLoadObjFile("Resources/Model/Axe", "Axe.obj");
   axe_->Initialize(axeData);
   axe_->name_ = "Player Axe Model";
-  axeOffset_.scale = {100.0f, 100.0f, 100.0f};
+  axeOffset_.scale = kDefaultAxeScale;
   axeOffset_.rotate = {0.0f, 0.0f, 0.0f};
   axeOffset_.translate = {0.0f, 0.0f, 0.0f};
 
   // コライダーの初期化（判定サイズは一切変更しない！）
   auto collider = AddComponent<ColliderComponent>();
   collider->SetShape(ColliderShape::Box);
-  collider->SetSize({0.8f, 1.5f, 0.8f});
+  collider->SetSize({kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth});
 
   UpdateDrawTransform(0.0f);
 }
@@ -102,7 +102,7 @@ void Player::Reset() {
 
   isForcedCentering_ = false;
   forcedCenterTimer_ = 0.0f;
-  forcedCenterDuration_ = 30.0f;
+  forcedCenterDuration_ = kDefaultForcedCenterDuration;
   forcedCenterStartX_ = 0.0f;
 
   SetHasBarrier(false);
@@ -130,7 +130,7 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
 
   // アニメーション更新（走っている際）
   if (speedMultiplier > 0.0f) {
-    model_->UpdateWithDelta(view, speedMultiplier * 0.01f);
+    model_->UpdateWithDelta(view, speedMultiplier * kAnimationSpeedFactor);
   } else {
     model_->UpdateWithDelta(view, 0.0f);
   }
@@ -150,7 +150,10 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
   }
 
   if (auto collider = GetComponent<ColliderComponent>()) {
-    collider->SetSize({0.8f, isRolling_ ? 0.5f : 1.5f, 0.8f});
+    collider->SetSize({kDefaultColliderWidth,
+                       isRolling_ ? kDefaultColliderHeightRoll
+                                  : kDefaultColliderHeightStand,
+                       kDefaultColliderDepth});
   }
   GameObject::Update(view, speedMultiplier);
 }

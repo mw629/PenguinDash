@@ -107,12 +107,12 @@ PixelShaderOutput main(VertexShaderOutput input)
                 float32_t spotNdirL = dot(normalize(input.normal), -spotLightDirectionOnSurface);
                 float32_t spotCos = pow(spotNdirL * 0.5f + 0.5f, 2.0f);
                 float32_t conAngle = dot(spotLightDirectionOnSurface, spLight.direction);
-                float32_t fallffFactor = saturate((conAngle - spLight.cosAngle) / (spLight.cosFalloffStart));
+                float32_t falloffFactor = saturate((conAngle - spLight.cosAngle) / (spLight.cosFalloffStart));
                 float32_t spotDistance = length(spLight.position - input.worldPosition);
                 float32_t attenuationFactor = pow(saturate(-spotDistance / spLight.distance + 1.0f), spLight.decay);
                 
-                diffuse += gMaterial.color.rgb * textureColor.rgb * spLight.color.rgb * conAngle * spLight.intensity * fallffFactor * attenuationFactor;
-                specular += spLight.color.rgb * spLight.intensity * spotSpecularPow * float32_t3(1.0f, 1.0f, 1.0f) * fallffFactor * attenuationFactor;
+                diffuse += gMaterial.color.rgb * textureColor.rgb * spLight.color.rgb * conAngle * spLight.intensity * falloffFactor * attenuationFactor;
+                specular += spLight.color.rgb * spLight.intensity * spotSpecularPow * float32_t3(1.0f, 1.0f, 1.0f) * falloffFactor * attenuationFactor;
             }
         }
         

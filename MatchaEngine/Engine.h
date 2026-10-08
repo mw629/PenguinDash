@@ -84,6 +84,10 @@
 class Engine
 {
 public:
+	static constexpr float kTargetFPS = 60.0f;
+	static constexpr float kCheckFPS = 65.0f;
+	static constexpr float kDefaultDeltaTime = 1.0f / kTargetFPS;
+
 	HRESULT hr_;
 	std::chrono::steady_clock::time_point reference_;
 

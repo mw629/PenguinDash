@@ -57,7 +57,7 @@ void Triangle::CreateVertexData()
 	vertexBufferView_.SizeInBytes = sizeof(VertexData) * 3;
 	//1頂点当たりのサイズ
 	vertexBufferView_.StrideInBytes = sizeof(VertexData);
-	//Resouceにデータを書き込む//
+	//Resourceにデータを書き込む//
 
 	//書き込むためのアドレスを取得
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -92,9 +92,13 @@ void Triangle::CreateTriangle()
 	CreateWVP();
 }
 
+#include "Camera.h"
+
 void Triangle::SettingWvp(Matrix4x4 viewMatrix)
 {
-	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 10000.0f);
+	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, float(kClientWidth) / float(kClientHeight),
+		Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 	*wvpData_ = { worldViewProjectionMatrix,worldMatrix };

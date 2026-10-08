@@ -61,9 +61,14 @@ void ObjectBase::CreateIndexResource()
 }
 
 
+#include "Camera.h"
+
+
 void ObjectBase::SettingWvp(Matrix4x4 viewMatrix)
 {
-	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_),
+		Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 
 	if (isInstancing_ && !instancingTransforms_.empty()) {
 		int count = min(maxInstanceCount_, static_cast<int>(instancingTransforms_.size()));

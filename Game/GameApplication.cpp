@@ -16,7 +16,7 @@ void GameApplication::Run() {
   // ウィンドウのxが押されるまでループ
   while (true) {
     // windowにメッセージが来てたら最優先で処理させる
-    if (WindowConfig::ProcessMassage()) {
+    if (WindowConfig::ProcessMessage()) {
       break;
     }
 

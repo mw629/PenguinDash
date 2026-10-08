@@ -66,11 +66,16 @@ void Fade::Update(float deltaTime) {
     }
 }
 
+#include <Core/WindowConfig.h>
+
 void Fade::Draw(class Draw& draw) {
     if (currentAlpha_ > 0.001f) {
         Vector4 drawColor = color_;
         drawColor.w = currentAlpha_;
-        draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(1280.0f, 720.0f), drawColor);
+        draw.DrawFillRect(Vector2(0.0f, 0.0f),
+            Vector2(static_cast<float>(WindowConfig::kDefaultClientWidth),
+                    static_cast<float>(WindowConfig::kDefaultClientHeight)),
+            drawColor);
     }
 }
 

@@ -25,7 +25,7 @@ private:
 	SpriteData spriteData_{
 		{ {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {100.0f, 100.0f, 0.0f} }, // transform
 		{ 300, 300 }, // size
-		{ {0.0f, 0.0f}, {0.1f, 0.1f} } // texxtureArea
+		{ {0.0f, 0.0f}, {0.1f, 0.1f} } // textureArea
 	};
 
 	std::shared_ptr<Model> model_ = std::make_shared<Model>();

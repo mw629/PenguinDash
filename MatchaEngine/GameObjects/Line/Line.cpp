@@ -44,7 +44,7 @@ void Line::CreateVertexData()
 	vertexBufferView_.SizeInBytes = sizeof(LineVertexData) * 2;
 	//1頂点当たりのサイズ
 	vertexBufferView_.StrideInBytes = sizeof(LineVertexData);
-	//Resouceにデータを書き込む//
+	//Resourceにデータを書き込む//
 
 	//書き込むためのアドレスを取得
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -73,13 +73,16 @@ void Line::CreateLine()
 	CreateWVP();
 }
 
+#include "Camera.h"
+
 void Line::SettingWvp(Matrix4x4 viewMatrix)
 {
-	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(1280) / float(720), 0.1f, 10000.0f);
+	float aspect = (kClientHeight > 0.0f) ? (kClientWidth / kClientHeight) : Camera::kDefaultAspectRatio;
+	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, aspect, Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 	*wvpData_ = { worldViewProjectionMatrix };
-
 }
 
 

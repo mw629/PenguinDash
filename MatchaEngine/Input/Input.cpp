@@ -16,12 +16,12 @@ void Input::Initialize(WNDCLASS wc, HWND hwnd) {
 		wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
 		reinterpret_cast<void**>(directInput_.GetAddressOf()), nullptr);
 	assert(SUCCEEDED(result));
-	CreateInpuDevice();
+	CreateInputDevice();
 	SetInputType();
 	SetExclusionLevel(hwnd);
 }
 
-void Input::CreateInpuDevice()
+void Input::CreateInputDevice()
 {
 	result = directInput_->CreateDevice(GUID_SysKeyboard, keyboard_.GetAddressOf(), NULL);
 	assert(SUCCEEDED(result));
@@ -47,9 +47,9 @@ void Input::SetExclusionLevel(HWND hwnd)
 	assert(SUCCEEDED(result));
 }
 
-void Input::Updata()
+void Input::Update()
 {
-	//kyeの取得
+	//keyの取得
 	std::memcpy(prevKey_, key_, sizeof(key_));
 	keyboard_->Acquire();
 	keyboard_->GetDeviceState(sizeof(key_), key_);

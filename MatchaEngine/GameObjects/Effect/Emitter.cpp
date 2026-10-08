@@ -1089,7 +1089,7 @@ void Emitter::Update(Matrix4x4 viewMatrix) {
     }
   }
 
-  effectDefinition_.get()->Updata(viewMatrix, effectDefinitionData_);
+  effectDefinition_.get()->Update(viewMatrix, effectDefinitionData_);
   if (GetUseGpuParticle()) {
     SyncGpuParticleParameters(emitFrame);
   }
@@ -1224,7 +1224,7 @@ void Emitter::Update(
     }
   }
 
-  effectDefinition_.get()->Updata(viewMatrix, effectDefinitionData_);
+  effectDefinition_.get()->Update(viewMatrix, effectDefinitionData_);
   if (GetUseGpuParticle()) {
     SyncGpuParticleParameters(emitFrame);
   }
@@ -1245,7 +1245,7 @@ void Emitter::Update(Matrix4x4 viewMatrix, Vector3 scale) {
 }
 
 void Emitter::EditorUpdate(Matrix4x4 viewMatrix) {
-  effectDefinition_.get()->Updata(viewMatrix, effectDefinitionData_);
+  effectDefinition_.get()->Update(viewMatrix, effectDefinitionData_);
   if (GetUseGpuParticle()) {
     SyncGpuParticleParameters(false);
   }

@@ -12,8 +12,43 @@ private:
 
   std::unique_ptr<CharacterAnimator> model_ =
       std::make_unique<CharacterAnimator>();
+public:
+  // レーン設定定数
+  static constexpr int kDefaultMinLane = -1;
+  static constexpr int kDefaultMaxLane = 1;
+  static constexpr float kDefaultLaneWidth = 4.0f;
+  static constexpr float kDefaultLaneChangeSpeed = 0.2f;
+
+  // アクション物理パラメータ定数
+  static constexpr float kDefaultGravity = 0.014f;
+  static constexpr float kDefaultJumpPower = 0.21f;
+  static constexpr float kDefaultBaseHeight = 3.0f;
+
+  // ロール（スライディング）パラメータ定数
+  static constexpr float kDefaultRollDuration = 30.0f;
+  static constexpr float kDefaultRollTransitionDuration = 0.06f;
+  static constexpr float kDefaultWalkTransitionDuration = 0.08f;
+  static constexpr float kDefaultRollingHeightOffset = 0.5f;
+
+  // コライダーサイズ定数
+  static constexpr float kDefaultColliderWidth = 0.8f;
+  static constexpr float kDefaultColliderHeightStand = 1.5f;
+  static constexpr float kDefaultColliderHeightRoll = 0.5f;
+  static constexpr float kDefaultColliderDepth = 0.8f;
+
+  // ヒット・中央復帰パラメータ定数
+  static constexpr float kDefaultHitDuration = 90.0f;
+  static constexpr float kDefaultForcedCenterDuration = 30.0f;
+
+  // モデル・アックスのスケール定数
+  static constexpr Vector3 kDefaultModelScale = {140.0f, 140.0f, 140.0f};
+  static constexpr Vector3 kDefaultModelTranslate = {0.0f, -1.0f, 0.0f};
+  static constexpr Vector3 kDefaultAxeScale = {100.0f, 100.0f, 100.0f};
+  static constexpr float kAnimationSpeedFactor = 0.01f;
+
+private:
   std::unique_ptr<Model> axe_ = std::make_unique<Model>();
-  Transform axeOffset_{{100.0f, 100.0f, 100.0f},
+  Transform axeOffset_{kDefaultAxeScale,
                        {
                            0.0f,
                            0.0f,
@@ -24,38 +59,38 @@ private:
 
   // ペンギンモデルのスケール・オフセット（GLTFモデルの0.01スケールを等身大に補正）
   Transform modelOffset_{
-      {140.0f, 140.0f, 140.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}};
+      kDefaultModelScale, {0.0f, 0.0f, 0.0f}, kDefaultModelTranslate};
   // transform_ is inherited from GameObject
 
   // レーン移動のための変数
   int laneIndex_ = 0;       // 現在のレーン位置
   int targetLaneIndex_ = 0; // 目標のレーン位置
 
-  float laneChangeSpeed_ = 0.2f;                      // レーン移動の速度
+  float laneChangeSpeed_ = kDefaultLaneChangeSpeed;    // レーン移動の速度
   float lerpTime_ = 0.0f;                             // 補間用タイマー
   float startX_ = 0.0f;                               // 移動開始時のX座標
   MoveDirection moveDirection_ = MoveDirection::None; // 移動方向
 
   // レーン設定
-  int minLane_ = -1;
-  int maxLane_ = 1;
-  float laneWidth_ = 4.0f;
+  int minLane_ = kDefaultMinLane;
+  int maxLane_ = kDefaultMaxLane;
+  float laneWidth_ = kDefaultLaneWidth;
 
   // アクション用の変数
   bool isJumping_ = false;
   float velocityY_ = 0.0f;
-  float gravity_ = 0.014f;
-  float jumpPower_ = 0.21f;
-  float baseHeight_ = 3.0f; // 地面の高さ（Y座標）
+  float gravity_ = kDefaultGravity;
+  float jumpPower_ = kDefaultJumpPower;
+  float baseHeight_ = kDefaultBaseHeight; // 地面の高さ（Y座標）
 
   bool isRolling_ = false;
   float rollTimer_ = 0.0f;
-  float rollDuration_ = 30.0f; // 転がりの継続フレーム数（約0.5秒）
+  float rollDuration_ = kDefaultRollDuration; // 転がりの継続フレーム数（約0.5秒）
   bool keepRolling_ = false;   // 強制的にしゃがみを維持するフラグ
   float rollTransitionDuration_ =
-      0.06f; // しゃがみ（sneakWalk）への遷移ブレンド秒数（約3〜4フレーム）
+      kDefaultRollTransitionDuration; // しゃがみ（sneakWalk）への遷移ブレンド秒数（約3〜4フレーム）
   float walkTransitionDuration_ =
-      0.08f; // 立ち上がり（walk）への遷移ブレンド秒数（約5フレーム）
+      kDefaultWalkTransitionDuration; // 立ち上がり（walk）への遷移ブレンド秒数（約5フレーム）
 
   // 各アクションの硬直（クールタイム）用変数
   float laneChangeRecovery_ = 0.0f;   // レーン移動終了後の硬直フレーム数

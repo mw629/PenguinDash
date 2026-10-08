@@ -46,6 +46,10 @@ struct SpriteData {
 class Sprite : public GameObject
 {
 public:
+	static constexpr float kDefaultReferenceWidth = 1280.0f;
+	static constexpr float kDefaultReferenceHeight = 720.0f;
+	static constexpr Vector2 kDefaultReferenceResolution = { kDefaultReferenceWidth, kDefaultReferenceHeight };
+
 	struct ScreenTransformResult {
 		Vector2 screenPosition;
 		Vector2 scale;

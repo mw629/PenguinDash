@@ -7,8 +7,8 @@
 #include <imgui.h>
 #endif // _USE_IMGUI
 
-float Camera::s_screenWidth_ = 1280.0f;
-float Camera::s_screenHeight_ = 720.0f;
+float Camera::s_screenWidth_ = Camera::kDefaultScreenWidth;
+float Camera::s_screenHeight_ = Camera::kDefaultScreenHeight;
 std::vector<Camera*> Camera::s_instances_;
 
 void Camera::SetScreenSize(Vector2 screenSize)

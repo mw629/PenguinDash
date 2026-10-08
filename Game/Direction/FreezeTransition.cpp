@@ -1,5 +1,6 @@
 #include "FreezeTransition.h"
 #include <Graphics/Render/Draw.h>
+#include <Core/WindowConfig.h>
 #include "../GameScene/System/SoundManager.h"
 #include <algorithm>
 #include <cmath>
@@ -24,8 +25,11 @@ void FreezeTransition::Initialize() {
     texCrackHandle_   = textureManager_->CreateTexture("Resources/Texture/Transition/ice_crack.png");
     texSurfaceHandle_ = textureManager_->CreateTexture("Resources/Texture/Transition/ice_surface.png");
 
-    const Vector2 screenSize = { 1280.0f, 720.0f };
-    const Vector2 centerPos  = { 640.0f, 360.0f };
+    const Vector2 screenSize = {
+        static_cast<float>(WindowConfig::kDefaultClientWidth),
+        static_cast<float>(WindowConfig::kDefaultClientHeight)
+    };
+    const Vector2 centerPos = { screenSize.x * 0.5f, screenSize.y * 0.5f };
 
     // 1. 霜スプライト 1 (正位置)
     {
@@ -113,8 +117,8 @@ void FreezeTransition::Initialize() {
 void FreezeTransition::SetupShards() {
     shards_.clear();
 
-    const float screenW = 1280.0f;
-    const float screenH = 720.0f;
+    const float screenW = static_cast<float>(WindowConfig::kDefaultClientWidth);
+    const float screenH = static_cast<float>(WindowConfig::kDefaultClientHeight);
     const float cellW = screenW / static_cast<float>(kMeshCols);
     const float cellH = screenH / static_cast<float>(kMeshRows);
 
@@ -434,8 +438,11 @@ void FreezeTransition::Draw(class Draw& draw) {
         return;
     }
 
-    const Vector2 screenSize = { 1280.0f, 720.0f };
-    const Vector2 centerPos  = { 640.0f, 360.0f };
+    const Vector2 screenSize = {
+        static_cast<float>(WindowConfig::kDefaultClientWidth),
+        static_cast<float>(WindowConfig::kDefaultClientHeight)
+    };
+    const Vector2 centerPos = { screenSize.x * 0.5f, screenSize.y * 0.5f };
 
     if (phase_ == Phase::Freezing) {
         float p = std::clamp(timer_ / freezeDuration_, 0.0f, 1.0f);

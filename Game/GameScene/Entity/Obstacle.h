@@ -48,23 +48,32 @@ private:
   ModelData reflectingAttackModelData_;
   Type type_ = Type::Wall;
 
+public:
+  static constexpr float kDefaultReflectDuration = 36.0f;
+  static constexpr float kDefaultReflectArcHeight = 7.0f;
+  static constexpr float kDefaultGravity = 0.015f;
+  static constexpr float kDefaultFallDuration = 25.0f;
+  static constexpr float kDefaultDropHeight = 15.0f;
+  static constexpr float kBaseScrollSpeed = 0.2f;
+
+private:
   bool isHit_ = false;
   bool isReflected_ = false;                  // ボスへの跳ね返しフラグ
   Vector3 reflectedTarget_{0.0f, 0.0f, 0.0f}; // 跳ね返された際の目標座標
   Vector3 reflectStartPos_{0.0f, 0.0f, 0.0f}; // 跳ね返された瞬間の座標
   float reflectTimer_ = 0.0f;                 // 跳ね返り経過フレーム数
-  float reflectDuration_ = 36.0f;             // 跳ね返りにかかるフレーム数 (約0.6秒)
-  float reflectArcHeight_ = 7.0f;             // 弧の高さ（Y方向の膨らみ）
+  float reflectDuration_ = kDefaultReflectDuration; // 跳ね返りにかかるフレーム数 (約0.6秒)
+  float reflectArcHeight_ = kDefaultReflectArcHeight; // 弧の高さ（Y方向の膨らみ）
   Vector3 velocity_{0.0f, 0.0f, 0.0f};
-  float gravity_ = 0.015f;
+  float gravity_ = kDefaultGravity;
 
   // 上空からの落下演出用
   bool isFalling_ = false;
   float fallTimer_ = 0.0f;
-  float fallDuration_ = 25.0f; // 落下にかかるフレーム数
-  float dropHeight_ = 15.0f;   // 落下開始の高さオフセット
-  float targetY_ = 0.0f;       // 着地目標Y座標
-  bool justLanded_ = false;    // 着地した瞬間フラグ
+  float fallDuration_ = kDefaultFallDuration; // 落下にかかるフレーム数
+  float dropHeight_ = kDefaultDropHeight;     // 落下開始の高さオフセット
+  float targetY_ = 0.0f;                      // 着地目標Y座標
+  bool justLanded_ = false;                   // 着地した瞬間フラグ
 
   // 当たり判定のサイズ
   float collisionWidth_ = 1.0f;

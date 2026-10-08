@@ -13,6 +13,13 @@ enum class BossState {
 class Boss : public GameObject {
 public:
   static constexpr int kMaxHP = 5;
+  static constexpr float kAppearanceDuration = 2.0f;
+  static constexpr float kDefeatDuration = 3.0f;
+  static constexpr float kDamageFlashDuration = 0.5f;
+  static constexpr Vector3 kDefaultStartPos = {-18.0f, 20.0f, -40.0f};
+  static constexpr Vector3 kDefaultTargetPos = {-6.0f, 3.0f, -2.0f};
+  static constexpr Vector3 kDefaultBossScale = {5.0f, 5.0f, 5.0f};
+  static constexpr Vector4 kDamageColor = {2.0f, 0.4f, 0.4f, 1.0f};
 
 private:
   std::unique_ptr<Model> model_ = std::make_unique<Model>();

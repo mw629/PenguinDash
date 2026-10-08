@@ -26,12 +26,16 @@ private:
 
 public:  
 	void Initialize(WNDCLASS wc, HWND hwnd);  
-	void CreateInpuDevice();  
+	void CreateInputDevice();
+	[[deprecated("Use CreateInputDevice instead")]]
+	void CreateInpuDevice() { CreateInputDevice(); }
 	void SetInputType();  
 	void SetExclusionLevel(HWND hwnd);  
-	void Updata();  
+	void Update();
+	[[deprecated("Use Update instead")]]
+	void Updata() { Update(); }
 
-	//押して瞬間  
+	//押した瞬間  
 	static bool PushKey(uint32_t Key);  
 	//押している  
 	static bool PressKey(uint32_t key);
@@ -40,7 +44,7 @@ public:
 	//離してる  
 	static bool FreeKey(uint32_t key);
 
-	//押して瞬間  
+	//押した瞬間  
 	static bool PushMouse(uint32_t Key);
 	//押している  
 	static bool PressMouse(uint32_t key);

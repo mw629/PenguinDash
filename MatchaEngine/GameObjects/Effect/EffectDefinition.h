@@ -170,8 +170,13 @@ public:
   void SettingWvp(Matrix4x4 viewMatrix);
   void SetData(std::list<EffectDefinitionData> effectDefinitionData);
 
-  void Updata(Matrix4x4 viewMatrix,
+  void Update(Matrix4x4 viewMatrix,
               std::list<EffectDefinitionData> effectDefinitionData);
+  [[deprecated("Use Update instead")]]
+  void Updata(Matrix4x4 viewMatrix,
+              std::list<EffectDefinitionData> effectDefinitionData) {
+    Update(viewMatrix, effectDefinitionData);
+  }
 
   void CreateParticle();
 

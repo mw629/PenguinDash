@@ -1,6 +1,7 @@
 #include "Obstacle.h"
 #include "Graphics/Render/Draw.h"
 #include "Resource/AssetManager.h"
+#include "Math/Calculation.h"
 #include <cmath>
 
 Obstacle::Obstacle() {
@@ -128,7 +129,7 @@ void Obstacle::SetType(Type type) {
     collisionDepth_ = 1.0f;
     // FallenTree: ローカルX=0.712, Y=0.639, Z=0.999 をY90度回転して幅1.5, 高1.0, 奥1.0にする
     transform_.scale = {1.404f, 1.565f, 1.502f};
-    transform_.rotate = {0.0f, 1.570796f, 0.0f}; // 横向きに倒れる
+    transform_.rotate = {0.0f, kPiOver2, 0.0f}; // 横向きに倒れる
     if (currentModel_) {
       currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
       currentModel_->SetShader("ObjectShader");
@@ -144,7 +145,7 @@ void Obstacle::SetType(Type type) {
     collisionDepth_ = 1.0f;
     // IceArchway: ローカルX=0.331, Y=0.939, Z=0.958 をY90度回転して幅1.5, 高3.0, 奥1.0にする
     transform_.scale = {3.021f, 3.195f, 1.566f};
-    transform_.rotate = {0.0f, 1.570796f, 0.0f}; // 開口部をZ軸方向に向ける
+    transform_.rotate = {0.0f, kPiOver2, 0.0f}; // 開口部をZ軸方向に向ける
     if (currentModel_) {
       currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
       currentModel_->SetShader("ObjectShader");
@@ -175,7 +176,7 @@ void Obstacle::SetType(Type type) {
     collisionHeight_ = 1.0f;
     collisionDepth_ = 1.0f;
     transform_.scale = {1.0f, 1.0f, 1.0f};
-    transform_.rotate = {0.0f, 3.141592f, 0.0f};
+    transform_.rotate = {0.0f, kPi, 0.0f};
     if (currentModel_) {
       currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
       currentModel_->SetShader("ObjectShader");
@@ -350,8 +351,8 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
     isFalling_ = false;
 
     // スクロール速度（またはtimeScale）に応じてタイマーを進める
-    // 通常スクロール速度(0.2f)基準で1フレームあたり1.0加算（停止時は加算しない）
-    float speedFactor = (scrollSpeed > 0.0f) ? (scrollSpeed / 0.2f) : 0.0f;
+    // 通常スクロール速度(kBaseScrollSpeed)基準で1フレームあたり1.0加算（停止時は加算しない）
+    float speedFactor = (scrollSpeed > 0.0f) ? (scrollSpeed / kBaseScrollSpeed) : 0.0f;
     reflectTimer_ += speedFactor;
 
     float t =
@@ -369,7 +370,7 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
     // 垂直方向（Y）：始点から目標への線形補間にサイン波オフセットを加えて上向きの弧（山なり）を描く
     float baseY =
         reflectStartPos_.y + (reflectedTarget_.y - reflectStartPos_.y) * t;
-    float arcOffset = std::sin(t * 3.14159265f) * reflectArcHeight_;
+    float arcOffset = std::sin(t * kPi) * reflectArcHeight_;
     transform_.translate.y = baseY + arcOffset;
 
     // 勢いよく回転させながら飛ぶ

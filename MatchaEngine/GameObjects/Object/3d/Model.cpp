@@ -43,7 +43,7 @@ void Model::Initialize(ModelData modelData)
 			mat.textureSrvHandleGPU = textureSrvHandleGPU_;
 		}
 		mat.materialFactory = std::make_unique<MaterialFactory>();
-		mat.materialFactory->CreateMartial(false, 0.0f);
+		mat.materialFactory->CreateMaterial(false, 0.0f);
 		subMeshMaterials_.push_back(std::move(mat));
 	}
 
@@ -55,10 +55,12 @@ void Model::SettingWvp(Matrix4x4 viewMatrix) {
 	SettingWvp(viewMatrix, nullptr);
 }
 
+#include "Camera.h"
+
 void Model::SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection) {
 	Matrix4x4 projectionMatri = customProjection
 		? *customProjection
-		: MakePerspectiveFovMatrix(0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+		: MakePerspectiveFovMatrix(Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_), Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 
 	Matrix4x4 worldMatrixObj;
 	if (isBillboard_) {

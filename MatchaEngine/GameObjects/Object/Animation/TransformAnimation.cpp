@@ -30,8 +30,12 @@ void TransformAnimation::Initialize(ModelData modelData, const std::string& dire
 }
 
 
+#include "Camera.h"
+
 void TransformAnimation::SettingWvp(Matrix4x4 viewMatrix) {
-	Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+	Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_),
+		Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatrix));
 	Matrix4x4 worldInverseTranspose = TransposeMatrix4x4(Inverse(worldViewProjectionMatrix));

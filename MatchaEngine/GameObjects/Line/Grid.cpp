@@ -43,7 +43,7 @@ void Grid::CreateVertexData()
 	vertexBufferView_.SizeInBytes = sizeof(LineVertexData) * kSubdivision_ * 4;
 	//1頂点当たりのサイズ
 	vertexBufferView_.StrideInBytes = sizeof(LineVertexData);
-	//Resouceにデータを書き込む//
+	//Resourceにデータを書き込む//
 
 	//書き込むためのアドレスを取得
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -99,11 +99,14 @@ void Grid::CreateGrid()
 	CreateWVP();
 }
 
+#include "Camera.h"
+
 void Grid::SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection)
 {
+	float aspect = (kClientHeight > 0.0f) ? (kClientWidth / kClientHeight) : Camera::kDefaultAspectRatio;
 	Matrix4x4 projectionMatri = customProjection
 		? *customProjection
-		: MakePerspectiveFovMatrix(0.45f, float(1280) / float(720), 0.1f, 10000.0f);
+		: MakePerspectiveFovMatrix(Camera::kDefaultFovY, aspect, Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 	Matrix4x4 worldMatrix = MakeAffineMatrix(Vector3(0, 0, 0), Vector3(1.0f, 1.0f, 1.0f), Vector3(0.0f, 0.0f, 0.0f));
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 	*wvpData_ = { worldViewProjectionMatrix };

@@ -718,7 +718,7 @@ void GameScene::ImGui() {
   ImGui::End();
 
   Matrix4x4 projection = MakePerspectiveFovMatrix(
-      0.45f, float(1280.0f) / float(720.0f), 0.1f, 10000.0f);
+      Camera::kDefaultFovY, Camera::kDefaultAspectRatio, Camera::kDefaultNearClip, Camera::kDefaultFarClip);
   editorUI_->Draw(gameObjectManager_.get(), view, projection);
 
   // Stopモードの時だけギズモ描画コールバックをSceneウィンドウに登録する
@@ -726,7 +726,7 @@ void GameScene::ImGui() {
   if (!EditorManager::IsPlaying()) {
     EditorManager::SetSceneOverlayCallback([this]() {
       Matrix4x4 proj = MakePerspectiveFovMatrix(
-          0.45f, float(1280.0f) / float(720.0f), 0.1f, 10000.0f);
+          Camera::kDefaultFovY, Camera::kDefaultAspectRatio, Camera::kDefaultNearClip, Camera::kDefaultFarClip);
       editorUI_->DrawGizmoInScene(view, proj);
     });
   } else {
@@ -1744,7 +1744,9 @@ void GameScene::DrawControlsGuide(class Draw &draw, float alpha) {
 
 void GameScene::DrawPauseHUD(class Draw &draw) {
   // 全画面暗転オーバーレイ
-  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(1280.0f, 720.0f),
+  const Vector2 fullScreenSize(static_cast<float>(WindowConfig::kDefaultClientWidth),
+                               static_cast<float>(WindowConfig::kDefaultClientHeight));
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), fullScreenSize,
                     Vector4(0.0f, 0.0f, 0.0f, 0.65f));
 
   // 中央モーダルカード
@@ -1809,7 +1811,9 @@ void GameScene::DrawPauseHUD(class Draw &draw) {
 
 void GameScene::DrawGameOverHUD(class Draw &draw) {
   // 全画面暗転オーバーレイ
-  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(1280.0f, 720.0f),
+  const Vector2 fullScreenSize(static_cast<float>(WindowConfig::kDefaultClientWidth),
+                               static_cast<float>(WindowConfig::kDefaultClientHeight));
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), fullScreenSize,
                     Vector4(0.0f, 0.0f, 0.0f, 0.72f));
 
   // 中央モーダルカード
@@ -1944,9 +1948,10 @@ void GameScene::DrawTitleHUD(class Draw &draw) {
   if (startWidth <= 0.0f)
     startWidth = 640.0f;
 
-  float titleX = (1280.0f - titleWidth) * 0.5f;
-  float subX = (1280.0f - subWidth) * 0.5f;
-  float startX = (1280.0f - startWidth) * 0.5f;
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  float titleX = (screenWidth - titleWidth) * 0.5f;
+  float subX = (screenWidth - subWidth) * 0.5f;
+  float startX = (screenWidth - startWidth) * 0.5f;
 
   // 基準Y座標
   const float baseTitleY = 170.0f;

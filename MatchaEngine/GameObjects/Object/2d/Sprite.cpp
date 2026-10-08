@@ -6,9 +6,9 @@
 #include <algorithm>
 
 // 静的メンバ変数の実体
-float Sprite::kClientWidth = 1280.0f;
-float Sprite::kClientHeight = 720.0f;
-Vector2 Sprite::referenceResolution_ = { 1280.0f, 720.0f };
+float Sprite::kClientWidth = Sprite::kDefaultReferenceWidth;
+float Sprite::kClientHeight = Sprite::kDefaultReferenceHeight;
+Vector2 Sprite::referenceResolution_ = Sprite::kDefaultReferenceResolution;
 std::vector<Sprite*> Sprite::instances_;
 
 void Sprite::SetScreenSize(Vector2 screenSize)
@@ -190,8 +190,8 @@ Sprite::ScreenTransformResult Sprite::CalculateScreenTransform() const
 {
 	float screenW = kClientWidth > 0.0f ? kClientWidth : referenceResolution_.x;
 	float screenH = kClientHeight > 0.0f ? kClientHeight : referenceResolution_.y;
-	float refW = referenceResolution_.x > 0.0f ? referenceResolution_.x : 1280.0f;
-	float refH = referenceResolution_.y > 0.0f ? referenceResolution_.y : 720.0f;
+	float refW = referenceResolution_.x > 0.0f ? referenceResolution_.x : Sprite::kDefaultReferenceWidth;
+	float refH = referenceResolution_.y > 0.0f ? referenceResolution_.y : Sprite::kDefaultReferenceHeight;
 
 	float scaleX = 1.0f;
 	float scaleY = 1.0f;

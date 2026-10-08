@@ -1538,13 +1538,15 @@ void EditorManager::Update(Engine* engine)
 			for (int i = 0; i < 2; ++i) {
 				gameViewRenderTextures_[i] = std::make_unique<RenderTexture>();
 				gameViewRenderTextures_[i]->Initialize(
-					engine->graphics->GetDevice(), 1280, 720,
+					engine->graphics->GetDevice(),
+					WindowConfig::kDefaultClientWidth, WindowConfig::kDefaultClientHeight,
 					engine->descriptorHeap->GetSrvDescriptorHeap(),
 					engine->descriptorHeap->GetDescriptorSizeSRV());
 			}
 			gameViewDepthStencil_ = std::make_unique<DepthStencil>();
 			gameViewDepthStencil_->CreateDepthStencil(
-				engine->graphics->GetDevice(), 1280, 720,
+				engine->graphics->GetDevice(),
+				WindowConfig::kDefaultClientWidth, WindowConfig::kDefaultClientHeight,
 				engine->descriptorHeap->GetSrvDescriptorHeap(),
 				engine->descriptorHeap->GetDescriptorSizeSRV());
 			isGameViewInitialized_ = true;
@@ -1556,7 +1558,7 @@ void EditorManager::Update(Engine* engine)
 			ImVec2 imageSize = availSize;
 			ImVec2 cursorStart = ImGui::GetCursorPos();
 
-			float targetAspect = 1280.0f / 720.0f;
+			float targetAspect = Camera::kDefaultAspectRatio;
 			float availAspect = availSize.x / availSize.y;
 
 			if (availAspect > targetAspect) {
@@ -1583,8 +1585,17 @@ void EditorManager::Update(Engine* engine)
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = gameViewRenderTextures_[0]->GetRtvHandle();
 		gameViewDepthStencil_->SetDSV(cmdList, &rtvHandle);
 
-		D3D12_VIEWPORT vp = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
-		D3D12_RECT scissor = { 0, 0, 1280, 720 };
+		D3D12_VIEWPORT vp = {
+			0.0f, 0.0f,
+			static_cast<float>(WindowConfig::kDefaultClientWidth),
+			static_cast<float>(WindowConfig::kDefaultClientHeight),
+			0.0f, 1.0f
+		};
+		D3D12_RECT scissor = {
+			0, 0,
+			WindowConfig::kDefaultClientWidth,
+			WindowConfig::kDefaultClientHeight
+		};
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
