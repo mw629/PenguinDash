@@ -34,12 +34,12 @@ void Triangle::SetScreenSize(Vector2 screenSize) {
 
 void Triangle::Initialize(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
 	textureSrvHandleGPU_ = textureSrvHandleGPU;
-	vertex_[0] = { -0.1f,-0.1f,0.0f,1.0f };
-	vertex_[1] = { 0.0f,0.1f,0.0f,1.0f };
-	vertex_[2] = { 0.1f,-0.1f,0.0f,1.0f };
+	vertex_[0] = { -kDefaultVertexExtent, -kDefaultVertexExtent, 0.0f, 1.0f };
+	vertex_[1] = { 0.0f, kDefaultVertexExtent, 0.0f, 1.0f };
+	vertex_[2] = { kDefaultVertexExtent, -kDefaultVertexExtent, 0.0f, 1.0f };
 
-	localAABB_ = { {-0.1f, -0.1f, -0.01f}, {0.1f, 0.1f, 0.01f} };
-	localSphere_ = { {0.0f, 0.0f, 0.0f}, 0.15f };
+	localAABB_ = { {-kDefaultVertexExtent, -kDefaultVertexExtent, -kDefaultDepthMargin}, {kDefaultVertexExtent, kDefaultVertexExtent, kDefaultDepthMargin} };
+	localSphere_ = { {0.0f, 0.0f, 0.0f}, kDefaultBoundingRadius };
 
 	AddComponent<MaterialComponent>();
 }

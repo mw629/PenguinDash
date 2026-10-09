@@ -78,7 +78,7 @@ void GameCameraController::UpdateTransition(
   if (!isCameraTransitioning_)
     return;
 
-  cameraTransitionTimer_ += 1.0f / 60.0f;
+  cameraTransitionTimer_ += Engine::kDefaultDeltaTime;
   float t = cameraTransitionTimer_ / cameraTransitionDuration_;
 
   if (t >= 1.0f) {
@@ -93,8 +93,7 @@ void GameCameraController::UpdateTransition(
 
   cameraTransform_.translate = Lerp(startCameraTransform_.translate,
                                     targetCameraTransform_.translate, easeT);
-  float arcHeight = 10.0f;
-  cameraTransform_.translate.y += std::sin(easeT * 3.14159265f) * arcHeight;
+  cameraTransform_.translate.y += std::sin(easeT * kPi) * kTransitionArcHeight;
 
   cameraTransform_.rotate =
       Lerp(startCameraTransform_.rotate, targetCameraTransform_.rotate, easeT);
@@ -164,23 +163,21 @@ void GameCameraController::ImGui(Player *player,
     ImGui::Separator();
     ImGui::Text("Presets:");
     if (ImGui::Button("Behind View") && onPresetSelected) {
-      onPresetSelected(0);
+      onPresetSelected(static_cast<int>(Preset::BehindView));
     }
     ImGui::SameLine();
     if (ImGui::Button("Left Side View")) {
-      cameraTransform_.scale = {1.0f, 1.0f, 1.0f};
-      cameraTransform_.rotate = {0.3f, 1.0472f, 0.0f};
-      cameraTransform_.translate = {-20.0f, 8.0f, -5.0f};
+      cameraTransform_ = kDefaultLeftSideViewTransform;
       camera_->SetTransform(cameraTransform_);
       gameCamera_->SetTransform(cameraTransform_);
     }
     ImGui::SameLine();
     if (ImGui::Button("Right Side View") && onPresetSelected) {
-      onPresetSelected(1);
+      onPresetSelected(static_cast<int>(Preset::RightSideView));
     }
     ImGui::SameLine();
     if (ImGui::Button("Boss View") && onPresetSelected) {
-      onPresetSelected(2);
+      onPresetSelected(static_cast<int>(Preset::BossView));
     }
     ImGui::SameLine();
     if (ImGui::Button(isFirstPersonView_ ? "Disable FPV (F2)" : "First Person View (F2)")) {

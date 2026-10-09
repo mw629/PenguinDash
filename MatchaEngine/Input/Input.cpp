@@ -3,13 +3,10 @@
 #include <cstdint>
 #include <cstring> 
 
-namespace {
-	BYTE g_key[256];
-	BYTE g_prevKey[256];
-
-	DIMOUSESTATE g_mouseState{};
-	DIMOUSESTATE g_prevMouseState{};
-}
+BYTE Input::s_key_[Input::kKeyCount] = {};
+BYTE Input::s_prevKey_[Input::kKeyCount] = {};
+DIMOUSESTATE Input::s_mouseState_{};
+DIMOUSESTATE Input::s_prevMouseState_{};
 
 void Input::Initialize(WNDCLASS wc, HWND hwnd) {
 	result = DirectInput8Create(
@@ -62,52 +59,60 @@ void Input::Update()
 
 bool Input::PushKey(uint32_t key)
 {
-	return (g_key[key] & 0x80) && !(g_prevKey[key] & 0x80);
+	if (key >= kKeyCount) return false;
+	return (s_key_[key] & kKeyDownMask) && !(s_prevKey_[key] & kKeyDownMask);
 }
 bool Input::PressKey(uint32_t key) {
-	return (g_key[key] & 0x80);
+	if (key >= kKeyCount) return false;
+	return (s_key_[key] & kKeyDownMask);
 }
 bool Input::ReleaseKey(uint32_t key) {
-	return !(g_key[key] & 0x80) && (g_prevKey[key] & 0x80);
+	if (key >= kKeyCount) return false;
+	return !(s_key_[key] & kKeyDownMask) && (s_prevKey_[key] & kKeyDownMask);
 }
 bool Input::FreeKey(uint32_t key)
 {
-	return !(g_key[key] & 0x80);
+	if (key >= kKeyCount) return true;
+	return !(s_key_[key] & kKeyDownMask);
 }
 
 bool Input::PushMouse(uint32_t bottom)
 {
-	return (g_mouseState.rgbButtons[bottom] & 0x80) && !(g_prevMouseState.rgbButtons[bottom] & 0x80);
+	if (bottom >= kMouseButtonCount) return false;
+	return (s_mouseState_.rgbButtons[bottom] & kKeyDownMask) && !(s_prevMouseState_.rgbButtons[bottom] & kKeyDownMask);
 }
 bool Input::PressMouse(uint32_t bottom) {
-	return (g_mouseState.rgbButtons[bottom] & 0x80);
+	if (bottom >= kMouseButtonCount) return false;
+	return (s_mouseState_.rgbButtons[bottom] & kKeyDownMask);
 }
 bool Input::ReleaseMouse(uint32_t bottom) {
-	return !(g_mouseState.rgbButtons[bottom] & 0x80) && (g_prevMouseState.rgbButtons[bottom] & 0x80);
+	if (bottom >= kMouseButtonCount) return false;
+	return !(s_mouseState_.rgbButtons[bottom] & kKeyDownMask) && (s_prevMouseState_.rgbButtons[bottom] & kKeyDownMask);
 }
 bool Input::FreeMouse(uint32_t bottom)
 {
-	return !(g_mouseState.rgbButtons[bottom] & 0x80);
+	if (bottom >= kMouseButtonCount) return true;
+	return !(s_mouseState_.rgbButtons[bottom] & kKeyDownMask);
 }
 
 Vector2 Input::GetMouseDelta()
 {
-	 return Vector2(g_mouseState.lX, g_mouseState.lY); 
+	 return Vector2(s_mouseState_.lX, s_mouseState_.lY); 
 }
 
 int Input::GetMouseWheel()
 {
-	 return g_mouseState.lZ; 
+	 return s_mouseState_.lZ; 
 }
 
 void Input::SetKey()
 {
-	for (int i = 0; i < 256; i++) {
-		g_key[i] = key_[i];
-		g_prevKey[i] = prevKey_[i];
+	for (size_t i = 0; i < kKeyCount; i++) {
+		s_key_[i] = key_[i];
+		s_prevKey_[i] = prevKey_[i];
 	}
-	g_mouseState= mouseState;
-	g_prevMouseState= prevMouseState;
+	s_mouseState_= mouseState;
+	s_prevMouseState_= prevMouseState;
 }
 
 

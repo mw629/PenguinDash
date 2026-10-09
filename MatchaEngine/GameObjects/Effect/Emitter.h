@@ -12,17 +12,17 @@ enum class EmitterType {
 
 struct EmitterData {
 	Transform transform = { {1.0f,1.0f,1.0f} ,{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };//エミッタのTransform
-	uint32_t count = 10;//発生数
-	float frequency=0.5f;//発生頻度
-	float frequencyTime=0.0f;//頻度用時刻
+	uint32_t count = EffectConfig::kDefaultEmitCount;//発生数
+	float frequency = EffectConfig::kDefaultFrequency;//発生頻度
+	float frequencyTime = 0.0f;//頻度用時刻
 };
 using EmitterBox = EmitterData;
 
 struct EmitterSphere {
 	Vector3 translate = { 0.0f, 0.0f, 0.0f }; // 位置
-	float radius = 1.0f; // 射出半径
-	uint32_t count = 10; // 射出数
-	float frequency = 0.5f; // 射出間隔
+	float radius = EffectConfig::kDefaultRadius; // 射出半径
+	uint32_t count = EffectConfig::kDefaultEmitCount; // 射出数
+	float frequency = EffectConfig::kDefaultFrequency; // 射出間隔
 	float frequencyTime = 0.0f; // 射出間隔調整時間
 	uint32_t emit = 0; // 射出許可
 };
@@ -30,11 +30,11 @@ struct EmitterSphere {
 struct EmitterCircle {
 	Vector3 translate = { 0.0f, 0.0f, 0.0f }; // 位置
 	Vector3 rotate = { 0.0f, 0.0f, 0.0f };    // 向き（回転）
-	float outerRadius = 1.0f;                 // 外径
+	float outerRadius = EffectConfig::kDefaultRadius; // 外径
 	float innerRadius = 0.0f;                 // 内径（0で塗りつぶし円盤、>0でリング）
 	float radialVelocity = 0.0f;              // 円の中心から外向きの初速度
-	uint32_t count = 10;                     // 射出数
-	float frequency = 0.5f;                   // 射出間隔
+	uint32_t count = EffectConfig::kDefaultEmitCount; // 射出数
+	float frequency = EffectConfig::kDefaultFrequency; // 射出間隔
 	float frequencyTime = 0.0f;
 	uint32_t emit = 0;
 };
@@ -42,11 +42,11 @@ struct EmitterCircle {
 struct EmitterCone {
 	Vector3 translate = { 0.0f, 0.0f, 0.0f }; // 位置
 	Vector3 rotate = { 0.0f, 0.0f, 0.0f };    // 向き（回転）
-	float radius = 0.2f;                      // 射出底面半径
-	float angle = 0.5f;                       // 広がり角（ラジアン）
-	float speed = 1.0f;                       // 初速
-	uint32_t count = 10;                     // 射出数
-	float frequency = 0.5f;                   // 射出間隔
+	float radius = EffectConfig::kDefaultConeRadius; // 射出底面半径
+	float angle = EffectConfig::kDefaultConeAngle; // 広がり角（ラジアン）
+	float speed = EffectConfig::kDefaultConeSpeed; // 初速
+	uint32_t count = EffectConfig::kDefaultEmitCount; // 射出数
+	float frequency = EffectConfig::kDefaultFrequency; // 射出間隔
 	float frequencyTime = 0.0f;
 	uint32_t emit = 0;
 };
@@ -58,7 +58,7 @@ struct AccelerationFiled {
 
 struct ParticleMovementData {
 	Vector3 baseVelocity = { 0.0f, 0.0f, 0.0f };
-	Vector3 velocityVariance = { 1.0f / 60.0f, 1.0f / 60.0f, 1.0f / 60.0f };
+	Vector3 velocityVariance = { EffectConfig::kDefaultDeltaTime, EffectConfig::kDefaultDeltaTime, EffectConfig::kDefaultDeltaTime };
 	Vector3 acceleration = { 0.0f, 0.0f, 0.0f };
 	Vector3 sizeVariance = { 0.0f, 0.0f, 0.0f };
 	Vector3 sizeDelta = { 1.0f, 1.0f, 1.0f }; // Multiplied each frame
@@ -81,6 +81,11 @@ struct FieldData {
 class Emitter
 {
 private:
+	static constexpr float kDefaultGravity = 0.01f;
+	static constexpr float kFireUpwardSpeed = 0.01f / 60.0f;
+	static constexpr float kFireHorizontalScatter = 0.02f / 60.0f;
+	static constexpr float kFireScaleDecayRate = 0.999f;
+	static constexpr float kKeyAdjustmentStep = 0.01f;
 
 	std::unique_ptr<EffectDefinition> effectDefinition_ = std::make_unique<EffectDefinition>();
 	std::list<EffectDefinitionData> effectDefinitionData_;
@@ -112,7 +117,7 @@ private:
 
 	// Burst / One-shot settings
 	bool isLoop_ = true;
-	uint32_t burstCount_ = 30;
+	uint32_t burstCount_ = EffectConfig::kDefaultBurstCount;
 
 	// Scale Over Lifetime
 	bool enableScaleOverLifetime_ = false;

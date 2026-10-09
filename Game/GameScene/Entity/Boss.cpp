@@ -46,10 +46,10 @@ void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
   transform.rotate.y = (1.0f - easeT) * k2Pi;
 
   // 出現演出でシェイクさせる (だんだん揺れが収まる)
-  float shakeIntensity = (1.0f - easeT) * 2.0f;
-  transform.translate.x += std::sin(stateTimer * 50.0f) * shakeIntensity;
-  transform.translate.y += std::cos(stateTimer * 65.0f) * shakeIntensity;
-  transform.translate.z += std::sin(stateTimer * 40.0f) * shakeIntensity;
+  float shakeIntensity = (1.0f - easeT) * Boss::kMaxShakeIntensity;
+  transform.translate.x += std::sin(stateTimer * Boss::kShakeFreqX) * shakeIntensity;
+  transform.translate.y += std::cos(stateTimer * Boss::kShakeFreqY) * shakeIntensity;
+  transform.translate.z += std::sin(stateTimer * Boss::kShakeFreqZ) * shakeIntensity;
 
   if (stateTimer > Boss::kAppearanceDuration) {
     transform.rotate.y = 0.0f;
@@ -62,12 +62,12 @@ void BossBattleState::Enter(Boss &boss) {
 }
 
 void BossBattleState::Update(Boss &boss, float speedMultiplier) {
-  boss.GetBattleAnimTimerRef() += 0.05f * speedMultiplier;
+  boss.GetBattleAnimTimerRef() += Boss::kBattleAnimSpeed * speedMultiplier;
   const Vector3 &targetPos = boss.GetTargetPos();
   Transform &transform = boss.GetTransformRef();
   transform.translate.x = targetPos.x;
   transform.translate.z = targetPos.z;
-  transform.translate.y = targetPos.y + std::sin(boss.GetBattleAnimTimerRef()) * 1.0f;
+  transform.translate.y = targetPos.y + std::sin(boss.GetBattleAnimTimerRef()) * Boss::kBattleBobbingAmplitude;
 }
 
 void BossDefeatState::Enter(Boss &boss) {
@@ -75,7 +75,7 @@ void BossDefeatState::Enter(Boss &boss) {
 }
 
 void BossDefeatState::Update(Boss &boss, float speedMultiplier) {
-  boss.GetTransformRef().translate.y -= 0.1f * speedMultiplier;
+  boss.GetTransformRef().translate.y -= Boss::kSinkSpeed * speedMultiplier;
   if (boss.GetStateTimer() > Boss::kDefeatDuration) {
     boss.SetIsActive(false);
   }
@@ -86,7 +86,7 @@ void BossVictoryState::Enter(Boss &boss) {
 }
 
 void BossVictoryState::Update(Boss &boss, float speedMultiplier) {
-  boss.GetTransformRef().translate.y += 0.1f * speedMultiplier;
+  boss.GetTransformRef().translate.y += Boss::kSinkSpeed * speedMultiplier;
 }
 
 // ==========================================
@@ -110,14 +110,18 @@ void Boss::Reset() {
   ChangeState(BossState::Appearance);
 
   if (model_) {
-    model_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    model_->SetColor(kNormalColor);
     if (model_->GetMaterial()) {
-      model_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      model_->GetMaterial()->SetColor(kNormalColor);
     }
     Transform drawTransform = transform_;
-    drawTransform.translate.y -= transform_.scale.y * 0.5f;
+    drawTransform.translate.y -= transform_.scale.y * kScaleOffsetFactor;
     model_->SetTransform(drawTransform);
   }
+}
+
+void Boss::Spawn() {
+  Spawn(kDefaultTargetPos.x, kDefaultTargetPos.y, kDefaultTargetPos.z);
 }
 
 void Boss::Spawn(float x, float y, float z) {
@@ -173,13 +177,13 @@ void Boss::Update(Matrix4x4 view, float speedMultiplier) {
     hitTimer_ -= Engine::kDefaultDeltaTime; // 約1フレーム分
     if (hitTimer_ <= 0.0f) {
       isHit_ = false;
-      model_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-      model_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      model_->SetColor(kNormalColor);
+      model_->GetMaterial()->SetColor(kNormalColor);
     }
   }
 
   Transform drawTransform = transform_;
-  drawTransform.translate.y -= transform_.scale.y * 0.5f; // 底面原点(Y=0)を当たり判定中心に合わせるオフセット
+  drawTransform.translate.y -= transform_.scale.y * kScaleOffsetFactor; // 底面原点(Y=0)を当たり判定中心に合わせるオフセット
   model_->SetTransform(drawTransform);
   model_->SettingWvp(view);
   GameObject::Update(view, speedMultiplier);
@@ -203,7 +207,7 @@ void Boss::ImGuiInnerComponents() {
   ImGui::Text("State Timer: %.2f", stateTimer_);
 
   if (ImGui::Button("Spawn Boss"))
-    Spawn(kDefaultTargetPos.x, kDefaultTargetPos.y, kDefaultTargetPos.z);
+    Spawn();
   ImGui::SameLine();
   if (ImGui::Button("Reset Boss"))
     Reset();

@@ -109,10 +109,8 @@ void Camera::ResetDebugCamera(const Transform& transform) {
 void Camera::Update() {
     debugCamera_.Update();
 
-    // カメラの位置・回転を決める
+    // カメラの位置を決める
     Vector3 eye;
-    Vector3 target;
-    Vector3 up = { 0.0f, 1.0f, 0.0f };
 
     if (isDebugCamera_) {
         viewMatrix_ = debugCamera_.GetViewMatrix();
@@ -125,7 +123,7 @@ void Camera::Update() {
         eye = transform_.translate;
     }
 
-    totalTime_ += 1.0f / 60.0f;
+    totalTime_ += kDefaultDeltaTime;
     cameraData_->worldPosition = eye;
     cameraData_->time = totalTime_;
 

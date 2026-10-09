@@ -38,7 +38,7 @@ void Model::Initialize(ModelData modelData)
 	subMeshMaterials_.clear();
 	for (const auto& subMesh : modelData.subMeshes) {
 		ModelSubMeshMaterial mat;
-		if (subMesh.textureIndex != -1) {
+		if (subMesh.textureIndex != kInvalidTextureIndex) {
 			mat.textureSrvHandleGPU = texture->TextureData(subMesh.textureIndex);
 		} else {
 			mat.textureSrvHandleGPU = textureSrvHandleGPU_;
@@ -133,7 +133,7 @@ BoundingSphere Model::GetWorldBoundingSphere() const
 		float maxScale = (std::max)({ transform_.scale.x, transform_.scale.y, transform_.scale.z });
 		BoundingSphere sphere;
 		sphere.center = transform_.translate;
-		sphere.radius = maxScale * 1.5f;
+		sphere.radius = maxScale * kBillboardBoundingSphereScale;
 		return sphere;
 	}
 	Matrix4x4 worldMatrixObj = GetWorldMatrix();

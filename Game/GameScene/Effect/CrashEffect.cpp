@@ -11,7 +11,7 @@ void CrashEffect::Initialize(Texture *texture) {
   crashSpriteData_.transform.translate = {crashPosition_.x, crashPosition_.y, 0.0f};
   crashSpriteData_.transform.rotate = {0.0f, 0.0f, 0.0f};
   crashSpriteData_.size = crashBaseSize_;
-  crashSpriteData_.pivot = {0.5f, 0.5f};
+  crashSpriteData_.pivot = kCenterPivot;
   crashSpriteData_.textureArea[0] = {0.0f, 0.0f};
   crashSpriteData_.textureArea[1] = {1.0f, 1.0f};
   crashSpriteData_.scaleMode = SpriteScaleMode::Fit;
@@ -19,7 +19,7 @@ void CrashEffect::Initialize(Texture *texture) {
 
   crashSprite_ = std::make_unique<Sprite>();
   crashSprite_->Initialize(crashSpriteData_, crashTextureHandle_);
-  crashSprite_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  crashSprite_->GetMaterial()->SetColor(kDefaultSpriteColor);
   crashSprite_->SettingWvp();
 }
 
@@ -50,7 +50,7 @@ void CrashEffect::Update(float dt) {
   if (crashSprite_) {
     float t = std::clamp(crashTimer_ / crashScaleDuration_, 0.0f, 1.0f);
     // EaseOutBack
-    const float c1 = 1.70158f;
+    const float c1 = kEaseOutBackOvershoot;
     const float c3 = c1 + 1.0f;
     float s = (t >= 1.0f) ? 1.0f : (1.0f + c3 * std::pow(t - 1.0f, 3.0f) + c1 * std::pow(t - 1.0f, 2.0f));
     if (s < 0.0f) s = 0.0f;

@@ -39,6 +39,7 @@ private:
 	static GameViewDrawCallback s_gameViewDrawCallback_;
 	static GameViewUIDrawCallback s_gameViewUIDrawCallback_;
 	static std::string s_currentFileName_;
+	static constexpr float kOneShotReplayInterval = 2.0f;
 	
 	bool showFinalWindow_ = true;
 	bool showResourcesWindow_ = true;

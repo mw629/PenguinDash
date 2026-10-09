@@ -51,9 +51,9 @@ void Grid::CreateVertexData()
 
 	for (int i = 0; i < kSubdivision_; i++) {
 		index = i * 2;
-		Vector4 color = Vector4{ 0.0f,0.8f,0,0.2f };
-		if (i % 10 == 0) {
-			color = Vector4{ 0.0f,0.8f,0,0.5f };
+		Vector4 color = kGridColorZNormal;
+		if (i % kMajorGridInterval == 0) {
+			color = kGridColorZMajor;
 		}
 		vertexData_[index].position = Vector3{ static_cast<float>(0 - kSubdivision_ / 2 + i),0,static_cast<float>(-kSubdivision_ / 2) };
 		vertexData_[index].color = color;
@@ -63,21 +63,21 @@ void Grid::CreateVertexData()
 	}
 	for (int i = 0; i < kSubdivision_; i++) {
 		index = kSubdivision_ * 2 + i * 2;
-		Vector4 color = Vector4{ 0.8f,0,0,0.2f };
-		if (i % 10 == 0) {
-			color = Vector4{ 0.8f,0,0,0.5f };
+		Vector4 color = kGridColorXNormal;
+		if (i % kMajorGridInterval == 0) {
+			color = kGridColorXMajor;
 		}
 
 		vertexData_[index].position = Vector3{ static_cast<float>(-kSubdivision_ / 2),0,static_cast<float>(0 - kSubdivision_ / 2 + i) };
-		vertexData_[index].color = Vector4{ 0.8f,0,0,0.2f };
+		vertexData_[index].color = color;
 
 		vertexData_[index + 1].position = Vector3{ static_cast<float>(kSubdivision_ / 2),0,static_cast<float>(0 - kSubdivision_ / 2 + i) };
-		vertexData_[index + 1].color = Vector4{ 0.8f,0,0,0.2f };
+		vertexData_[index + 1].color = color;
 	}
-	vertexData_[kSubdivision_].color = Vector4{ 0.0f,0.8f,0,1.0f };
-	vertexData_[kSubdivision_ + 1].color = Vector4{ 0.0f,0.8f,0,1.0f };
-	vertexData_[kSubdivision_ * 2 + kSubdivision_].color = Vector4{ 0.8f,0,0,1.0f };
-	vertexData_[kSubdivision_ * 2 + kSubdivision_ + 1].color = Vector4{ 0.8f,0,0,1.0f };
+	vertexData_[kSubdivision_].color = kGridColorZAxis;
+	vertexData_[kSubdivision_ + 1].color = kGridColorZAxis;
+	vertexData_[kSubdivision_ * 2 + kSubdivision_].color = kGridColorXAxis;
+	vertexData_[kSubdivision_ * 2 + kSubdivision_ + 1].color = kGridColorXAxis;
 }
 
 void Grid::CreateWVP() {

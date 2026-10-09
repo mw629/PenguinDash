@@ -31,8 +31,27 @@ public:
   void ImGui();
 
 private:
-  void UpdateBarrier(const Matrix4x4 &view, const Vector3 &playerPos,
-                     float deltaTime = 1.0f / 60.0f);
+  static constexpr float kDefaultBarrierDeployDuration = 0.25f;
+  static constexpr float kDefaultBarrierBreakDuration = 0.35f;
+  static constexpr Vector3 kDefaultBarrierOffset = {0.0f, 0.0f, 1.2f};
+  static constexpr Vector3 kDefaultBarrierBaseScale = {0.6f, 0.6f, 0.6f};
+  static constexpr Vector4 kDefaultBarrierBaseColor = {0.25f, 0.8f, 1.0f, 0.85f};
+  static constexpr Vector4 kDefaultBarrierFlashColor = {1.0f, 1.0f, 1.0f, 0.95f};
+  static constexpr float kDefaultHexRadius = 0.5f;
+  static constexpr float kDustYOffset = 0.8f;
+  static constexpr float kSnowPosScaleX = 0.2f;
+  static constexpr float kSnowPosY = 9.0f;
+  static constexpr float kSnowPosZOffset = 5.0f;
+  static constexpr float kDeployOvershootStrength = 0.25f;
+  static constexpr float kPulseScaleAmplitude = 0.035f;
+  static constexpr float kPulseFrequency = 4.0f;
+  static constexpr float kPulseBrightnessBase = 0.85f;
+  static constexpr float kPulseBrightnessAmplitude = 0.15f;
+  static constexpr float kBreakExpandStrength = 0.9f;
+  static constexpr float kBreakFlashThreshold = 0.15f;
+
+  void UpdateBarrier(const Matrix4x4 &view, const Vector3 &playerPos, float deltaTime);
+  void UpdateBarrier(const Matrix4x4 &view, const Vector3 &playerPos) { UpdateBarrier(view, playerPos, Engine::kDefaultDeltaTime); }
 
   std::unique_ptr<Emitter> dustEffect_;
   std::unique_ptr<Emitter> snowEffect_;
@@ -41,13 +60,13 @@ private:
   std::unique_ptr<HexBarrier> barrier_;
   BarrierEffectState barrierState_ = BarrierEffectState::Inactive;
   float barrierDeployTimer_ = 0.0f;
-  float barrierDeployDuration_ = 0.25f;
+  float barrierDeployDuration_ = kDefaultBarrierDeployDuration;
   float barrierBreakTimer_ = 0.0f;
-  float barrierBreakDuration_ = 0.35f;
+  float barrierBreakDuration_ = kDefaultBarrierBreakDuration;
   float barrierPulseTimer_ = 0.0f;
-  Vector3 barrierOffset_ = {0.0f, 0.0f, 1.2f};
-  Vector3 barrierBaseScale_ = {0.6f, 0.6f, 0.6f};
-  Vector4 barrierBaseColor_ = {0.25f, 0.8f, 1.0f, 0.85f};
-  Vector4 barrierFlashColor_ = {1.0f, 1.0f, 1.0f, 0.95f};
+  Vector3 barrierOffset_ = kDefaultBarrierOffset;
+  Vector3 barrierBaseScale_ = kDefaultBarrierBaseScale;
+  Vector4 barrierBaseColor_ = kDefaultBarrierBaseColor;
+  Vector4 barrierFlashColor_ = kDefaultBarrierFlashColor;
   Vector3 lastPlayerPos_ = {0.0f, 0.0f, 0.0f};
 };

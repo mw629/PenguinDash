@@ -10,8 +10,13 @@
 #include <cfloat>
 #include <algorithm>
 
-
-
+namespace {
+constexpr float kFlatDimensionThreshold = 0.05f;
+constexpr float kFlatPadding = 0.1f;
+constexpr float kHalfCenterMultiplier = 0.5f;
+constexpr float kFallbackBoundingExtent = 0.5f;
+constexpr float kFallbackBoundingSphereRadius = 0.866025f; // sqrt(3) / 2
+}
 
 /// オブジェクトの読み込み///
 
@@ -249,18 +254,18 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		float sizeX = maxPos.x - minPos.x;
 		float sizeY = maxPos.y - minPos.y;
 		float sizeZ = maxPos.z - minPos.z;
-		bool isFlat = (sizeX < 0.05f || sizeY < 0.05f || sizeZ < 0.05f);
+		bool isFlat = (sizeX < kFlatDimensionThreshold || sizeY < kFlatDimensionThreshold || sizeZ < kFlatDimensionThreshold);
 
-		if (sizeX < 0.05f) { minPos.x -= 0.1f; maxPos.x += 0.1f; }
-		if (sizeY < 0.05f) { minPos.y -= 0.1f; maxPos.y += 0.1f; }
-		if (sizeZ < 0.05f) { minPos.z -= 0.1f; maxPos.z += 0.1f; }
+		if (sizeX < kFlatDimensionThreshold) { minPos.x -= kFlatPadding; maxPos.x += kFlatPadding; }
+		if (sizeY < kFlatDimensionThreshold) { minPos.y -= kFlatPadding; maxPos.y += kFlatPadding; }
+		if (sizeZ < kFlatDimensionThreshold) { minPos.z -= kFlatPadding; maxPos.z += kFlatPadding; }
 
 		modelData.localAABB.min = minPos;
 		modelData.localAABB.max = maxPos;
 		modelData.localSphere.center = {
-			(minPos.x + maxPos.x) * 0.5f,
-			(minPos.y + maxPos.y) * 0.5f,
-			(minPos.z + maxPos.z) * 0.5f
+			(minPos.x + maxPos.x) * kHalfCenterMultiplier,
+			(minPos.y + maxPos.y) * kHalfCenterMultiplier,
+			(minPos.z + maxPos.z) * kHalfCenterMultiplier
 		};
 		Vector3 d = { maxPos.x - modelData.localSphere.center.x, maxPos.y - modelData.localSphere.center.y, maxPos.z - modelData.localSphere.center.z };
 		modelData.localSphere.radius = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -274,8 +279,8 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 			modelData.cullMode = kCullModeBack;
 		}
 	} else {
-		modelData.localAABB = { {-0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, 0.5f} };
-		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, 0.866f };
+		modelData.localAABB = { {-kFallbackBoundingExtent, -kFallbackBoundingExtent, -kFallbackBoundingExtent}, {kFallbackBoundingExtent, kFallbackBoundingExtent, kFallbackBoundingExtent} };
+		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, kFallbackBoundingSphereRadius };
 		modelData.cullMode = kCullModeBack;
 	}
 
@@ -409,18 +414,18 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 		float sizeX = maxPos.x - minPos.x;
 		float sizeY = maxPos.y - minPos.y;
 		float sizeZ = maxPos.z - minPos.z;
-		bool isFlat = (sizeX < 0.05f || sizeY < 0.05f || sizeZ < 0.05f);
+		bool isFlat = (sizeX < kFlatDimensionThreshold || sizeY < kFlatDimensionThreshold || sizeZ < kFlatDimensionThreshold);
 
-		if (sizeX < 0.05f) { minPos.x -= 0.1f; maxPos.x += 0.1f; }
-		if (sizeY < 0.05f) { minPos.y -= 0.1f; maxPos.y += 0.1f; }
-		if (sizeZ < 0.05f) { minPos.z -= 0.1f; maxPos.z += 0.1f; }
+		if (sizeX < kFlatDimensionThreshold) { minPos.x -= kFlatPadding; maxPos.x += kFlatPadding; }
+		if (sizeY < kFlatDimensionThreshold) { minPos.y -= kFlatPadding; maxPos.y += kFlatPadding; }
+		if (sizeZ < kFlatDimensionThreshold) { minPos.z -= kFlatPadding; maxPos.z += kFlatPadding; }
 
 		modelData.localAABB.min = minPos;
 		modelData.localAABB.max = maxPos;
 		modelData.localSphere.center = {
-			(minPos.x + maxPos.x) * 0.5f,
-			(minPos.y + maxPos.y) * 0.5f,
-			(minPos.z + maxPos.z) * 0.5f
+			(minPos.x + maxPos.x) * kHalfCenterMultiplier,
+			(minPos.y + maxPos.y) * kHalfCenterMultiplier,
+			(minPos.z + maxPos.z) * kHalfCenterMultiplier
 		};
 		Vector3 d = { maxPos.x - modelData.localSphere.center.x, maxPos.y - modelData.localSphere.center.y, maxPos.z - modelData.localSphere.center.z };
 		modelData.localSphere.radius = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -434,8 +439,8 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 			modelData.cullMode = kCullModeBack;
 		}
 	} else {
-		modelData.localAABB = { {-0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, 0.5f} };
-		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, 0.866f };
+		modelData.localAABB = { {-kFallbackBoundingExtent, -kFallbackBoundingExtent, -kFallbackBoundingExtent}, {kFallbackBoundingExtent, kFallbackBoundingExtent, kFallbackBoundingExtent} };
+		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, kFallbackBoundingSphereRadius };
 		modelData.cullMode = kCullModeBack;
 	}
 

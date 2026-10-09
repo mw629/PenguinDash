@@ -42,7 +42,10 @@ public:
 	);
 
 private:
-	float radius_ = 0.5f;
+	static constexpr float kDefaultRadius = 0.5f;
+	static constexpr Vector4 kDefaultBarrierColor = { 0.25f, 0.8f, 1.0f, 0.85f }; // エレクトリックシアン
+
+	float radius_ = kDefaultRadius;
 	bool pointyTopped_ = false; // false: 上辺が水平 / true: 上辺が頂点 (30度回転)
 	HexBarrierShape shape_ = HexBarrierShape::Honeycomb;
 };

@@ -66,12 +66,18 @@ public:
 };
 
 class Player : public GameObject {
+  friend class PlayerRunState;
+  friend class PlayerJumpState;
+  friend class PlayerRollState;
+  friend class PlayerHitState;
+  friend class PlayerForcedCenterState;
+
 private:
   enum MoveDirection { Left, Right, None };
 
   std::unique_ptr<CharacterAnimator> model_ =
       std::make_unique<CharacterAnimator>();
-public:
+
   // レーン設定定数
   static constexpr int kDefaultMinLane = -1;
   static constexpr int kDefaultMaxLane = 1;
@@ -104,6 +110,21 @@ public:
   static constexpr Vector3 kDefaultModelTranslate = {0.0f, -1.0f, 0.0f};
   static constexpr Vector3 kDefaultAxeScale = {100.0f, 100.0f, 100.0f};
   static constexpr float kAnimationSpeedFactor = 0.01f;
+
+  // 色定数
+  static constexpr Vector4 kBarrierColor = {0.0f, 1.0f, 1.0f, 1.0f};
+  static constexpr Vector4 kDefaultPlayerColor = {1.0f, 1.0f, 1.0f, 1.0f};
+
+  // ヒット演出物理定数
+  static constexpr float kKnockbackRandXScale = 0.1f;
+  static constexpr float kKnockbackRandCenterOffset = 0.5f;
+  static constexpr Vector3 kTripKnockbackVelocity = {0.0f, 0.3f, 0.8f};
+  static constexpr Vector3 kHitKnockbackVelocity = {0.0f, 0.4f, -0.6f};
+  static constexpr float kHitGravityMultiplier = 2.0f;
+  static constexpr float kTripRotationSpeed = 0.2f;
+  static constexpr float kHitRotationSpeed = 0.1f;
+  static constexpr float kHitLandingFriction = 0.8f;
+  static constexpr float kDefaultSpeedMultiplier = 1.0f;
 
 private:
   std::unique_ptr<Model> axe_ = std::make_unique<Model>();
@@ -161,12 +182,12 @@ private:
   // ヒット時の演出用変数
   bool isTrip_ = false;
   float hitTimer_ = 0.0f;
-  float hitDuration_ = 90.0f; // ノックバックにかかるフレーム数
+  float hitDuration_ = kDefaultHitDuration; // ノックバックにかかるフレーム数
   Vector3 knockbackVelocity_{0.0f, 0.0f, 0.0f}; // ノックバック速度
 
   // 強制中央移動用の変数
   float forcedCenterTimer_ = 0.0f;
-  float forcedCenterDuration_ = 30.0f; // 中央に到達するまでのフレーム数
+  float forcedCenterDuration_ = kDefaultForcedCenterDuration; // 中央に到達するまでのフレーム数
   float forcedCenterStartX_ = 0.0f;
 
   // バリアアイテム取得時の状態
@@ -181,7 +202,8 @@ private:
   // 表示・非表示（一人称視点時の自キャラメッシュ非表示用など）
   bool isVisible_ = true;
 
-  void UpdateDrawTransform(float speedMultiplier = 1.0f);
+  void UpdateDrawTransform(float speedMultiplier);
+  void UpdateDrawTransform() { UpdateDrawTransform(kDefaultSpeedMultiplier); }
 
 public:
   Player();
@@ -190,7 +212,8 @@ public:
   void Initialize(ModelData modelData);
   void Reset();
 
-  void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override;
+  void Update(Matrix4x4 view, float speedMultiplier) override;
+  void Update(Matrix4x4 view) { Update(view, kDefaultSpeedMultiplier); }
 
   // レーン移動ロジック
   void ProcessLaneInput();
@@ -266,6 +289,10 @@ public:
   // ヒット演出用
   void OnHit(bool isTrip = false);
   bool IsHitAnimationFinished() const;
+
+  // コライダー取得
+  AABB GetColliderAABB() const;
+  AABB GetStandingColliderAABB() const;
 
   // 狭まる区間で強制的に中央へ寄せる
   void StartForceToCenter(float duration);

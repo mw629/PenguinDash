@@ -14,7 +14,7 @@
 
 void BossBattleController::Reset() {
   bossAttackTimer_ = 0.0f;
-  currentReflectLane_ = -1;
+  currentReflectLane_ = kNoReflectLane;
 }
 
 void BossBattleController::Update(float timeScale, Boss *boss,
@@ -28,20 +28,20 @@ void BossBattleController::Update(float timeScale, Boss *boss,
   stageSettings->SetItemCoolDownTimer(Obstacle::Type::BossItem,
                                        bossItemDuration);
 
-  currentReflectLane_ = -1;
+  currentReflectLane_ = kNoReflectLane;
 
   if (boss->GetIsActive() && boss->GetState() == BossState::Battle) {
     bossAttackTimer_ += timeScale;
 
     // 攻撃の生成（約2秒に1回 = 120フレーム）
-    if (bossAttackTimer_ >= 120.0f) {
-      bossAttackTimer_ -= 120.0f;
+    if (bossAttackTimer_ >= kAttackIntervalFrames) {
+      bossAttackTimer_ -= kAttackIntervalFrames;
 
       // 3レーンのうち、1つを安全地帯、1つを白(通常)、1つを緑(跳ね返し)にする
-      int safeLane = rand() % 3;
-      int greenLane = (safeLane + 1 + rand() % 2) % 3;
+      int safeLane = rand() % kLaneCount;
+      int greenLane = (safeLane + 1 + rand() % (kLaneCount - 1)) % kLaneCount;
 
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < kLaneCount; i++) {
         if (i == safeLane)
           continue;
 
@@ -60,7 +60,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             obs->SetReflectArcHeight(bossReflectArcHeight_);
             obs->SetReflectDuration(bossReflectDuration_);
             float x = (i - 1) * stageSettings->GetLaneWidth();
-            obs->Spawn(x, 2.0f + obs->GetCollisionHeight() * 0.5f,
+            obs->Spawn(x, kBaseSpawnY + obs->GetCollisionHeight() * kHalfFactor,
                        bossAttackSpawnZ_);
             break;
           }
@@ -77,7 +77,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
                  GamePadInput::PushButton(XINPUT_GAMEPAD_B);
 
     AABB bossAABB =
-        Collision::MakeAABB(boss->GetTransform(), 5.0f, 5.0f, 5.0f);
+        Collision::MakeAABB(boss->GetTransform(), kBossAABBSize, kBossAABBSize, kBossAABBSize);
 
     for (int j = 0; j < stageSettings->GetMaxObstacles(); j++) {
       Obstacle *obs = stageSettings->GetObstacle(j);
@@ -98,13 +98,14 @@ void BossBattleController::Update(float timeScale, Boss *boss,
         float laneW = stageSettings->GetLaneWidth();
         int lane = 1; // 0:画面左([1]/X), 1:画面中央([2]/Y), 2:画面右([3]/B)
         // ボス戦カメラ（Y回転180度）ではワールド+Xが画面左、ワールド-Xが画面右に見える
-        if (obsX > laneW / 2.0f)
+        float halfLaneW = laneW * kHalfFactor;
+        if (obsX > halfLaneW)
           lane = 0;
-        else if (obsX < -laneW / 2.0f)
+        else if (obsX < -halfLaneW)
           lane = 2;
 
         float z = obs->GetTransform().translate.z;
-        if (z > bossAttackReflectMinZ_ && z < 15.0f) {
+        if (z > bossAttackReflectMinZ_ && z < kAttackReflectMaxZ) {
           currentReflectLane_ = lane;
 
           if ((lane == 0 && push1) || (lane == 1 && push2) ||
@@ -114,7 +115,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             obs->SetReflected(true);
             obs->SetReflectedTarget(boss->GetTransform().translate);
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossReflect);
-            GamePadInput::Rumble(0.18f, 32000, 32000);
+            GamePadInput::Rumble(kReflectRumbleDuration, kReflectRumbleSpeed, kReflectRumbleSpeed);
           }
         }
       } else if (obs->GetIsReflected()) {
@@ -126,7 +127,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             obs->GetTransform(), obs->GetCollisionWidth(),
             obs->GetCollisionHeight(), obs->GetCollisionDepth());
 
-        if ((obs->GetReflectProgress() >= 0.7f &&
+        if ((obs->GetReflectProgress() >= kReflectHitMinProgress &&
              Collision::CheckAABB(bossAABB, obsAABB)) ||
             obs->GetReflectProgress() >= 1.0f) {
           obs->Deactivate();
@@ -135,7 +136,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
 
           if (boss->GetState() == BossState::Defeat) {
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossDefeat);
-            GamePadInput::Rumble(0.5f, 65535, 65535);
+            GamePadInput::Rumble(kDefeatRumbleDuration, kMaxRumbleSpeed, kMaxRumbleSpeed);
             // 画面内のボス攻撃をすべて消す
             for (int k = 0; k < stageSettings->GetMaxObstacles(); k++) {
               Obstacle *o = stageSettings->GetObstacle(k);

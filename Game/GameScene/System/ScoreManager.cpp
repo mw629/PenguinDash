@@ -9,7 +9,7 @@ void ScoreManager::Reset() {
 
 void ScoreManager::Update(float scrollSpeed, float timeScale) {
   currentDistance_ += scrollSpeed * timeScale;
-  currentScore_ = currentDistance_ + (bonusEnemyHitCount_ * 200.0f * scrollSpeed);
+  currentScore_ = currentDistance_ + (bonusEnemyHitCount_ * kBonusScoreMultiplier * scrollSpeed);
 }
 
 void ScoreManager::AddBonusEnemyHit() {
@@ -22,9 +22,9 @@ void ScoreManager::RecordCurrentScores() {
 }
 
 void ScoreManager::UpdateRanking() {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < kRankingCount; i++) {
     if (currentDistance_ > topRankings_[i]) {
-      for (int j = 2; j > i; j--) {
+      for (int j = kRankingCount - 1; j > i; j--) {
         topRankings_[j] = topRankings_[j - 1];
       }
       topRankings_[i] = currentDistance_;
@@ -34,9 +34,9 @@ void ScoreManager::UpdateRanking() {
 }
 
 void ScoreManager::UpdateScoreRanking() {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < kRankingCount; i++) {
     if (currentScore_ > topScoreRankings_[i]) {
-      for (int j = 2; j > i; j--) {
+      for (int j = kRankingCount - 1; j > i; j--) {
         topScoreRankings_[j] = topScoreRankings_[j - 1];
       }
       topScoreRankings_[i] = currentScore_;
@@ -49,7 +49,7 @@ void ScoreManager::ImGui() {
 #ifdef _USE_IMGUI
   ImGui::Text("Current Distance: %.2f m", currentDistance_);
   if (ImGui::TreeNode("Distance Top 3 Ranking")) {
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < kRankingCount; i++) {
       if (topRankings_[i] > 0.0f) {
         ImGui::Text("Rank %d: %.2f m", i + 1, topRankings_[i]);
       } else {
@@ -61,7 +61,7 @@ void ScoreManager::ImGui() {
 
   ImGui::Text("Current Score: %.0f", currentScore_);
   if (ImGui::TreeNode("Score Top 3 Ranking")) {
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < kRankingCount; i++) {
       if (topScoreRankings_[i] > 0.0f) {
         ImGui::Text("Rank %d: %.0f", i + 1, topScoreRankings_[i]);
       } else {

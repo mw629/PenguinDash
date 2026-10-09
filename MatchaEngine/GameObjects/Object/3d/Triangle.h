@@ -83,11 +83,15 @@ public:
 	bool IsFrustumCullingEnabled() const { return isFrustumCullingEnabled_; }
 
 private:
+	static constexpr float kDefaultVertexExtent = 0.1f;
+	static constexpr float kDefaultDepthMargin = 0.01f;
+	static constexpr float kDefaultBoundingRadius = 0.15f;
+
 	ShaderName shader_ = "ObjectShader";
 	BlendMode blend_ = BlendMode::kBlendModeNone;
 	CullMode cullMode_ = kCullModeBack;
-	AABB localAABB_{ {-0.1f, -0.1f, -0.01f}, {0.1f, 0.1f, 0.01f} };
-	BoundingSphere localSphere_{ {0.0f, 0.0f, 0.0f}, 0.15f };
+	AABB localAABB_{ {-kDefaultVertexExtent, -kDefaultVertexExtent, -kDefaultDepthMargin}, {kDefaultVertexExtent, kDefaultVertexExtent, kDefaultDepthMargin} };
+	BoundingSphere localSphere_{ {0.0f, 0.0f, 0.0f}, kDefaultBoundingRadius };
 	bool isFrustumCullingEnabled_ = true;
 };
 

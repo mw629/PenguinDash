@@ -38,7 +38,7 @@ void FreezeTransition::Initialize() {
         sd.transform.translate = { centerPos.x, centerPos.y, 0.0f };
         sd.transform.rotate = { 0.0f, 0.0f, 0.0f };
         sd.size = screenSize;
-        sd.pivot = { 0.5f, 0.5f };
+        sd.pivot = kCenterPivot;
         sd.textureArea[0] = { 0.0f, 0.0f };
         sd.textureArea[1] = { 1.0f, 1.0f };
         sd.scaleMode = SpriteScaleMode::Fit;
@@ -46,7 +46,7 @@ void FreezeTransition::Initialize() {
 
         frostSprite1_ = std::make_unique<Sprite>();
         frostSprite1_->Initialize(sd, texFrostHandle_);
-        frostSprite1_->GetMaterial()->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        frostSprite1_->GetMaterial()->SetColor(kClearWhiteColor);
         frostSprite1_->SettingWvp();
     }
 
@@ -55,9 +55,9 @@ void FreezeTransition::Initialize() {
         SpriteData sd{};
         sd.transform.scale = { 1.1f, 1.1f, 1.1f };
         sd.transform.translate = { centerPos.x, centerPos.y, 0.0f };
-        sd.transform.rotate = { 0.0f, 0.0f, 3.14159265f };
+        sd.transform.rotate = { 0.0f, 0.0f, kPi };
         sd.size = screenSize;
-        sd.pivot = { 0.5f, 0.5f };
+        sd.pivot = kCenterPivot;
         sd.textureArea[0] = { 0.0f, 0.0f };
         sd.textureArea[1] = { 1.0f, 1.0f };
         sd.scaleMode = SpriteScaleMode::Fit;
@@ -65,7 +65,7 @@ void FreezeTransition::Initialize() {
 
         frostSprite2_ = std::make_unique<Sprite>();
         frostSprite2_->Initialize(sd, texFrostHandle_);
-        frostSprite2_->GetMaterial()->SetColor({ 0.9f, 0.95f, 1.0f, 0.0f });
+        frostSprite2_->GetMaterial()->SetColor(kFrostColor2);
         frostSprite2_->SettingWvp();
     }
 
@@ -76,7 +76,7 @@ void FreezeTransition::Initialize() {
         sd.transform.translate = { centerPos.x, centerPos.y, 0.0f };
         sd.transform.rotate = { 0.0f, 0.0f, 0.0f };
         sd.size = screenSize;
-        sd.pivot = { 0.5f, 0.5f };
+        sd.pivot = kCenterPivot;
         sd.textureArea[0] = { 0.0f, 0.0f };
         sd.textureArea[1] = { 1.0f, 1.0f };
         sd.scaleMode = SpriteScaleMode::Fit;
@@ -84,7 +84,7 @@ void FreezeTransition::Initialize() {
 
         surfaceSprite_ = std::make_unique<Sprite>();
         surfaceSprite_->Initialize(sd, texSurfaceHandle_);
-        surfaceSprite_->GetMaterial()->SetColor({ 0.85f, 0.95f, 1.0f, 0.0f });
+        surfaceSprite_->GetMaterial()->SetColor(kSurfaceColor);
         surfaceSprite_->SettingWvp();
     }
 
@@ -95,7 +95,7 @@ void FreezeTransition::Initialize() {
         sd.transform.translate = { centerPos.x, centerPos.y, 0.0f };
         sd.transform.rotate = { 0.0f, 0.0f, 0.0f };
         sd.size = screenSize;
-        sd.pivot = { 0.5f, 0.5f };
+        sd.pivot = kCenterPivot;
         sd.textureArea[0] = { 0.0f, 0.0f };
         sd.textureArea[1] = { 1.0f, 1.0f };
         sd.scaleMode = SpriteScaleMode::Fit;
@@ -104,7 +104,7 @@ void FreezeTransition::Initialize() {
         crackSprite_ = std::make_unique<Sprite>();
         crackSprite_->Initialize(sd, texCrackHandle_);
         crackSprite_->SetBlend(BlendMode::kBlendModeAdd);
-        crackSprite_->GetMaterial()->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        crackSprite_->GetMaterial()->SetColor(kClearWhiteColor);
         crackSprite_->SettingWvp();
     }
 
@@ -301,7 +301,7 @@ void FreezeTransition::Start(float freezeDuration, float shatterDuration, std::f
     timer_ = 0.0f;
     freezeDuration_ = (freezeDuration <= 0.0f) ? 0.001f : freezeDuration;
     shatterDuration_ = (shatterDuration <= 0.0f) ? 0.001f : shatterDuration;
-    crackDuration_ = 0.12f;
+    crackDuration_ = kDefaultCrackDuration;
 
     onMidpointCallback_ = onMidpoint;
     midpointExecuted_ = false;
@@ -312,7 +312,7 @@ void FreezeTransition::Start(float freezeDuration, float shatterDuration, std::f
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
 
     // 画面外周に最初の氷晶スパークルを少し散らす
-    EmitSparkles({ 640.0f, 360.0f }, 25, 100.0f, 400.0f);
+    EmitSparkles(kDefaultScreenCenter, 25, 100.0f, 400.0f);
 }
 
 void FreezeTransition::Update(float deltaTime) {
@@ -330,8 +330,8 @@ void FreezeTransition::Update(float deltaTime) {
         // 凍結中に時折氷晶スパークルを発生
         if (std::rand() % 4 == 0) {
             float angle = static_cast<float>(std::rand()) / RAND_MAX * 6.28318f;
-            float radius = (1.0f - p * 0.7f) * 450.0f;
-            Vector2 sp = { 640.0f + std::cos(angle) * radius, 360.0f + std::sin(angle) * radius };
+            float radius = (1.0f - p * 0.7f) * kFreezeSparkleRadius;
+            Vector2 sp = { kDefaultScreenCenter.x + std::cos(angle) * radius, kDefaultScreenCenter.y + std::sin(angle) * radius };
             EmitSparkles(sp, 2, 30.0f, 120.0f);
         }
 
@@ -347,7 +347,7 @@ void FreezeTransition::Update(float deltaTime) {
             }
 
             // 亀裂の走るインパクトで少しスパークル
-            EmitSparkles({ 640.0f, 360.0f }, 30, 200.0f, 600.0f);
+            EmitSparkles(kDefaultScreenCenter, 30, 200.0f, 600.0f);
         }
     }
     else if (phase_ == Phase::Cracking) {
@@ -365,7 +365,7 @@ void FreezeTransition::Update(float deltaTime) {
             ResetShards();
 
             // 大量のダイアモンドダスト (氷粉・ガラスダストスパークル) が四散！
-            EmitSparkles({ 640.0f, 360.0f }, 160, 250.0f, 1300.0f);
+            EmitSparkles(kDefaultScreenCenter, 160, 250.0f, 1300.0f);
         }
     }
     else if (phase_ == Phase::Shattering) {
@@ -376,12 +376,12 @@ void FreezeTransition::Update(float deltaTime) {
         }
 
         // ガラス破片の物理シミュレーション (放射状飛散・3Dタンブリング・重力・閃光ハイライト・フェード)
-        const float gravity = 1150.0f; // 重力加速度 (px/s^2)
+        const float gravity = kShardGravity; // 重力加速度 (px/s^2)
         for (auto& shard : shards_) {
             shard.currentPos.x += shard.velocity.x * deltaTime;
             shard.currentPos.y += shard.velocity.y * deltaTime;
             shard.velocity.y += gravity * deltaTime;
-            shard.velocity.x *= 0.985f; // 空気抵抗
+            shard.velocity.x *= kShardAirResistance; // 空気抵抗
 
             // 3Dタンブリング回転 (X, Y, Z軸の激しい立体回転)
             shard.rotation.x += shard.angularVelocity.x * deltaTime;
@@ -391,12 +391,12 @@ void FreezeTransition::Update(float deltaTime) {
             // ガラスの反射・キラめき (Specular Glint)
             // ガラス片が3D回転して法線が特定の向きに来た瞬間に純白にフラッシュする
             float angleCos = std::abs(std::cos(shard.rotation.x) * std::cos(shard.rotation.y));
-            float flash = std::pow(angleCos, 5.0f); // 鋭いハイライト
+            float flash = std::pow(angleCos, kSpecularExponent); // 鋭いハイライト
 
             Vector4 renderCol = shard.baseColor;
-            renderCol.x = (std::min)(1.0f, renderCol.x + flash * 0.55f);
-            renderCol.y = (std::min)(1.0f, renderCol.y + flash * 0.55f);
-            renderCol.z = (std::min)(1.0f, renderCol.z + flash * 0.55f);
+            renderCol.x = (std::min)(1.0f, renderCol.x + flash * kSpecularFlashStrength);
+            renderCol.y = (std::min)(1.0f, renderCol.y + flash * kSpecularFlashStrength);
+            renderCol.z = (std::min)(1.0f, renderCol.z + flash * kSpecularFlashStrength);
 
             // スケール (手前への3D飛び出し感: 割れた直後に少し手前へ拡大し、その後奥へ遠ざかる)
             if (p < 0.20f) {

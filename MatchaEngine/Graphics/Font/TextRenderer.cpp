@@ -78,7 +78,7 @@ bool TextRenderer::Initialize(ID3D12Device* device,
     pipelineState_ = pipelineState;
 
     atlas_ = std::make_unique<DynamicFontAtlas>();
-    if (!atlas_->Initialize(device_, descriptorHeap, fontPath, atlasWidth, atlasHeight, 36.0f, 4.0f)) {
+    if (!atlas_->Initialize(device_, descriptorHeap, fontPath, atlasWidth, atlasHeight, DynamicFontAtlas::kDefaultGlyphBaseSize, DynamicFontAtlas::kDefaultPxRange)) {
         LOG_ERROR("TextRenderer: Failed to initialize DynamicFontAtlas!");
         return false;
     }

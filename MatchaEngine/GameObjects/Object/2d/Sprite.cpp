@@ -118,31 +118,31 @@ void Sprite::SetCustomTriangleVertices(const Vector2 positions[3], const Vector2
 	// 1枚目の三角形 (0, 1, 2)
 	vertexData_[0].position = { positions[0].x, positions[0].y, 0.0f, 1.0f };
 	vertexData_[0].texcoord = uvs[0];
-	vertexData_[0].normal = { 0.0f, 0.0f, -1.0f };
+	vertexData_[0].normal = kDefaultNormal;
 
 	vertexData_[1].position = { positions[1].x, positions[1].y, 0.0f, 1.0f };
 	vertexData_[1].texcoord = uvs[1];
-	vertexData_[1].normal = { 0.0f, 0.0f, -1.0f };
+	vertexData_[1].normal = kDefaultNormal;
 
 	vertexData_[2].position = { positions[2].x, positions[2].y, 0.0f, 1.0f };
 	vertexData_[2].texcoord = uvs[2];
-	vertexData_[2].normal = { 0.0f, 0.0f, -1.0f };
+	vertexData_[2].normal = kDefaultNormal;
 
 	// 2枚目の三角形 (1, 3, 2)
 	// 頂点3を頂点1と同一座標・UVに設定することで面積0の縮退三角形とし、GPU描画をスキップ
 	vertexData_[3].position = { positions[1].x, positions[1].y, 0.0f, 1.0f };
 	vertexData_[3].texcoord = uvs[1];
-	vertexData_[3].normal = { 0.0f, 0.0f, -1.0f };
+	vertexData_[3].normal = kDefaultNormal;
 }
 
 void Sprite::CreateVertexData()
 {
 	// Sprite用の頂点リソースを作る
-	vertexResource_ = GraphicsDevice::CreateBufferResource(sizeof(VertexData) * 6);
+	vertexResource_ = GraphicsDevice::CreateBufferResource(sizeof(VertexData) * kVertexBufferSize);
 
 	// 頂点バッファービューを作成する
 	vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
-	vertexBufferView_.SizeInBytes = sizeof(VertexData) * 6;
+	vertexBufferView_.SizeInBytes = sizeof(VertexData) * kVertexBufferSize;
 	vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -152,10 +152,10 @@ void Sprite::CreateVertexData()
 
 void Sprite::CreateIndexResource()
 {
-	indexResource_ = GraphicsDevice::CreateBufferResource(sizeof(uint32_t) * 6);
+	indexResource_ = GraphicsDevice::CreateBufferResource(sizeof(uint32_t) * kIndexCount);
 
 	indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
-	indexBufferView_.SizeInBytes = sizeof(uint32_t) * 6;
+	indexBufferView_.SizeInBytes = sizeof(uint32_t) * kIndexCount;
 	indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 
 	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData_));
@@ -288,7 +288,7 @@ void Sprite::SettingWvp()
 	Vector3 finalScale = { st.scale.x, st.scale.y, transform_.scale.z };
 
 	Matrix4x4 worldMatrix = MakeAffineMatrix(finalTranslate, finalScale, transform_.rotate);
-	Matrix4x4 orthoMatrix = MakeOrthographicMatrix(0.0f, screenW, 0.0f, screenH, 0.0f, 100.0f);
+	Matrix4x4 orthoMatrix = MakeOrthographicMatrix(0.0f, screenW, 0.0f, screenH, kDefaultNearClip, kDefaultFarClip);
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, orthoMatrix);
 
 	*wvpData_ = { worldViewProjectionMatrix, worldMatrix };

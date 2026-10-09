@@ -29,14 +29,14 @@ void Cube::CreateVertexData()
 
     // ローカル座標の8つの角を定義
     // SkyBox用であれば法線やUVはそのまま使わない・共有で問題ないため一括で処理できます
-    vertexData_[0].position = { -0.5f, -0.5f, -0.5f, 1.0f }; // 0: 左下奥
-    vertexData_[1].position = { -0.5f,  0.5f, -0.5f, 1.0f }; // 1: 左上奥
-    vertexData_[2].position = {  0.5f, -0.5f, -0.5f, 1.0f }; // 2: 右下奥
-    vertexData_[3].position = {  0.5f,  0.5f, -0.5f, 1.0f }; // 3: 右上奥
-    vertexData_[4].position = { -0.5f, -0.5f,  0.5f, 1.0f }; // 4: 左下手前
-    vertexData_[5].position = { -0.5f,  0.5f,  0.5f, 1.0f }; // 5: 左上手前
-    vertexData_[6].position = {  0.5f, -0.5f,  0.5f, 1.0f }; // 6: 右下手前
-    vertexData_[7].position = {  0.5f,  0.5f,  0.5f, 1.0f }; // 7: 右上手前
+    vertexData_[0].position = { -kDefaultHalfSize, -kDefaultHalfSize, -kDefaultHalfSize, 1.0f }; // 0: 左下奥
+    vertexData_[1].position = { -kDefaultHalfSize,  kDefaultHalfSize, -kDefaultHalfSize, 1.0f }; // 1: 左上奥
+    vertexData_[2].position = {  kDefaultHalfSize, -kDefaultHalfSize, -kDefaultHalfSize, 1.0f }; // 2: 右下奥
+    vertexData_[3].position = {  kDefaultHalfSize,  kDefaultHalfSize, -kDefaultHalfSize, 1.0f }; // 3: 右上奥
+    vertexData_[4].position = { -kDefaultHalfSize, -kDefaultHalfSize,  kDefaultHalfSize, 1.0f }; // 4: 左下手前
+    vertexData_[5].position = { -kDefaultHalfSize,  kDefaultHalfSize,  kDefaultHalfSize, 1.0f }; // 5: 左上手前
+    vertexData_[6].position = {  kDefaultHalfSize, -kDefaultHalfSize,  kDefaultHalfSize, 1.0f }; // 6: 右下手前
+    vertexData_[7].position = {  kDefaultHalfSize,  kDefaultHalfSize,  kDefaultHalfSize, 1.0f }; // 7: 右上手前
 
     // 便宜上のデータを埋めておく
     for (int i = 0; i < 8; ++i) {

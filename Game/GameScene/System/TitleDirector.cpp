@@ -18,17 +18,17 @@ void TitleDirector::Initialize(Texture *texture) {
   for (int i = 0; i < kTitlePenguinCount; ++i) {
     SpriteData penguinSpriteData;
     penguinSpriteData.transform.scale = {1.0f, 1.0f, 1.0f};
-    penguinSpriteData.transform.translate = {-300.0f, 360.0f, 0.0f};
+    penguinSpriteData.transform.translate = kPenguinInitialPos;
     penguinSpriteData.transform.rotate = {0.0f, 0.0f, 0.0f};
-    penguinSpriteData.size = {130.0f, 130.0f};
-    penguinSpriteData.pivot = {0.5f, 0.5f};
+    penguinSpriteData.size = kPenguinSpriteSize;
+    penguinSpriteData.pivot = kCenterPivot;
     penguinSpriteData.textureArea[0] = {0.0f, 0.0f};
     penguinSpriteData.textureArea[1] = {0.5f, 1.0f};
     penguinSpriteData.scaleMode = SpriteScaleMode::Fit;
 
     titlePenguinSprites_[i] = std::make_unique<Sprite>();
     titlePenguinSprites_[i]->Initialize(penguinSpriteData, titlePenguinTextureHandle_);
-    titlePenguinSprites_[i]->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    titlePenguinSprites_[i]->GetMaterial()->SetColor(kDefaultSpriteColor);
   }
 }
 
@@ -40,7 +40,7 @@ void TitleDirector::Reset() {
   for (int i = 0; i < kTitlePenguinCount; ++i) {
     if (titlePenguinSprites_[i]) {
       Transform pt = titlePenguinSprites_[i]->GetTransform();
-      pt.translate = {-300.0f, 360.0f, 0.0f};
+      pt.translate = kPenguinInitialPos;
       pt.rotate = {0.0f, 0.0f, 0.0f};
       titlePenguinSprites_[i]->SetTransform(pt);
       titlePenguinSprites_[i]->SettingWvp();
@@ -79,7 +79,7 @@ bool TitleDirector::IsExitComplete(StageSettings *stageSettings) const {
   }
 
   return (!hasActiveObstacles && titleExitTimer_ >= kTitleExitDuration) ||
-         (titleExitTimer_ >= kTitleExitDuration + 3.0f);
+         (titleExitTimer_ >= kTitleExitDuration + kExitTimeoutOffset);
 }
 
 void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings) {
@@ -90,27 +90,27 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
   int activeLane = player->IsChangingLane() ? targetLane : currentLane;
 
   float laneWidth = stageSettings->GetLaneWidth();
-  if (laneWidth <= 0.0f) laneWidth = 2.0f;
+  if (laneWidth <= 0.0f) laneWidth = kAiDefaultLaneWidth;
 
   float playerZ = player->GetTransform().translate.z;
 
   struct LaneInfo {
-    float minDistZ = 999.0f;
+    float minDistZ = kAiMaxDetectionDist;
     Obstacle::Type minType = Obstacle::Type::Wall;
     Obstacle *minObs = nullptr;
-    float minWallDistZ = 999.0f;
+    float minWallDistZ = kAiMaxDetectionDist;
   };
-  LaneInfo lanes[3];
+  LaneInfo lanes[kLaneCount];
 
   Obstacle *imminentObs = nullptr;
-  float minActiveDistZ = 999.0f;
+  float minActiveDistZ = kAiMaxDetectionDist;
 
   for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
     Obstacle *obs = stageSettings->GetObstacle(i);
     if (!obs || !obs->GetIsActive() || obs->GetIsHit()) continue;
 
     float relZ = obs->GetTransform().translate.z - playerZ;
-    if (relZ < -0.8f) continue;
+    if (relZ < kAiBehindIgnoreDist) continue;
 
     float obsX = obs->GetTransform().translate.x;
     int obsLane = static_cast<int>(std::round(obsX / laneWidth));
@@ -131,7 +131,7 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
       }
     }
 
-    if (obsLane == activeLane && relZ > -0.5f && relZ < minActiveDistZ) {
+    if (obsLane == activeLane && relZ > kAiCloseIgnoreDist && relZ < minActiveDistZ) {
       minActiveDistZ = relZ;
       imminentObs = obs;
     }
@@ -141,13 +141,13 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
     Obstacle::Type type = imminentObs->GetType();
 
     if (type == Obstacle::Type::Low) {
-      if (minActiveDistZ <= 3.6f && minActiveDistZ >= 0.8f) {
+      if (minActiveDistZ <= kAiJumpTriggerDistMax && minActiveDistZ >= kAiJumpTriggerDistMin) {
         if (!player->GetIsJumping()) {
           player->TriggerJump();
         }
       }
     } else if (type == Obstacle::Type::High) {
-      if (minActiveDistZ <= 3.8f && minActiveDistZ >= 0.8f) {
+      if (minActiveDistZ <= kAiRollTriggerDistMax && minActiveDistZ >= kAiRollTriggerDistMin) {
         if (!player->GetIsRolling() && !player->GetIsJumping()) {
           player->TriggerRoll();
         }
@@ -155,21 +155,21 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
     } else if (type == Obstacle::Type::Wall ||
                type == Obstacle::Type::BossAttack ||
                type == Obstacle::Type::BossAttackReflectable) {
-      if (minActiveDistZ <= 15.0f && !player->IsChangingLane() && player->CanAct()) {
+      if (minActiveDistZ <= kAiWallAvoidDist && !player->IsChangingLane() && player->CanAct()) {
         if (activeLane == 0) {
           float leftWallDist = lanes[0].minWallDistZ;
           float rightWallDist = lanes[2].minWallDistZ;
           float leftMinDist = lanes[0].minDistZ;
           float rightMinDist = lanes[2].minDistZ;
 
-          if (leftWallDist > 15.0f && rightWallDist <= 15.0f) {
+          if (leftWallDist > kAiWallAvoidDist && rightWallDist <= kAiWallAvoidDist) {
             player->TriggerMoveLeft();
-          } else if (rightWallDist > 15.0f && leftWallDist <= 15.0f) {
+          } else if (rightWallDist > kAiWallAvoidDist && leftWallDist <= kAiWallAvoidDist) {
             player->TriggerMoveRight();
-          } else if (leftWallDist > 15.0f && rightWallDist > 15.0f) {
-            if (leftMinDist >= rightMinDist && leftMinDist > 5.0f) {
+          } else if (leftWallDist > kAiWallAvoidDist && rightWallDist > kAiWallAvoidDist) {
+            if (leftMinDist >= rightMinDist && leftMinDist > kAiSafeSideDist) {
               player->TriggerMoveLeft();
-            } else if (rightMinDist > 5.0f) {
+            } else if (rightMinDist > kAiSafeSideDist) {
               player->TriggerMoveRight();
             } else if (leftMinDist >= rightMinDist) {
               player->TriggerMoveLeft();
@@ -184,11 +184,11 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
             }
           }
         } else if (activeLane == -1) {
-          if (lanes[1].minWallDistZ > 4.0f) {
+          if (lanes[1].minWallDistZ > kAiCenterLaneClearDist) {
             player->TriggerMoveRight();
           }
         } else if (activeLane == 1) {
-          if (lanes[1].minWallDistZ > 4.0f) {
+          if (lanes[1].minWallDistZ > kAiCenterLaneClearDist) {
             player->TriggerMoveLeft();
           }
         }
@@ -197,9 +197,9 @@ void TitleDirector::UpdateAutoPilot(Player *player, StageSettings *stageSettings
   }
 
   // 中央レーンへの安全復帰
-  if ((!imminentObs || minActiveDistZ > 20.0f) && !player->IsChangingLane() && player->CanAct()) {
+  if ((!imminentObs || minActiveDistZ > kAiReturnCenterTriggerDist) && !player->IsChangingLane() && player->CanAct()) {
     if (activeLane != 0) {
-      if (lanes[1].minDistZ > 22.0f && lanes[1].minWallDistZ > 30.0f) {
+      if (lanes[1].minDistZ > kAiReturnCenterMinDist && lanes[1].minWallDistZ > kAiReturnCenterWallDist) {
         if (activeLane < 0) {
           player->TriggerMoveRight();
         } else {
@@ -214,9 +214,7 @@ void TitleDirector::CheckCollisions(Player *player, StageSettings *stageSettings
                                     ScoreManager *scoreManager) {
   if (!player || !stageSettings) return;
 
-  const Transform &playerTransform = player->GetTransform();
-  float playerHeight = player->GetIsRolling() ? 0.5f : 1.5f;
-  AABB playerAABB = Collision::MakeAABB(playerTransform, 0.8f, playerHeight, 0.8f);
+  AABB playerAABB = player->GetColliderAABB();
 
   for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
     Obstacle *obstacle = stageSettings->GetObstacle(i);
@@ -252,10 +250,7 @@ void TitleDirector::UpdateCamera(Player *player,
   Vector3 targetPos = {centerPos.x, centerPos.y + titleTargetOffsetY_,
                        centerPos.z};
 
-  Transform defaultCamTransform;
-  defaultCamTransform.scale = {1.0f, 1.0f, 1.0f};
-  defaultCamTransform.rotate = {0.3f, 0.0f, 0.0f};
-  defaultCamTransform.translate = {0.0f, 8.0f, -15.0f};
+  const Transform &defaultCamTransform = GameCameraController::kDefaultCameraTransform;
 
   Transform camTransform;
 
@@ -275,8 +270,8 @@ void TitleDirector::UpdateCamera(Player *player,
     float startY = titleExitStartCamTransform_.rotate.y;
     float targetY = defaultCamTransform.rotate.y;
     float diffY = targetY - startY;
-    while (diffY > 3.14159265f) diffY -= 6.2831853f;
-    while (diffY < -3.14159265f) diffY += 6.2831853f;
+    while (diffY > kPi) diffY -= k2Pi;
+    while (diffY < -kPi) diffY += k2Pi;
 
     camTransform.rotate.x =
         Lerp(titleExitStartCamTransform_.rotate.x, defaultCamTransform.rotate.x, easeT);
@@ -285,10 +280,10 @@ void TitleDirector::UpdateCamera(Player *player,
         Lerp(titleExitStartCamTransform_.rotate.z, defaultCamTransform.rotate.z, easeT);
   } else {
     titleCameraAngle_ += titleCameraSpeed_ * dt;
-    if (titleCameraAngle_ >= 6.2831853f) {
-      titleCameraAngle_ -= 6.2831853f;
+    if (titleCameraAngle_ >= k2Pi) {
+      titleCameraAngle_ -= k2Pi;
     } else if (titleCameraAngle_ < 0.0f) {
-      titleCameraAngle_ += 6.2831853f;
+      titleCameraAngle_ += k2Pi;
     }
 
     Vector3 camPos;
@@ -315,11 +310,11 @@ void TitleDirector::DrawPenguins(Draw &draw) {
 
   float progress = std::clamp(titleExitTimer_ / kTitleExitDuration, 0.0f, 1.0f);
   float runProgress = progress * progress * (3.0f - 2.0f * progress) * 0.15f + progress * 0.85f;
-  float runStartX = -100.0f;
-  float runEndX = 1620.0f;
+  float runStartX = kStampedeStartX;
+  float runEndX = kStampedeEndX;
   float leaderX = runStartX + (runEndX - runStartX) * runProgress;
 
-  const float baseY = 360.0f;
+  const float baseY = kStampedeBaseY;
 
   struct FormationParam {
     float offsetX;
@@ -328,8 +323,8 @@ void TitleDirector::DrawPenguins(Draw &draw) {
     float scale;
   };
 
-  const float stepY = 41.5f;
-  const float slopeX = 26.0f;
+  const float stepY = kStampedeStepY;
+  const float slopeX = kStampedeSlopeX;
 
   FormationParam formations[kTitlePenguinCount];
   for (int i = 0; i < kTitlePenguinCount; ++i) {
@@ -337,9 +332,9 @@ void TitleDirector::DrawPenguins(Draw &draw) {
     float offsetY = (i - 7) * stepY;
     float offsetX = -distFromCenter * slopeX;
 
-    float depth = 0.92f + (offsetY / 290.5f) * 0.10f;
-    float scale = (i == 7) ? 1.10f : (1.00f * depth);
-    float animTimeOffset = distFromCenter * 0.09f;
+    float depth = kStampedeBaseDepth + (offsetY / kStampedeMaxOffsetY) * kStampedeDepthScale;
+    float scale = (i == 7) ? kStampedeLeaderScale : (1.00f * depth);
+    float animTimeOffset = distFromCenter * kStampedeAnimTimeStep;
 
     formations[i] = {offsetX, offsetY, animTimeOffset, scale};
   }
@@ -352,7 +347,7 @@ void TitleDirector::DrawPenguins(Draw &draw) {
     float posY = baseY + form.offsetY;
 
     float timerWithOffset = titleExitTimer_ + form.animTimeOffset;
-    int animFrame = (static_cast<int>(timerWithOffset * 10.0f)) % 2;
+    int animFrame = (static_cast<int>(timerWithOffset * kStampedeAnimFps)) % 2;
     Vector2 uvArea[2];
     if (animFrame == 0) {
       uvArea[0] = {0.0f, 0.0f};
@@ -362,8 +357,8 @@ void TitleDirector::DrawPenguins(Draw &draw) {
       uvArea[1] = {1.0f, 1.0f};
     }
 
-    float bobbing = (animFrame == 1) ? -4.0f * (form.scale / 1.00f) : 0.0f;
-    float tilt = -0.05f;
+    float bobbing = (animFrame == 1) ? -kStampedeBobbingHeight * (form.scale / 1.00f) : 0.0f;
+    float tilt = kStampedeTiltAngle;
 
     Transform pTransform;
     pTransform.scale = {form.scale, form.scale, 1.0f};
@@ -375,11 +370,11 @@ void TitleDirector::DrawPenguins(Draw &draw) {
     titlePenguinSprites_[idx]->UpdateVertexBuffer();
     titlePenguinSprites_[idx]->SettingWvp();
 
-    if (posX > 0.0f && posX < 1360.0f) {
-      float trailAlpha = std::clamp(runProgress * 1.5f, 0.0f, 0.65f) * form.scale;
-      draw.DrawFillRect(Vector2(posX - 65.0f * form.scale, posY + 5.0f + bobbing),
-                        Vector2(55.0f * form.scale, 2.5f),
-                        Vector4(0.85f, 0.95f, 1.0f, trailAlpha * 0.7f));
+    if (posX > 0.0f && posX < kStampedeMaxDrawX) {
+      float trailAlpha = std::clamp(runProgress * kStampedeTrailAlphaScale, 0.0f, kStampedeTrailMaxAlpha) * form.scale;
+      draw.DrawFillRect(Vector2(posX + kStampedeTrailOffset.x * form.scale, posY + kStampedeTrailOffset.y + bobbing),
+                        Vector2(kStampedeTrailSize.x * form.scale, kStampedeTrailSize.y),
+                        Vector4(0.85f, 0.95f, 1.0f, trailAlpha * kStampedeTrailAlphaMultiplier));
     }
 
     draw.DrawSprite(titlePenguinSprites_[idx].get());

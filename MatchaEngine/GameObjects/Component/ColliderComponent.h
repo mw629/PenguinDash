@@ -16,6 +16,7 @@ enum class ColliderShape {
 class ColliderComponent : public Component
 {
 protected:
+	static constexpr float kDefaultExtent = 0.5f;
 	Vector3 offset_ = { 0.0f, 0.0f, 0.0f };
 	static bool s_isDrawDebug_;
 
@@ -38,7 +39,7 @@ public:
 	virtual void SetSize(const Vector3& /*size*/) {}
 	virtual void SetRadius(float /*radius*/) {}
 	virtual const Vector3& GetSize() const { static Vector3 s{1,1,1}; return s; }
-	virtual float GetRadius() const { return 0.5f; }
+	virtual float GetRadius() const { return kDefaultExtent; }
 
 	// Double Dispatch for collision check
 	virtual bool IntersectsWith(const ColliderComponent* other) const;
@@ -49,6 +50,7 @@ public:
 class BoxColliderComponent : public ColliderComponent
 {
 private:
+	static constexpr float kHalfExtentFactor = 0.5f;
 	Vector3 size_ = { 1.0f, 1.0f, 1.0f };
 #ifdef _DEBUG
 	std::shared_ptr<Cube> debugCube_;
@@ -80,7 +82,8 @@ public:
 class SphereColliderComponent : public ColliderComponent
 {
 private:
-	float radius_ = 0.5f;
+	static constexpr float kDiameterMultiplier = 2.0f;
+	float radius_ = kDefaultExtent;
 #ifdef _DEBUG
 	std::shared_ptr<Sphere> debugSphere_;
 #endif

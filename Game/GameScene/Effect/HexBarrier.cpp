@@ -20,7 +20,7 @@ void HexBarrier::Initialize(const std::string& texturePath)
 		auto factory = matComp->GetMaterialFactory();
 		if (factory) {
 			factory->SetMaterialLighting(false);
-			factory->SetColor({ 0.25f, 0.8f, 1.0f, 0.85f }); // エレクトリックシアン
+			factory->SetColor(kDefaultBarrierColor); // エレクトリックシアン
 		}
 	}
 

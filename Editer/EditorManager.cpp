@@ -1356,8 +1356,8 @@ void EditorManager::Update(Engine* engine)
 			if (!previewParticle_->GetLoop()) {
 				ImGui::Checkbox(LanguageManager::Tr("Auto Replay (One-Shot)"), &autoReplayOneShot);
 				if (autoReplayOneShot) {
-					oneShotTimer += 1.0f / 60.0f;
-					if (previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() == 0 || oneShotTimer >= 2.0f) {
+					oneShotTimer += Engine::kDefaultDeltaTime;
+					if (previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() == 0 || oneShotTimer >= kOneShotReplayInterval) {
 						previewParticle_->TriggerBurst();
 						oneShotTimer = 0.0f;
 					}

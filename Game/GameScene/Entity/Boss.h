@@ -50,7 +50,12 @@ public:
 };
 
 class Boss : public GameObject {
-public:
+private:
+  friend class BossAppearanceState;
+  friend class BossBattleState;
+  friend class BossDefeatState;
+  friend class BossVictoryState;
+
   static constexpr int kMaxHP = 5;
   static constexpr float kAppearanceDuration = 2.0f;
   static constexpr float kDefeatDuration = 3.0f;
@@ -59,6 +64,16 @@ public:
   static constexpr Vector3 kDefaultTargetPos = {-6.0f, 3.0f, -2.0f};
   static constexpr Vector3 kDefaultBossScale = {5.0f, 5.0f, 5.0f};
   static constexpr Vector4 kDamageColor = {2.0f, 0.4f, 0.4f, 1.0f};
+  static constexpr Vector4 kNormalColor = {1.0f, 1.0f, 1.0f, 1.0f};
+  static constexpr float kMaxShakeIntensity = 2.0f;
+  static constexpr float kShakeFreqX = 50.0f;
+  static constexpr float kShakeFreqY = 65.0f;
+  static constexpr float kShakeFreqZ = 40.0f;
+  static constexpr float kBattleAnimSpeed = 0.05f;
+  static constexpr float kBattleBobbingAmplitude = 1.0f;
+  static constexpr float kSinkSpeed = 0.1f;
+  static constexpr float kScaleOffsetFactor = 0.5f;
+  static constexpr float kDefaultSpeedMultiplier = 1.0f;
 
 private:
   std::unique_ptr<Model> model_ = std::make_unique<Model>();
@@ -78,9 +93,11 @@ public:
 
   void Initialize(ModelData modelData);
   void Reset();
+  void Spawn();
   void Spawn(float x, float y, float z);
 
-  void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override;
+  void Update(Matrix4x4 view, float speedMultiplier) override;
+  void Update(Matrix4x4 view) { Update(view, kDefaultSpeedMultiplier); }
   void Draw(class Draw &draw) override;
   void ImGuiInnerComponents() override;
 

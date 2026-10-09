@@ -71,5 +71,7 @@ private:
 
     std::vector<std::unique_ptr<ICommand>> undoStack_;
     std::vector<std::unique_ptr<ICommand>> redoStack_;
-    size_t maxHistory_ = 50; // メモリ肥大化を防ぐ最大履歴数
+
+    static constexpr size_t kDefaultMaxHistory = 50; // メモリ肥大化を防ぐ最大履歴数
+    size_t maxHistory_ = kDefaultMaxHistory;
 };

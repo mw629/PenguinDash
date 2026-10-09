@@ -57,11 +57,28 @@ private:
   std::unique_ptr<GameHUD> gameHUD_ =
       std::make_unique<GameHUD>();
 
-  // スカイボックス
+  // 定数
+  static constexpr Vector3 kDefaultSkyBoxScale = {100.0f, 100.0f, 100.0f};
+  static constexpr float kDefaultFadeDuration = 0.5f;
+  static constexpr float kOneLaneTotalDistance = 200.0f;
+  static constexpr float kDustGroundThresholdY = 3.01f;
+  static constexpr float kInvertedCameraThresholdRotateY = 1.57f;
+  static constexpr float kStartObstacleClearDistance = 12.0f;
+  static constexpr float kStartItemSpawnChance = 0.15f;
+  static constexpr float kPlayBaseScrollSpeed = 0.2f;
+  static constexpr float kPlayScrollAcceleration = 0.0001f;
+  static constexpr float kTitleBaseScrollSpeed = 0.22f;
+  static constexpr float kResultFreezeDuration = 0.75f;
+  static constexpr float kResultShatterDuration = 0.75f;
+  static constexpr float kHitRumbleDuration = 0.35f;
+  static constexpr int kHitRumbleMotorSpeed = 48000;
+  static constexpr int kThreeLaneCount = 3;
+  static constexpr int kOneLaneCount = 1;
+
   std::shared_ptr<Cube> skyBox_ = std::make_shared<Cube>();
   int skyBoxTexture_ = -1;
   Transform skyBoxTransform_{
-      {100.0f, 100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+      kDefaultSkyBoxScale, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
   // エンティティ・ワールド管理
   std::shared_ptr<Player> player_ = std::make_shared<Player>();
@@ -86,7 +103,7 @@ private:
   std::unique_ptr<Fade> fade_ = std::make_unique<Fade>();
   enum class ResultTransition { None, Restart, Title };
   ResultTransition resultTransition_ = ResultTransition::None;
-  float fadeDuration_ = 0.5f;
+  float fadeDuration_ = kDefaultFadeDuration;
 
   // シーン読み込み用
   std::string initialSceneJson_ = "Resources/Json/Scene/scene.json";

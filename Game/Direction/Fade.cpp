@@ -10,11 +10,19 @@ Fade::Fade() {
 void Fade::Initialize() {
     status_ = Status::None;
     lastFinishedStatus_ = Status::None;
-    color_ = {0.0f, 0.0f, 0.0f, 1.0f};
+    color_ = kDefaultFadeColor;
     currentAlpha_ = 0.0f;
     timer_ = 0.0f;
-    duration_ = 0.5f;
+    duration_ = kDefaultDuration;
     isFinished_ = false;
+}
+
+void Fade::StartFadeOut() {
+    StartFadeOut(kDefaultDuration, kDefaultFadeColor);
+}
+
+void Fade::StartFadeOut(float duration) {
+    StartFadeOut(duration, kDefaultFadeColor);
 }
 
 void Fade::StartFadeOut(float duration, const Vector4& color) {
@@ -27,6 +35,14 @@ void Fade::StartFadeOut(float duration, const Vector4& color) {
     isFinished_ = false;
 }
 
+void Fade::StartFadeIn() {
+    StartFadeIn(kDefaultDuration, kDefaultFadeColor);
+}
+
+void Fade::StartFadeIn(float duration) {
+    StartFadeIn(duration, kDefaultFadeColor);
+}
+
 void Fade::StartFadeIn(float duration, const Vector4& color) {
     status_ = Status::FadeIn;
     lastFinishedStatus_ = Status::None;
@@ -35,6 +51,10 @@ void Fade::StartFadeIn(float duration, const Vector4& color) {
     timer_ = 0.0f;
     currentAlpha_ = 1.0f;
     isFinished_ = false;
+}
+
+void Fade::Update() {
+    Update(kDefaultDeltaTime);
 }
 
 void Fade::Update(float deltaTime) {

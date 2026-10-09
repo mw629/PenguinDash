@@ -183,12 +183,12 @@ void GameScene::ResetGame() {
   crashEffect_->Reset();
   wasBossBattle_ = false;
 
-  cameraController_->Reset({{1.0f, 1.0f, 1.0f}, {0.3f, 0.0f, 0.0f}, {0.0f, 8.0f, -15.0f}});
+  cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
 
   playingState_ = PlayingState::ThreeLane;
   isRightSideMode_ = false;
   rightSideDistance_ = 0.0f;
-  stageSettings_->SetLaneCountImmediate(3);
+  stageSettings_->SetLaneCountImmediate(kThreeLaneCount);
   stageSettings_->SetSpawningPaused(false);
   player_->SetInvertedControls(false);
   GameSceneManager::GetInstance()->SetInBossBattle(false);
@@ -203,16 +203,16 @@ void GameScene::StartGame() {
 void GameScene::StartPlaying() {
   gameState_ = GameState::Playing;
 
-  cameraController_->Reset({{1.0f, 1.0f, 1.0f}, {0.3f, 0.0f, 0.0f}, {0.0f, 8.0f, -15.0f}});
+  cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
 
   player_->SetAutoPilot(false);
   player_->SetInvertedControls(false);
 
-  stageSettings_->ClearObstacles(12.0f);
+  stageSettings_->ClearObstacles(kStartObstacleClearDistance);
   stageSettings_->SetSpawningPaused(false);
-  stageSettings_->SetItemSpawnChance(0.15f);
-  stageSettings_->SetBaseScrollSpeed(0.2f);
-  stageSettings_->SetScrollAcceleration(0.0001f);
+  stageSettings_->SetItemSpawnChance(kStartItemSpawnChance);
+  stageSettings_->SetBaseScrollSpeed(kPlayBaseScrollSpeed);
+  stageSettings_->SetScrollAcceleration(kPlayScrollAcceleration);
 
   scoreManager_->Reset();
   wasBossBattle_ = false;
@@ -227,7 +227,7 @@ void GameScene::ReturnToTitle() {
   ResetGame();
   player_->SetAutoPilot(true);
   stageSettings_->SetItemSpawnChance(0.0f);
-  stageSettings_->SetBaseScrollSpeed(0.22f);
+  stageSettings_->SetBaseScrollSpeed(kTitleBaseScrollSpeed);
   stageSettings_->SetScrollAcceleration(0.0f);
   stageSettings_->SetSpawningPaused(false);
   gameState_ = GameState::Title;
@@ -241,13 +241,15 @@ void GameScene::StartResultTransition(ResultTransition target) {
     return;
   }
   resultTransition_ = target;
-  FreezeTransition::GetInstance()->Start(0.75f, 0.75f, [this, target]() {
+  FreezeTransition::GetInstance()->Start(kResultFreezeDuration, kResultShatterDuration, [this, target]() {
     if (target == ResultTransition::Restart) {
       ResetGame();
       gameState_ = GameState::Playing;
       SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
+      fade_->StartFadeIn(fadeDuration_);
     } else if (target == ResultTransition::Title) {
       ReturnToTitle();
+      fade_->StartFadeIn(fadeDuration_);
     }
     resultTransition_ = ResultTransition::None;
   });
@@ -256,12 +258,12 @@ void GameScene::StartResultTransition(ResultTransition target) {
 void GameScene::Update() {
   ObjectBase::SetWvpIndex(0);
   EffectDefinition::SetWvpIndex(0);
-  uiTimer_ += 1.0f / 60.0f;
+  uiTimer_ += Engine::kDefaultDeltaTime;
   SoundManager::GetInstance()->Update();
 
   // フェードの更新
   if (fade_) {
-    fade_->Update(1.0f / 60.0f);
+    fade_->Update(Engine::kDefaultDeltaTime);
     if (resultTransition_ != ResultTransition::None && fade_->IsFadeOutFinished()) {
       if (resultTransition_ == ResultTransition::Restart) {
         ResetGame();
@@ -277,7 +279,7 @@ void GameScene::Update() {
   }
 
   // タイトル開始演出タイマー更新
-  titleDirector_->UpdateExit(1.0f / 60.0f);
+  titleDirector_->UpdateExit(Engine::kDefaultDeltaTime);
 
 #ifdef _DEBUG
   if (Input::PushKey(DIK_Q)) {
@@ -300,7 +302,7 @@ void GameScene::Update() {
   // F3キーで氷結・破砕トランジションテスト
   if (Input::PushKey(DIK_F3)) {
     if (!FreezeTransition::GetInstance()->IsActive()) {
-      FreezeTransition::GetInstance()->Start(0.75f, 0.75f, nullptr);
+      FreezeTransition::GetInstance()->Start();
     }
   }
 
@@ -327,7 +329,7 @@ void GameScene::Update() {
         stageSettings_->SetItemCoolDownTimer(Obstacle::Type::BossItem, bossItemDuration);
       }
     } else {
-      boss_->Spawn(-6.0f, 3.0f, -2.0f);
+      boss_->Spawn();
     }
   });
 
@@ -336,7 +338,7 @@ void GameScene::Update() {
   if (cameraController_->IsFirstPerson()) {
     cameraController_->UpdateFirstPersonCamera(player_.get());
   } else if (gameState_ == GameState::Title) {
-    titleDirector_->UpdateCamera(player_.get(), cameraController_.get(), (1.0f / 60.0f) * timeScale);
+    titleDirector_->UpdateCamera(player_.get(), cameraController_.get(), Engine::kDefaultDeltaTime * timeScale);
   }
 
   cameraController_->Update();
@@ -405,7 +407,7 @@ void GameScene::PlayingUpdate() {
   // 1レーン（右サイドカメラ）モードの走行距離加算
   if (isRightSideMode_) {
     rightSideDistance_ += stageSettings_->GetScrollSpeed() * timeScale;
-    if (rightSideDistance_ >= 200.0f) {
+    if (rightSideDistance_ >= kOneLaneTotalDistance) {
       ChangePlayingState(PlayingState::ThreeLane);
     }
   }
@@ -426,7 +428,7 @@ void GameScene::PlayingUpdate() {
                          stageSettings_->GetLaneWidth());
 
   bool isCameraInverted = (playingState_ == PlayingState::Boss &&
-                           cameraController_->GetTransform().rotate.y > 1.57f);
+                           cameraController_->GetTransform().rotate.y > kInvertedCameraThresholdRotateY);
   player_->SetInvertedControls(isCameraInverted);
 
   const Matrix4x4 &view = cameraController_->GetViewMatrix();
@@ -442,7 +444,7 @@ void GameScene::PlayingUpdate() {
 
   effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
 
-  if (!player_->GetIsRolling() && player_->GetTransform().translate.y <= 3.01f) {
+  if (!player_->GetIsRolling() && player_->GetTransform().translate.y <= kDustGroundThresholdY) {
     effectManager_->EmitDust(player_->GetTransform().translate);
   }
 }
@@ -451,7 +453,7 @@ void GameScene::TitleUpdate() {
   float timeScale = EditorManager::GetPlaySpeed();
   float speedMultiplier = 1.0f;
 
-  stageSettings_->SetBaseScrollSpeed(0.22f);
+  stageSettings_->SetBaseScrollSpeed(kTitleBaseScrollSpeed);
   stageSettings_->SetScrollAcceleration(0.0f);
   stageSettings_->SetSpawningPaused(titleDirector_->IsExiting());
 
@@ -476,7 +478,7 @@ void GameScene::TitleUpdate() {
                                   scoreManager_.get());
   effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
 
-  if (!player_->GetIsRolling() && player_->GetTransform().translate.y <= 3.01f) {
+  if (!player_->GetIsRolling() && player_->GetTransform().translate.y <= kDustGroundThresholdY) {
     effectManager_->EmitDust(player_->GetTransform().translate);
   }
 
@@ -506,7 +508,7 @@ void GameScene::PausedUpdate() {
 }
 
 void GameScene::PlayerHitUpdate() {
-  crashEffect_->Update(1.0f / 60.0f);
+  crashEffect_->Update(Engine::kDefaultDeltaTime);
   effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
   player_->Update(cameraController_->GetViewMatrix(), 1.0f);
 
@@ -524,9 +526,7 @@ void GameScene::EditorUpdate() {
 }
 
 void GameScene::CheckCollisions() {
-  const Transform &playerTransform = player_->GetTransform();
-  float playerHeight = player_->GetIsRolling() ? 0.5f : 1.5f;
-  AABB playerAABB = Collision::MakeAABB(playerTransform, 0.8f, playerHeight, 0.8f);
+  AABB playerAABB = player_->GetColliderAABB();
 
   for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
     Obstacle *obstacle = stageSettings_->GetObstacle(i);
@@ -549,7 +549,7 @@ void GameScene::TriggerPlayerHit(bool isTrip) {
   gameState_ = GameState::PlayerHit;
   crashEffect_->Trigger();
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
-  GamePadInput::Rumble(0.35f, 48000, 48000);
+  GamePadInput::Rumble(kHitRumbleDuration, kHitRumbleMotorSpeed, kHitRumbleMotorSpeed);
 
   if (playingState_ == PlayingState::Boss && boss_->GetIsActive()) {
     boss_->ChangeState(BossState::Victory);
@@ -565,7 +565,7 @@ void GameScene::CheckKeepRolling() {
   bool keepRolling = false;
   if (player_->GetIsRolling()) {
     const Transform &playerTransform = player_->GetTransform();
-    AABB standingAABB = Collision::MakeAABB(playerTransform, 0.8f, 1.5f, 0.8f);
+    AABB standingAABB = player_->GetStandingColliderAABB();
 
     for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
       Obstacle *obstacle = stageSettings_->GetObstacle(i);
@@ -603,14 +603,12 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
   }
 
   Transform target;
-  target.scale = {1.0f, 1.0f, 1.0f};
-  int laneCount = 3;
+  int laneCount = kThreeLaneCount;
 
   switch (playingState_) {
   case PlayingState::ThreeLane:
-    target.rotate = {0.3f, 0.0f, 0.0f};
-    target.translate = {0.0f, 8.0f, -15.0f};
-    laneCount = 3;
+    target = GameCameraController::kDefaultCameraTransform;
+    laneCount = kThreeLaneCount;
     isRightSideMode_ = false;
     rightSideDistance_ = 0.0f;
     boss_->Reset();
@@ -618,9 +616,8 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     break;
 
   case PlayingState::OneLane:
-    target.rotate = {0.3f, -1.0472f, 0.0f};
-    target.translate = {30.0f, 15.0f, -5.0f};
-    laneCount = 1;
+    target = GameCameraController::kDefaultRightSideViewTransform;
+    laneCount = kOneLaneCount;
     isRightSideMode_ = true;
     rightSideDistance_ = 0.0f;
     boss_->Reset();
@@ -628,9 +625,10 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     break;
 
   case PlayingState::Boss:
+    target.scale = {1.0f, 1.0f, 1.0f};
     target.rotate = bossBattleController_->GetBossCameraRotate();
     target.translate = bossBattleController_->GetBossCameraTranslate();
-    laneCount = 3;
+    laneCount = kThreeLaneCount;
     isRightSideMode_ = false;
     rightSideDistance_ = 0.0f;
     stageSettings_->SetSpawningPaused(true);
@@ -715,7 +713,7 @@ void GameScene::ImGui() {
       }
       ImGui::SliderFloat("Fade Duration", &fadeDuration_, 0.1f, 2.0f, "%.2f s");
       if (ImGui::Button("Test Freeze & Shatter Transition", ImVec2(240, 32))) {
-        FreezeTransition::GetInstance()->Start(0.75f, 0.75f, nullptr);
+        FreezeTransition::GetInstance()->Start(kResultFreezeDuration, kResultShatterDuration, nullptr);
       }
       ImGui::Separator();
     }

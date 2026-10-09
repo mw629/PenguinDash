@@ -1,5 +1,6 @@
 #include "DebugCamera.h"
 #include <cmath>
+#include <numbers>
 #include "Math/Calculation.h"
 
 // ============================================================
@@ -14,15 +15,10 @@
 //   Numpad 7           : Top view    (+Y axis)
 // ============================================================
 
-static constexpr float k_PI         = 3.14159265f;
-static constexpr float k_rotSpeed   = 0.007f;   // orbit sensitivity
-static constexpr float k_panBase    = 0.0015f;   // pan factor (scales with radius)
-static constexpr float k_zoomSpeed  = 0.015f;    // wheel zoom speed
-
 void DebugCamera::Initialize() {
-    eye_    = { 0.0f, 5.0f, -10.0f };
-    target_ = { 0.0f, 0.0f,   0.0f };
-    up_     = { 0.0f, 1.0f,   0.0f };
+    eye_    = kDefaultEye;
+    target_ = kDefaultTarget;
+    up_     = kDefaultUp;
 
     Vector3 diff = eye_ - target_;
     radius_ = Length(diff);
@@ -38,7 +34,7 @@ void DebugCamera::SetEye(Vector3 eye) {
     eye_ = eye;
     Vector3 diff = eye_ - target_;
     radius_ = Length(diff);
-    if (radius_ > 0.0001f) {
+    if (radius_ > kMinLengthThreshold) {
         phi_ = std::atan2(diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
         theta_ = std::atan2(diff.x, diff.z);
     }
@@ -49,7 +45,7 @@ void DebugCamera::SetTarget(Vector3 target) {
     target_ = target;
     Vector3 diff = eye_ - target_;
     radius_ = Length(diff);
-    if (radius_ > 0.0001f) {
+    if (radius_ > kMinLengthThreshold) {
         phi_ = std::atan2(diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
         theta_ = std::atan2(diff.x, diff.z);
     }
@@ -58,22 +54,22 @@ void DebugCamera::SetTarget(Vector3 target) {
 
 void DebugCamera::Focus(const Vector3& target, float distance) {
     target_ = target;
-    radius_ = (distance > 0.5f) ? distance : 10.0f;
-    phi_ = 0.35f; // 約20度見下ろす
-    theta_ = k_PI; // -Z 方向からターゲットを見る
+    radius_ = (distance > kMinFocusDistanceThreshold) ? distance : kFallbackFocusDistance;
+    phi_ = kFocusDefaultPhi;
+    theta_ = std::numbers::pi_v<float>; // -Z 方向からターゲットを見る
 
     eye_.x = target_.x + radius_ * std::sin(theta_) * std::cos(phi_);
     eye_.y = target_.y + radius_ * std::sin(phi_);
     eye_.z = target_.z + radius_ * std::cos(theta_) * std::cos(phi_);
 
-    up_ = { 0.0f, 1.0f, 0.0f };
+    up_ = kDefaultUp;
     viewMatrix_ = MakeLookAtLH(eye_, target_, up_);
 }
 
 void DebugCamera::Orbit(float deltaX, float deltaY) {
-    theta_ += deltaX * k_rotSpeed;
-    phi_   -= deltaY * k_rotSpeed;
-    phi_ = std::fmaxf(-k_PI * 0.5f + 0.01f, std::fminf(k_PI * 0.5f - 0.01f, phi_));
+    theta_ += deltaX * kRotSpeed;
+    phi_   -= deltaY * kRotSpeed;
+    phi_ = std::fmaxf(-kPiOver2 + kGimbalLockMargin, std::fminf(kPiOver2 - kGimbalLockMargin, phi_));
 
     eye_.x = target_.x + radius_ * std::sin(theta_) * std::cos(phi_);
     eye_.y = target_.y + radius_ * std::sin(phi_);
@@ -86,7 +82,7 @@ void DebugCamera::Pan(float deltaX, float deltaY) {
     Vector3 right    = Normalize(Cross(up_, forward));
     Vector3 localUp  = Normalize(Cross(forward, right));
 
-    float panFactor = radius_ * k_panBase;
+    float panFactor = radius_ * kPanBase;
     Vector3 move = right * ((float)-deltaX * panFactor) + localUp * ((float)deltaY * panFactor);
     eye_    += move;
     target_ += move;
@@ -94,9 +90,9 @@ void DebugCamera::Pan(float deltaX, float deltaY) {
 }
 
 void DebugCamera::Zoom(float wheelDelta) {
-    float zoomFactor = (std::max)(radius_ * 0.1f, 0.3f);
+    float zoomFactor = (std::max)(radius_ * kZoomFactorScale, kMinZoomFactor);
     radius_ -= wheelDelta * zoomFactor;
-    if (radius_ < 0.2f) radius_ = 0.2f;
+    if (radius_ < kMinInteractiveZoomRadius) radius_ = kMinInteractiveZoomRadius;
 
     eye_.x = target_.x + radius_ * std::sin(theta_) * std::cos(phi_);
     eye_.y = target_.y + radius_ * std::sin(phi_);
@@ -106,30 +102,30 @@ void DebugCamera::Zoom(float wheelDelta) {
 
 void DebugCamera::ResetToCamera(const Vector3& eye, const Vector3& rotation, float distance) {
     eye_ = eye;
-    up_  = { 0.0f, 1.0f, 0.0f };
+    up_  = kDefaultUp;
 
     // 回転角からForwardベクトルを計算 (ローカル+Z軸)
     Matrix4x4 rotMat = Rotation(rotation);
     Vector3 forward = { rotMat.m[2][0], rotMat.m[2][1], rotMat.m[2][2] };
     float fLen = Length(forward);
-    if (fLen > 0.0001f) {
+    if (fLen > kMinLengthThreshold) {
         forward = forward / fLen;
     } else {
-        forward = { 0.0f, 0.0f, 1.0f };
+        forward = kFallbackForward;
     }
 
     // カメラの注視点を前方 distance の位置に設定
-    float dist = (distance > 0.1f) ? distance : 15.0f;
+    float dist = (distance > kMinDistanceThreshold) ? distance : kDefaultFocusDistance;
     target_ = eye_ + forward * dist;
 
     // 球座標（diff = eye_ - target_）を再計算
     Vector3 diff = eye_ - target_;
     radius_ = Length(diff);
-    if (radius_ > 0.0001f) {
+    if (radius_ > kMinLengthThreshold) {
         phi_   = std::atan2(diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
         theta_ = std::atan2(diff.x, diff.z);
     }
-    phi_ = std::fmaxf(-k_PI * 0.5f + 0.01f, std::fminf(k_PI * 0.5f - 0.01f, phi_));
+    phi_ = std::fmaxf(-kPiOver2 + kGimbalLockMargin, std::fminf(kPiOver2 - kGimbalLockMargin, phi_));
 
     // 球座標から eye_ を再計算
     eye_.x = target_.x + radius_ * std::sin(theta_) * std::cos(phi_);
@@ -149,10 +145,10 @@ void DebugCamera::Update() {
         // ---- Orbit (RMB drag, no shift) ----
         bool wantOrbit = isRightMouseButtonPressed_ && !Input::PressKey(DIK_LSHIFT);
         if (wantOrbit) {
-            theta_ += (float)mouseDelta.x * k_rotSpeed;
-            phi_   -= (float)mouseDelta.y * k_rotSpeed;
+            theta_ += (float)mouseDelta.x * kRotSpeed;
+            phi_   -= (float)mouseDelta.y * kRotSpeed;
             // Clamp phi to avoid gimbal flip
-            phi_ = std::fmaxf(-k_PI * 0.5f + 0.01f, std::fminf(k_PI * 0.5f - 0.01f, phi_));
+            phi_ = std::fmaxf(-kPiOver2 + kGimbalLockMargin, std::fminf(kPiOver2 - kGimbalLockMargin, phi_));
         }
 
         // ---- Pan (Shift+RMB  or  MMB) ----
@@ -163,7 +159,7 @@ void DebugCamera::Update() {
             Vector3 right    = Normalize(Cross(up_, forward));
             Vector3 localUp  = Normalize(Cross(forward, right));
 
-            float panFactor = radius_ * k_panBase;
+            float panFactor = radius_ * kPanBase;
 
             eye_    += right   * ((float)-mouseDelta.x * panFactor);
             target_ += right   * ((float)-mouseDelta.x * panFactor);
@@ -174,17 +170,17 @@ void DebugCamera::Update() {
         // ---- Zoom (mouse wheel) ----
         float wheelDelta = (float)Input::GetMouseWheel();
         if (wheelDelta != 0.0f) {
-            radius_ -= wheelDelta * k_zoomSpeed;
-            if (radius_ < 0.1f) radius_ = 0.1f;
+            radius_ -= wheelDelta * kZoomSpeed;
+            if (radius_ < kMinZoomRadius) radius_ = kMinZoomRadius;
         }
 
         // ---- Numpad view snaps ----
         // Numpad 0 : reset
         if (Input::PushKey(DIK_NUMPAD0)) {
-            target_ = { 0.0f, 0.0f, 0.0f };
-            radius_ = Length(Vector3{ 0.0f, 5.0f, -10.0f } - target_);
-            phi_    = std::atan2(5.0f, std::sqrt(0.0f * 0.0f + (-10.0f) * (-10.0f)));
-            theta_  = std::atan2(0.0f, -10.0f);
+            target_ = kDefaultTarget;
+            radius_ = Length(kDefaultEye - target_);
+            phi_    = std::atan2(kDefaultEye.y, std::sqrt(kDefaultEye.x * kDefaultEye.x + kDefaultEye.z * kDefaultEye.z));
+            theta_  = std::atan2(kDefaultEye.x, kDefaultEye.z);
         }
         // Numpad 1 : front view (look from +Z toward origin)
         if (Input::PushKey(DIK_NUMPAD1)) {
@@ -193,13 +189,13 @@ void DebugCamera::Update() {
         }
         // Numpad 3 : right view (look from +X toward origin)
         if (Input::PushKey(DIK_NUMPAD3)) {
-            theta_ = k_PI * 0.5f;
+            theta_ = kPiOver2;
             phi_   = 0.0f;
         }
         // Numpad 7 : top view (look from +Y toward origin)
         if (Input::PushKey(DIK_NUMPAD7)) {
             theta_ = 0.0f;
-            phi_   = k_PI * 0.5f - 0.01f;
+            phi_   = kPiOver2 - kGimbalLockMargin;
         }
     }
 

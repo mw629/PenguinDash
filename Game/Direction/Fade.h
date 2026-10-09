@@ -18,13 +18,18 @@ public:
     void Initialize();
 
     // フェードアウト開始 (画面が徐々に指定色で暗転していく)
-    void StartFadeOut(float duration = 0.5f, const Vector4& color = {0.0f, 0.0f, 0.0f, 1.0f});
+    void StartFadeOut();
+    void StartFadeOut(float duration);
+    void StartFadeOut(float duration, const Vector4& color);
 
     // フェードイン開始 (画面の暗転が徐々に明転していく)
-    void StartFadeIn(float duration = 0.5f, const Vector4& color = {0.0f, 0.0f, 0.0f, 1.0f});
+    void StartFadeIn();
+    void StartFadeIn(float duration);
+    void StartFadeIn(float duration, const Vector4& color);
 
     // 更新処理
-    void Update(float deltaTime = 1.0f / 60.0f);
+    void Update();
+    void Update(float deltaTime);
 
     // 描画処理
     void Draw(class Draw& draw);
@@ -41,11 +46,15 @@ public:
     void Reset();
 
 private:
+    static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
+    static constexpr float kDefaultDuration = 0.5f;
+    static constexpr Vector4 kDefaultFadeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+
     Status status_ = Status::None;
     Status lastFinishedStatus_ = Status::None;
-    Vector4 color_ = {0.0f, 0.0f, 0.0f, 1.0f};
+    Vector4 color_ = kDefaultFadeColor;
     float currentAlpha_ = 0.0f;
     float timer_ = 0.0f;
-    float duration_ = 0.5f;
+    float duration_ = kDefaultDuration;
     bool isFinished_ = false;
 };

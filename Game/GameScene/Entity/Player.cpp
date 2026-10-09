@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Collision.h"
 #include "../GameSceneManager.h"
 #include "../System/SoundManager.h"
 #include "AssetManager.h"
@@ -157,7 +158,7 @@ void PlayerRollState::Enter(Player &player) {
   if (player.GetModel()) {
     player.GetModel()->SetAnimation("sneakWalk", player.GetRollTransitionDuration());
   }
-  player.GetTransformRef().translate.y = player.GetBaseHeight() - 0.5f;
+  player.GetTransformRef().translate.y = player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
 }
 
 void PlayerRollState::Update(Player &player, float speedMultiplier) {
@@ -213,11 +214,11 @@ void PlayerHitState::Enter(Player &player) {
   player.GetCurrentRecoveryTimerRef() = 0.0f;
   player.GetHitTimerRef() = 0.0f;
 
-  float randX = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+  float randX = ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) * Player::kKnockbackRandXScale;
   if (player.GetIsTrip()) {
-    player.GetKnockbackVelocityRef() = {randX, 0.3f, 0.8f};
+    player.GetKnockbackVelocityRef() = {randX, Player::kTripKnockbackVelocity.y, Player::kTripKnockbackVelocity.z};
   } else {
-    player.GetKnockbackVelocityRef() = {randX, 0.4f, -0.6f};
+    player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y, Player::kHitKnockbackVelocity.z};
   }
 }
 
@@ -234,18 +235,18 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
   transform.translate.y += knockback.y;
   transform.translate.z += knockback.z;
 
-  knockback.y -= player.GetGravity() * 2.0f;
+  knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
   if (player.GetIsTrip()) {
-    transform.rotate.x += 0.2f;
+    transform.rotate.x += Player::kTripRotationSpeed;
   } else {
-    transform.rotate.x -= 0.1f;
+    transform.rotate.x -= Player::kHitRotationSpeed;
   }
 
   if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
     transform.translate.y = player.GetBaseHeight();
     knockback.y = 0.0f;
-    knockback.x *= 0.8f;
-    knockback.z *= 0.8f;
+    knockback.x *= Player::kHitLandingFriction;
+    knockback.z *= Player::kHitLandingFriction;
   }
 }
 
@@ -541,10 +542,9 @@ void Player::SetHasBarrier(bool hasBarrier) {
   hasBarrier_ = hasBarrier;
   if (model_ && model_->GetMaterial()) {
     if (hasBarrier_) {
-      model_->GetMaterial()->SetColor({0.0f, 1.0f, 1.0f, 1.0f}); // シアン
+      model_->GetMaterial()->SetColor(kBarrierColor); // シアン
     } else {
-      model_->GetMaterial()->SetColor(
-          {1.0f, 1.0f, 1.0f, 1.0f}); // 白（デフォルト）
+      model_->GetMaterial()->SetColor(kDefaultPlayerColor); // 白（デフォルト）
     }
   }
 }
@@ -605,5 +605,14 @@ bool Player::TriggerMoveRight() {
     }
   }
   return false;
+}
+
+AABB Player::GetColliderAABB() const {
+  float height = GetIsRolling() ? kDefaultColliderHeightRoll : kDefaultColliderHeightStand;
+  return Collision::MakeAABB(transform_, kDefaultColliderWidth, height, kDefaultColliderDepth);
+}
+
+AABB Player::GetStandingColliderAABB() const {
+  return Collision::MakeAABB(transform_, kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth);
 }
 

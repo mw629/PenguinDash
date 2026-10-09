@@ -1,11 +1,28 @@
 #pragma once
 #include "BaseLight.h"
+#include <numbers>
 
 class PointLight : public BaseLight
 {
 private:
-	float radius_ = 10.0f;
-	float decay_ = 2.0f;
+	static constexpr float kDefaultRadius = 10.0f;
+	static constexpr float kDefaultDecay = 2.0f;
+	static constexpr int kGizmoCircleSegments = 16;
+
+	static constexpr float kIntensityDragSpeed = 0.01f;
+	static constexpr float kIntensityMin = 0.0f;
+	static constexpr float kIntensityMax = 10.0f;
+
+	static constexpr float kRadiusDragSpeed = 0.1f;
+	static constexpr float kRadiusMin = 0.0f;
+	static constexpr float kRadiusMax = 100.0f;
+
+	static constexpr float kDecayDragSpeed = 0.1f;
+	static constexpr float kDecayMin = 0.0f;
+	static constexpr float kDecayMax = 10.0f;
+
+	float radius_ = kDefaultRadius;
+	float decay_ = kDefaultDecay;
 
 public:
 	PointLight();

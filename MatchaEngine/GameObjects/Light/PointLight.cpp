@@ -51,9 +51,9 @@ void PointLight::ImGui(bool drawTransform)
 	if (ImGui::CollapsingHeader(LanguageManager::Tr("Light Settings"), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::ColorEdit4(LanguageManager::Tr("Color"), &color_.x);
-		ImGui::DragFloat(LanguageManager::Tr("Intensity"), &intensity_, 0.01f, 0.0f, 10.0f);
-		ImGui::DragFloat(LanguageManager::Tr("Radius"), &radius_, 0.1f, 0.0f, 100.0f);
-		ImGui::DragFloat(LanguageManager::Tr("Decay"), &decay_, 0.1f, 0.0f, 10.0f);
+		ImGui::DragFloat(LanguageManager::Tr("Intensity"), &intensity_, kIntensityDragSpeed, kIntensityMin, kIntensityMax);
+		ImGui::DragFloat(LanguageManager::Tr("Radius"), &radius_, kRadiusDragSpeed, kRadiusMin, kRadiusMax);
+		ImGui::DragFloat(LanguageManager::Tr("Decay"), &decay_, kDecayDragSpeed, kDecayMin, kDecayMax);
 	}
 #endif
 }
@@ -72,10 +72,10 @@ void PointLight::Draw(class Draw& draw)
 		draw.GetLineRenderer()->AddLine({ center.x, center.y, center.z - r }, { center.x, center.y, center.z + r }, col);
 
 		// Circle approximations in 3 planes
-		const int segments = 16;
+		const int segments = kGizmoCircleSegments;
 		for (int i = 0; i < segments; ++i) {
-			float theta1 = (float)i * 2.0f * 3.14159265f / (float)segments;
-			float theta2 = (float)(i + 1) * 2.0f * 3.14159265f / (float)segments;
+			float theta1 = (float)i * 2.0f * std::numbers::pi_v<float> / (float)segments;
+			float theta2 = (float)(i + 1) * 2.0f * std::numbers::pi_v<float> / (float)segments;
 			
 			// XY plane
 			draw.GetLineRenderer()->AddLine(

@@ -11,18 +11,9 @@
 namespace {
 ID3D12Device *device;
 DescriptorHeap *descriptorHeap;
-constexpr uint32_t kDefaultJointSphereSubdivision = 8;
-constexpr Vector4 kDefaultJointSphereColor = {0.0f, 1.0f, 0.0f, 1.0f};
-constexpr Vector3 kDefaultJointSphereScale = {0.01f, 0.01f, 0.01f};
-constexpr float kDefaultAnimationDeltaTime = 1.0f / 60.0f;
 }
 
-CharacterAnimator::~CharacterAnimator() {
-  if (boneRenderer_) {
-    delete boneRenderer_;
-    boneRenderer_ = nullptr;
-  }
-}
+CharacterAnimator::~CharacterAnimator() = default;
 
 CharacterAnimator::CharacterAnimator() {}
 
@@ -52,7 +43,8 @@ void CharacterAnimator::Initialize(ModelData modelData,
   jointSpheres_.resize(skeleton_.joints.size());
   for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
     jointSpheres_[i] = std::make_shared<Sphere>();
-    jointSpheres_[i]->SetMaxInstanceCount(1);
+    jointSpheres_[i]->SetMaxInstanceCount(
+        kDefaultJointSphereMaxInstanceCount);
     jointSpheres_[i]->SetSubdivision(kDefaultJointSphereSubdivision);
     jointSpheres_[i]->Initialize(modelData_.textureIndex);
     jointSpheres_[i]->SetName(skeleton_.joints[i].name);
@@ -71,20 +63,21 @@ void CharacterAnimator::Initialize(ModelData modelData,
   subMeshMaterials_.clear();
   for (const auto &subMesh : modelData_.subMeshes) {
     ModelSubMeshMaterial mat;
-    if (subMesh.textureIndex != -1) {
+    if (subMesh.textureIndex != kInvalidTextureIndex) {
       mat.textureSrvHandleGPU = texture->TextureData(subMesh.textureIndex);
     } else {
       mat.textureSrvHandleGPU = textureSrvHandleGPU_;
     }
     mat.materialFactory = std::make_unique<MaterialFactory>();
-    mat.materialFactory->CreateMaterial(false, 0.0f);
+    mat.materialFactory->CreateMaterial(false,
+                                        kDefaultSubMeshEnvironmentCoefficient);
     subMeshMaterials_.push_back(std::move(mat));
   }
   CreateObject();
 
   SetShader(AnimationObj);
 
-  boneRenderer_ = new LineRenderer();
+  boneRenderer_ = std::make_unique<LineRenderer>();
   boneRenderer_->Initialize();
 }
 
@@ -135,10 +128,11 @@ void CharacterAnimator::SettingWvp(Matrix4x4 viewMatrix) {
         worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatrix));
     Matrix4x4 worldInverseTranspose = TransposeMatrix4x4(Inverse(worldMatrix));
 
-    wvpData_[s_wvpIndex][0].WVP = worldViewProjectionMatrix;
-    wvpData_[s_wvpIndex][0].World = worldMatrix;
-    wvpData_[s_wvpIndex][0].WorldInverseTranspose = worldInverseTranspose;
-    wvpData_[s_wvpIndex][0].numBones =
+    wvpData_[s_wvpIndex][kSingleInstanceIndex].WVP = worldViewProjectionMatrix;
+    wvpData_[s_wvpIndex][kSingleInstanceIndex].World = worldMatrix;
+    wvpData_[s_wvpIndex][kSingleInstanceIndex].WorldInverseTranspose =
+        worldInverseTranspose;
+    wvpData_[s_wvpIndex][kSingleInstanceIndex].numBones =
         static_cast<uint32_t>(skeleton_.joints.size());
   }
 }
@@ -194,7 +188,8 @@ void CharacterAnimator::SetAnimation(const std::string &name,
         }
       } else {
         ApplyAnimation(animationTime_, previousAnimationTime_,
-                       EaseInOutSine(blendTimer_ / blendDuration_), 0);
+                       EaseInOutSine(blendTimer_ / blendDuration_),
+                       kSingleInstanceIndex);
         singleSnapshotPose_.resize(skeleton_.joints.size());
         for (size_t j = 0; j < skeleton_.joints.size(); ++j) {
           singleSnapshotPose_[j] = skeleton_.joints[j].transform;
@@ -339,7 +334,7 @@ void CharacterAnimator::noUpdate(Matrix4x4 viewMatrix) {
   }
   AnimationClip &clip = animation_.animationClips.at(currentAnimationName_);
 
-  animationTime_ += 1.0f / 60.0f; // 時間を進める
+  animationTime_ += kDefaultAnimationDeltaTime; // 時間を進める
   animationTime_ = std::fmod(animationTime_, clip.duration); // リピート再生
   AnimationNode &rootAnimationNode =
       clip.AnimationNodes[modelData_.rootNode.name];
@@ -364,7 +359,7 @@ void CharacterAnimator::Update(Matrix4x4 viewMatrix) {
   }
 
   if (isBlending_) {
-    blendTimer_ += 1.0f / 60.0f;
+    blendTimer_ += kDefaultAnimationDeltaTime;
     if (blendTimer_ >= blendDuration_) {
       blendTimer_ = blendDuration_;
       isBlending_ = false;
@@ -378,12 +373,12 @@ void CharacterAnimator::Update(Matrix4x4 viewMatrix) {
       int count = std::min(maxInstanceCount_,
                            static_cast<int>(instancingTransforms_.size()));
       for (int i = 0; i < count; ++i) {
-        instancingAnimationTimes_[i] += 1.0f / 60.0f; // 時間を進める
+        instancingAnimationTimes_[i] += kDefaultAnimationDeltaTime; // 時間を進める
         instancingAnimationTimes_[i] =
             std::fmod(instancingAnimationTimes_[i], currentDuration);
 
         if (isBlending_) {
-          instancingPreviousAnimationTimes_[i] += 1.0f / 60.0f;
+          instancingPreviousAnimationTimes_[i] += kDefaultAnimationDeltaTime;
           if (previousDuration > 0.0f) {
             instancingPreviousAnimationTimes_[i] = std::fmod(
                 instancingPreviousAnimationTimes_[i], previousDuration);
@@ -391,27 +386,30 @@ void CharacterAnimator::Update(Matrix4x4 viewMatrix) {
           ApplyAnimation(instancingAnimationTimes_[i],
                          instancingPreviousAnimationTimes_[i], blendFactor, i);
         } else {
-          ApplyAnimation(instancingAnimationTimes_[i], 0.0f, 1.0f, i);
+          ApplyAnimation(instancingAnimationTimes_[i],
+                         kDefaultInitialAnimationTime, kFullBlendFactor, i);
         }
         SkeletonUpdate();
         SkinClusterUpdate(i);
       }
     } else {
-      animationTime_ += 1.0f / 60.0f; // 時間を進める
+      animationTime_ += kDefaultAnimationDeltaTime; // 時間を進める
       animationTime_ = std::fmod(animationTime_, currentDuration);
 
       if (isBlending_) {
-        previousAnimationTime_ += 1.0f / 60.0f;
+        previousAnimationTime_ += kDefaultAnimationDeltaTime;
         if (previousDuration > 0.0f) {
           previousAnimationTime_ =
               std::fmod(previousAnimationTime_, previousDuration);
         }
-        ApplyAnimation(animationTime_, previousAnimationTime_, blendFactor, 0);
+        ApplyAnimation(animationTime_, previousAnimationTime_, blendFactor,
+                       kSingleInstanceIndex);
       } else {
-        ApplyAnimation(animationTime_, 0.0f, 1.0f, 0);
+        ApplyAnimation(animationTime_, kDefaultInitialAnimationTime,
+                       kFullBlendFactor, kSingleInstanceIndex);
       }
       SkeletonUpdate();
-      SkinClusterUpdate(0);
+      SkinClusterUpdate(kSingleInstanceIndex);
     }
   }
 
@@ -421,9 +419,10 @@ void CharacterAnimator::Update(Matrix4x4 viewMatrix) {
   Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate,
                                            transform_.scale, transform_.rotate);
   if (isInstancing_ && !instancingTransforms_.empty()) {
-    worldMatrix = MakeAffineMatrix(instancingTransforms_[0].translate,
-                                   instancingTransforms_[0].scale,
-                                   instancingTransforms_[0].rotate);
+    worldMatrix = MakeAffineMatrix(
+        instancingTransforms_[kSingleInstanceIndex].translate,
+        instancingTransforms_[kSingleInstanceIndex].scale,
+        instancingTransforms_[kSingleInstanceIndex].rotate);
   }
   for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
     if (i < jointSpheres_.size() && jointSpheres_[i]) {
@@ -480,7 +479,8 @@ void CharacterAnimator::UpdateWithDelta(Matrix4x4 viewMatrix,
           ApplyAnimation(instancingAnimationTimes_[i],
                          instancingPreviousAnimationTimes_[i], blendFactor, i);
         } else {
-          ApplyAnimation(instancingAnimationTimes_[i], 0.0f, 1.0f, i);
+          ApplyAnimation(instancingAnimationTimes_[i],
+                         kDefaultInitialAnimationTime, kFullBlendFactor, i);
         }
         SkeletonUpdate();
         SkinClusterUpdate(i);
@@ -500,12 +500,14 @@ void CharacterAnimator::UpdateWithDelta(Matrix4x4 viewMatrix,
           if (previousAnimationTime_ < 0.0f)
             previousAnimationTime_ += previousDuration;
         }
-        ApplyAnimation(animationTime_, previousAnimationTime_, blendFactor, 0);
+        ApplyAnimation(animationTime_, previousAnimationTime_, blendFactor,
+                       kSingleInstanceIndex);
       } else {
-        ApplyAnimation(animationTime_, 0.0f, 1.0f, 0);
+        ApplyAnimation(animationTime_, kDefaultInitialAnimationTime,
+                       kFullBlendFactor, kSingleInstanceIndex);
       }
       SkeletonUpdate();
-      SkinClusterUpdate(0);
+      SkinClusterUpdate(kSingleInstanceIndex);
     }
   }
 
@@ -515,16 +517,17 @@ void CharacterAnimator::UpdateWithDelta(Matrix4x4 viewMatrix,
   Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate,
                                            transform_.scale, transform_.rotate);
   if (isInstancing_ && !instancingTransforms_.empty()) {
-    worldMatrix = MakeAffineMatrix(instancingTransforms_[0].translate,
-                                   instancingTransforms_[0].scale,
-                                   instancingTransforms_[0].rotate);
+    worldMatrix = MakeAffineMatrix(
+        instancingTransforms_[kSingleInstanceIndex].translate,
+        instancingTransforms_[kSingleInstanceIndex].scale,
+        instancingTransforms_[kSingleInstanceIndex].rotate);
   }
   for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
     if (i < jointSpheres_.size() && jointSpheres_[i]) {
       Matrix4x4 currentJointMat =
           skeleton_.joints[i].skeletonSpaceMatrix * worldMatrix;
       Transform t = DecomposeMatrix(currentJointMat);
-      t.scale = {0.01f, 0.01f, 0.01f};
+      t.scale = kDefaultJointSphereScale;
       jointSpheres_[i]->SetTransform(t);
       jointSpheres_[i]->SettingWvp(viewMatrix);
     }
@@ -598,13 +601,11 @@ void CharacterAnimator::UpdateBoneRenderer() {
           Matrix4x4 parentJointMat =
               skeleton_.joints[*joint.parent].skeletonSpaceMatrix * worldMatrix;
 
-          Vector3 startPos = {currentJointMat.m[3][0], currentJointMat.m[3][1],
-                              currentJointMat.m[3][2]};
-          Vector3 endPos = {parentJointMat.m[3][0], parentJointMat.m[3][1],
-                            parentJointMat.m[3][2]};
+          Vector3 startPos = GetMatrixTranslation(currentJointMat);
+          Vector3 endPos = GetMatrixTranslation(parentJointMat);
 
           boneRenderer_->AddLine(startPos, endPos,
-                                 {1.0f, 0.0f, 1.0f, 1.0f}); // 派手なマゼンタ色
+                                 kDefaultBoneLineColor); // 派手なマゼンタ色
         }
       }
     }
@@ -618,13 +619,11 @@ void CharacterAnimator::UpdateBoneRenderer() {
         Matrix4x4 parentJointMat =
             skeleton_.joints[*joint.parent].skeletonSpaceMatrix * worldMatrix;
 
-        Vector3 startPos = {currentJointMat.m[3][0], currentJointMat.m[3][1],
-                            currentJointMat.m[3][2]};
-        Vector3 endPos = {parentJointMat.m[3][0], parentJointMat.m[3][1],
-                          parentJointMat.m[3][2]};
+        Vector3 startPos = GetMatrixTranslation(currentJointMat);
+        Vector3 endPos = GetMatrixTranslation(parentJointMat);
 
         boneRenderer_->AddLine(startPos, endPos,
-                               {1.0f, 0.0f, 1.0f, 1.0f}); // 派手なマゼンタ色
+                               kDefaultBoneLineColor); // 派手なマゼンタ色
       }
     }
   }
@@ -825,8 +824,10 @@ void CharacterAnimator::CreateSkinCluster() {
 
   // For backward compatibility / original mesh
   if (!subMeshInfluenceResources_.empty()) {
-    skinCluster_.influenceResource = subMeshInfluenceResources_[0];
-    skinCluster_.influenceBufferView = subMeshInfluenceBufferViews_[0];
+    skinCluster_.influenceResource =
+        subMeshInfluenceResources_[kMainSubMeshIndex];
+    skinCluster_.influenceBufferView =
+        subMeshInfluenceBufferViews_[kMainSubMeshIndex];
   }
 }
 

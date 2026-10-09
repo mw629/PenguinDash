@@ -45,7 +45,7 @@ void StageSettings::Initialize(
     obstacles_[i]->SetName("Obstacle " + std::to_string(i));
 
     // ランダムなタイプで初期化
-    Obstacle::Type type = static_cast<Obstacle::Type>(std::rand() % 3);
+    Obstacle::Type type = static_cast<Obstacle::Type>(std::rand() % kInitialObstacleTypeCount);
     obstacles_[i]->Initialize(fallenTreeModelData, iceArchwayModelData,
                               iceWallModelData, bonusModelData, iceBomModelData,
                               reflectingAttackModelData, type);
@@ -55,13 +55,13 @@ void StageSettings::Initialize(
   }
 
   // アイテムクールタイム設定の初期化（秒単位）
-  itemCoolDowns_[Obstacle::Type::Bonus] = {5.0f, 0.0f};        // ボーナス: 5秒
-  itemCoolDowns_[Obstacle::Type::BarrierItem] = {15.0f, 0.0f}; // バリア: 15秒
-  itemCoolDowns_[Obstacle::Type::ClearItem] = {20.0f, 0.0f};   // 全消去: 20秒
+  itemCoolDowns_[Obstacle::Type::Bonus] = {kBonusCooldownDuration, 0.0f};        // ボーナス
+  itemCoolDowns_[Obstacle::Type::BarrierItem] = {kBarrierCooldownDuration, 0.0f}; // バリア
+  itemCoolDowns_[Obstacle::Type::ClearItem] = {kClearCooldownDuration, 0.0f};   // 全消去
   itemCoolDowns_[Obstacle::Type::CameraItem] = {
-      30.0f, 10.0f}; // カメラ: 30秒（開始時10秒猶予）
+      kCameraCooldownDuration, kCameraInitialCooldown}; // カメラ（開始時猶予あり）
   itemCoolDowns_[Obstacle::Type::BossItem] = {
-      45.0f, 20.0f}; // ボス: 45秒（開始時20秒猶予）
+      kBossCooldownDuration, kBossInitialCooldown}; // ボス（開始時猶予あり）
 }
 
 void StageSettings::Initialize(ModelData roadModelData,
@@ -95,7 +95,7 @@ void StageSettings::CalculateNextObstacleInterval() {
   // 移動速度（スクロール速度）に（アクション所要フレーム＋猶予フレーム）を乗算して次回間隔（距離）を計算
   float effectiveSpeed =
       (std::max)(scrollSpeed_,
-                 0.05f); // 停止時や低速時の0除算・0距離を防ぐ実効速度
+                 kMinEffectiveSpeed); // 停止時や低速時の0除算・0距離を防ぐ実効速度
   float totalFrames =
       baseActionFrames_ + graceFrames; // 回避に必要な合計フレーム数
   float calculatedDistance =
@@ -170,7 +170,7 @@ void StageSettings::SetLaneCount(int count) {
   // これにより、画面内（プレイヤー視界内）の床は変えずに、地平線奥から即座に新レーンが出現して流れてくる
   for (int i = 0; i < kChunkCount_; i++) {
     if (i < roadTransforms_.size() && !roadTransforms_[i].empty()) {
-      if (roadTransforms_[i][0].translate.z >= 70.0f) {
+      if (roadTransforms_[i][0].translate.z >= kLaneChangeHorizonZ) {
         RebuildChunkRow(i, targetLaneCount_, roadTransforms_[i][0].translate.z,
                         IdentityMatrix());
       }
@@ -226,9 +226,9 @@ void StageSettings::SetDriftIceEnabled(bool enabled) {
 }
 
 void StageSettings::SetDriftIceSizeScale(float scale) {
-  if (scale <= 0.05f)
-    scale = 0.05f;
-  float ratio = scale / (std::max)(driftIceSizeScale_, 0.05f);
+  if (scale <= kMinDriftIceScale)
+    scale = kMinDriftIceScale;
+  float ratio = scale / (std::max)(driftIceSizeScale_, kMinDriftIceScale);
   driftIceSizeScale_ = scale;
   float halfModelH = (driftIceModelData_.localAABB.max.y - driftIceModelData_.localAABB.min.y) * 0.5f;
   if (halfModelH <= 0.001f) halfModelH = 0.25f;
@@ -242,9 +242,9 @@ void StageSettings::SetDriftIceSizeScale(float scale) {
 }
 
 void StageSettings::SetDriftIceThicknessScale(float scale) {
-  if (scale <= 0.05f)
-    scale = 0.05f;
-  float ratio = scale / (std::max)(driftIceThicknessScale_, 0.05f);
+  if (scale <= kMinDriftIceScale)
+    scale = kMinDriftIceScale;
+  float ratio = scale / (std::max)(driftIceThicknessScale_, kMinDriftIceScale);
   driftIceThicknessScale_ = scale;
   for (auto &ice : driftIces_) {
     ice.scale.y *= ratio;
@@ -281,7 +281,7 @@ void StageSettings::SetWaterBackwardExtension(float ext) {
 }
 
 void StageSettings::SetWaterWidthScale(float scale) {
-  waterWidthScale_ = (std::max)(10.0f, scale);
+  waterWidthScale_ = (std::max)(kMinWaterWidthScale, scale);
   UpdateSidePlanesTransform();
 }
 
@@ -372,8 +372,8 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
     float x = static_cast<float>(logicalLane) * info.effectiveLaneWidth;
 
     Transform t;
-    t.scale = {info.effectiveLaneWidth / modelWidth, 50.0f / modelHeight,
-               10.1f / modelDepth};
+    t.scale = {info.effectiveLaneWidth / modelWidth, kRoadChunkHeight / modelHeight,
+               kRoadChunkDepthScale / modelDepth};
     t.rotate = {0.0f, 0.0f, 0.0f};
     constexpr float kRoadTopY = 2.0f;
     t.translate = {
@@ -424,7 +424,7 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
       auto model = std::make_shared<Model>();
       model->Initialize(planeModelData_);
       model->SetShader(WaterShader);
-      model->SetColor({0.15f, 0.55f, 0.85f, 0.9f});
+      model->SetColor(kDefaultWaterColor);
       model->SetLighting(true);
       model->SetCullMode(kCullModeNone);
       if (auto matComp = model->GetComponent<MaterialComponent>()) {
@@ -445,11 +445,11 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
 
 void StageSettings::UpdateSidePlanesTransform(Matrix4x4 view) {
   float effectiveLaneWidth = GetEffectiveLaneWidth();
-  float bounds[2] = {static_cast<float>(minLaneIndex_) * effectiveLaneWidth -
-                         (effectiveLaneWidth / 2.0f),
-                     static_cast<float>(maxLaneIndex_) * effectiveLaneWidth +
-                         (effectiveLaneWidth / 2.0f)};
-  float offsets[2] = {-(waterWidthScale_ * 0.5f), waterWidthScale_ * 0.5f};
+  float halfLane = effectiveLaneWidth * kHalfFactor;
+  float bounds[2] = {static_cast<float>(minLaneIndex_) * effectiveLaneWidth - halfLane,
+                     static_cast<float>(maxLaneIndex_) * effectiveLaneWidth + halfLane};
+  float halfWaterWidth = waterWidthScale_ * kHalfFactor;
+  float offsets[2] = {-halfWaterWidth, halfWaterWidth};
 
   float minRoadZ = -static_cast<float>(kBackwardChunks_) * chunkLength_;
   float maxRoadZ = static_cast<float>(kForwardChunks_) * chunkLength_;
@@ -458,15 +458,15 @@ void StageSettings::UpdateSidePlanesTransform(Matrix4x4 view) {
   float minSeaZ = minRoadZ - waterBackwardExtension_;
   float maxSeaZ = maxRoadZ + waterForwardExtension_;
   float seaLength = maxSeaZ - minSeaZ;
-  float centerSeaZ = (minSeaZ + maxSeaZ) * 0.5f;
+  float centerSeaZ = (minSeaZ + maxSeaZ) * kHalfFactor;
 
   for (int i = 0; i < 2; ++i) {
     if (!sidePlanes_[i])
       continue;
     Transform t;
     // plane.objは2x2 (-1〜+1) なので、Yスケール * 2 = seaLength
-    t.scale = {waterWidthScale_, seaLength * 0.5f, 1.0f};
-    t.rotate = {-1.570796f, 0.0f, 0.0f};
+    t.scale = {waterWidthScale_, seaLength * kHalfFactor, 1.0f};
+    t.rotate = {kPlaneRotationX, 0.0f, 0.0f};
     t.translate = {bounds[i] + offsets[i], 0.0f, centerSeaZ};
     sidePlanes_[i]->SetTransform(t);
     sidePlanes_[i]->Update(view, 0.0f);
@@ -496,7 +496,7 @@ float StageSettings::CalculateWaterHeight(float x, float z, float time) const {
     float dz = (len > 0.0001f) ? (w.dir.y / len) : 0.0f;
 
     float k = 2.0f * kPI / w.wavelength;
-    float c = std::sqrt(9.8f / k) * w.speed;
+    float c = std::sqrt(kGravityAcceleration / k) * w.speed;
     float phase = k * (dx * x + dz * z - c * time);
     totalY += w.amplitude * std::sin(phase);
   }
@@ -545,7 +545,7 @@ void StageSettings::GenerateDriftIce(Matrix4x4 view) {
 
 void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*index*/) {
   // アザラシの出現確率（約15%：およそ6〜7個に1個の割合で時々アザラシが流れてくる）
-  bool isSeal = (std::rand() % 100 < 15);
+  bool isSeal = (std::rand() % 100 < kBabySealSpawnChancePercent);
   ice.type = isSeal ? DriftIce::Type::BabySeal : DriftIce::Type::DriftIce;
 
   const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
@@ -574,38 +574,35 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
     ice.posZ = minZ + static_cast<float>(std::rand() % static_cast<int>(totalLength * 10)) / 10.0f;
   }
 
-  float targetWidth = 1.5f;
-  float targetDepth = 1.5f;
-  float targetHeight = 1.0f;
-  float floatingHeight = 0.25f;
+  float targetWidth = DriftIce::kDefaultTargetWidth;
+  float targetDepth = DriftIce::kDefaultTargetDepth;
+  float targetHeight = DriftIce::kDefaultTargetHeight;
+  float floatingHeight = DriftIce::kDefaultFloatingHeight;
 
   if (ice.type == DriftIce::Type::BabySeal) {
     // 流氷に乗ったアザラシのサイズ感
-    targetWidth = 2.0f + static_cast<float>(std::rand() % 12) / 10.0f;      // 2.0m 〜 3.1m
-    targetDepth = 2.0f + static_cast<float>(std::rand() % 14) / 10.0f;      // 2.0m 〜 3.3m
-    targetHeight = 0.90f + static_cast<float>(std::rand() % 41) / 100.0f;   // 0.9m 〜 1.3m
-    floatingHeight = 0.25f + static_cast<float>(std::rand() % 15) / 100.0f; // 25〜39cm水上に出す
+    targetWidth = kSealIceBaseWidth + static_cast<float>(std::rand() % 12) / 10.0f;
+    targetDepth = kSealIceBaseDepth + static_cast<float>(std::rand() % 14) / 10.0f;
+    targetHeight = kSealIceBaseHeight + static_cast<float>(std::rand() % 41) / 100.0f;
+    floatingHeight = kSealIceBaseFloat + static_cast<float>(std::rand() % 15) / 100.0f;
   } else {
     // 通常の流氷のサイズ設計 (極小 45%, 小〜中 35%, 中〜大型 20%)
     int sizeCategory = std::rand() % 100;
-    if (sizeCategory < 45) {
-      // 極小〜小型流氷塊: 幅1.2〜2.2m, 奥行1.2〜2.4m, 厚み0.6〜0.9m
-      targetWidth = 1.2f + static_cast<float>(std::rand() % 11) / 10.0f;
-      targetDepth = 1.2f + static_cast<float>(std::rand() % 13) / 10.0f;
-      targetHeight = 0.60f + static_cast<float>(std::rand() % 31) / 100.0f; // 0.6m 〜 0.9m
-      floatingHeight = 0.20f + static_cast<float>(std::rand() % 11) / 100.0f; // 20〜30cm水上に出す
-    } else if (sizeCategory < 80) {
-      // 中型流氷塊: 幅2.2〜3.8m, 奥行2.2〜4.2m, 厚み0.9〜1.3m
-      targetWidth = 2.2f + static_cast<float>(std::rand() % 17) / 10.0f;
-      targetDepth = 2.2f + static_cast<float>(std::rand() % 21) / 10.0f;
-      targetHeight = 0.90f + static_cast<float>(std::rand() % 41) / 100.0f; // 0.9m 〜 1.3m
-      floatingHeight = 0.25f + static_cast<float>(std::rand() % 16) / 100.0f; // 25〜40cm水上に出す
+    if (sizeCategory < kIceSmallCategoryChance) {
+      targetWidth = kIceSmallWidth + static_cast<float>(std::rand() % 11) / 10.0f;
+      targetDepth = kIceSmallDepth + static_cast<float>(std::rand() % 13) / 10.0f;
+      targetHeight = kIceSmallHeight + static_cast<float>(std::rand() % 31) / 100.0f;
+      floatingHeight = kIceSmallFloat + static_cast<float>(std::rand() % 11) / 100.0f;
+    } else if (sizeCategory < kIceMediumCategoryChance) {
+      targetWidth = kIceMediumWidth + static_cast<float>(std::rand() % 17) / 10.0f;
+      targetDepth = kIceMediumDepth + static_cast<float>(std::rand() % 21) / 10.0f;
+      targetHeight = kIceMediumHeight + static_cast<float>(std::rand() % 41) / 100.0f;
+      floatingHeight = kIceMediumFloat + static_cast<float>(std::rand() % 16) / 100.0f;
     } else {
-      // 大型流氷塊: 幅3.5〜6.5m, 奥行3.5〜7.0m, 厚み1.2〜1.8m
-      targetWidth = 3.5f + static_cast<float>(std::rand() % 31) / 10.0f;
-      targetDepth = 3.5f + static_cast<float>(std::rand() % 36) / 10.0f;
-      targetHeight = 1.20f + static_cast<float>(std::rand() % 61) / 100.0f; // 1.2m 〜 1.8m
-      floatingHeight = 0.30f + static_cast<float>(std::rand() % 21) / 100.0f; // 30〜50cm水上に出す
+      targetWidth = kIceLargeWidth + static_cast<float>(std::rand() % 31) / 10.0f;
+      targetDepth = kIceLargeDepth + static_cast<float>(std::rand() % 36) / 10.0f;
+      targetHeight = kIceLargeHeight + static_cast<float>(std::rand() % 61) / 100.0f;
+      floatingHeight = kIceLargeFloat + static_cast<float>(std::rand() % 21) / 100.0f;
     }
   }
 
@@ -623,8 +620,8 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   ice.floatingHeight = floatingHeight;
 
   // 潮流・波による横方向の揺らぎ（ドリフト）
-  ice.driftAmount = 0.2f + static_cast<float>(std::rand() % 60) / 100.0f; // 0.2m 〜 0.8m
-  ice.driftSpeed = 0.3f + static_cast<float>(std::rand() % 60) / 100.0f;  // 0.3 〜 0.9 rad/s
+  ice.driftAmount = kIceDriftBaseAmount + static_cast<float>(std::rand() % 60) / 100.0f;
+  ice.driftSpeed = kIceDriftBaseSpeed + static_cast<float>(std::rand() % 60) / 100.0f;
   ice.driftPhase = static_cast<float>(std::rand() % 628) / 100.0f;
 
   // 流れる向きの多様化：斜め方向への微小な潮流移動（-0.12m/s 〜 +0.12m/s）
@@ -641,9 +638,9 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   float targetRoadEdge = (static_cast<float>(targetLaneCount_) * 0.5f) * laneWidth_;
   float roadBoundary = (std::max)(roadEdgeAtZ, targetRoadEdge);
 
-  // 道路端 + 流氷の半径(halfWidth) + 最大横揺れ幅 + 安全マージン(1.5m)
+  // 道路端 + 流氷の半径(halfWidth) + 最大横揺れ幅 + 安全マージン
   float halfWidth = targetWidth * 0.5f;
-  float minClearance = roadBoundary + halfWidth + ice.driftAmount + 1.5f;
+  float minClearance = roadBoundary + halfWidth + ice.driftAmount + kDriftIceClearanceMargin;
 
   // 最小クリアランスから外洋側（+30m）へ滑らかに分布
   float dist = minClearance + static_cast<float>(std::rand() % 300) / 10.0f;
@@ -655,19 +652,19 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   if (ice.type == DriftIce::Type::BabySeal) {
     // アザラシは水面をくるくるとスピン（自転）しながら流れる
     float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
-    float speedVariation = 0.85f + static_cast<float>(std::rand() % 31) / 100.0f; // 0.85〜1.15倍
+    float speedVariation = kIceSealSpinVariationBase + static_cast<float>(std::rand() % 31) / 100.0f;
     ice.rotSpeed = dir * babySealSpinSpeed_ * speedVariation;
   } else {
     // 通常の流氷も右回り・左回り、回転速度にバリエーションを持たせて向きの変化を豊かに
     float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
-    ice.rotSpeed = dir * (0.04f + static_cast<float>(std::rand() % 120) / 1000.0f); // ±0.04 〜 ±0.16 rad/s (毎秒2.3〜9.2度)
+    ice.rotSpeed = dir * (kIceRotSpeedBase + static_cast<float>(std::rand() % 120) / 1000.0f);
   }
 
   // 上下の揺れ（ボビング）
   ice.bobbingPhase = static_cast<float>(std::rand() % 628) / 100.0f;
-  ice.bobbingSpeed = 0.5f + static_cast<float>(std::rand() % 80) / 100.0f; // 0.5〜1.3 rad/s
-  ice.bobbingAmount = 0.05f + static_cast<float>(std::rand() % 70) / 1000.0f; // 0.05〜0.12m
-  ice.rollPitchMultiplier = 0.012f + static_cast<float>(std::rand() % 18) / 1000.0f;
+  ice.bobbingSpeed = kIceBobbingBaseSpeed + static_cast<float>(std::rand() % 80) / 100.0f;
+  ice.bobbingAmount = kIceBobbingBaseAmount + static_cast<float>(std::rand() % 70) / 1000.0f;
+  ice.rollPitchMultiplier = kIceRollPitchBaseMultiplier + static_cast<float>(std::rand() % 18) / 1000.0f;
 
   // 【流れるスピードは全部同じ（1.0倍に統一）】
   ice.speedMultiplier = 1.0f;
@@ -676,8 +673,8 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
 void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float timeScale) {
   if (!driftIceEnabled_) return;
 
-  float dt = (1.0f / 60.0f) * timeScale;
-  float backwardThreshold = -static_cast<float>(kBackwardChunks_ + 1) * chunkLength_ - 15.0f;
+  float dt = Engine::kDefaultDeltaTime * timeScale;
+  float backwardThreshold = -static_cast<float>(kBackwardChunks_ + 1) * chunkLength_ - kDriftIceRespawnSafeDistance;
 
   for (size_t i = 0; i < driftIces_.size(); ++i) {
     auto &ice = driftIces_[i];
@@ -701,10 +698,10 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
 
     // 自転ドリフト（アザラシはスピン、流氷も多様に向きが変化）
     ice.rotY += ice.rotSpeed * dt;
-    if (ice.rotY > 6.283185f) {
-      ice.rotY -= 6.283185f;
+    if (ice.rotY > kTwoPi) {
+      ice.rotY -= kTwoPi;
     } else if (ice.rotY < 0.0f) {
-      ice.rotY += 6.283185f;
+      ice.rotY += kTwoPi;
     }
 
     // 斜め方向への緩やかな潮流移動
@@ -725,7 +722,6 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
     float roadEdgeAtZ = (std::max)(std::abs(rowInfo.minLaneIndex - 0.5f), std::abs(rowInfo.maxLaneIndex + 0.5f)) * rowInfo.effectiveLaneWidth;
     float targetRoadEdge = (static_cast<float>(targetLaneCount_) * 0.5f) * laneWidth_;
     float roadBoundary = (std::max)(roadEdgeAtZ, targetRoadEdge);
-    constexpr float kRoadSafeMargin = 1.0f; // 床端からの確実な安全余白 (1.0m)
     float minSafeX = roadBoundary + halfWidth + kRoadSafeMargin;
 
     float posXWithOffset = rawX;
@@ -763,13 +759,13 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
     float sinYaw = std::sin(ice.rotY);
     float localWavePitch = (waveSlopePitch * cosYaw - waveSlopeRoll * sinYaw);
     float localWaveRoll  = (waveSlopeRoll * cosYaw + waveSlopePitch * sinYaw);
-    localWavePitch = Clamp(localWavePitch, -0.22f, 0.22f);
-    localWaveRoll  = Clamp(localWaveRoll,  -0.22f, 0.22f);
+    localWavePitch = Clamp(localWavePitch, -kMaxLocalWaveTilt, kMaxLocalWaveTilt);
+    localWaveRoll  = Clamp(localWaveRoll,  -kMaxLocalWaveTilt, kMaxLocalWaveTilt);
 
     // 波による揺れ（上下・傾き）の更新
     ice.bobbingPhase += ice.bobbingSpeed * driftIceBobbingSpeedScale_ * dt;
-    if (ice.bobbingPhase > 6.283185f * 10.0f) {
-      ice.bobbingPhase -= 6.283185f * 10.0f;
+    if (ice.bobbingPhase > kTwoPi * 10.0f) {
+      ice.bobbingPhase -= kTwoPi * 10.0f;
     }
 
     // 独自の上下揺れ
@@ -812,7 +808,7 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
 
     // 最低でも上面のどの角・端も水面から常に出ていることを保証する安全余白
     // 流氷の厚みに応じて、最低でも 40cm〜厚みの60%以上は水面から上に露出させる
-    float minSafeAboveWater = (std::max)(0.40f, halfHeight * 0.6f);
+    float minSafeAboveWater = (std::max)(kMinSafeAboveWater, halfHeight * kSafeAboveWaterHeightRatio);
     float minAllowedTranslateY = -999999.0f;
 
     for (int pIdx = 0; pIdx < 9; ++pIdx) {
@@ -862,7 +858,7 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   if (waterTime >= 0.0f) {
     waterTime_ = waterTime;
   } else {
-    waterTime_ += (1.0f / 60.0f) * timeScale;
+    waterTime_ += Engine::kDefaultDeltaTime * timeScale;
   }
 
   if (isDirty_) {
@@ -925,7 +921,7 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   UpdateDriftIce(view, currentScroll, timeScale);
 
   // アイテムのクールタイム減算（実時間・秒単位）
-  float dt = (1.0f / 60.0f) * timeScale;
+  float dt = Engine::kDefaultDeltaTime * timeScale;
   for (auto &pair : itemCoolDowns_) {
     // スポーン停止中（ボス戦中やカメラ遷移中）はボスアイテムのクールタイムを減算しない
     if (pair.first == Obstacle::Type::BossItem && isSpawningPaused_) {
@@ -946,7 +942,7 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   while (distanceSinceLastSpawn_ >= obstacleInterval_) {
     // 奥の固定位置(チャンクの向こう側)に生成
     if (!isSpawningPaused_) {
-      SpawnObstacles(45.0f);
+      SpawnObstacles(kSpawnObstacleZ);
     }
     distanceSinceLastSpawn_ -= obstacleInterval_;
 
@@ -964,7 +960,7 @@ void StageSettings::EditorUpdate(Matrix4x4 view, float waterTime) {
   if (waterTime >= 0.0f) {
     waterTime_ = waterTime;
   } else {
-    waterTime_ += 1.0f / 60.0f;
+    waterTime_ += Engine::kDefaultDeltaTime;
   }
 
   if (isDirty_) {
@@ -994,11 +990,11 @@ void StageSettings::SpawnObstacles(float z) {
   if (isNarrowingSection_ && currentLaneCount == 3) {
     // 左右レーンに GuideFloor を配置する
     obstacles_[nextObstacleIndex_]->SetType(Obstacle::Type::GuideFloor);
-    obstacles_[nextObstacleIndex_]->Spawn(-currentLaneWidth, 2.0f, z);
+    obstacles_[nextObstacleIndex_]->Spawn(-currentLaneWidth, kGuideFloorSpawnY, z);
     nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
 
     obstacles_[nextObstacleIndex_]->SetType(Obstacle::Type::GuideFloor);
-    obstacles_[nextObstacleIndex_]->Spawn(currentLaneWidth, 2.0f, z);
+    obstacles_[nextObstacleIndex_]->Spawn(currentLaneWidth, kGuideFloorSpawnY, z);
     nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
 
     consecutiveNoSpawnCount_ =
@@ -1065,7 +1061,7 @@ void StageSettings::SpawnObstacles(float z) {
       float x =
           static_cast<float>(lane) * currentLaneWidth; // レーンのワールドX座標
       obstacles_[nextObstacleIndex_]->SetType(itemType);
-      obstacles_[nextObstacleIndex_]->Spawn(x, 2.5f, z - 5.0f);
+      obstacles_[nextObstacleIndex_]->Spawn(x, kItemSpawnY, z + kItemSpawnZOffset);
       nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
     }
     return; // 障害物は出さずに終了
@@ -1139,24 +1135,24 @@ void StageSettings::SpawnObstacles(float z) {
     // ボーナスまたはアイテムの生成（障害物の手前に配置）
     if (i == bonusLane) {
       obstacles_[nextObstacleIndex_]->SetType(itemType);
-      obstacles_[nextObstacleIndex_]->Spawn(x, 2.5f, z - 5.0f);
+      obstacles_[nextObstacleIndex_]->Spawn(x, kItemSpawnY, z + kItemSpawnZOffset);
       nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
     }
 
     // 障害物の生成
     if (laneSpawns[i] != 0) {
       Obstacle::Type type = Obstacle::Type::Low; // 障害物タイプ
-      float y = 2.5f;                            // 障害物のY座標
+      float y = kObstacleSpawnYLow;              // 障害物のY座標
 
       if (laneSpawns[i] == 1) {
         type = Obstacle::Type::Low;
-        y = 2.5f;
+        y = kObstacleSpawnYLow;
       } else if (laneSpawns[i] == 2) {
         type = Obstacle::Type::High;
-        y = 4.6f;
+        y = kObstacleSpawnYHigh;
       } else if (laneSpawns[i] == 3) {
         type = Obstacle::Type::Wall;
-        y = 3.5f;
+        y = kObstacleSpawnYWall;
       }
 
       // 障害物のタイプを変更して配置
@@ -1188,8 +1184,8 @@ void StageSettings::ClearObstacles(float safeDistance) {
   itemCoolDowns_[Obstacle::Type::Bonus].currentTimer = 0.0f;
   itemCoolDowns_[Obstacle::Type::BarrierItem].currentTimer = 0.0f;
   itemCoolDowns_[Obstacle::Type::ClearItem].currentTimer = 0.0f;
-  itemCoolDowns_[Obstacle::Type::CameraItem].currentTimer = 10.0f;
-  itemCoolDowns_[Obstacle::Type::BossItem].currentTimer = 20.0f;
+  itemCoolDowns_[Obstacle::Type::CameraItem].currentTimer = kCameraInitialCooldown;
+  itemCoolDowns_[Obstacle::Type::BossItem].currentTimer = kBossInitialCooldown;
 }
 
 void StageSettings::Reset() {
@@ -1206,14 +1202,14 @@ void StageSettings::Reset() {
   CalculateNextObstacleInterval();
 
   // 道路チャンクの位置をリセット
-  targetLaneCount_ = 3;
-  laneCount_ = 3;
-  minLaneIndex_ = -1;
-  maxLaneIndex_ = 1;
+  targetLaneCount_ = kDefaultLaneCount;
+  laneCount_ = kDefaultLaneCount;
+  minLaneIndex_ = kDefaultMinLaneIndex;
+  maxLaneIndex_ = kDefaultMaxLaneIndex;
   chunkRowInfos_.resize(kChunkCount_);
   for (int i = 0; i < kChunkCount_; i++) {
     float z = static_cast<float>(i - kBackwardChunks_) * chunkLength_;
-    RebuildChunkRow(i, 3, z, IdentityMatrix());
+    RebuildChunkRow(i, kDefaultLaneCount, z, IdentityMatrix());
   }
 
   // 海に浮かぶ流氷のリセット
@@ -1225,7 +1221,7 @@ void StageSettings::Reset() {
   }
   nextObstacleIndex_ = 0;
   // リセット後も間を空けずすぐに障害物が出現するように設定
-  distanceSinceLastSpawn_ = (std::max)(0.0f, obstacleInterval_ - 3.0f);
+  distanceSinceLastSpawn_ = (std::max)(0.0f, obstacleInterval_ - kResetSpawnLeadDistance);
   distanceSinceLastCameraItem_ = 0.0f;
 
   // アイテムのクールタイムをリセット（秒単位）
@@ -1233,9 +1229,9 @@ void StageSettings::Reset() {
   itemCoolDowns_[Obstacle::Type::BarrierItem].currentTimer = 0.0f;
   itemCoolDowns_[Obstacle::Type::ClearItem].currentTimer = 0.0f;
   itemCoolDowns_[Obstacle::Type::CameraItem].currentTimer =
-      10.0f; // 開始後すぐのカメラ変更を防ぐ猶予
+      kCameraInitialCooldown; // 開始後すぐのカメラ変更を防ぐ猶予
   itemCoolDowns_[Obstacle::Type::BossItem].currentTimer =
-      20.0f; // 開始後すぐのボス突入を防ぐ猶予
+      kBossInitialCooldown; // 開始後すぐのボス突入を防ぐ猶予
 }
 
 float StageSettings::GetItemCoolDownDuration(Obstacle::Type type) const {

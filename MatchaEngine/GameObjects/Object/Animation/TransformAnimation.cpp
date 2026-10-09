@@ -86,7 +86,7 @@ void TransformAnimation::Update(Matrix4x4 viewMatrix)
 {
 	float currentDuration = GetDuration();
 	if (currentDuration > 0.0f) {
-		animationTime_ += 1.0f / 60.0f;//時間を進める
+		animationTime_ += kDefaultAnimationDeltaTime;//時間を進める
 		animationTime_ = std::fmod(animationTime_, currentDuration);//リピート再生
 
 		AnimationClip& clip = animation_.animationClips.at(currentAnimationName_);

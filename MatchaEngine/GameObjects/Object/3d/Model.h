@@ -10,6 +10,9 @@ struct ModelSubMeshMaterial {
 class Model	:public ObjectBase
 {
 private:
+	static constexpr int kInvalidTextureIndex = -1;
+	static constexpr float kBillboardBoundingSphereScale = 1.5f;
+
 	int modelNumber_;
 
 	//アニメーション

@@ -27,10 +27,13 @@ public:
     // フォントファイルから初期化
     bool LoadFontFile(const std::string& filePath);
 
+    static constexpr float kDefaultGlyphSize = 36.0f;
+    static constexpr float kDefaultPxRange = 4.0f;
+
     // 指定したUnicodeコードポイントのMSDFグリフを生成
     // glyphSize: グリフの高さピクセルサイズ (例: 32.0f, 48.0f)
     // pxRange: MSDFの符号付き距離の広がりピクセル数 (通常 4.0f)
-    MsdfGlyphBitmap GenerateGlyph(uint32_t codepoint, float glyphSize = 36.0f, float pxRange = 4.0f);
+    MsdfGlyphBitmap GenerateGlyph(uint32_t codepoint, float glyphSize = kDefaultGlyphSize, float pxRange = kDefaultPxRange);
 
     // フォントの行メトリクスを取得 (ベースライン、アセント、ディセント、行間)
     void GetVerticalMetrics(float glyphSize, float& ascent, float& descent, float& lineGap);

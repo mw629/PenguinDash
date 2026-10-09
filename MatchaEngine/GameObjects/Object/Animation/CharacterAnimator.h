@@ -1,6 +1,7 @@
 #pragma once
 #include "Line.h"
 #include "ObjectBase.h"
+#include <memory>
 #include <Model.h>
 #include <VariableTypes.h>
 
@@ -8,6 +9,25 @@ class LineRenderer;
 
 class CharacterAnimator : public ObjectBase {
 private:
+  // デフォルト定数（外部非公開）
+  static constexpr float kDefaultAnimationDeltaTime = 1.0f / 60.0f;
+  static constexpr uint32_t kDefaultJointSphereSubdivision = 8;
+  static constexpr Vector4 kDefaultJointSphereColor = {0.0f, 1.0f, 0.0f, 1.0f};
+  static constexpr Vector3 kDefaultJointSphereScale = {0.01f, 0.01f, 0.01f};
+  static constexpr int kDefaultJointSphereMaxInstanceCount = 1;
+  static constexpr Vector4 kDefaultBoneLineColor = {1.0f, 0.0f, 1.0f, 1.0f}; // マゼンタ
+  static constexpr float kDefaultSubMeshEnvironmentCoefficient = 0.0f;
+  static constexpr int kSingleInstanceIndex = 0;
+  static constexpr size_t kMainSubMeshIndex = 0;
+  static constexpr int kInvalidTextureIndex = -1;
+  static constexpr float kDefaultInitialAnimationTime = 0.0f;
+  static constexpr float kFullBlendFactor = 1.0f;
+
+  // 行列から平行移動成分を取得するヘルパー関数
+  static inline Vector3 GetMatrixTranslation(const Matrix4x4 &mat) {
+    return {mat.m[3][0], mat.m[3][1], mat.m[3][2]};
+  }
+
   ModelData modelData_{};
 
   Animation animation_;
@@ -31,7 +51,7 @@ private:
   Matrix4x4 localMatrix_;
 
   bool isVisibleBones_ = false;
-  LineRenderer *boneRenderer_ = nullptr;
+  std::unique_ptr<LineRenderer> boneRenderer_;
   std::vector<std::shared_ptr<class Sphere>> jointSpheres_;
 
   std::vector<ModelSubMeshMaterial> subMeshMaterials_;
@@ -188,7 +208,7 @@ public:
 
   void SetVisibleBones(bool visible) { isVisibleBones_ = visible; }
   bool GetVisibleBones() const { return isVisibleBones_; }
-  LineRenderer *GetBoneRenderer() const { return boneRenderer_; }
+  LineRenderer *GetBoneRenderer() const { return boneRenderer_.get(); }
 
   const Skeleton &GetSkeleton() const { return skeleton_; }
   std::shared_ptr<class Sphere> GetJointSphere(int32_t index) const {

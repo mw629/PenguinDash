@@ -28,7 +28,8 @@ struct GameHUDContext {
   float uiTimer = 0.0f;
   bool isTitleExiting = false;
   float titleExitTimer = 0.0f;
-  float titleExitDuration = 3.0f;
+  static constexpr float kDefaultTitleExitDuration = 3.0f;
+  float titleExitDuration = kDefaultTitleExitDuration;
   bool isFirstPersonView = false;
   Sprite *crashSprite = nullptr;
   Fade *fade = nullptr;
@@ -42,10 +43,164 @@ public:
   void DrawHUD(Draw &draw, const GameHUDContext &ctx);
 
 private:
+  static constexpr float kSpeedDisplayMultiplier = 300.0f;
+  static constexpr int kSpeedBarSegments = 10;
+  static constexpr float kOneLaneTotalDistance = 200.0f;
+  static constexpr float kDefaultGuideAlpha = 1.0f;
+
+  // プレイ中ステータスパネル
+  static constexpr Vector2 kStatusPanelPos = {20.0f, 15.0f};
+  static constexpr Vector2 kStatusPanelSize = {265.0f, 145.0f};
+  static constexpr float kPanelBorderHeight = 3.0f;
+  static constexpr float kPanelTextOffsetX = 12.0f;
+  static constexpr float kDistTextOffsetY = 9.0f;
+  static constexpr float kScoreTextOffsetY = 47.0f;
+  static constexpr float kSpeedTextOffsetY = 81.0f;
+  static constexpr float kBestTextOffsetY = 111.0f;
+  static constexpr float kDistFontSize = 30.0f;
+  static constexpr float kScoreFontSize = 24.0f;
+  static constexpr float kSpeedFontSize = 19.0f;
+  static constexpr float kBestFontSize = 17.0f;
+  static constexpr Vector4 kPanelBgColor = {0.04f, 0.07f, 0.12f, 0.82f};
+  static constexpr Vector4 kPanelBorderColor = {0.2f, 0.6f, 0.9f, 0.9f};
+
+  // 1レーンパネル
+  static constexpr Vector2 kOneLanePanelSize = {275.0f, 46.0f};
+  static constexpr float kOneLaneMarginRight = 20.0f;
+  static constexpr float kOneLanePanelY = 15.0f;
+
+  // ボスパネル
+  static constexpr Vector2 kBossPanelPos = {320.0f, 15.0f};
+  static constexpr Vector2 kBossPanelSize = {640.0f, 115.0f};
+  static constexpr float kBossTitleFontSize = 28.0f;
+  static constexpr float kBossTitleY = 24.0f;
+  static constexpr float kBossHpFontSize = 22.0f;
+  static constexpr float kBossHpY = 58.0f;
+  static constexpr float kBossGuideFontSize = 20.0f;
+  static constexpr float kBossGuideY = 92.0f;
+  static constexpr float kBossAlertWidth = 740.0f;
+  static constexpr float kBossAlertHeight = 40.0f;
+  static constexpr float kBossAlertY = 125.0f;
+  static constexpr float kBossAlertTextY = 130.0f;
+  static constexpr float kBossAlertFontSize = 25.0f;
+  static constexpr float kBossAlertPulseBase = 0.8f;
+  static constexpr float kBossAlertPulseAmp = 0.2f;
+  static constexpr float kBossAlertPulseFreq = 12.0f;
+  static constexpr Vector2 kBossHowToPanelPos = {880.0f, 455.0f};
+  static constexpr Vector2 kBossHowToPanelSize = {380.0f, 205.0f};
+  static constexpr Vector2 kBossMissionBannerPos = {260.0f, 240.0f};
+  static constexpr Vector2 kBossMissionBannerSize = {760.0f, 190.0f};
+  static constexpr float kBossMissionBannerBorderY = 426.0f;
+  static constexpr Vector2 kBossDefeatPanelPos = {360.0f, 170.0f};
+  static constexpr Vector2 kBossDefeatPanelSize = {560.0f, 95.0f};
+  static constexpr float kBossDefeatTitleFontSize = 38.0f;
+  static constexpr float kBossDefeatBonusFontSize = 24.0f;
+
+  // 操作ガイドバー
+  static constexpr Vector2 kControlsBarPos = {20.0f, 672.0f};
+  static constexpr Vector2 kControlsBarSize = {1240.0f, 36.0f};
+  static constexpr float kControlsBarBorderH = 2.0f;
+  static constexpr Vector2 kControlsBadgePos = {25.0f, 675.0f};
+  static constexpr float kControlsBadgeWidthPad = 72.0f;
+  static constexpr float kControlsBadgeWidthKey = 110.0f;
+  static constexpr float kControlsBadgeHeight = 28.0f;
+  static constexpr float kControlsBadgeInnerH = 26.0f;
+  static constexpr float kControlsBadgePadTextX = 43.0f;
+  static constexpr float kControlsBadgeKeyTextX = 32.0f;
+  static constexpr float kControlsBadgeTextY = 680.0f;
+  static constexpr float kControlsBadgeFontSize = 15.5f;
+  static constexpr float kControlsGuideFontSize = 17.5f;
+
+  // ポーズ画面
+  static constexpr float kPauseDimAlpha = 0.65f;
+  static constexpr Vector2 kPausePanelPos = {360.0f, 160.0f};
+  static constexpr Vector2 kPausePanelSize = {560.0f, 410.0f};
+  static constexpr float kPauseAccentHeight = 4.0f;
+  static constexpr Vector2 kPauseTitlePos = {490.0f, 190.0f};
+  static constexpr float kPauseTitleFontSize = 52.0f;
+  static constexpr Vector2 kPauseSubTitlePos = {540.0f, 255.0f};
+  static constexpr float kPauseSubTitleFontSize = 22.0f;
+  static constexpr Vector2 kPauseDividerPos1 = {400.0f, 290.0f};
+  static constexpr Vector2 kPauseDividerPos2 = {400.0f, 400.0f};
+  static constexpr Vector2 kPauseDividerSize = {480.0f, 2.0f};
+  static constexpr Vector2 kPauseDistPos = {430.0f, 315.0f};
+  static constexpr Vector2 kPauseScorePos = {430.0f, 355.0f};
+  static constexpr float kPauseStatFontSize = 26.0f;
+  static constexpr Vector2 kPauseBtnResumePos = {410.0f, 425.0f};
+  static constexpr Vector2 kPauseBtnRestartPos = {410.0f, 465.0f};
+  static constexpr Vector2 kPauseBtnTitlePos = {410.0f, 505.0f};
+  static constexpr float kPauseBtnFontSize = 24.0f;
+
+  // ゲームオーバー画面
+  static constexpr float kGameOverDimAlpha = 0.72f;
+  static constexpr Vector2 kGameOverPanelPos = {200.0f, 60.0f};
+  static constexpr Vector2 kGameOverPanelSize = {880.0f, 570.0f};
+  static constexpr float kGameOverAccentHeight = 4.0f;
+  static constexpr Vector2 kGameOverTitlePos = {480.0f, 85.0f};
+  static constexpr float kGameOverTitleFontSize = 56.0f;
+  static constexpr Vector2 kGameOverDistPos = {260.0f, 160.0f};
+  static constexpr float kGameOverDistFontSize = 26.0f;
+  static constexpr Vector2 kGameOverScorePos = {260.0f, 200.0f};
+  static constexpr float kGameOverScoreFontSize = 26.0f;
+  static constexpr Vector2 kGameOverBonusPos = {260.0f, 240.0f};
+  static constexpr float kGameOverBonusFontSize = 22.0f;
+  static constexpr Vector2 kGameOverDividerPos1 = {240.0f, 280.0f};
+  static constexpr Vector2 kGameOverDividerPos2 = {240.0f, 470.0f};
+  static constexpr Vector2 kGameOverDividerSize = {800.0f, 2.0f};
+  static constexpr Vector2 kGameOverRankHeaderDistPos = {260.0f, 305.0f};
+  static constexpr Vector2 kGameOverRankHeaderScorePos = {660.0f, 305.0f};
+  static constexpr float kGameOverRankHeaderFontSize = 22.0f;
+  static constexpr float kGameOverRankItemDistX = 270.0f;
+  static constexpr float kGameOverRankItemScoreX = 670.0f;
+  static constexpr float kGameOverRankItemBaseY = 345.0f;
+  static constexpr float kGameOverRankItemStepY = 35.0f;
+  static constexpr float kGameOverRankItemFontSize = 20.0f;
+  static constexpr Vector2 kGameOverBottomBtnPos = {245.0f, 505.0f};
+  static constexpr float kGameOverBottomBtnFontSize = 22.0f;
+
+  // タイトル画面
+  static constexpr float kTitleMainFontSize = 112.0f;
+  static constexpr float kTitleSubFontSize = 32.0f;
+  static constexpr float kTitleStartFontSize = 34.0f;
+  static constexpr float kTitleDefaultWidth = 760.0f;
+  static constexpr float kTitleDefaultSubWidth = 350.0f;
+  static constexpr float kTitleDefaultStartWidth = 640.0f;
+  static constexpr float kTitleBaseY = 170.0f;
+  static constexpr float kTitleSubOffsetY = 125.0f;
+  static constexpr float kTitleStartBaseY = 570.0f;
+  static constexpr float kTitleFlyEaseExponent = 2.5f;
+  static constexpr float kTitleFlyOffset = 380.0f;
+  static constexpr float kTitleStartFlyOffset = 250.0f;
+  static constexpr float kTitleMainFadeStart = 0.65f;
+  static constexpr float kTitleMainFadeSpan = 0.35f;
+  static constexpr float kTitleSubFadeStart = 0.55f;
+  static constexpr float kTitleSubFadeSpan = 0.45f;
+  static constexpr float kTitleStartFadeRate = 3.5f;
+  static constexpr float kTitleHoverFreq = 2.2f;
+  static constexpr float kTitleHoverAmp = 6.0f;
+  static constexpr float kTitleBlinkFreq = 5.0f;
+  static constexpr float kTitleBlinkThreshold = -0.2f;
+  static constexpr float kTitleExitGuideDuration = 0.4f;
+  static constexpr Vector2 kTitleShadowOffset = {5.0f, 6.0f};
+
+  // エディタ HUD & FPV バッジ
+  static constexpr Vector2 kEditorPanelPos = {20.0f, 20.0f};
+  static constexpr Vector2 kEditorPanelSize = {300.0f, 75.0f};
+  static constexpr Vector2 kEditorDistPos = {30.0f, 28.0f};
+  static constexpr float kEditorDistFontSize = 22.0f;
+  static constexpr Vector2 kEditorScorePos = {30.0f, 58.0f};
+  static constexpr float kEditorScoreFontSize = 20.0f;
+  static constexpr Vector2 kFpvBadgePos = {20.0f, 675.0f};
+  static constexpr Vector2 kFpvBadgeSize = {175.0f, 30.0f};
+  static constexpr float kFpvBorderWidth = 3.0f;
+  static constexpr Vector2 kFpvTextOffset = {10.0f, 6.0f};
+  static constexpr float kFpvFontSize = 16.0f;
+
   void PreloadFontStrings(Draw &draw);
   void DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawBossHUD(Draw &draw, const GameHUDContext &ctx);
-  void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alpha = 1.0f);
+  void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alpha);
+  void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx) { DrawControlsGuide(draw, ctx, kDefaultGuideAlpha); }
   void DrawPauseHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawTitleHUD(Draw &draw, const GameHUDContext &ctx);

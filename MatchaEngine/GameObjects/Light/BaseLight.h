@@ -7,8 +7,12 @@ class LightManager;
 class BaseLight : public GameObject
 {
 protected:
-	Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-	float intensity_ = 1.0f;
+	static constexpr Vector4 kDefaultLightColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+	static constexpr float kDefaultIntensity = 1.0f;
+	static constexpr size_t kColorComponentCount = 4;
+
+	Vector4 color_ = kDefaultLightColor;
+	float intensity_ = kDefaultIntensity;
 
 public:
 	BaseLight() = default;
@@ -30,7 +34,7 @@ public:
 
 	void Deserialize(const nlohmann::json& in) override {
 		GameObject::Deserialize(in);
-		if (in.contains("lightColor") && in["lightColor"].size() >= 4) {
+		if (in.contains("lightColor") && in["lightColor"].size() >= kColorComponentCount) {
 			color_ = { in["lightColor"][0], in["lightColor"][1], in["lightColor"][2], in["lightColor"][3] };
 		}
 		if (in.contains("intensity")) {

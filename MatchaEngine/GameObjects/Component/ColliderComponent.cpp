@@ -25,15 +25,15 @@ AABB ColliderComponent::GetWorldAABB() const
 		centerPos.y += t.translate.y;
 		centerPos.z += t.translate.z;
 	}
-	aabb.min = { centerPos.x - 0.5f, centerPos.y - 0.5f, centerPos.z - 0.5f };
-	aabb.max = { centerPos.x + 0.5f, centerPos.y + 0.5f, centerPos.z + 0.5f };
+	aabb.min = { centerPos.x - kDefaultExtent, centerPos.y - kDefaultExtent, centerPos.z - kDefaultExtent };
+	aabb.max = { centerPos.x + kDefaultExtent, centerPos.y + kDefaultExtent, centerPos.z + kDefaultExtent };
 	return aabb;
 }
 
 BoundingSphere ColliderComponent::GetWorldSphere() const
 {
 	BoundingSphere sphere;
-	sphere.radius = 0.5f;
+	sphere.radius = kDefaultExtent;
 	sphere.center = offset_;
 	if (gameObject_) {
 		const Transform& t = gameObject_->GetTransform();
@@ -138,19 +138,25 @@ AABB BoxColliderComponent::GetWorldAABB() const
 		centerPos.z += t.translate.z;
 	}
 
-	aabb.min.x = centerPos.x - (size_.x / 2.0f);
-	aabb.max.x = centerPos.x + (size_.x / 2.0f);
-	aabb.min.y = centerPos.y - (size_.y / 2.0f);
-	aabb.max.y = centerPos.y + (size_.y / 2.0f);
-	aabb.min.z = centerPos.z - (size_.z / 2.0f);
-	aabb.max.z = centerPos.z + (size_.z / 2.0f);
+	Vector3 halfSize = {
+		size_.x * kHalfExtentFactor,
+		size_.y * kHalfExtentFactor,
+		size_.z * kHalfExtentFactor
+	};
+
+	aabb.min.x = centerPos.x - halfSize.x;
+	aabb.max.x = centerPos.x + halfSize.x;
+	aabb.min.y = centerPos.y - halfSize.y;
+	aabb.max.y = centerPos.y + halfSize.y;
+	aabb.min.z = centerPos.z - halfSize.z;
+	aabb.max.z = centerPos.z + halfSize.z;
 	return aabb;
 }
 
 BoundingSphere BoxColliderComponent::GetWorldSphere() const
 {
 	BoundingSphere sphere;
-	sphere.radius = (std::max)({ size_.x, size_.y, size_.z }) * 0.5f;
+	sphere.radius = (std::max)({ size_.x, size_.y, size_.z }) * kHalfExtentFactor;
 	sphere.center = offset_;
 	if (gameObject_) {
 		const Transform& t = gameObject_->GetTransform();
@@ -215,7 +221,8 @@ void SphereColliderComponent::Update(Matrix4x4 view, float speedMultiplier)
 		t.translate.y += offset_.y;
 		t.translate.z += offset_.z;
 
-		t.scale = { radius_ * 2.0f, radius_ * 2.0f, radius_ * 2.0f };
+		float diameter = radius_ * kDiameterMultiplier;
+		t.scale = { diameter, diameter, diameter };
 		
 		debugSphere_->SetTransform(t);
 		debugSphere_->SettingWvp(view);

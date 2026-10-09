@@ -2,12 +2,15 @@
 
 class ScoreManager {
 private:
+  static constexpr int kRankingCount = 3;
+  static constexpr float kBonusScoreMultiplier = 200.0f;
+
   float currentDistance_ = 0.0f;
   float currentScore_ = 0.0f;
   int bonusEnemyHitCount_ = 0;
 
-  float topRankings_[3] = {0.0f, 0.0f, 0.0f};
-  float topScoreRankings_[3] = {0.0f, 0.0f, 0.0f};
+  float topRankings_[kRankingCount] = {0.0f, 0.0f, 0.0f};
+  float topScoreRankings_[kRankingCount] = {0.0f, 0.0f, 0.0f};
 
 public:
   ScoreManager() = default;

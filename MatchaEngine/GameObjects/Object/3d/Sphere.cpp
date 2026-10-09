@@ -25,10 +25,6 @@ void Sphere::Initialize(int textureSrvHandle)
 
 void Sphere::CreateVertexData()
 {
-
-	float pi = 3.14f;
-
-
 	//Shpere用の頂点リソースを作る//
 
 	vertexResource_ = GraphicsDevice::CreateBufferResource(sizeof(VertexData) * (kSubdivision_ * kSubdivision_) * 6);
@@ -47,12 +43,12 @@ void Sphere::CreateVertexData()
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
 
 	//経度分割1つ分の角度φd
-	const float kLonEvery = pi * 2.0f / float(kSubdivision_);
+	const float kLonEvery = k2Pi / float(kSubdivision_);
 	//緯度分割1つ分の角度Θd
-	const float kLatEvery = pi / float(kSubdivision_);
+	const float kLatEvery = kPi / float(kSubdivision_);
 	//緯度の方向に分割	
 	for (uint32_t latIndex = 0; latIndex < kSubdivision_; ++latIndex) {
-		float lat = -pi / 2.0f + kLatEvery * latIndex;//Θ
+		float lat = -kPiOver2 + kLatEvery * latIndex;//Θ
 		//経度方向に分割しながら線を描く
 		for (uint32_t lonIndex = 0; lonIndex < kSubdivision_; ++lonIndex) {
 			uint32_t startIndex = (latIndex * kSubdivision_ + lonIndex) * 6;

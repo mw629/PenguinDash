@@ -35,6 +35,9 @@ private:
     static IXAudio2MasteringVoice* sMasterVoice;
     static std::vector<SoundData> sSoundData;
 
+    static constexpr float kDefaultVolume = 1.0f;
+    static constexpr bool kDefaultLoop = false;
+
 public:
     
     static void Initialize();
@@ -49,7 +52,9 @@ public:
     static void Unload(int soundHandle);
 
 
-    static int Play(int soundHandle, bool loop = false, float volume = 1.0f);
+    static int Play(int soundHandle, bool loop, float volume);
+    static int Play(int soundHandle, bool loop) { return Play(soundHandle, loop, kDefaultVolume); }
+    static int Play(int soundHandle) { return Play(soundHandle, kDefaultLoop, kDefaultVolume); }
 
    
     static void Stop(int soundHandle);

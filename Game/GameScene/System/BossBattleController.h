@@ -9,18 +9,39 @@ class GameCameraController;
 
 class BossBattleController {
 private:
+  static constexpr float kDefaultAttackSpawnZ = -35.0f;
+  static constexpr float kDefaultAttackDropHeight = 18.0f;
+  static constexpr float kDefaultAttackFallDuration = 28.0f;
+  static constexpr float kDefaultAttackReflectMinZ = -15.0f;
+  static constexpr float kDefaultReflectArcHeight = 7.0f;
+  static constexpr float kDefaultReflectDuration = 36.0f;
+  static constexpr Vector3 kDefaultBossCameraTranslate{0.0f, 7.0f, 14.0f};
+  static constexpr Vector3 kDefaultBossCameraRotate{0.24f, 3.25f, 0.0f};
+  static constexpr int kNoReflectLane = -1;
+  static constexpr float kAttackIntervalFrames = 120.0f;
+  static constexpr int kLaneCount = 3;
+  static constexpr float kBaseSpawnY = 2.0f;
+  static constexpr float kHalfFactor = 0.5f;
+  static constexpr float kBossAABBSize = 5.0f;
+  static constexpr float kAttackReflectMaxZ = 15.0f;
+  static constexpr float kReflectRumbleDuration = 0.18f;
+  static constexpr unsigned short kReflectRumbleSpeed = 32000;
+  static constexpr float kReflectHitMinProgress = 0.7f;
+  static constexpr float kDefeatRumbleDuration = 0.5f;
+  static constexpr unsigned short kMaxRumbleSpeed = 65535;
+
   float bossAttackTimer_ = 0.0f;
-  float bossAttackSpawnZ_ = -35.0f;
-  float bossAttackDropHeight_ = 18.0f;
-  float bossAttackFallDuration_ = 28.0f;
-  float bossAttackReflectMinZ_ = -15.0f;
-  float bossReflectArcHeight_ = 7.0f;
-  float bossReflectDuration_ = 36.0f;
+  float bossAttackSpawnZ_ = kDefaultAttackSpawnZ;
+  float bossAttackDropHeight_ = kDefaultAttackDropHeight;
+  float bossAttackFallDuration_ = kDefaultAttackFallDuration;
+  float bossAttackReflectMinZ_ = kDefaultAttackReflectMinZ;
+  float bossReflectArcHeight_ = kDefaultReflectArcHeight;
+  float bossReflectDuration_ = kDefaultReflectDuration;
 
-  Vector3 bossCameraTranslate_{0.0f, 7.0f, 14.0f};
-  Vector3 bossCameraRotate_{0.24f, 3.25f, 0.0f};
+  Vector3 bossCameraTranslate_ = kDefaultBossCameraTranslate;
+  Vector3 bossCameraRotate_ = kDefaultBossCameraRotate;
 
-  int currentReflectLane_ = -1;
+  int currentReflectLane_ = kNoReflectLane;
 
 public:
   BossBattleController() = default;
