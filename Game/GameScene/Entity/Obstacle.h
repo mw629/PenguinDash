@@ -48,28 +48,91 @@ private:
   ModelData reflectingAttackModelData_;
   Type type_ = Type::Wall;
 
+private:
+  static constexpr float kDefaultReflectDuration = 36.0f;
+  static constexpr float kDefaultReflectArcHeight = 7.0f;
+  static constexpr float kDefaultGravity = 0.015f;
+  static constexpr float kDefaultFallDuration = 25.0f;
+  static constexpr float kDefaultDropHeight = 15.0f;
+  static constexpr float kBaseScrollSpeed = 0.2f;
+  static constexpr Vector4 kNormalColor = {1.0f, 1.0f, 1.0f, 1.0f};
+  static constexpr float kScaleOffsetFactor = 0.5f;
+  static constexpr float kItemSpawnHeightOffset = 0.5f;
+  static constexpr float kBlowAwayCameraZThreshold = -13.0f;
+  static constexpr float kBlowAwayDespawnYThreshold = -20.0f;
+  static constexpr float kBossAttackDespawnZ = 20.0f;
+  static constexpr float kPlayerObstacleDespawnZ = -10.0f;
+  static constexpr float kItemBobbingSpeed = 0.05f;
+  static constexpr float kItemBobbingAmplitude = 0.15f;
+  static constexpr float kItemBobbingPhaseMultiplier = 2.0f;
+  static constexpr Vector4 kGuideFloorColor = {0.0f, 1.0f, 1.0f, 0.5f};
+  static constexpr float kBlowAwayInitialVelocityY = 0.6f;
+  static constexpr float kBlowAwayInitialVelocityZ = -0.8f;
+  static constexpr float kBlowAwayRandRangeX = 0.4f;
+  static constexpr Vector3 kBlowAwayAngularVelocity = {-0.15f, 0.1f, 0.05f};
+  static constexpr Vector3 kReflectAngularVelocity = {-0.35f, 0.25f, 0.15f};
+  static constexpr float kDefaultCollisionSize = 1.0f;
+  static constexpr float kDefaultSpeedMultiplier = 1.0f;
+  static constexpr float kBlowAwayStickDropVelocityY = -0.1f;
+  static constexpr float kBlowAwayStickRandScaleX = 0.1f;
+  static constexpr float kBarrierForceToCenterFrames = 30.0f;
+
+  struct ObstacleProfile {
+    Vector3 collisionSize; // width, height, depth
+    Vector3 scale;
+    Vector3 rotate;
+  };
+
+  static constexpr ObstacleProfile kProfileLow = {
+    {1.5f, 1.0f, 1.0f}, {1.404f, 1.565f, 1.502f}, {0.0f, kPiOver2, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileHigh = {
+    {1.5f, 3.0f, 1.0f}, {3.021f, 3.195f, 1.566f}, {0.0f, kPiOver2, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileWall = {
+    {1.5f, 3.0f, 1.0f}, {1.497f, 3.886f, 3.135f}, {0.0f, 0.0f, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileBonus = {
+    {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, kPi, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileGuideFloor = {
+    {2.0f, 0.5f, 2.0f}, {2.0f, 0.1f, 10.0f}, {0.0f, 0.0f, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileItemBillboardSmall = {
+    {1.0f, 1.0f, 1.0f}, {0.8f, 0.8f, 1.0f}, {0.0f, 0.0f, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileBossItem = {
+    {1.5f, 1.5f, 1.5f}, {1.1f, 1.1f, 1.0f}, {0.0f, 0.0f, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileBossAttack = {
+    {1.6f, 2.0f, 1.6f}, {0.016f, 0.016f, 0.016f}, {0.0f, 0.0f, 0.0f}
+  };
+  static constexpr ObstacleProfile kProfileBossAttackReflectable = {
+    {1.6f, 2.0f, 2.5f}, {0.025f, 0.025f, 0.025f}, {0.0f, 0.0f, 0.0f}
+  };
+
   bool isHit_ = false;
   bool isReflected_ = false;                  // ボスへの跳ね返しフラグ
   Vector3 reflectedTarget_{0.0f, 0.0f, 0.0f}; // 跳ね返された際の目標座標
   Vector3 reflectStartPos_{0.0f, 0.0f, 0.0f}; // 跳ね返された瞬間の座標
   float reflectTimer_ = 0.0f;                 // 跳ね返り経過フレーム数
-  float reflectDuration_ = 36.0f;             // 跳ね返りにかかるフレーム数 (約0.6秒)
-  float reflectArcHeight_ = 7.0f;             // 弧の高さ（Y方向の膨らみ）
+  float reflectDuration_ = kDefaultReflectDuration; // 跳ね返りにかかるフレーム数 (約0.6秒)
+  float reflectArcHeight_ = kDefaultReflectArcHeight; // 弧の高さ（Y方向の膨らみ）
   Vector3 velocity_{0.0f, 0.0f, 0.0f};
-  float gravity_ = 0.015f;
+  float gravity_ = kDefaultGravity;
 
   // 上空からの落下演出用
   bool isFalling_ = false;
   float fallTimer_ = 0.0f;
-  float fallDuration_ = 25.0f; // 落下にかかるフレーム数
-  float dropHeight_ = 15.0f;   // 落下開始の高さオフセット
-  float targetY_ = 0.0f;       // 着地目標Y座標
-  bool justLanded_ = false;    // 着地した瞬間フラグ
+  float fallDuration_ = kDefaultFallDuration; // 落下にかかるフレーム数
+  float dropHeight_ = kDefaultDropHeight;     // 落下開始の高さオフセット
+  float targetY_ = 0.0f;                      // 着地目標Y座標
+  bool justLanded_ = false;                   // 着地した瞬間フラグ
 
   // 当たり判定のサイズ
-  float collisionWidth_ = 1.0f;
-  float collisionHeight_ = 1.0f;
-  float collisionDepth_ = 1.0f;
+  float collisionWidth_ = kDefaultCollisionSize;
+  float collisionHeight_ = kDefaultCollisionSize;
+  float collisionDepth_ = kDefaultCollisionSize;
 
 public:
   Obstacle();
@@ -127,7 +190,8 @@ public:
 
   // Override standard Update and Draw to avoid GameObjectManager from
   // automatically updating scroll/drawing without context
-  void Update(Matrix4x4 view, float speedMultiplier = 1.0f) override {}
+  void Update(Matrix4x4 /*view*/, float /*speedMultiplier*/) override {}
+  void Update(Matrix4x4 view) { Update(view, kDefaultSpeedMultiplier); }
   void Draw(class Draw &draw) override;
   void ImGuiInnerComponents() override;
 
@@ -153,4 +217,24 @@ public:
   float GetCollisionWidth() const { return collisionWidth_; }
   float GetCollisionHeight() const { return collisionHeight_; }
   float GetCollisionDepth() const { return collisionDepth_; }
+
+  // ポリモーフィズム用メソッド
+  virtual bool IsRegularObstacle() const {
+    return type_ == Type::Low || type_ == Type::High || type_ == Type::Wall;
+  }
+  virtual bool IsItem() const {
+    return type_ == Type::CameraItem || type_ == Type::BarrierItem ||
+           type_ == Type::ClearItem || type_ == Type::BossItem;
+  }
+  virtual bool CanRollUnder() const {
+    return type_ == Type::High;
+  }
+  virtual bool RequiresLaneChangeToAvoid() const {
+    return type_ == Type::Wall || type_ == Type::BossAttack || type_ == Type::BossAttackReflectable;
+  }
+
+  /// <summary>
+  /// プレイヤーとの衝突処理
+  /// </summary>
+  virtual bool OnPlayerCollision(class GameScene* scene, class Player* player);
 };

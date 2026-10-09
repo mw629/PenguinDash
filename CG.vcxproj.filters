@@ -183,6 +183,24 @@
     <ClCompile Include="Game\GameScene\GameScene.cpp">
       <Filter>Game</Filter>
     </ClCompile>
+    <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\BossBattleController.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\ScoreManager.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\TitleDirector.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\UI\GameHUD.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
     <ClCompile Include="Game\GameScene\Effect\GameSceneEffect.cpp">
       <Filter>Game</Filter>
     </ClCompile>
@@ -461,6 +479,9 @@
     <ClInclude Include="MatchaEngine\Graphics\DescriptorHeap.h">
       <Filter>MatchaEngine\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\BaseLight.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Light\DirectionalLight.h">
       <Filter>MatchaEngine\Graphics</Filter>
     </ClInclude>
@@ -492,6 +513,24 @@
       <Filter>MatchaEngine</Filter>
     </ClInclude>
     <ClInclude Include="Game\GameScene\GameScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Camera\GameCameraController.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\CrashEffect.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\BossBattleController.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\ScoreManager.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\TitleDirector.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\UI\GameHUD.h">
       <Filter>Game</Filter>
     </ClInclude>
     <ClInclude Include="Game\GameScene\Effect\GameSceneEffect.h">
@@ -576,6 +615,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\System\GameObjectManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\System\GameObjectFactory.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Resource\AssetManager.h">

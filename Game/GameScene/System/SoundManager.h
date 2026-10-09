@@ -56,7 +56,12 @@ private:
     float GetEffectiveBGMVolume() const;
     float GetEffectiveSEVolume(float volumeMultiplier = 1.0f) const;
 
-    int bgmHandles_[4] = { -1, -1, -1, -1 };
+    static constexpr int kBgmCount = 4;
+    static constexpr float kPlayBGMVolumeScale = 0.5f;
+    static constexpr float kBossBGMVolumeScale = 0.7f;
+    static constexpr float kStartSeVolumeMultiplier = 0.2f;
+
+    int bgmHandles_[kBgmCount] = { -1, -1, -1, -1 };
     int seHandles_[static_cast<int>(SE::Count)] = {};
     BGM currentBGM_ = BGM::None;
     int currentBgmHandle_ = -1;

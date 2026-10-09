@@ -50,6 +50,9 @@ public:
   static constexpr const char *kShaderSuffix = "Shader";
 
 private:
+  static std::vector<PostEffect *> s_instances;
+  static std::vector<std::pair<std::string, std::string>> s_registeredEffects;
+
   Microsoft::WRL::ComPtr<ID3D12Resource> constantBufferResource_;
   PostEffectShaderData *cbData_ = nullptr;
 
@@ -57,11 +60,33 @@ private:
   Microsoft::WRL::ComPtr<ID3D12Resource> pixelationBufferResource_;
   PixelationParams *pixelationData_ = nullptr;
 
-  float time_ = 0.0f;
-  float ratio_ = 1.0f;
-  float value1_ = 8.0f; // Posterization の段階数デフォルト値
-  float value2_ = 0.0f;
-  float blurStrength_ = 1.0f;
+  static constexpr float kDefaultTime = 0.0f;
+  static constexpr float kDefaultRatio = 1.0f;
+  static constexpr float kDefaultPosterizationSteps = 8.0f; // Posterization の段階数デフォルト値
+  static constexpr float kDefaultValue2 = 0.0f;
+  static constexpr float kDefaultBlurStrength = 1.0f;
+  static constexpr int kDefaultKernelSize = 5;
+  static constexpr float kDefaultBlockCountX = 32.0f;
+  static constexpr float kDefaultBlockCountY = 24.0f;
+  static constexpr float kDefaultColorComponent = 0.8f;
+  static constexpr float kWeight3x3 = 1.0f / 9.0f;
+  static constexpr float kWeight5x5 = 1.0f / 25.0f;
+
+  // ImGui Slider Bounds
+  static constexpr float kTimeMax = 100.0f;
+  static constexpr float kRatioMin = 0.0f;
+  static constexpr float kRatioMax = 1.0f;
+  static constexpr float kValueMax = 100.0f;
+  static constexpr float kBlurStrengthMax = 10.0f;
+  static constexpr float kPixelateBlockMin = 2.0f;
+  static constexpr float kPixelateBlockXMax = 320.0f;
+  static constexpr float kPixelateBlockYMax = 240.0f;
+
+  float time_ = kDefaultTime;
+  float ratio_ = kDefaultRatio;
+  float value1_ = kDefaultPosterizationSteps;
+  float value2_ = kDefaultValue2;
+  float blurStrength_ = kDefaultBlurStrength;
   float color_[3];
 
   float kernel3x3_[3][3];
@@ -70,11 +95,11 @@ private:
   float index3x3_[3][3][2];
   float index5x5_[5][5][2];
 
-  int kernelSize_ = 5;
+  int kernelSize_ = kDefaultKernelSize;
 
   // Pixelate パラメータ
-  float blockCountX_ = 32.0f;
-  float blockCountY_ = 24.0f;
+  float blockCountX_ = kDefaultBlockCountX;
+  float blockCountY_ = kDefaultBlockCountY;
   bool usePixelation_ = true;
 
   bool isTimerRunning_ = true;
@@ -150,12 +175,9 @@ public:
 
   void ImGuiWindow();
 
-  // ---- アクティブポストエフェクト管理 ----
-  static std::vector<PostEffect *> s_instances;
-
-  // スキャン済みのシェーダー名リスト（表示名 → シェーダー名）
-  // 例: "GrayScale" → "GrayScaleShader"
-  static std::vector<std::pair<std::string, std::string>> s_registeredEffects;
+  static const std::vector<std::pair<std::string, std::string>>& GetRegisteredEffects() {
+    return s_registeredEffects;
+  }
 
   // PostEffectフォルダをスキャンしてs_registeredEffectsを構築する（起動時に1回呼ぶ）
   static void ScanPostEffectShaders(

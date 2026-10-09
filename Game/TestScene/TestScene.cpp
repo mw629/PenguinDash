@@ -93,7 +93,7 @@ void TestScene::Initialize() {
 	//Modelの初期化
 	model_.get()->Initialize(modelData);
 	model_.get()->SetTransform(modelTransform_);
-	model_.get()->name_ = "Sphere Model";
+	model_.get()->SetName("Sphere Model");
 
 
 	//Animationの初期化
@@ -102,7 +102,7 @@ void TestScene::Initialize() {
 	animation_->LoadAdditionalAnimation("Resources/gltf/human", "sneakWalk.gltf", "sneakWalk");
 	animation_->LoadAdditionalAnimation("Resources/gltf/human", "walk.gltf", "walk");
 	animation_->SetAnimation("sneakWalk");
-	animation_.get()->name_ = "Animation Model";
+	animation_.get()->SetName("Animation Model");
 	animation_.get()->SetVisibleBones(true); // ボーンを表示
 
 	// 手のボーンを登録
@@ -112,20 +112,20 @@ void TestScene::Initialize() {
 	// Axeの初期化
 	ModelData axeData = AssimpLoadObjFile("Resources/Model/Axe", "Axe.obj");
 	axe_.get()->Initialize(axeData);
-	axe_.get()->name_ = "Axe Model";
+	axe_.get()->SetName("Axe Model");
 	axeOffset_.scale = { 100.0f, 100.0f, 100.0f }; // キャラクター(gltf)のスケールが0.01の場合があるので、武器は100倍にして表示サイズを合わせる
 
 	//NoodeAnimationの初期化
 	ModelData cubeModel = AssimpLoadObjFile("Resources/AnimatedCube", "AnimatedCube.gltf");
 	nodeAnimation_.get()->Initialize(cubeModel, "Resources/AnimatedCube", "AnimatedCube.gltf");
-	nodeAnimation_.get()->name_ = "Node Animation Cube";
+	nodeAnimation_.get()->SetName("Node Animation Cube");
 
 	
 	//Sphereの初期化
 	int texture1 = texture_.get()->CreateTexture("Resources/Texture/monsterBall.png");
 	sphere_.get()->Initialize(texture1);
 	sphere_.get()->SetTransform(modelTransform_);
-	sphere_.get()->name_ = "MonsterBall Sphere";
+	sphere_.get()->SetName("MonsterBall Sphere");
 
 	//SkyBoxの初期化
 	skyBoxTexture_ = texture_.get()->CreateTexture("Resources/DDS/rostock_laage_airport_4k.dds");
@@ -135,12 +135,12 @@ void TestScene::Initialize() {
 	skyBox_.get()->SetFrustumCullingEnabled(false);
 	skyBox_.get()->SetLighting(false);
 	skyBox_.get()->SetTransform(skyBoxTransform_);
-	skyBox_.get()->name_ = "SkyBox";
+	skyBox_.get()->SetName("SkyBox");
 
 	modelData = AssimpLoadObjFile("Resources/Model/Ground", "Ground.obj");
 	floor.get()->Initialize(modelData);
 	floor.get()->SetTransform(floorT);
-	floor.get()->name_ = "Floor";
+	floor.get()->SetName("Floor");
 
     EmitterData emitter;
 	emitter.transform = modelTransform_;
@@ -161,7 +161,7 @@ void TestScene::Initialize() {
 	dataPlane.lifeTime = 2.0f;
 	dataPlane.transform.scale = { 0.1f, 0.1f, 0.1f };
 	particlePlane.get()->Initialize(emitterPlane, dataPlane, EffectShape::Plane);
-	particlePlane.get()->name_ = "Particle (Snow/Sparkles)";
+	particlePlane.get()->SetName("Particle (Snow/Sparkles)");
 	particlePlane->generatorBehavior = [](EffectDefinitionData& p) {
 		float randX = ((float)rand() / RAND_MAX - 0.5f) * 2.0f;
 		float randY = ((float)rand() / RAND_MAX - 0.5f) * 2.0f;
@@ -184,7 +184,7 @@ void TestScene::Initialize() {
 	dataCylinder.lifeTime = 0.8f;
 	dataCylinder.transform.scale = { 0.15f, 1.5f, 0.15f }; // Long vertical shape
 	particleCylinder.get()->Initialize(emitterCylinder, dataCylinder, EffectShape::Cylinder);
-	particleCylinder.get()->name_ = "Particle (Upward Fire)";
+	particleCylinder.get()->SetName("Particle (Upward Fire)");
 	particleCylinder->generatorBehavior = [](EffectDefinitionData& p) {
 		float randX = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
 		float randZ = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
@@ -205,7 +205,7 @@ void TestScene::Initialize() {
 	dataRing.lifeTime = 1.0f;
 	dataRing.transform.scale = { 0.1f, 0.1f, 0.1f }; // Start small
 	particleRing.get()->Initialize(emitterRing, dataRing, EffectShape::Ring);
-	particleRing.get()->name_ = "Particle (Shockwave)";
+	particleRing.get()->SetName("Particle (Shockwave)");
 	particleRing->generatorBehavior = [](EffectDefinitionData& p) {
 		p.velocity = { 0.0f, 0.0f, 0.0f }; // Stay in place
 	};

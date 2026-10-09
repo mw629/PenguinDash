@@ -25,16 +25,16 @@ void MaterialFactory::ImGui() {
 #endif // _USE_IMGUI
 }
 
-void MaterialFactory::CreateMartial(bool Lighting, float environmentCoefficient)
+void MaterialFactory::CreateMaterial(bool Lighting, float environmentCoefficient)
 {
 	//マテリアル用のリソースを作る。今回はcolor1つ分のサイズを用意する
 	materialResource_ = GraphicsDevice::CreateBufferResource(sizeof(Material));
 	//書き込むためのアドレス取得
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 	//今回は書き込んでみる
-	materialData_->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+	materialData_->color = kDefaultColor;
 	materialData_->enableLighting = Lighting ? 1 : 0;
 	materialData_->uvTransform = IdentityMatrix();
-	materialData_->shininess = 30.0f;
+	materialData_->shininess = kDefaultShininess;
 	materialData_->environmentCoefficient = environmentCoefficient;
 }

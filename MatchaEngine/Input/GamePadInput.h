@@ -8,9 +8,16 @@
 class GamePadInput
 {
 private:
+	static constexpr WORD kDefaultRumbleMotorSpeed = 32000;
+	static constexpr int kDefaultDeadZone = 8000;
+	static constexpr SHORT kStickThreshold = 18000; // スティックPush判定のしきい値
+	static constexpr BYTE kTriggerThreshold = 30;   // トリガー判定のしきい値
+	static constexpr float kStickNormalizationDivisor = 32768.0f;
+	static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
+
 	XINPUT_STATE currentState_;
 	XINPUT_STATE prevState_;
-	int deadZone_ = 8000;
+	int deadZone_ = kDefaultDeadZone;
 public:
 
 	void DrawImGui();
@@ -75,12 +82,20 @@ public:
 	static void SetVibration(WORD leftMotorSpeed, WORD rightMotorSpeed);
 
 	// 指定時間（秒）コントローラーを振動させる（自動停止）
-	static void Rumble(float durationSeconds, WORD leftMotor = 32000, WORD rightMotor = 32000);
+	static void Rumble(float durationSeconds, WORD leftMotor, WORD rightMotor);
+	static void Rumble(float durationSeconds) { Rumble(durationSeconds, kDefaultRumbleMotorSpeed, kDefaultRumbleMotorSpeed); }
 
 	void SetPad();
 
 private:
 	DWORD userIndex_ = 0;
 	bool isConnected_ = false;
+
+	static XINPUT_STATE s_currentState_;
+	static XINPUT_STATE s_prevState_;
+	static int s_deadZone_;
+	static bool s_isConnected_;
+	static DWORD s_activeUserIndex_;
+	static float s_rumbleTimer_;
 };
 

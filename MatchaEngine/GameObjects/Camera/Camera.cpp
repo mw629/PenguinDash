@@ -7,8 +7,8 @@
 #include <imgui.h>
 #endif // _USE_IMGUI
 
-float Camera::s_screenWidth_ = 1280.0f;
-float Camera::s_screenHeight_ = 720.0f;
+float Camera::s_screenWidth_ = Camera::kDefaultScreenWidth;
+float Camera::s_screenHeight_ = Camera::kDefaultScreenHeight;
 std::vector<Camera*> Camera::s_instances_;
 
 void Camera::SetScreenSize(Vector2 screenSize)
@@ -109,10 +109,8 @@ void Camera::ResetDebugCamera(const Transform& transform) {
 void Camera::Update() {
     debugCamera_.Update();
 
-    // カメラの位置・回転を決める
+    // カメラの位置を決める
     Vector3 eye;
-    Vector3 target;
-    Vector3 up = { 0.0f, 1.0f, 0.0f };
 
     if (isDebugCamera_) {
         viewMatrix_ = debugCamera_.GetViewMatrix();
@@ -125,7 +123,7 @@ void Camera::Update() {
         eye = transform_.translate;
     }
 
-    totalTime_ += 1.0f / 60.0f;
+    totalTime_ += kDefaultDeltaTime;
     cameraData_->worldPosition = eye;
     cameraData_->time = totalTime_;
 

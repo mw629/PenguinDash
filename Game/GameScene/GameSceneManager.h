@@ -18,12 +18,14 @@ public:
 	};
 
 private:
-
+	static constexpr float kDefaultMasterVolume = 0.5f;
+	static constexpr float kDefaultBGMVolume = 0.35f;
+	static constexpr float kDefaultSEVolume = 1.0f;
 
 	// 音量（0.0f〜1.0f）
-	float masterVolume_ = 0.5f; // 音量の初期値（0.0f〜1.0f）
-	float BGMVolume_ = 0.35f; // 音量の初期値（0.0f〜1.0f、ゲームプレイの快適さのため控えめに調整）
-	float SEVolume_ = 1.0f; // 音量の初期値（0.0f〜1.0f)
+	float masterVolume_ = kDefaultMasterVolume; // 音量の初期値（0.0f〜1.0f）
+	float BGMVolume_ = kDefaultBGMVolume; // 音量の初期値（0.0f〜1.0f、ゲームプレイの快適さのため控えめに調整）
+	float SEVolume_ = kDefaultSEVolume; // 音量の初期値（0.0f〜1.0f)
 
 	// キーコンフィグ
 	KeyConfig keyConfig_;

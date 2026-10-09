@@ -9,12 +9,42 @@
 #include <wrl.h>
 
 
+namespace EffectConfig {
+  constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
+  constexpr float kDefaultLifeTime = 3.0f;
+  constexpr int kDefaultCylinderDivide = 32;
+  constexpr int kDefaultRingDivide = 32;
+  constexpr int kDefaultMaxParticleCount = 10000;
+
+  // Shapes & Geometry Defaults
+  constexpr float kDefaultRadius = 1.0f;
+  constexpr float kDefaultCylinderHeight = 3.0f;
+  constexpr float kDefaultRingInnerRadius = 0.8f;
+  constexpr float kDefaultConeRadius = 0.2f;
+  constexpr float kDefaultConeAngle = 0.5f;
+  constexpr float kDefaultConeSpeed = 1.0f;
+  constexpr float kDefaultFrequency = 0.5f;
+  constexpr uint32_t kDefaultEmitCount = 10;
+  constexpr uint32_t kDefaultBurstCount = 30;
+
+  // ImGui Step & Bounds
+  constexpr float kImGuiDragStepFine = 0.001f;
+  constexpr float kImGuiDragStepNormal = 0.01f;
+  constexpr float kImGuiDragStepCoarse = 0.05f;
+  constexpr float kImGuiFrequencyMax = 10.0f;
+  constexpr float kImGuiShapeRadiusMax = 100.0f;
+
+  // GPU Compute
+  constexpr UINT kGpuThreadGroupSize = 1024;
+  constexpr UINT kGpuUpdateThreadGroups = 10;
+}
+
 struct EffectDefinitionData {
   Transform transform = {
       {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
   Vector3 velocity = {0.0f, 0.0f, 0.0f};
   Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
-  float lifeTime = 3.0f;
+  float lifeTime = EffectConfig::kDefaultLifeTime;
   float currentTime = 0.0f;
 
   // Over Lifetime Settings
@@ -31,20 +61,20 @@ struct EffectDefinitionData {
 enum class EffectShape { Plane, Cylinder, Ring, Cube };
 
 struct EffectShapeData {
-  int cylinderDivide = 32;
-  float cylinderTopRadius = 1.0f;
-  float cylinderBottomRadius = 1.0f;
-  float cylinderHeight = 3.0f;
+  int cylinderDivide = EffectConfig::kDefaultCylinderDivide;
+  float cylinderTopRadius = EffectConfig::kDefaultRadius;
+  float cylinderBottomRadius = EffectConfig::kDefaultRadius;
+  float cylinderHeight = EffectConfig::kDefaultCylinderHeight;
 
-  int ringDivide = 32;
-  float ringOuterRadius = 1.0f;
-  float ringInnerRadius = 0.8f;
+  int ringDivide = EffectConfig::kDefaultRingDivide;
+  float ringOuterRadius = EffectConfig::kDefaultRadius;
+  float ringInnerRadius = EffectConfig::kDefaultRingInnerRadius;
 
   Vector3 cubeSize = {1.0f, 1.0f, 1.0f};
 };
 
 struct PerFrameForGPU {
-  float deltaTime = 1.0f / 60.0f;
+  float deltaTime = EffectConfig::kDefaultDeltaTime;
   float time = 0.0f;
   Vector2 padding0 = {0.0f, 0.0f};
   Vector3 acceleration = {0.0f, 0.0f, 0.0f};
@@ -69,7 +99,7 @@ struct EmitterSphereForGPU {
   uint32_t emit = 1;
 
   Vector3 baseScale = {1.0f, 1.0f, 1.0f};
-  float lifeTime = 3.0f;
+  float lifeTime = EffectConfig::kDefaultLifeTime;
   Vector3 sizeVariance = {0.0f, 0.0f, 0.0f};
   float padding0 = 0.0f;
   Vector3 baseVelocity = {0.0f, 0.0f, 0.0f};
@@ -88,7 +118,7 @@ struct EmitterBoxForGPU {
   float frequency = 0.5f;
   float frequencyTime = 0.0f;
   uint32_t emit = 1;
-  float lifeTime = 3.0f;
+  float lifeTime = EffectConfig::kDefaultLifeTime;
   float padding0 = 0.0f;
 
   Vector3 baseScale = {1.0f, 1.0f, 1.0f};
@@ -125,7 +155,7 @@ private:
 
   static int s_wvpIndex;
 
-  int effectDefinitionMaxNum_ = 10000;
+  int effectDefinitionMaxNum_ = EffectConfig::kDefaultMaxParticleCount;
   int effectDefinitionNum_;
 
   std::list<EffectDefinitionData> effectDefinitionData_;
@@ -170,8 +200,13 @@ public:
   void SettingWvp(Matrix4x4 viewMatrix);
   void SetData(std::list<EffectDefinitionData> effectDefinitionData);
 
-  void Updata(Matrix4x4 viewMatrix,
+  void Update(Matrix4x4 viewMatrix,
               std::list<EffectDefinitionData> effectDefinitionData);
+  [[deprecated("Use Update instead")]]
+  void Updata(Matrix4x4 viewMatrix,
+              std::list<EffectDefinitionData> effectDefinitionData) {
+    Update(viewMatrix, effectDefinitionData);
+  }
 
   void CreateParticle();
 
@@ -225,6 +260,28 @@ public:
     return effectDefinitionData_;
   }
 
+  ID3D12Resource *GetGpuParticleResource() {
+    return gpuParticleResource_.Get();
+  }
+
+  void SetUseGpuParticle(bool enable) { useGpuParticle_ = enable; }
+  bool GetUseGpuParticle() const { return useGpuParticle_; }
+
+  void SetIsBoxEmitter(bool isBox) { isBoxEmitter_ = isBox; }
+  bool GetIsBoxEmitter() const { return isBoxEmitter_; }
+
+  void SetGpuEmitterBoxData(const struct EmitterBoxForGPU &data);
+  void SetGpuEmitterSphereData(const struct EmitterSphereForGPU &data);
+  void SetGpuPerFrameData(const struct PerFrameForGPU &data);
+
+  void InitializeGPUParticle(ID3D12GraphicsCommandList *commandList,
+                             class ComputePipeline *cp);
+  void DispatchGPUParticle(ID3D12GraphicsCommandList *commandList,
+                           class ComputePipeline *cp,
+                           float deltaTime = EffectConfig::kDefaultDeltaTime);
+  bool IsGpuInitialized() const { return isGpuInitialized_; }
+
+private:
   bool isGpuInitialized_ = false;
   float gpuParticleTime_ = 0.0f;
   D3D12_RESOURCE_STATES gpuParticleState_ = D3D12_RESOURCE_STATE_COMMON;
@@ -251,30 +308,9 @@ public:
   struct EmitterSphereForGPU pendingSphereData_{};
   struct PerFrameForGPU pendingPerFrameData_{};
 
-  ID3D12Resource *GetGpuParticleResource() {
-    return gpuParticleResource_.Get();
-  }
-
   bool useGpuParticle_ = false;
-  void SetUseGpuParticle(bool enable) { useGpuParticle_ = enable; }
-  bool GetUseGpuParticle() const { return useGpuParticle_; }
-
   bool isBoxEmitter_ = false;
-  void SetIsBoxEmitter(bool isBox) { isBoxEmitter_ = isBox; }
-  bool GetIsBoxEmitter() const { return isBoxEmitter_; }
 
-  void SetGpuEmitterBoxData(const struct EmitterBoxForGPU &data);
-  void SetGpuEmitterSphereData(const struct EmitterSphereForGPU &data);
-  void SetGpuPerFrameData(const struct PerFrameForGPU &data);
-
-  void InitializeGPUParticle(ID3D12GraphicsCommandList *commandList,
-                             class ComputePipeline *cp);
-  void DispatchGPUParticle(ID3D12GraphicsCommandList *commandList,
-                           class ComputePipeline *cp,
-                           float deltaTime = 1.0f / 60.0f);
-  bool IsGpuInitialized() const { return isGpuInitialized_; }
-
-private:
   ShaderName shader_ = "ParticleShader";
   BlendMode blend_ = BlendMode::kBlendModeAdd;
 

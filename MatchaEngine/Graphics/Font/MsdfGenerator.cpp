@@ -25,6 +25,10 @@ namespace MatchaEngine {
 
 namespace {
 
+constexpr float kMidDistance = 0.5f;
+constexpr float kByteColorScale = 255.0f;
+constexpr float kRoundOffset = 0.5f;
+
 struct Point2D {
     float x = 0.0f;
     float y = 0.0f;
@@ -454,18 +458,18 @@ MsdfGlyphBitmap MsdfGenerator::GenerateGlyph(uint32_t codepoint, float glyphSize
             float sdB = sign * distB;
 
             // [0, 1] に正規化 (0.5が輪郭境界)
-            float normR = std::clamp(0.5f + sdR / pxRange, 0.0f, 1.0f);
-            float normG = std::clamp(0.5f + sdG / pxRange, 0.0f, 1.0f);
-            float normB = std::clamp(0.5f + sdB / pxRange, 0.0f, 1.0f);
+            float normR = std::clamp(kMidDistance + sdR / pxRange, 0.0f, 1.0f);
+            float normG = std::clamp(kMidDistance + sdG / pxRange, 0.0f, 1.0f);
+            float normB = std::clamp(kMidDistance + sdB / pxRange, 0.0f, 1.0f);
 
             // 通常のSDF (3チャンネルの中央値)
             float medianVal = (std::max)((std::min)(normR, normG), (std::min)((std::max)(normR, normG), normB));
 
             int pixelIdx = (y * width + x) * 4;
-            result.pixels[pixelIdx + 0] = static_cast<uint8_t>(normR * 255.0f + 0.5f);
-            result.pixels[pixelIdx + 1] = static_cast<uint8_t>(normG * 255.0f + 0.5f);
-            result.pixels[pixelIdx + 2] = static_cast<uint8_t>(normB * 255.0f + 0.5f);
-            result.pixels[pixelIdx + 3] = static_cast<uint8_t>(medianVal * 255.0f + 0.5f);
+            result.pixels[pixelIdx + 0] = static_cast<uint8_t>(normR * kByteColorScale + kRoundOffset);
+            result.pixels[pixelIdx + 1] = static_cast<uint8_t>(normG * kByteColorScale + kRoundOffset);
+            result.pixels[pixelIdx + 2] = static_cast<uint8_t>(normB * kByteColorScale + kRoundOffset);
+            result.pixels[pixelIdx + 3] = static_cast<uint8_t>(medianVal * kByteColorScale + kRoundOffset);
         }
     }
 

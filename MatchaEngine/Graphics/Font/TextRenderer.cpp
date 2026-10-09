@@ -78,7 +78,7 @@ bool TextRenderer::Initialize(ID3D12Device* device,
     pipelineState_ = pipelineState;
 
     atlas_ = std::make_unique<DynamicFontAtlas>();
-    if (!atlas_->Initialize(device_, descriptorHeap, fontPath, atlasWidth, atlasHeight, 36.0f, 4.0f)) {
+    if (!atlas_->Initialize(device_, descriptorHeap, fontPath, atlasWidth, atlasHeight, DynamicFontAtlas::kDefaultGlyphBaseSize, DynamicFontAtlas::kDefaultPxRange)) {
         LOG_ERROR("TextRenderer: Failed to initialize DynamicFontAtlas!");
         return false;
     }
@@ -137,8 +137,8 @@ void TextRenderer::SetScreenSize(float screenWidth, float screenHeight) {
 Matrix4x4 TextRenderer::Calculate2DProjectionMatrix() const {
     float sw = screenWidth_ > 0.0f ? screenWidth_ : referenceWidth_;
     float sh = screenHeight_ > 0.0f ? screenHeight_ : referenceHeight_;
-    float rw = referenceWidth_ > 0.0f ? referenceWidth_ : 1280.0f;
-    float rh = referenceHeight_ > 0.0f ? referenceHeight_ : 720.0f;
+    float rw = referenceWidth_ > 0.0f ? referenceWidth_ : kDefaultReferenceWidth;
+    float rh = referenceHeight_ > 0.0f ? referenceHeight_ : kDefaultReferenceHeight;
 
     if (scaleMode_ == TextScaleMode::None) {
         return MakeOrthographicMatrix(0.0f, sw, 0.0f, sh, 0.0f, 100.0f);

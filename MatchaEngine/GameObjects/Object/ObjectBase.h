@@ -55,9 +55,15 @@ public:
 	virtual void CreateObject();
 
 	virtual void SettingWvp(Matrix4x4 viewMatrix);
+	virtual void Render(class Draw& draw);
 
 
-	void SetTransform(Transform transform) { transform_ = transform; }  // バグ修正: transform_ = transform_ → transform_ = transform
+	void SetTransform(const Transform& transform) override {
+		GameObject::SetTransform(transform);
+	}
+	void SetTransform(Transform&& transform) {
+		GameObject::SetTransform(transform);
+	}
 	void SetLighting(bool isActive) { 
 		auto matComp = GetComponent<MaterialComponent>();
 		if(matComp) matComp->GetMaterialFactory()->SetMaterialLighting(isActive);

@@ -34,12 +34,12 @@ void Triangle::SetScreenSize(Vector2 screenSize) {
 
 void Triangle::Initialize(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
 	textureSrvHandleGPU_ = textureSrvHandleGPU;
-	vertex_[0] = { -0.1f,-0.1f,0.0f,1.0f };
-	vertex_[1] = { 0.0f,0.1f,0.0f,1.0f };
-	vertex_[2] = { 0.1f,-0.1f,0.0f,1.0f };
+	vertex_[0] = { -kDefaultVertexExtent, -kDefaultVertexExtent, 0.0f, 1.0f };
+	vertex_[1] = { 0.0f, kDefaultVertexExtent, 0.0f, 1.0f };
+	vertex_[2] = { kDefaultVertexExtent, -kDefaultVertexExtent, 0.0f, 1.0f };
 
-	localAABB_ = { {-0.1f, -0.1f, -0.01f}, {0.1f, 0.1f, 0.01f} };
-	localSphere_ = { {0.0f, 0.0f, 0.0f}, 0.15f };
+	localAABB_ = { {-kDefaultVertexExtent, -kDefaultVertexExtent, -kDefaultDepthMargin}, {kDefaultVertexExtent, kDefaultVertexExtent, kDefaultDepthMargin} };
+	localSphere_ = { {0.0f, 0.0f, 0.0f}, kDefaultBoundingRadius };
 
 	AddComponent<MaterialComponent>();
 }
@@ -57,7 +57,7 @@ void Triangle::CreateVertexData()
 	vertexBufferView_.SizeInBytes = sizeof(VertexData) * 3;
 	//1頂点当たりのサイズ
 	vertexBufferView_.StrideInBytes = sizeof(VertexData);
-	//Resouceにデータを書き込む//
+	//Resourceにデータを書き込む//
 
 	//書き込むためのアドレスを取得
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -92,9 +92,13 @@ void Triangle::CreateTriangle()
 	CreateWVP();
 }
 
+#include "Camera.h"
+
 void Triangle::SettingWvp(Matrix4x4 viewMatrix)
 {
-	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 10000.0f);
+	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, float(kClientWidth) / float(kClientHeight),
+		Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
 	Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 	*wvpData_ = { worldViewProjectionMatrix,worldMatrix };

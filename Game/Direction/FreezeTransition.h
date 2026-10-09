@@ -1,5 +1,6 @@
 #pragma once
 #include <VariableTypes.h>
+#include <Math/Calculation.h>
 #include <memory>
 #include <vector>
 #include <functional>
@@ -30,10 +31,12 @@ public:
     // freezeDuration: 凍結にかかる時間 (秒)
     // shatterDuration: 破片が飛び散る時間 (秒)
     // onMidpoint: 凍結完了・割れる瞬間に呼ばれるコールバック (シーン初期化やステート切り替え等)
-    void Start(float freezeDuration = 0.75f, float shatterDuration = 0.75f, std::function<void()> onMidpoint = nullptr);
+    void Start(float freezeDuration, float shatterDuration, std::function<void()> onMidpoint = nullptr);
+    void Start(std::function<void()> onMidpoint = nullptr) { Start(kDefaultFreezeDuration, kDefaultShatterDuration, onMidpoint); }
 
     // 毎フレームの更新処理
-    void Update(float deltaTime = 1.0f / 60.0f);
+    void Update(float deltaTime);
+    void Update() { Update(kDefaultDeltaTime); }
 
     // 描画処理 (DrawUIから呼び出し)
     void Draw(class Draw& draw);
@@ -49,6 +52,22 @@ public:
     void Reset();
 
 private:
+    static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
+    static constexpr float kDefaultFreezeDuration = 0.75f;
+    static constexpr float kDefaultCrackDuration = 0.12f;
+    static constexpr float kDefaultShatterDuration = 0.75f;
+    static constexpr float kShardGravity = 1150.0f;
+    static constexpr float kShardAirResistance = 0.985f;
+    static constexpr float kSpecularExponent = 5.0f;
+    static constexpr float kSpecularFlashStrength = 0.55f;
+    static constexpr Vector2 kDefaultScreenCenter = { 640.0f, 360.0f };
+    static constexpr float kFreezeSparkleRadius = 450.0f;
+
+    static constexpr Vector2 kCenterPivot = { 0.5f, 0.5f };
+    static constexpr Vector4 kClearWhiteColor = { 1.0f, 1.0f, 1.0f, 0.0f };
+    static constexpr Vector4 kFrostColor2 = { 0.9f, 0.95f, 1.0f, 0.0f };
+    static constexpr Vector4 kSurfaceColor = { 0.85f, 0.95f, 1.0f, 0.0f };
+
     struct Shard {
         std::unique_ptr<Sprite> sprite;
         Vector2 initialPos;
@@ -75,9 +94,9 @@ private:
 
     Phase phase_ = Phase::None;
     float timer_ = 0.0f;
-    float freezeDuration_ = 0.75f;
-    float crackDuration_ = 0.12f;
-    float shatterDuration_ = 0.75f;
+    float freezeDuration_ = kDefaultFreezeDuration;
+    float crackDuration_ = kDefaultCrackDuration;
+    float shatterDuration_ = kDefaultShatterDuration;
     float shatterFlashTimer_ = 0.0f; // 破砕瞬間の閃光フラッシュタイマー
 
     std::function<void()> onMidpointCallback_ = nullptr;

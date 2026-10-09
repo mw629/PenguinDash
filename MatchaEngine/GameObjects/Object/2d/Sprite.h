@@ -35,10 +35,12 @@ enum class SpriteAnchor {
 };
 
 struct SpriteData {
+	static constexpr Vector2 kDefaultPivot = { 0.5f, 0.5f };
+
 	Transform transform;
 	Vector2 size;
 	Vector2 textureArea[2];
-	Vector2 pivot = { 0.5f, 0.5f };                    // 原点位置 (0,0: 左上, 0.5,0.5: 中央, 1,1: 右下)
+	Vector2 pivot = kDefaultPivot;                    // 原点位置 (0,0: 左上, 0.5,0.5: 中央, 1,1: 右下)
 	SpriteScaleMode scaleMode = SpriteScaleMode::Fit;   // スケーリングモード
 	SpriteAnchor anchor = SpriteAnchor::None;          // アンカー位置
 };
@@ -46,12 +48,25 @@ struct SpriteData {
 class Sprite : public GameObject
 {
 public:
+	static constexpr float kDefaultReferenceWidth = 1280.0f;
+	static constexpr float kDefaultReferenceHeight = 720.0f;
+	static constexpr Vector2 kDefaultReferenceResolution = { kDefaultReferenceWidth, kDefaultReferenceHeight };
+
 	struct ScreenTransformResult {
 		Vector2 screenPosition;
 		Vector2 scale;
 	};
 
 private:
+	// 内部定数
+	static constexpr uint32_t kVertexCount = 4;
+	static constexpr uint32_t kVertexBufferSize = 6;
+	static constexpr uint32_t kIndexCount = 6;
+	static constexpr Vector3 kDefaultNormal = { 0.0f, 0.0f, -1.0f };
+	static constexpr Vector2 kDefaultSize = { 200.0f, 200.0f };
+	static constexpr float kDefaultNearClip = 0.0f;
+	static constexpr float kDefaultFarClip = 100.0f;
+
 	// 静的画面情報
 	static float kClientWidth;
 	static float kClientHeight;
@@ -71,9 +86,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
 	TransformationMatrix* wvpData_ = nullptr;
 
-	Vector2 size_ = { 200.0f, 200.0f };
+	Vector2 size_ = kDefaultSize;
 	Vector2 textureArea_[2] = { {0.0f, 0.0f}, {1.0f, 1.0f} };
-	Vector2 pivot_ = { 0.5f, 0.5f };
+	Vector2 pivot_ = SpriteData::kDefaultPivot;
 	SpriteScaleMode scaleMode_ = SpriteScaleMode::Fit;
 	SpriteAnchor anchor_ = SpriteAnchor::None;
 

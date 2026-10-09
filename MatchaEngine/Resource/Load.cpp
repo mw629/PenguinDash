@@ -10,20 +10,25 @@
 #include <cfloat>
 #include <algorithm>
 
-
-
+namespace {
+constexpr float kFlatDimensionThreshold = 0.05f;
+constexpr float kFlatPadding = 0.1f;
+constexpr float kHalfCenterMultiplier = 0.5f;
+constexpr float kFallbackBoundingExtent = 0.5f;
+constexpr float kFallbackBoundingSphereRadius = 0.866025f; // sqrt(3) / 2
+}
 
 /// オブジェクトの読み込み///
 
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
-	MaterialData materiaData;//構築するMaterialData
+	MaterialData materialData;//構築するMaterialData
 	std::string line;//ファイルから読んだ一行を格納する
 	std::string fullPath = directoryPath + "/" + filename;
 	std::ifstream file(fullPath);//ファイルを開く
 	if (!file.is_open()) {
 		LOG_ERROR("Failed to open material file: " + fullPath);
 		assert(file.is_open());
-		return materiaData;
+		return materialData;
 	}
 
 	while (std::getline(file, line))
@@ -37,10 +42,10 @@ MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const st
 			std::string textureFilename;
 			s >> textureFilename;
 			//連結してファイルパス
-			materiaData.textureFilePath = directoryPath + "/" + textureFilename;
+			materialData.textureFilePath = directoryPath + "/" + textureFilename;
 		}
 	}
-	return materiaData;
+	return materialData;
 }
 
 
@@ -122,7 +127,7 @@ MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const st
 //
 //	std::unique_ptr<Texture> texture = std::make_unique<Texture>();
 //
-//	modelData.textureIndex = texture->CreateTexture(modelData.material.textureDilePath);
+//	modelData.textureIndex = texture->CreateTexture(modelData.material.textureFilePath);
 //
 //	objManager.get()->SetModelList(modelData, directoryPath, filename);
 //
@@ -140,12 +145,12 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 
 	ModelData modelData;
 
-	Assimp::Importer impoter;
+	Assimp::Importer importer;
 	std::string filePath = directoryPath + "/" + filename;
-	const aiScene* scene = impoter.ReadFile(filePath.c_str(),
+	const aiScene* scene = importer.ReadFile(filePath.c_str(),
 		aiProcess_FlipWindingOrder | aiProcess_FlipUVs | aiProcess_Triangulate);
 	if (!scene || !scene->HasMeshes()) {
-		std::string assimpErr = impoter.GetErrorString();
+		std::string assimpErr = importer.GetErrorString();
 		std::string errorMessage = std::format("Failed to load model file: {}\nAssimp Error: {}", filePath, assimpErr.empty() ? "(none)" : assimpErr);
 		LOG_ERROR(errorMessage);
 		MessageBoxA(nullptr, errorMessage.c_str(), "Model Load Error", MB_OK | MB_ICONERROR);
@@ -249,18 +254,18 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		float sizeX = maxPos.x - minPos.x;
 		float sizeY = maxPos.y - minPos.y;
 		float sizeZ = maxPos.z - minPos.z;
-		bool isFlat = (sizeX < 0.05f || sizeY < 0.05f || sizeZ < 0.05f);
+		bool isFlat = (sizeX < kFlatDimensionThreshold || sizeY < kFlatDimensionThreshold || sizeZ < kFlatDimensionThreshold);
 
-		if (sizeX < 0.05f) { minPos.x -= 0.1f; maxPos.x += 0.1f; }
-		if (sizeY < 0.05f) { minPos.y -= 0.1f; maxPos.y += 0.1f; }
-		if (sizeZ < 0.05f) { minPos.z -= 0.1f; maxPos.z += 0.1f; }
+		if (sizeX < kFlatDimensionThreshold) { minPos.x -= kFlatPadding; maxPos.x += kFlatPadding; }
+		if (sizeY < kFlatDimensionThreshold) { minPos.y -= kFlatPadding; maxPos.y += kFlatPadding; }
+		if (sizeZ < kFlatDimensionThreshold) { minPos.z -= kFlatPadding; maxPos.z += kFlatPadding; }
 
 		modelData.localAABB.min = minPos;
 		modelData.localAABB.max = maxPos;
 		modelData.localSphere.center = {
-			(minPos.x + maxPos.x) * 0.5f,
-			(minPos.y + maxPos.y) * 0.5f,
-			(minPos.z + maxPos.z) * 0.5f
+			(minPos.x + maxPos.x) * kHalfCenterMultiplier,
+			(minPos.y + maxPos.y) * kHalfCenterMultiplier,
+			(minPos.z + maxPos.z) * kHalfCenterMultiplier
 		};
 		Vector3 d = { maxPos.x - modelData.localSphere.center.x, maxPos.y - modelData.localSphere.center.y, maxPos.z - modelData.localSphere.center.z };
 		modelData.localSphere.radius = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -274,8 +279,8 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 			modelData.cullMode = kCullModeBack;
 		}
 	} else {
-		modelData.localAABB = { {-0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, 0.5f} };
-		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, 0.866f };
+		modelData.localAABB = { {-kFallbackBoundingExtent, -kFallbackBoundingExtent, -kFallbackBoundingExtent}, {kFallbackBoundingExtent, kFallbackBoundingExtent, kFallbackBoundingExtent} };
+		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, kFallbackBoundingSphereRadius };
 		modelData.cullMode = kCullModeBack;
 	}
 
@@ -303,12 +308,12 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 
 	ModelData modelData;
 
-	Assimp::Importer impoter;
+	Assimp::Importer importer;
 	std::string filePath = directoryPath + "/" + filename;
-	const aiScene* scene = impoter.ReadFile(filePath.c_str(),
+	const aiScene* scene = importer.ReadFile(filePath.c_str(),
 		aiProcess_FlipWindingOrder | aiProcess_FlipUVs | aiProcess_Triangulate);
 	if (!scene || !scene->HasMeshes()) {
-		std::string assimpErr = impoter.GetErrorString();
+		std::string assimpErr = importer.GetErrorString();
 		std::string errorMessage = std::format("Failed to load model file: {}\nAssimp Error: {}", filePath, assimpErr.empty() ? "(none)" : assimpErr);
 		LOG_ERROR(errorMessage);
 		MessageBoxA(nullptr, errorMessage.c_str(), "Model Load Error", MB_OK | MB_ICONERROR);
@@ -409,18 +414,18 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 		float sizeX = maxPos.x - minPos.x;
 		float sizeY = maxPos.y - minPos.y;
 		float sizeZ = maxPos.z - minPos.z;
-		bool isFlat = (sizeX < 0.05f || sizeY < 0.05f || sizeZ < 0.05f);
+		bool isFlat = (sizeX < kFlatDimensionThreshold || sizeY < kFlatDimensionThreshold || sizeZ < kFlatDimensionThreshold);
 
-		if (sizeX < 0.05f) { minPos.x -= 0.1f; maxPos.x += 0.1f; }
-		if (sizeY < 0.05f) { minPos.y -= 0.1f; maxPos.y += 0.1f; }
-		if (sizeZ < 0.05f) { minPos.z -= 0.1f; maxPos.z += 0.1f; }
+		if (sizeX < kFlatDimensionThreshold) { minPos.x -= kFlatPadding; maxPos.x += kFlatPadding; }
+		if (sizeY < kFlatDimensionThreshold) { minPos.y -= kFlatPadding; maxPos.y += kFlatPadding; }
+		if (sizeZ < kFlatDimensionThreshold) { minPos.z -= kFlatPadding; maxPos.z += kFlatPadding; }
 
 		modelData.localAABB.min = minPos;
 		modelData.localAABB.max = maxPos;
 		modelData.localSphere.center = {
-			(minPos.x + maxPos.x) * 0.5f,
-			(minPos.y + maxPos.y) * 0.5f,
-			(minPos.z + maxPos.z) * 0.5f
+			(minPos.x + maxPos.x) * kHalfCenterMultiplier,
+			(minPos.y + maxPos.y) * kHalfCenterMultiplier,
+			(minPos.z + maxPos.z) * kHalfCenterMultiplier
 		};
 		Vector3 d = { maxPos.x - modelData.localSphere.center.x, maxPos.y - modelData.localSphere.center.y, maxPos.z - modelData.localSphere.center.z };
 		modelData.localSphere.radius = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -434,8 +439,8 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 			modelData.cullMode = kCullModeBack;
 		}
 	} else {
-		modelData.localAABB = { {-0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, 0.5f} };
-		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, 0.866f };
+		modelData.localAABB = { {-kFallbackBoundingExtent, -kFallbackBoundingExtent, -kFallbackBoundingExtent}, {kFallbackBoundingExtent, kFallbackBoundingExtent, kFallbackBoundingExtent} };
+		modelData.localSphere = { {0.0f, 0.0f, 0.0f}, kFallbackBoundingSphereRadius };
 		modelData.cullMode = kCullModeBack;
 	}
 
@@ -638,7 +643,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(ID3D12Resource* texture
 	UpdateSubresources(commandList, texture, intermediateResource.Get(), 0, 0, UINT(subresources.size()), subresources.data());
 
 
-	//Tetureへの転送後は利用できるよう。D3D12_RESOURCE_STATE_COPY_DESTからD3D12_RESOURCE_STATE_GENERIC_READへResourceStateを変更する
+	//Textureへの転送後は利用できるよう、D3D12_RESOURCE_STATE_COPY_DESTからD3D12_RESOURCE_STATE_GENERIC_READへResourceStateを変更する
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;

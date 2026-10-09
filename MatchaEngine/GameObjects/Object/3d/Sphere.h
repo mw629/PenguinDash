@@ -5,7 +5,8 @@
 class Sphere : public ObjectBase
 {
 private:
-	uint32_t kSubdivision_ = 16;
+	static constexpr uint32_t kDefaultSubdivision = 16;
+	uint32_t kSubdivision_ = kDefaultSubdivision;
 
 
 

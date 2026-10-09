@@ -8,6 +8,7 @@
 class TransformAnimation :public ObjectBase
 {
 private:
+	static constexpr float kDefaultAnimationDeltaTime = 1.0f / 60.0f;
 
 	ModelData modelData_{};
 

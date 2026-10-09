@@ -8,7 +8,18 @@ class Grid {
 
 private:
 
-	int kSubdivision_ = 60;
+	static constexpr int kDefaultSubdivision = 60;
+	static constexpr int kMajorGridInterval = 10;
+
+	static constexpr Vector4 kGridColorZNormal = { 0.0f, 0.8f, 0.0f, 0.2f };
+	static constexpr Vector4 kGridColorZMajor  = { 0.0f, 0.8f, 0.0f, 0.5f };
+	static constexpr Vector4 kGridColorZAxis   = { 0.0f, 0.8f, 0.0f, 1.0f };
+
+	static constexpr Vector4 kGridColorXNormal = { 0.8f, 0.0f, 0.0f, 0.2f };
+	static constexpr Vector4 kGridColorXMajor  = { 0.8f, 0.0f, 0.0f, 0.5f };
+	static constexpr Vector4 kGridColorXAxis   = { 0.8f, 0.0f, 0.0f, 1.0f };
+
+	int kSubdivision_ = kDefaultSubdivision;
 
 	int index = 0;
 

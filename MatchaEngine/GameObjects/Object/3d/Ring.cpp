@@ -1,4 +1,5 @@
 #include "Ring.h"
+#include "Math/Calculation.h"
 
 Ring::~Ring()
 {
@@ -6,8 +7,7 @@ Ring::~Ring()
 
 void Ring::Initialize(int textureSrvHandle)
 {
-
-	radianPerDivide_ = 2.0f * 3.14f / float(kRingDivide_);
+	radianPerDivide_ = k2Pi / float(kRingDivide_);
 
 	textureSrvHandleGPU_ = texture.get()->TextureData(textureSrvHandle);
 

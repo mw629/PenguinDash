@@ -12,7 +12,7 @@ MaterialComponent::MaterialComponent(bool lighting, float environmentCoefficient
 void MaterialComponent::Initialize()
 {
     if (materialFactory_) {
-        materialFactory_->CreateMartial(initialLighting_, initialEnvCoeff_);
+        materialFactory_->CreateMaterial(initialLighting_, initialEnvCoeff_);
     }
 }
 

@@ -13,16 +13,30 @@ private:
 	static float s_screenHeight_;
 	static std::vector<Camera*> s_instances_;
 
-	Transform transform_{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-	Transform gameTransform_{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
+	static constexpr Transform kDefaultTransform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
+
+	Transform transform_ = kDefaultTransform;
+	Transform gameTransform_ = kDefaultTransform;
 
 	Matrix4x4 viewMatrix_{};
 	Matrix4x4 projectionMatrix_{};
 
-	float fovY_ = 0.45f;
-	float aspectRatio_ = 1280.0f / 720.0f;
-	float nearClip_ = 0.1f;
-	float farClip_ = 10000.0f;
+public:
+	static constexpr float kDefaultScreenWidth = 1280.0f;
+	static constexpr float kDefaultScreenHeight = 720.0f;
+	static constexpr float kDefaultFovY = 0.45f;
+	static constexpr float kDefaultNearClip = 0.1f;
+	static constexpr float kDefaultFarClip = 10000.0f;
+	static constexpr float kDefaultAspectRatio = kDefaultScreenWidth / kDefaultScreenHeight;
+
+private:
+	static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
+	static constexpr float kDefaultFocusDistance = 15.0f;
+
+	float fovY_ = kDefaultFovY;
+	float aspectRatio_ = kDefaultAspectRatio;
+	float nearClip_ = kDefaultNearClip;
+	float farClip_ = kDefaultFarClip;
 	bool autoAspectRatio_ = true;
 
 	DebugCamera debugCamera_;
@@ -59,10 +73,13 @@ public:
 
 	void SetTarget(const Vector3& target) { debugCamera_.SetTarget(target); }
 	Vector3 GetTarget() const { return debugCamera_.GetTarget(); }
-	void Focus(const Vector3& target, float distance = 15.0f) {
+	void Focus(const Vector3& target, float distance) {
 		debugCamera_.Focus(target, distance);
 		transform_.translate = debugCamera_.GetEye();
 		viewMatrix_ = debugCamera_.GetViewMatrix();
+	}
+	void Focus(const Vector3& target) {
+		Focus(target, kDefaultFocusDistance);
 	}
 
 	void SetAspectRatio(float aspectRatio) { aspectRatio_ = aspectRatio; autoAspectRatio_ = false; }

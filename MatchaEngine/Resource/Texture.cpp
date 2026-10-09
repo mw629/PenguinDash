@@ -42,7 +42,7 @@ int Texture::CreateTexture(const std::string& filePath)
 
 	//実際にShaderResourceView
 
-	//meteDataを基にSRVの設定
+	//metaDataを基にSRVの設定
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Format = metaData.format;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

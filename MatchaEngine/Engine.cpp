@@ -206,22 +206,31 @@ void Engine::Setting() {
   draw->SetGpuProfiler(gpuProfiler.get());
 
   // 1段目: アウトライン (OutLineShader)
+  constexpr float kDefaultOutlineSensitivity = 1.0f;
+  constexpr float kDefaultOutlineThickness = 1.0f;
   auto outlineEffect = std::make_unique<PostEffect>();
   outlineEffect->Initialize();
   outlineEffect->SetActivePostEffect("OutLineShader");
-  outlineEffect->SetValue1(1.0f);            // 感度・強さ
-  outlineEffect->SetValue2(1.0f);            // 線の太さ
+  outlineEffect->SetValue1(kDefaultOutlineSensitivity); // 感度・強さ
+  outlineEffect->SetValue2(kDefaultOutlineThickness);   // 線の太さ
   outlineEffect->SetColor(0.0f, 0.0f, 0.0f); // 輪郭線の色（黒）
   postEffects_.push_back(std::move(outlineEffect));
 
   // 2段目: フォグ (FogShader)
+  constexpr float kDefaultFogR = 0.82f;
+  constexpr float kDefaultFogG = 0.88f;
+  constexpr float kDefaultFogB = 0.95f;
+  constexpr float kDefaultFogDensity = 7.5f;
+  constexpr float kDefaultFogStartDistance = 12.0f;
+  constexpr float kDefaultFogHeightRatio = 0.4f;
+
   auto fogEffect = std::make_unique<PostEffect>();
   fogEffect->Initialize();
   fogEffect->SetActivePostEffect("FogShader");
-  fogEffect->SetColor(0.82f, 0.88f, 0.95f); // 冬の雪景色にマッチする淡い水色白
-  fogEffect->SetValue1(7.5f);               // 濃度
-  fogEffect->SetValue2(12.0f); // 開始距離 (プレイヤーの手前をクリアに)
-  fogEffect->SetRatio(0.4f);   // 高さフォグの影響度
+  fogEffect->SetColor(kDefaultFogR, kDefaultFogG, kDefaultFogB); // 冬の雪景色にマッチする淡い水色白
+  fogEffect->SetValue1(kDefaultFogDensity);                     // 濃度
+  fogEffect->SetValue2(kDefaultFogStartDistance);               // 開始距離 (プレイヤーの手前をクリアに)
+  fogEffect->SetRatio(kDefaultFogHeightRatio);                  // 高さフォグの影響度
   postEffects_.push_back(std::move(fogEffect));
 }
 
@@ -417,16 +426,17 @@ void Engine::NewFrame() {
   command->GetCommandList()->RSSetScissorRects(
       1, viewportScissor->GetScissorRect()); // Scissorを設定
 
-  input.get()->Updata();
+  input.get()->Update();
 
   gamePadInput.get()->Update();
 
   Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(
-      0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+      Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_),
+      Camera::kDefaultNearClip, Camera::kDefaultFarClip);
   Matrix4x4 projInverse = Inverse(projectionMatri);
   for (auto &effect : postEffects_) {
     effect->SetProjectionInverse(projInverse);
-    effect->Update(1.0f / 60.0f);
+    effect->Update(kDefaultDeltaTime);
   }
 }
 
@@ -527,8 +537,9 @@ void Engine::End() {
 }
 
 void Engine::UpdateFixFPS() {
-  const std::chrono::microseconds kMinTime(uint64_t(1000000.0f / 60.0f));
-  const std::chrono::microseconds kMinCheckTime(uint64_t(1000000.0f / 65.0f));
+  constexpr float kMicrosecondsPerSecond = 1000000.0f;
+  const std::chrono::microseconds kMinTime(uint64_t(kMicrosecondsPerSecond / kTargetFPS));
+  const std::chrono::microseconds kMinCheckTime(uint64_t(kMicrosecondsPerSecond / kCheckFPS));
 
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 

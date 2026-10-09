@@ -103,7 +103,7 @@ void EffectDefinition::CreateVertexData() {
     float topRadius = shapeData_.cylinderTopRadius;
     float bottomRadius = shapeData_.cylinderBottomRadius;
     float height = shapeData_.cylinderHeight;
-    float radianPerDivide = 2.0f * 3.141592654f / float(divide);
+    float radianPerDivide = k2Pi / float(divide);
     for (int index = 0; index < divide; ++index) {
       float sin = std::sin(radianPerDivide * index);
       float cos = std::cos(radianPerDivide * index);
@@ -141,7 +141,7 @@ void EffectDefinition::CreateVertexData() {
     vertexSize_ = kRingDivide * 6;
     float outerRadius = shapeData_.ringOuterRadius;
     float innerRadius = shapeData_.ringInnerRadius;
-    float radianPerDivide = 2.0f * 3.141592654f / float(kRingDivide);
+    float radianPerDivide = k2Pi / float(kRingDivide);
     for (int index = 0; index < kRingDivide; ++index) {
       float sin = std::sin(radianPerDivide * index);
       float cos = std::cos(radianPerDivide * index);
@@ -290,13 +290,15 @@ void EffectDefinition::DeleteParticle(int ParticleNum) {
   }
 }
 
+#include "Camera.h"
+
 void EffectDefinition::SettingWvp(Matrix4x4 viewMatrix) {
   Matrix4x4 projectionMatrix =
       hasCustomProjectionMatrix_
           ? customProjectionMatrix_
-          : MakePerspectiveFovMatrix(0.45f,
+          : MakePerspectiveFovMatrix(Camera::kDefaultFovY,
                                      float(kClientWidth) / float(kClientHeight),
-                                     0.1f, 10000.0f);
+                                     Camera::kDefaultNearClip, Camera::kDefaultFarClip);
   Matrix4x4 viewProjection = MultiplyMatrix4x4(viewMatrix, projectionMatrix);
 
   Matrix4x4 billboard = IdentityMatrix();
@@ -336,7 +338,7 @@ void EffectDefinition::SetData(
   effectDefinitionData_ = std::move(effectDefinitionData);
 }
 
-void EffectDefinition::Updata(
+void EffectDefinition::Update(
     Matrix4x4 viewMatrix,
     std::list<EffectDefinitionData> effectDefinitionData) {
   SetData(effectDefinitionData);
@@ -616,7 +618,7 @@ void EffectDefinition::DispatchGPUParticle(
                                                    gpuFreeCounterUavHandleGPU_);
       }
 
-      UINT emitThreadGroups = (count + 1023) / 1024;
+      UINT emitThreadGroups = (count + EffectConfig::kGpuThreadGroupSize - 1) / EffectConfig::kGpuThreadGroupSize;
       if (emitThreadGroups < 1)
         emitThreadGroups = 1;
 
@@ -664,7 +666,7 @@ void EffectDefinition::DispatchGPUParticle(
 
     if (gpuProfiler_)
       gpuProfiler_->BeginProfile(commandList, updateShader);
-    commandList->Dispatch(10, 1, 1);
+    commandList->Dispatch(EffectConfig::kGpuUpdateThreadGroups, 1, 1);
     if (gpuProfiler_)
       gpuProfiler_->EndProfile(commandList, updateShader);
 

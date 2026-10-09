@@ -4,11 +4,16 @@
 class Cylinder : public ObjectBase
 {
 private:
-	uint32_t divide_;
-	float topRadius_;
-	float bottomRadius_;
-	float height_;
-	float radianPerDivide_;
+	static constexpr uint32_t kDefaultDivide = 32;
+	static constexpr float kDefaultTopRadius = 1.0f;
+	static constexpr float kDefaultBottomRadius = 1.0f;
+	static constexpr float kDefaultHeight = 3.0f;
+
+	uint32_t divide_ = kDefaultDivide;
+	float topRadius_ = kDefaultTopRadius;
+	float bottomRadius_ = kDefaultBottomRadius;
+	float height_ = kDefaultHeight;
+	float radianPerDivide_ = 0.0f;
 
 public:
 

@@ -29,6 +29,11 @@ public:
     DynamicFontAtlas();
     ~DynamicFontAtlas();
 
+    static constexpr int kDefaultAtlasWidth = 2048;
+    static constexpr int kDefaultAtlasHeight = 2048;
+    static constexpr float kDefaultGlyphBaseSize = 36.0f;
+    static constexpr float kDefaultPxRange = 4.0f;
+
     // アトラスの初期化
     // device: D3D12デバイス
     // descriptorHeap: SRV用デスクリプタヒープ
@@ -39,10 +44,10 @@ public:
     bool Initialize(ID3D12Device* device,
                     DescriptorHeap* descriptorHeap,
                     const std::string& fontPath,
-                    int atlasWidth = 2048,
-                    int atlasHeight = 2048,
-                    float glyphBaseSize = 36.0f,
-                    float pxRange = 4.0f);
+                    int atlasWidth = kDefaultAtlasWidth,
+                    int atlasHeight = kDefaultAtlasHeight,
+                    float glyphBaseSize = kDefaultGlyphBaseSize,
+                    float pxRange = kDefaultPxRange);
 
     // 指定したUnicodeコードポイントのグリフ情報を取得 (未登録なら自動で動的生成)
     const FontGlyph* GetOrAddGlyph(uint32_t codepoint);
@@ -85,10 +90,10 @@ private:
     DescriptorHeap* descriptorHeap_ = nullptr;
 
     MsdfGenerator msdfGen_;
-    int atlasWidth_ = 2048;
-    int atlasHeight_ = 2048;
-    float glyphBaseSize_ = 36.0f;
-    float pxRange_ = 4.0f;
+    int atlasWidth_ = kDefaultAtlasWidth;
+    int atlasHeight_ = kDefaultAtlasHeight;
+    float glyphBaseSize_ = kDefaultGlyphBaseSize;
+    float pxRange_ = kDefaultPxRange;
 
     // GPUリソース
     Microsoft::WRL::ComPtr<ID3D12Resource> textureResource_;

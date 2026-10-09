@@ -1,6 +1,7 @@
 #include "Obstacle.h"
 #include "Graphics/Render/Draw.h"
 #include "Resource/AssetManager.h"
+#include "Math/Calculation.h"
 #include <cmath>
 
 Obstacle::Obstacle() {
@@ -23,30 +24,30 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
 
   lowModel_->Initialize(lowData);
   lowModel_->SetShader("ObjectShader");
-  lowModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  lowModel_->GetMaterial()->SetColor(kNormalColor);
 
   highModel_->Initialize(highData);
   highModel_->SetShader("ObjectShader");
-  highModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  highModel_->GetMaterial()->SetColor(kNormalColor);
 
   wallModel_->Initialize(wallData);
   wallModel_->SetShader("ObjectShader");
-  wallModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  wallModel_->GetMaterial()->SetColor(kNormalColor);
 
   bonusModel_->Initialize(bonusData);
   bonusModel_->SetShader("ObjectShader");
-  bonusModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  bonusModel_->GetMaterial()->SetColor(kNormalColor);
 
   itemModel_->Initialize(wallData);
   itemModel_->SetShader("ObjectShader");
 
   iceBomModel_->Initialize(iceBomData);
   iceBomModel_->SetShader("ObjectShader");
-  iceBomModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  iceBomModel_->GetMaterial()->SetColor(kNormalColor);
 
   reflectingAttackModel_->Initialize(reflectingAttackData);
   reflectingAttackModel_->SetShader("ObjectShader");
-  reflectingAttackModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  reflectingAttackModel_->GetMaterial()->SetColor(kNormalColor);
 
   // ビルボードアイテム用平面モデルの初期化
   ModelData planeData =
@@ -62,7 +63,7 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
   barrierItemModel_->SetCullMode(kCullModeNone);
   barrierItemModel_->SetLighting(false);
   barrierItemModel_->SetBillboard(true);
-  barrierItemModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  barrierItemModel_->GetMaterial()->SetColor(kNormalColor);
 
   // 2. ボス戦アイテム (BossItems)
   ModelData bossData = planeData;
@@ -74,7 +75,7 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
   bossItemModel_->SetCullMode(kCullModeNone);
   bossItemModel_->SetLighting(false);
   bossItemModel_->SetBillboard(true);
-  bossItemModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  bossItemModel_->GetMaterial()->SetColor(kNormalColor);
 
   // 3. レーン消去アイテム (BomItem)
   ModelData clearData = planeData;
@@ -86,7 +87,7 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
   clearItemModel_->SetCullMode(kCullModeNone);
   clearItemModel_->SetLighting(false);
   clearItemModel_->SetBillboard(true);
-  clearItemModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  clearItemModel_->GetMaterial()->SetColor(kNormalColor);
 
   // 4. 1レーン化アイテム (Onelane)
   ModelData oneLaneData = planeData;
@@ -98,7 +99,7 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
   oneLaneItemModel_->SetCullMode(kCullModeNone);
   oneLaneItemModel_->SetLighting(false);
   oneLaneItemModel_->SetBillboard(true);
-  oneLaneItemModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  oneLaneItemModel_->GetMaterial()->SetColor(kNormalColor);
 
   SetType(type);
 }
@@ -119,155 +120,105 @@ void Obstacle::SetType(Type type) {
 
   // タイプに応じてモデル、当たり判定サイズ、スケール、回転を設定
   // 前のサイズ: Low(幅1.5, 高さ1.0, 奥行1.0), High/Wall(幅1.5, 高さ3.0, 奥行1.0) に厳密に一致させる
+  const ObstacleProfile *profile = nullptr;
+
   switch (type_) {
   case Type::Low:
-    // 倒木（ジャンプで避ける低い障害物）
     currentModel_ = lowModel_.get();
-    collisionWidth_ = 1.5f;
-    collisionHeight_ = 1.0f;
-    collisionDepth_ = 1.0f;
-    // FallenTree: ローカルX=0.712, Y=0.639, Z=0.999 をY90度回転して幅1.5, 高1.0, 奥1.0にする
-    transform_.scale = {1.404f, 1.565f, 1.502f};
-    transform_.rotate = {0.0f, 1.570796f, 0.0f}; // 横向きに倒れる
+    profile = &kProfileLow;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
     break;
 
   case Type::High:
-    // 氷のアーチ（転がり・スライディングで下を潜り抜ける高い障害物）
     currentModel_ = highModel_.get();
-    collisionWidth_ = 1.5f;
-    collisionHeight_ = 3.0f;
-    collisionDepth_ = 1.0f;
-    // IceArchway: ローカルX=0.331, Y=0.939, Z=0.958 をY90度回転して幅1.5, 高3.0, 奥1.0にする
-    transform_.scale = {3.021f, 3.195f, 1.566f};
-    transform_.rotate = {0.0f, 1.570796f, 0.0f}; // 開口部をZ軸方向に向ける
+    profile = &kProfileHigh;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
     break;
 
   case Type::Wall:
-    // 氷の壁（レーン移動で避ける壁）
     currentModel_ = wallModel_.get();
-    collisionWidth_ = 1.5f;
-    collisionHeight_ = 3.0f;
-    collisionDepth_ = 1.0f;
-    // IceWall: ローカルX=1.002, Y=0.772, Z=0.319 を幅1.5, 高3.0, 奥1.0にする
-    transform_.scale = {1.497f, 3.886f, 3.135f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileWall;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
     break;
 
   case Type::Bonus:
-    // 当たると吹き飛ぶボーナスエネミー
     currentModel_ = bonusModel_.get();
-    collisionWidth_ = 1.0f;
-    collisionHeight_ = 1.0f;
-    collisionDepth_ = 1.0f;
-    transform_.scale = {1.0f, 1.0f, 1.0f};
-    transform_.rotate = {0.0f, 3.141592f, 0.0f};
+    profile = &kProfileBonus;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
     break;
 
   case Type::GuideFloor:
-    // 中央へ誘導するトリガー床
     currentModel_ = itemModel_.get();
-    collisionWidth_ = 2.0f;
-    collisionHeight_ = 0.5f;
-    collisionDepth_ = 2.0f;
-    transform_.scale = {2.0f, 0.1f, 10.0f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileGuideFloor;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({0.0f, 1.0f, 1.0f, 0.5f});
+      currentModel_->GetMaterial()->SetColor(kGuideFloorColor);
       currentModel_->SetShader("ObjectShader");
     }
     break;
 
   case Type::CameraItem:
-    // 一レーンにするアイテム（Onelane ビルボード）
     currentModel_ = oneLaneItemModel_.get();
-    collisionWidth_ = 1.0f;
-    collisionHeight_ = 1.0f;
-    collisionDepth_ = 1.0f;
-    transform_.scale = {0.8f, 0.8f, 1.0f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileItemBillboardSmall;
     break;
 
   case Type::BarrierItem:
-    // バリアを張るアイテム（shieldItem ビルボード）
     currentModel_ = barrierItemModel_.get();
-    collisionWidth_ = 1.0f;
-    collisionHeight_ = 1.0f;
-    collisionDepth_ = 1.0f;
-    transform_.scale = {0.8f, 0.8f, 1.0f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileItemBillboardSmall;
     break;
 
   case Type::ClearItem:
-    // レーン消去アイテム（BomItem ビルボード）
     currentModel_ = clearItemModel_.get();
-    collisionWidth_ = 1.0f;
-    collisionHeight_ = 1.0f;
-    collisionDepth_ = 1.0f;
-    transform_.scale = {0.8f, 0.8f, 1.0f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileItemBillboardSmall;
     break;
 
   case Type::BossItem:
-    // ボス戦アイテム（BossItems ビルボード）
     currentModel_ = bossItemModel_.get();
-    collisionWidth_ = 1.5f;
-    collisionHeight_ = 1.5f;
-    collisionDepth_ = 1.5f;
-    transform_.scale = {1.1f, 1.1f, 1.0f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileBossItem;
     break;
 
   case Type::BossAttack:
-    // ボスの氷爆弾攻撃（IceBom / 回避専用）
     currentModel_ = iceBomModel_.get();
-    collisionWidth_ = 1.6f;
-    collisionHeight_ = 2.0f;
-    collisionDepth_ = 1.6f;
-    // IceBom: 約100x94x99 を幅約1.6, 高約1.5, 奥約1.6にする
-    transform_.scale = {0.016f, 0.016f, 0.016f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileBossAttack;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
     break;
 
   case Type::BossAttackReflectable:
-    // ボスの跳ね返し可能攻撃（ReflectingAttack）
     currentModel_ = reflectingAttackModel_.get();
-    collisionWidth_ = 1.6f;
-    collisionHeight_ = 2.0f;
-    collisionDepth_ = 2.5f;
-    // ReflectingAttack: 約58x71x99 を幅約1.44, 高約1.78, 奥約2.49にする (+Zが前方)
-    transform_.scale = {0.025f, 0.025f, 0.025f};
-    transform_.rotate = {0.0f, 0.0f, 0.0f};
+    profile = &kProfileBossAttackReflectable;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
     break;
+  }
+
+  if (profile) {
+    collisionWidth_ = profile->collisionSize.x;
+    collisionHeight_ = profile->collisionSize.y;
+    collisionDepth_ = profile->collisionSize.z;
+    transform_.scale = profile->scale;
+    transform_.rotate = profile->rotate;
   }
 
   if (currentModel_) {
@@ -278,7 +229,7 @@ void Obstacle::SetType(Type type) {
         currentModel_ == iceBomModel_.get() ||
         currentModel_ == reflectingAttackModel_.get() ||
         currentModel_ == bonusModel_.get()) {
-      drawTransform.translate.y -= collisionHeight_ * 0.5f;
+      drawTransform.translate.y -= collisionHeight_ * kScaleOffsetFactor;
     }
     currentModel_->SetTransform(drawTransform);
   }
@@ -298,7 +249,7 @@ void Obstacle::Spawn(float x, float y, float z) {
   }
   if (type_ == Type::BarrierItem || type_ == Type::BossItem ||
       type_ == Type::ClearItem || type_ == Type::CameraItem) {
-    transform_.translate.y += 0.5f;
+    transform_.translate.y += kItemSpawnHeightOffset;
   }
   isActive_ = true;
   isHit_ = false; // 初期化
@@ -311,7 +262,7 @@ void Obstacle::Spawn(float x, float y, float z) {
         currentModel_ == iceBomModel_.get() ||
         currentModel_ == reflectingAttackModel_.get() ||
         currentModel_ == bonusModel_.get()) {
-      drawTransform.translate.y -= collisionHeight_ * 0.5f;
+      drawTransform.translate.y -= collisionHeight_ * kScaleOffsetFactor;
     }
     currentModel_->SetTransform(drawTransform);
   }
@@ -332,26 +283,26 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
     transform_.translate.z += velocity_.z;
     velocity_.y -= gravity_; // 重力
 
-    transform_.rotate.x -= 0.15f; // 回転させる
-    transform_.rotate.y += 0.1f;
-    transform_.rotate.z += 0.05f;
+    transform_.rotate.x += kBlowAwayAngularVelocity.x; // 回転させる
+    transform_.rotate.y += kBlowAwayAngularVelocity.y;
+    transform_.rotate.z += kBlowAwayAngularVelocity.z;
 
     // カメラにぶつかる演出（カメラのZ座標付近に来たら）
-    if (transform_.translate.z < -13.0f && velocity_.z < 0.0f) {
+    if (transform_.translate.z < kBlowAwayCameraZThreshold && velocity_.z < 0.0f) {
       velocity_.z = 0.0f;  // 手前に来るのを止める（画面に張り付いたような演出）
-      velocity_.y = -0.1f; // 下に落ち始める
-      velocity_.x = ((float)rand() / RAND_MAX - 0.5f) * 0.1f; // 横に少しずれる
+      velocity_.y = kBlowAwayStickDropVelocityY; // 下に落ち始める
+      velocity_.x = ((float)rand() / RAND_MAX - 0.5f) * kBlowAwayStickRandScaleX; // 横に少しずれる
     }
 
-    if (transform_.translate.y < -20.0f) {
+    if (transform_.translate.y < kBlowAwayDespawnYThreshold) {
       isActive_ = false; // 画面外で消す
     }
   } else if (isReflected_) {
     isFalling_ = false;
 
     // スクロール速度（またはtimeScale）に応じてタイマーを進める
-    // 通常スクロール速度(0.2f)基準で1フレームあたり1.0加算（停止時は加算しない）
-    float speedFactor = (scrollSpeed > 0.0f) ? (scrollSpeed / 0.2f) : 0.0f;
+    // 通常スクロール速度(kBaseScrollSpeed)基準で1フレームあたり1.0加算（停止時は加算しない）
+    float speedFactor = (scrollSpeed > 0.0f) ? (scrollSpeed / kBaseScrollSpeed) : 0.0f;
     reflectTimer_ += speedFactor;
 
     float t =
@@ -369,13 +320,13 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
     // 垂直方向（Y）：始点から目標への線形補間にサイン波オフセットを加えて上向きの弧（山なり）を描く
     float baseY =
         reflectStartPos_.y + (reflectedTarget_.y - reflectStartPos_.y) * t;
-    float arcOffset = std::sin(t * 3.14159265f) * reflectArcHeight_;
+    float arcOffset = std::sin(t * kPi) * reflectArcHeight_;
     transform_.translate.y = baseY + arcOffset;
 
     // 勢いよく回転させながら飛ぶ
-    transform_.rotate.x -= 0.35f;
-    transform_.rotate.y += 0.25f;
-    transform_.rotate.z += 0.15f;
+    transform_.rotate.x += kReflectAngularVelocity.x;
+    transform_.rotate.y += kReflectAngularVelocity.y;
+    transform_.rotate.z += kReflectAngularVelocity.z;
   } else {
     // スクロール
     if (type_ == Type::BossAttack || type_ == Type::BossAttackReflectable) {
@@ -398,7 +349,7 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
 
       // ボスの攻撃は奥から手前(+Z方向)へ
       transform_.translate.z += scrollSpeed;
-      if (transform_.translate.z > 20.0f) {
+      if (transform_.translate.z > kBossAttackDespawnZ) {
         isActive_ = false;
         isFalling_ = false;
       }
@@ -407,7 +358,7 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
       transform_.translate.z -= scrollSpeed;
 
       // カメラの後ろ（手前）を過ぎたら非アクティブにする
-      if (transform_.translate.z < -10.0f) {
+      if (transform_.translate.z < kPlayerObstacleDespawnZ) {
         isActive_ = false;
       }
     }
@@ -420,12 +371,12 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
         currentModel_ == iceBomModel_.get() ||
         currentModel_ == reflectingAttackModel_.get() ||
         currentModel_ == bonusModel_.get()) {
-      drawTransform.translate.y -= collisionHeight_ * 0.5f;
+      drawTransform.translate.y -= collisionHeight_ * kScaleOffsetFactor;
     } else if (type_ == Type::BarrierItem || type_ == Type::BossItem ||
                type_ == Type::ClearItem || type_ == Type::CameraItem) {
       // ビルボードアイテムの浮遊ボビング演出（上下に優しく揺れる）
-      itemFloatTimer_ += 0.05f;
-      drawTransform.translate.y += std::sin(itemFloatTimer_ + transform_.translate.x * 2.0f) * 0.15f;
+      itemFloatTimer_ += kItemBobbingSpeed;
+      drawTransform.translate.y += std::sin(itemFloatTimer_ + transform_.translate.x * kItemBobbingPhaseMultiplier) * kItemBobbingAmplitude;
     }
 
     currentModel_->SetTransform(drawTransform);
@@ -442,8 +393,8 @@ void Obstacle::OnBlowAway() {
   isHit_ = true;
   isFalling_ = false;
   // 上と手前(画面方向)に勢いよく飛ぶ
-  float randX = ((float)rand() / RAND_MAX - 0.5f) * 0.4f;
-  velocity_ = {randX, 0.6f, -0.8f};
+  float randX = ((float)rand() / RAND_MAX - 0.5f) * kBlowAwayRandRangeX;
+  velocity_ = {randX, kBlowAwayInitialVelocityY, kBlowAwayInitialVelocityZ};
 }
 
 void Obstacle::OnHit() {
@@ -477,4 +428,98 @@ void Obstacle::ImGuiInnerComponents() {
     ImGui::DragFloat("Duration", &reflectDuration_, 1.0f);
   }
 #endif
+}
+
+#include "../GameScene.h"
+#include "Player.h"
+#include "../System/ScoreManager.h"
+#include "../Stage/StageSettings.h"
+#include "../Effect/GameSceneEffect.h"
+#include "../System/SoundManager.h"
+
+bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
+{
+  if (!scene || !player) return false;
+
+  if (type_ == Type::GuideFloor) {
+    player->StartForceToCenter(kBarrierForceToCenterFrames);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
+    return false;
+  }
+
+  if (type_ == Type::Bonus) {
+    OnBlowAway();
+    if (scene->GetScoreManager()) {
+      scene->GetScoreManager()->AddBonusEnemyHit();
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
+    return false;
+  }
+
+  if (type_ == Type::CameraItem) {
+    OnHit();
+    scene->ChangePlayingState(GameScene::PlayingState::OneLane);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    return false;
+  }
+
+  if (type_ == Type::BarrierItem) {
+    OnHit();
+    player->SetHasBarrier(true);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitBarrier(player->GetTransform().translate);
+    }
+    return false;
+  }
+
+  if (type_ == Type::ClearItem) {
+    OnHit();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
+        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
+          obs->OnBlowAway();
+        }
+      }
+    }
+    return false;
+  }
+
+  if (type_ == Type::BossItem) {
+    OnHit();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
+        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
+          obs->OnBlowAway();
+        }
+      }
+    }
+    scene->ChangePlayingState(GameScene::PlayingState::Boss);
+    return false;
+  }
+
+  if (type_ == Type::BossAttack || type_ == Type::BossAttackReflectable) {
+    if (isReflected_ || isFalling_) {
+      return false;
+    }
+  }
+
+  if (player->GetHasBarrier()) {
+    player->SetHasBarrier(false);
+    OnBlowAway();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->BreakBarrier(player->GetTransform().translate);
+    }
+    return false;
+  }
+
+  // 被弾
+  bool isTrip = (type_ == Type::Low);
+  scene->TriggerPlayerHit(isTrip);
+  return true;
 }

@@ -537,10 +537,10 @@ void Emitter::SyncGpuParticleParameters(bool emitNow) {
   effectDefinition_->SetIsBoxEmitter(emitterType_ == EmitterType::Box);
 
   static float globalTime = 0.0f;
-  globalTime += 1.0f / 60.0f;
+  globalTime += EffectConfig::kDefaultDeltaTime;
 
   PerFrameForGPU perFrame{};
-  perFrame.deltaTime = 1.0f / 60.0f;
+  perFrame.deltaTime = EffectConfig::kDefaultDeltaTime;
   perFrame.time = globalTime;
   perFrame.acceleration = movementData_.acceleration;
   perFrame.sizeDelta = movementData_.sizeDelta;
@@ -1046,10 +1046,10 @@ void Emitter::Update(Matrix4x4 viewMatrix) {
               (particleIterator->endColor.w - particleIterator->startColor.w) *
                   t};
     } else {
-      particleIterator->color.w -= 1.0f / (particleIterator->lifeTime * 60.0f);
+      particleIterator->color.w -= EffectConfig::kDefaultDeltaTime / particleIterator->lifeTime;
     }
 
-    particleIterator->currentTime += 1.0f / 60.0f;
+    particleIterator->currentTime += EffectConfig::kDefaultDeltaTime;
     ++particleIterator;
   }
 
@@ -1079,7 +1079,7 @@ void Emitter::Update(Matrix4x4 viewMatrix) {
       break;
     }
 
-    *pFreqTime += 1.0f / 60.0f;
+    *pFreqTime += EffectConfig::kDefaultDeltaTime;
     if (freq <= 0.0f || freq <= *pFreqTime) {
       Emit();
       emitFrame = true;
@@ -1089,7 +1089,7 @@ void Emitter::Update(Matrix4x4 viewMatrix) {
     }
   }
 
-  effectDefinition_.get()->Updata(viewMatrix, effectDefinitionData_);
+  effectDefinition_.get()->Update(viewMatrix, effectDefinitionData_);
   if (GetUseGpuParticle()) {
     SyncGpuParticleParameters(emitFrame);
   }
@@ -1181,10 +1181,10 @@ void Emitter::Update(
               (particleIterator->endColor.w - particleIterator->startColor.w) *
                   t};
     } else {
-      particleIterator->color.w -= 1.0f / (particleIterator->lifeTime * 60.0f);
+      particleIterator->color.w -= EffectConfig::kDefaultDeltaTime / particleIterator->lifeTime;
     }
 
-    particleIterator->currentTime += 1.0f / 60.0f;
+    particleIterator->currentTime += EffectConfig::kDefaultDeltaTime;
     ++particleIterator;
   }
 
@@ -1214,7 +1214,7 @@ void Emitter::Update(
       break;
     }
 
-    *pFreqTime += 1.0f / 60.0f;
+    *pFreqTime += EffectConfig::kDefaultDeltaTime;
     if (freq <= 0.0f || freq <= *pFreqTime) {
       Emit();
       emitFrame = true;
@@ -1224,7 +1224,7 @@ void Emitter::Update(
     }
   }
 
-  effectDefinition_.get()->Updata(viewMatrix, effectDefinitionData_);
+  effectDefinition_.get()->Update(viewMatrix, effectDefinitionData_);
   if (GetUseGpuParticle()) {
     SyncGpuParticleParameters(emitFrame);
   }
@@ -1245,7 +1245,7 @@ void Emitter::Update(Matrix4x4 viewMatrix, Vector3 scale) {
 }
 
 void Emitter::EditorUpdate(Matrix4x4 viewMatrix) {
-  effectDefinition_.get()->Updata(viewMatrix, effectDefinitionData_);
+  effectDefinition_.get()->Update(viewMatrix, effectDefinitionData_);
   if (GetUseGpuParticle()) {
     SyncGpuParticleParameters(false);
   }
@@ -1420,28 +1420,28 @@ EffectDefinitionData Emitter::MakeNewParticle(Vector3 scale) {
 
 EffectDefinitionData Emitter::particleMove(EffectDefinitionData p) {
   p.velocity = {0.0f, 0.0f, 0.0f};
-  p.velocity.y -= 0.01f;
+  p.velocity.y -= kDefaultGravity;
   return p;
 }
 
 EffectDefinitionData Emitter::particleMoveFire(EffectDefinitionData p) {
-  p.velocity.y += 0.01f / 60.0f;
-  float randX = ((float)rand() / RAND_MAX - 0.5f) * 0.02f / 60.0f;
-  float randZ = ((float)rand() / RAND_MAX - 0.5f) * 0.02f / 60.0f;
+  p.velocity.y += kFireUpwardSpeed;
+  float randX = ((float)rand() / RAND_MAX - 0.5f) * kFireHorizontalScatter;
+  float randZ = ((float)rand() / RAND_MAX - 0.5f) * kFireHorizontalScatter;
   p.velocity.x += randX;
   p.velocity.z += randZ;
-  p.transform.scale.x *= 0.999f;
-  p.transform.scale.y *= 0.999f;
-  p.transform.scale.z *= 0.999f;
+  p.transform.scale.x *= kFireScaleDecayRate;
+  p.transform.scale.y *= kFireScaleDecayRate;
+  p.transform.scale.z *= kFireScaleDecayRate;
   return p;
 }
 
 void Emitter::EmitSize() {
   if (Input::PressKey(DIK_A)) {
-    emitter_.transform.scale.x -= 0.01f;
+    emitter_.transform.scale.x -= kKeyAdjustmentStep;
   }
   if (Input::PressKey(DIK_D)) {
-    emitter_.transform.scale.x += 0.01f;
+    emitter_.transform.scale.x += kKeyAdjustmentStep;
   }
   if (emitter_.transform.scale.x < 0) {
     emitter_.transform.scale.x = 0;

@@ -11,12 +11,21 @@
 class Input  
 {  
 private:  
+	static constexpr size_t kKeyCount = 256;
+	static constexpr size_t kMouseButtonCount = 4;
+	static constexpr BYTE kKeyDownMask = 0x80;
+
+	static BYTE s_key_[kKeyCount];
+	static BYTE s_prevKey_[kKeyCount];
+	static DIMOUSESTATE s_mouseState_;
+	static DIMOUSESTATE s_prevMouseState_;
+
 	Microsoft::WRL::ComPtr<IDirectInput8> directInput_;
 	HRESULT result{};
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard_;
 	
-	BYTE key_[256] = {};  
-	BYTE prevKey_[256] = {};  
+	BYTE key_[kKeyCount] = {};  
+	BYTE prevKey_[kKeyCount] = {};  
 
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> mouse_;
 
@@ -26,12 +35,16 @@ private:
 
 public:  
 	void Initialize(WNDCLASS wc, HWND hwnd);  
-	void CreateInpuDevice();  
+	void CreateInputDevice();
+	[[deprecated("Use CreateInputDevice instead")]]
+	void CreateInpuDevice() { CreateInputDevice(); }
 	void SetInputType();  
 	void SetExclusionLevel(HWND hwnd);  
-	void Updata();  
+	void Update();
+	[[deprecated("Use Update instead")]]
+	void Updata() { Update(); }
 
-	//押して瞬間  
+	//押した瞬間  
 	static bool PushKey(uint32_t Key);  
 	//押している  
 	static bool PressKey(uint32_t key);
@@ -40,7 +53,7 @@ public:
 	//離してる  
 	static bool FreeKey(uint32_t key);
 
-	//押して瞬間  
+	//押した瞬間  
 	static bool PushMouse(uint32_t Key);
 	//押している  
 	static bool PressMouse(uint32_t key);

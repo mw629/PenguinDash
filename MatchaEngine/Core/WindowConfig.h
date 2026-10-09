@@ -19,6 +19,10 @@ private:
 	DWORD windowedStyle = 0;  // ウィンドウ表示時のスタイルを保存
 
 public:
+	static constexpr int32_t kDefaultClientWidth = 1280;
+	static constexpr int32_t kDefaultClientHeight = 720;
+	static constexpr const wchar_t* kDefaultWindowTitle = L"ペンギンダッシュ";
+
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 	void SetWindowData(const int32_t kClientWidth, const int32_t kClientHeight);
@@ -29,7 +33,9 @@ public:
 
 	void Finalize();
 
-	static bool ProcessMassage();
+	static bool ProcessMessage();
+	[[deprecated("Use ProcessMessage instead")]]
+	static bool ProcessMassage() { return ProcessMessage(); }
 	
 	// フルスクリーン切り替え関数
 	void ToggleFullscreen();

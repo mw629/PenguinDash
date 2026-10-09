@@ -13,15 +13,18 @@ bool Collision::CheckAABB(const AABB& a, const AABB& b)
 AABB Collision::MakeAABB(const Transform& transform, float width, float height, float depth)
 {
 	AABB aabb;
+	float halfW = width * kHalfExtentFactor;
+	float halfH = height * kHalfExtentFactor;
+	float halfD = depth * kHalfExtentFactor;
 	aabb.min = {
-		transform.translate.x - width / 2.0f,
-		transform.translate.y - height / 2.0f,
-		transform.translate.z - depth / 2.0f
+		transform.translate.x - halfW,
+		transform.translate.y - halfH,
+		transform.translate.z - halfD
 	};
 	aabb.max = {
-		transform.translate.x + width / 2.0f,
-		transform.translate.y + height / 2.0f,
-		transform.translate.z + depth / 2.0f
+		transform.translate.x + halfW,
+		transform.translate.y + halfH,
+		transform.translate.z + halfD
 	};
 	return aabb;
 }

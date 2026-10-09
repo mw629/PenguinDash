@@ -68,13 +68,13 @@ struct PointLight
 struct SpotLight
 {
     float32_t4 color; //ライトの色
-    float32_t3 position; //ライトの向き
+    float32_t3 position; //ライトの位置
     float32_t intensity; //輝度
     float32_t3 direction; //ライトの向き
     float32_t distance; //ライトの届く最大距離
     float32_t decay; //減衰率
     float32_t cosAngle; //スポットライトの余弦
-    float32_t cosFalloffStart; //Falloの開始角度
+    float32_t cosFalloffStart; //Falloffの開始角度
     int32_t active;
 };
 

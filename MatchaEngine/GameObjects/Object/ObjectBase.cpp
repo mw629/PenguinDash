@@ -1,5 +1,6 @@
 #include "ObjectBase.h"
 #include "Calculation.h"
+#include "Graphics/Render/Draw.h"
 
 #ifdef _USE_IMGUI
 #include <imgui.h>
@@ -61,9 +62,14 @@ void ObjectBase::CreateIndexResource()
 }
 
 
+#include "Camera.h"
+
+
 void ObjectBase::SettingWvp(Matrix4x4 viewMatrix)
 {
-	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+	Matrix4x4 projectionMatri = MakePerspectiveFovMatrix(
+		Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_),
+		Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 
 	if (isInstancing_ && !instancingTransforms_.empty()) {
 		int count = min(maxInstanceCount_, static_cast<int>(instancingTransforms_.size()));
@@ -78,7 +84,7 @@ void ObjectBase::SettingWvp(Matrix4x4 viewMatrix)
 			wvpData_[s_wvpIndex][i].numBones = 0;
 		}
 	} else {
-		Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+		Matrix4x4 worldMatrix = GetWorldMatrix();
 		Matrix4x4 worldViewProjectionMatrix = MultiplyMatrix4x4(worldMatrix, MultiplyMatrix4x4(viewMatrix, projectionMatri));
 		Matrix4x4 worldInverseTranspose = TransposeMatrix4x4(Inverse(worldMatrix)); // 法線変換用の行列を計算
 
@@ -117,13 +123,13 @@ D3D12_VERTEX_BUFFER_VIEW* ObjectBase::GetVertexBufferView()
 
 AABB ObjectBase::GetWorldAABB() const
 {
-	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrix = GetWorldMatrix();
 	return TransformAABB(localAABB_, worldMatrix);
 }
 
 BoundingSphere ObjectBase::GetWorldBoundingSphere() const
 {
-	Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrix = GetWorldMatrix();
 	return TransformBoundingSphere(localSphere_, worldMatrix);
 }
 
@@ -155,5 +161,10 @@ void ObjectBase::ImGuiInnerComponents()
 		}
 	}
 #endif
+}
+
+void ObjectBase::Render(class Draw& draw)
+{
+	draw.DrawObj(this);
 }
 

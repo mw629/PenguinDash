@@ -10,6 +10,9 @@ struct ModelSubMeshMaterial {
 class Model	:public ObjectBase
 {
 private:
+	static constexpr int kInvalidTextureIndex = -1;
+	static constexpr float kBillboardBoundingSphereScale = 1.5f;
+
 	int modelNumber_;
 
 	//アニメーション
@@ -29,6 +32,7 @@ public:
 	void SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection);
 	
 	void CreateObject()override;
+	void Render(class Draw& draw) override;
 
 	void SetBillboard(bool isBillboard) { isBillboard_ = isBillboard; }
 	bool GetBillboard() const { return isBillboard_; }

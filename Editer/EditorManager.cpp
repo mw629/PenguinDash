@@ -15,6 +15,7 @@
 #include "../MatchaEngine/Core/LogHandler.h"
 #include "../MatchaEngine/Resource/Texture.h"
 #include "LanguageManager.h"
+#include "Command/CommandManager.h"
 #include <unordered_map>
 #include <algorithm>
 
@@ -274,8 +275,8 @@ static float GetCPUUsageSmooth() {
 static void GetGPUMemoryInfo(Engine* engine, float& currentUsageMB, float& budgetMB) {
     currentUsageMB = 0.0f;
     budgetMB = 0.0f;
-    if (!engine || !engine->graphics) return;
-    IDXGIAdapter4* adapter = engine->graphics->GetUseAdapter();
+    if (!engine || !engine->GetGraphics()) return;
+    IDXGIAdapter4* adapter = engine->GetGraphics()->GetUseAdapter();
     if (!adapter) return;
 
     DXGI_QUERY_VIDEO_MEMORY_INFO info{};
@@ -328,6 +329,27 @@ void EditorManager::Update(Engine* engine)
 			ImGui::Separator();
 			if (ImGui::MenuItem(LanguageManager::Tr("Exit"))) {
 				Engine::SetEnd(true);
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu(LanguageManager::Tr("Edit"))) {
+			std::string undoLabel = CommandManager::GetInstance().CanUndo()
+				? (std::string(LanguageManager::Tr("Undo")) + " (" + CommandManager::GetInstance().GetUndoCommandName() + ")")
+				: std::string(LanguageManager::Tr("Undo"));
+			if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, CommandManager::GetInstance().CanUndo())) {
+				CommandManager::GetInstance().Undo();
+			}
+
+			std::string redoLabel = CommandManager::GetInstance().CanRedo()
+				? (std::string(LanguageManager::Tr("Redo")) + " (" + CommandManager::GetInstance().GetRedoCommandName() + ")")
+				: std::string(LanguageManager::Tr("Redo"));
+			if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Y", false, CommandManager::GetInstance().CanRedo())) {
+				CommandManager::GetInstance().Redo();
+			}
+
+			ImGui::Separator();
+			if (ImGui::MenuItem(LanguageManager::Tr("Clear History"), nullptr, false, CommandManager::GetInstance().CanUndo() || CommandManager::GetInstance().CanRedo())) {
+				CommandManager::GetInstance().Clear();
 			}
 			ImGui::EndMenu();
 		}
@@ -805,6 +827,75 @@ void EditorManager::Update(Engine* engine)
 				ImGui::EndTabItem();
 			}
 
+			if (ImGui::BeginTabItem(LanguageManager::Tr("Design Patterns"))) {
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "=== 1. Object Pool Pattern ===");
+				struct DemoParticle {
+					int id = 0;
+					bool active = false;
+					void Reset() { active = false; id = 0; }
+				};
+				static Matcha::ObjectPool<DemoParticle> s_demoPool(10);
+				static std::vector<DemoParticle*> s_acquiredList;
+
+				ImGui::Text("Capacity: %zu | Active: %zu | Free: %zu",
+					s_demoPool.GetCapacity(), s_demoPool.GetActiveCount(), s_demoPool.GetFreeCount());
+				float poolUsage = s_demoPool.GetCapacity() > 0 ? (float)s_demoPool.GetActiveCount() / (float)s_demoPool.GetCapacity() : 0.0f;
+				ImGui::ProgressBar(poolUsage, ImVec2(-1.0f, 0.0f));
+
+				if (ImGui::Button("Acquire (貸出)")) {
+					auto* p = s_demoPool.Acquire();
+					if (p) {
+						p->active = true;
+						p->id = static_cast<int>(s_acquiredList.size() + 1);
+						s_acquiredList.push_back(p);
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Release (返却)") && !s_acquiredList.empty()) {
+					auto* p = s_acquiredList.back();
+					s_acquiredList.pop_back();
+					s_demoPool.Release(p);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Release All (一括返却)")) {
+					s_demoPool.ReleaseAll();
+					s_acquiredList.clear();
+				}
+
+				ImGui::Separator();
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "=== 2. Dirty Flag Pattern ===");
+				GameObject* sel = GameObject::GetSelectedObject();
+				if (sel) {
+					ImGui::Text("Selected: %s", sel->GetName().c_str());
+					ImGui::Text("Is WorldMatrix Dirty: %s", sel->IsDirty() ? "TRUE (Needs recalculation)" : "FALSE (Cached)");
+					if (ImGui::Button("Force Mark Dirty")) {
+						sel->MarkDirty();
+					}
+				} else {
+					ImGui::TextDisabled("Select an object to inspect Dirty Flag.");
+				}
+
+				ImGui::Separator();
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "=== 3. Command Pattern (Undo / Redo) ===");
+				CommandManager& cmdMgr = CommandManager::GetInstance();
+				ImGui::Text("Undo Stack: %zu | Redo Stack: %zu", cmdMgr.GetUndoCount(), cmdMgr.GetRedoCount());
+				ImGui::Text("Next Undo: %s", cmdMgr.CanUndo() ? cmdMgr.GetUndoCommandName().c_str() : "(None)");
+				ImGui::Text("Next Redo: %s", cmdMgr.CanRedo() ? cmdMgr.GetRedoCommandName().c_str() : "(None)");
+				if (ImGui::Button("Undo (Ctrl+Z)") && cmdMgr.CanUndo()) {
+					cmdMgr.Undo();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Redo (Ctrl+Y)") && cmdMgr.CanRedo()) {
+					cmdMgr.Redo();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Clear History")) {
+					cmdMgr.Clear();
+				}
+
+				ImGui::EndTabItem();
+			}
+
 			ImGui::EndTabBar();
 		}
 
@@ -1005,8 +1096,8 @@ void EditorManager::Update(Engine* engine)
 			previewCamera_ = std::make_unique<Camera>();
 			previewGrid_ = std::make_unique<Grid>();
 
-			particleRenderTexture_->Initialize(engine->graphics->GetDevice(), 512, 512, engine->descriptorHeap->GetSrvDescriptorHeap(), engine->descriptorHeap->GetDescriptorSizeSRV());
-			particleDepthStencil_->CreateDepthStencil(engine->graphics->GetDevice(), 512, 512);
+			particleRenderTexture_->Initialize(engine->GetGraphics()->GetDevice(), 512, 512, engine->GetDescriptorHeap()->GetSrvDescriptorHeap(), engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
+			particleDepthStencil_->CreateDepthStencil(engine->GetGraphics()->GetDevice(), 512, 512);
 			previewGrid_->CreateGrid();
 
 			previewParticle_->Initialize();
@@ -1265,8 +1356,8 @@ void EditorManager::Update(Engine* engine)
 			if (!previewParticle_->GetLoop()) {
 				ImGui::Checkbox(LanguageManager::Tr("Auto Replay (One-Shot)"), &autoReplayOneShot);
 				if (autoReplayOneShot) {
-					oneShotTimer += 1.0f / 60.0f;
-					if (previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() == 0 || oneShotTimer >= 2.0f) {
+					oneShotTimer += Engine::kDefaultDeltaTime;
+					if (previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() == 0 || oneShotTimer >= kOneShotReplayInterval) {
 						previewParticle_->TriggerBurst();
 						oneShotTimer = 0.0f;
 					}
@@ -1336,8 +1427,8 @@ void EditorManager::Update(Engine* engine)
 		previewParticle_->SetCustomProjectionMatrix(projMat);
 		previewParticle_->Update(previewCamera_->GetViewMatrix());
 
-		auto cmdList = engine->command->GetCommandList();
-		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->descriptorHeap->GetSrvDescriptorHeap() };
+		auto cmdList = engine->GetCommand()->GetCommandList();
+		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->GetDescriptorHeap()->GetSrvDescriptorHeap() };
 		cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
 		particleRenderTexture_->TransitionToRenderTarget(cmdList);
@@ -1352,10 +1443,10 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
-		engine->draw->SetCamera(previewCamera_.get());
+		engine->GetDraw()->SetCamera(previewCamera_.get());
 		if (showGridInViewer_) {
 			previewGrid_->SettingWvp(previewCamera_->GetViewMatrix(), &projMat);
-			engine->draw->DrawGrid(previewGrid_.get());
+			engine->GetDraw()->DrawGrid(previewGrid_.get());
 		}
 
 		static int s_viewerFrameCount = 0;
@@ -1369,15 +1460,15 @@ void EditorManager::Update(Engine* engine)
 				pcamT.translate.x, pcamT.translate.y, pcamT.translate.z));
 		}
 
-		previewParticle_->Draw(*engine->draw);
+		previewParticle_->Draw(*engine->GetDraw());
 
 		particleRenderTexture_->TransitionToShaderResource(cmdList);
 
 		// Restore engine's main render target
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
-		engine->depthStencil->SetDSV(cmdList, &mainRtv);
-		cmdList->RSSetViewports(1, engine->viewportScissor->GetViewport());
-		cmdList->RSSetScissorRects(1, engine->viewportScissor->GetScissorRect());
+		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
+		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
+		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
 	}
 
 	// Model Viewer Window
@@ -1389,8 +1480,8 @@ void EditorManager::Update(Engine* engine)
 			modelCamera_ = std::make_unique<Camera>();
 			modelGrid_ = std::make_unique<Grid>();
 
-			modelRenderTexture_->Initialize(engine->graphics->GetDevice(), 512, 512, engine->descriptorHeap->GetSrvDescriptorHeap(), engine->descriptorHeap->GetDescriptorSizeSRV());
-			modelDepthStencil_->CreateDepthStencil(engine->graphics->GetDevice(), 512, 512);
+			modelRenderTexture_->Initialize(engine->GetGraphics()->GetDevice(), 512, 512, engine->GetDescriptorHeap()->GetSrvDescriptorHeap(), engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
+			modelDepthStencil_->CreateDepthStencil(engine->GetGraphics()->GetDevice(), 512, 512);
 			modelGrid_->CreateGrid();
 
 			modelCamera_->SetAspectRatio(1.0f);
@@ -1425,7 +1516,7 @@ void EditorManager::Update(Engine* engine)
 							data = AssimpLoadObjFile(dir, file);
 						}
 						previewModel_->Initialize(data);
-						previewModel_->name_ = "Preview Model";
+						previewModel_->SetName("Preview Model");
 					}
 				}
 				ImGui::EndDragDropTarget();
@@ -1503,7 +1594,7 @@ void EditorManager::Update(Engine* engine)
 			previewModel_->SettingWvp(modelCamera_->GetViewMatrix(), &modelProjMat);
 		}
 
-		auto cmdList = engine->command->GetCommandList();
+		auto cmdList = engine->GetCommand()->GetCommandList();
 		modelRenderTexture_->TransitionToRenderTarget(cmdList);
 		modelRenderTexture_->Clear(cmdList);
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = modelRenderTexture_->GetRtvHandle();
@@ -1514,22 +1605,22 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
-		engine->draw->SetCamera(modelCamera_.get());
+		engine->GetDraw()->SetCamera(modelCamera_.get());
 		if (showGridInModelViewer_) {
 			modelGrid_->SettingWvp(modelCamera_->GetViewMatrix(), &modelProjMat);
-			engine->draw->DrawGrid(modelGrid_.get());
+			engine->GetDraw()->DrawGrid(modelGrid_.get());
 		}
 		if (!currentModelPath_.empty()) {
-			engine->draw->DrawModel(previewModel_.get());
+			engine->GetDraw()->DrawModel(previewModel_.get());
 		}
 
 		modelRenderTexture_->TransitionToShaderResource(cmdList);
 
 		// Restore main
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
-		engine->depthStencil->SetDSV(cmdList, &mainRtv);
-		cmdList->RSSetViewports(1, engine->viewportScissor->GetViewport());
-		cmdList->RSSetScissorRects(1, engine->viewportScissor->GetScissorRect());
+		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
+		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
+		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
 	}
 
 	// Game View Window
@@ -1538,15 +1629,17 @@ void EditorManager::Update(Engine* engine)
 			for (int i = 0; i < 2; ++i) {
 				gameViewRenderTextures_[i] = std::make_unique<RenderTexture>();
 				gameViewRenderTextures_[i]->Initialize(
-					engine->graphics->GetDevice(), 1280, 720,
-					engine->descriptorHeap->GetSrvDescriptorHeap(),
-					engine->descriptorHeap->GetDescriptorSizeSRV());
+					engine->GetGraphics()->GetDevice(),
+					WindowConfig::kDefaultClientWidth, WindowConfig::kDefaultClientHeight,
+					engine->GetDescriptorHeap()->GetSrvDescriptorHeap(),
+					engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
 			}
 			gameViewDepthStencil_ = std::make_unique<DepthStencil>();
 			gameViewDepthStencil_->CreateDepthStencil(
-				engine->graphics->GetDevice(), 1280, 720,
-				engine->descriptorHeap->GetSrvDescriptorHeap(),
-				engine->descriptorHeap->GetDescriptorSizeSRV());
+				engine->GetGraphics()->GetDevice(),
+				WindowConfig::kDefaultClientWidth, WindowConfig::kDefaultClientHeight,
+				engine->GetDescriptorHeap()->GetSrvDescriptorHeap(),
+				engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
 			isGameViewInitialized_ = true;
 		}
 
@@ -1556,7 +1649,7 @@ void EditorManager::Update(Engine* engine)
 			ImVec2 imageSize = availSize;
 			ImVec2 cursorStart = ImGui::GetCursorPos();
 
-			float targetAspect = 1280.0f / 720.0f;
+			float targetAspect = Camera::kDefaultAspectRatio;
 			float availAspect = availSize.x / availSize.y;
 
 			if (availAspect > targetAspect) {
@@ -1576,23 +1669,32 @@ void EditorManager::Update(Engine* engine)
 		ImGui::End();
 
 		// Draw into Game View Render Texture
-		auto cmdList = engine->command->GetCommandList();
+		auto cmdList = engine->GetCommand()->GetCommandList();
 		gameViewRenderTextures_[0]->TransitionToRenderTarget(cmdList);
 		gameViewRenderTextures_[0]->Clear(cmdList);
 		gameViewDepthStencil_->TransitionToDepthWrite(cmdList);
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = gameViewRenderTextures_[0]->GetRtvHandle();
 		gameViewDepthStencil_->SetDSV(cmdList, &rtvHandle);
 
-		D3D12_VIEWPORT vp = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
-		D3D12_RECT scissor = { 0, 0, 1280, 720 };
+		D3D12_VIEWPORT vp = {
+			0.0f, 0.0f,
+			static_cast<float>(WindowConfig::kDefaultClientWidth),
+			static_cast<float>(WindowConfig::kDefaultClientHeight),
+			0.0f, 1.0f
+		};
+		D3D12_RECT scissor = {
+			0, 0,
+			WindowConfig::kDefaultClientWidth,
+			WindowConfig::kDefaultClientHeight
+		};
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
-		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->descriptorHeap->GetSrvDescriptorHeap() };
+		ID3D12DescriptorHeap* descriptorHeaps[] = { engine->GetDescriptorHeap()->GetSrvDescriptorHeap() };
 		cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
 		if (s_gameViewDrawCallback_) {
-			s_gameViewDrawCallback_(*engine->draw);
+			s_gameViewDrawCallback_(*engine->GetDraw());
 
 			gameViewRenderTextures_[0]->TransitionToShaderResource(cmdList);
 			gameViewDepthStencil_->TransitionToShaderResource(cmdList);
@@ -1614,7 +1716,7 @@ void EditorManager::Update(Engine* engine)
 
 				cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
-				engine->draw->DrawPostEffect(
+				engine->GetDraw()->DrawPostEffect(
 					gameViewRenderTextures_[currentRT]->GetSrvHandleGPU(),
 					effect->GetActiveShaderName(),
 					effect.get(),
@@ -1637,7 +1739,7 @@ void EditorManager::Update(Engine* engine)
 
 				cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 
-				s_gameViewUIDrawCallback_(*engine->draw);
+				s_gameViewUIDrawCallback_(*engine->GetDraw());
 
 				gameViewRenderTextures_[currentRT]->TransitionToShaderResource(cmdList);
 				gameViewDepthStencil_->TransitionToShaderResource(cmdList);
@@ -1651,9 +1753,9 @@ void EditorManager::Update(Engine* engine)
 
 		// Restore engine's main render target
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
-		engine->depthStencil->SetDSV(cmdList, &mainRtv);
-		cmdList->RSSetViewports(1, engine->viewportScissor->GetViewport());
-		cmdList->RSSetScissorRects(1, engine->viewportScissor->GetScissorRect());
+		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
+		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
+		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
 		cmdList->SetDescriptorHeaps(1, descriptorHeaps);
 	}
 

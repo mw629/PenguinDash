@@ -48,9 +48,9 @@ float SoundManager::GetEffectiveBGMVolume() const {
 
     // ゲームプレイ中BGM（BGM::Play）は音圧が高いため、SEや他シーンとのバランスを考慮して音量を下げる
     if (currentBGM_ == BGM::Play) {
-        vol *= 0.5f;
+        vol *= kPlayBGMVolumeScale;
     } else if (currentBGM_ == BGM::Boss) {
-        vol *= 0.7f;
+        vol *= kBossBGMVolumeScale;
     }
 
     return std::clamp(vol, 0.0f, 1.0f);
@@ -122,7 +122,7 @@ void SoundManager::PlaySE(SE se, float volumeMultiplier) {
     if (handle >= 0) {
         // スタート音は控えめで耳に優しい音量（0.2倍）に調整
         if (se == SE::Start) {
-            volumeMultiplier *= 0.2f;
+            volumeMultiplier *= kStartSeVolumeMultiplier;
         }
         float vol = GetEffectiveSEVolume(volumeMultiplier);
         Audio::Play(handle, false, vol);

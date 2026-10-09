@@ -1,7 +1,6 @@
 #include "Cylinder.h"
+#include "Math/Calculation.h"
 #include <numbers>
-
-
 
 Cylinder::~Cylinder()
 {
@@ -9,11 +8,11 @@ Cylinder::~Cylinder()
 
 void Cylinder::Initialize(int textureSrvHandle)
 {
-	divide_ = 32;
-	topRadius_ = 1.0f;
-	bottomRadius_ = 1.0f;
- height_ = 3.0f;
-	radianPerDivide_ = 2.0f * std::numbers::pi_v<float> / float(divide_);
+	divide_ = kDefaultDivide;
+	topRadius_ = kDefaultTopRadius;
+	bottomRadius_ = kDefaultBottomRadius;
+	height_ = kDefaultHeight;
+	radianPerDivide_ = k2Pi / float(divide_);
 
 	textureSrvHandleGPU_ = texture.get()->TextureData(textureSrvHandle);
 

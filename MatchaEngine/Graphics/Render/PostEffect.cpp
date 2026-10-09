@@ -13,19 +13,19 @@ PostEffect::PostEffect() {
   s_instances.push_back(this);
   for (int y = 0; y < 3; ++y) {
     for (int x = 0; x < 3; ++x) {
-      kernel3x3_[y][x] = 1.0f / 9.0f;
+      kernel3x3_[y][x] = kWeight3x3;
     }
   }
   for (int y = 0; y < 5; ++y) {
     for (int x = 0; x < 5; ++x) {
-      kernel5x5_[y][x] = 1.0f / 25.0f;
+      kernel5x5_[y][x] = kWeight5x5;
     }
   }
   cbData_ = nullptr;
   pixelationData_ = nullptr;
-  color_[0] = 0.8f;
-  color_[1] = 0.8f;
-  color_[2] = 0.8f;
+  color_[0] = kDefaultColorComponent;
+  color_[1] = kDefaultColorComponent;
+  color_[2] = kDefaultColorComponent;
   for (int y = 0; y < 3; ++y) {
     for (int x = 0; x < 3; ++x) {
       index3x3_[y][x][0] = (float)(x - 1);
@@ -212,7 +212,7 @@ void PostEffect::ImGuiWindow() {
   if (ImGui::TreeNode(
           ("Post Effect Parameters##" + std::to_string((size_t)this))
               .c_str())) {
-    ImGui::SliderFloat("Time##PostEffect", &time_, 0.0f, 100.0f);
+    ImGui::SliderFloat("Time##PostEffect", &time_, kDefaultTime, kTimeMax);
 
     ImGui::Checkbox("Timer Running", &isTimerRunning_);
     if (ImGui::Button("Start Timer")) {
@@ -223,9 +223,9 @@ void PostEffect::ImGuiWindow() {
       StopTimer();
     }
 
-    ImGui::SliderFloat("Ratio##PostEffect", &ratio_, 0.0f, 1.0f);
-    ImGui::SliderFloat("Value1##PostEffect", &value1_, 0.0f, 100.0f);
-    ImGui::SliderFloat("Value2##PostEffect", &value2_, 0.0f, 100.0f);
+    ImGui::SliderFloat("Ratio##PostEffect", &ratio_, kRatioMin, kRatioMax);
+    ImGui::SliderFloat("Value1##PostEffect", &value1_, 0.0f, kValueMax);
+    ImGui::SliderFloat("Value2##PostEffect", &value2_, 0.0f, kValueMax);
     ImGui::ColorEdit3("Color##PostEffect", color_);
 
     if (cbData_) {
@@ -244,7 +244,7 @@ void PostEffect::ImGuiWindow() {
     if (activeShaderName_ == "SmoothingShader" ||
         activeShaderName_ == "GaussianFilterShader") {
       ImGui::SliderFloat("Blur Strength##PostEffect", &blurStrength_, 0.0f,
-                         10.0f);
+                         kBlurStrengthMax);
 
       ImGui::Text("Kernel Size:");
       ImGui::SameLine();
@@ -266,10 +266,10 @@ void PostEffect::ImGuiWindow() {
     // Pixelate の追加パラメーター
     if (activeShaderName_ == "PixelateShader") {
       ImGui::Checkbox("Use Pixelation##PostEffect", &usePixelation_);
-      ImGui::SliderFloat("Block Count X##PostEffect", &blockCountX_, 2.0f,
-                         320.0f);
-      ImGui::SliderFloat("Block Count Y##PostEffect", &blockCountY_, 2.0f,
-                         240.0f);
+      ImGui::SliderFloat("Block Count X##PostEffect", &blockCountX_, kPixelateBlockMin,
+                         kPixelateBlockXMax);
+      ImGui::SliderFloat("Block Count Y##PostEffect", &blockCountY_, kPixelateBlockMin,
+                         kPixelateBlockYMax);
     }
 
     // OutLine の追加案内

@@ -1,5 +1,6 @@
 #include "Model.h"
 #include "GraphicsDevice.h"
+#include "Graphics/Render/Draw.h"
 #include "Calculation.h"
 #include "Load.h"
 #include "Texture.h"
@@ -37,13 +38,13 @@ void Model::Initialize(ModelData modelData)
 	subMeshMaterials_.clear();
 	for (const auto& subMesh : modelData.subMeshes) {
 		ModelSubMeshMaterial mat;
-		if (subMesh.textureIndex != -1) {
+		if (subMesh.textureIndex != kInvalidTextureIndex) {
 			mat.textureSrvHandleGPU = texture->TextureData(subMesh.textureIndex);
 		} else {
 			mat.textureSrvHandleGPU = textureSrvHandleGPU_;
 		}
 		mat.materialFactory = std::make_unique<MaterialFactory>();
-		mat.materialFactory->CreateMartial(false, 0.0f);
+		mat.materialFactory->CreateMaterial(false, 0.0f);
 		subMeshMaterials_.push_back(std::move(mat));
 	}
 
@@ -55,10 +56,12 @@ void Model::SettingWvp(Matrix4x4 viewMatrix) {
 	SettingWvp(viewMatrix, nullptr);
 }
 
+#include "Camera.h"
+
 void Model::SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection) {
 	Matrix4x4 projectionMatri = customProjection
 		? *customProjection
-		: MakePerspectiveFovMatrix(0.45f, float(kClientWidth_) / float(kClientHeight_), 0.1f, 10000.0f);
+		: MakePerspectiveFovMatrix(Camera::kDefaultFovY, float(kClientWidth_) / float(kClientHeight_), Camera::kDefaultNearClip, Camera::kDefaultFarClip);
 
 	Matrix4x4 worldMatrixObj;
 	if (isBillboard_) {
@@ -85,7 +88,8 @@ void Model::SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection) 
 		worldMatrixObj.m[3][2] = transform_.translate.z;
 		worldMatrixObj.m[3][3] = 1.0f;
 	} else {
-		worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+		// Dirty Flag: Transform変更時のみ再計算されるキャッシュ済みワールド行列を利用
+		worldMatrixObj = GetWorldMatrix();
 	}
 
 	Matrix4x4 worldViewProjectionMatrixObj = MultiplyMatrix4x4(worldMatrixObj, MultiplyMatrix4x4(viewMatrix, projectionMatri));
@@ -118,7 +122,7 @@ AABB Model::GetWorldAABB() const
 		aabb.max = { transform_.translate.x + maxScale, transform_.translate.y + maxScale, transform_.translate.z + maxScale };
 		return aabb;
 	}
-	Matrix4x4 worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrixObj = GetWorldMatrix();
 	Matrix4x4 worldMatrix = MultiplyMatrix4x4(rootNode_.localMatrix, worldMatrixObj);
 	return TransformAABB(localAABB_, worldMatrix);
 }
@@ -129,12 +133,17 @@ BoundingSphere Model::GetWorldBoundingSphere() const
 		float maxScale = (std::max)({ transform_.scale.x, transform_.scale.y, transform_.scale.z });
 		BoundingSphere sphere;
 		sphere.center = transform_.translate;
-		sphere.radius = maxScale * 1.5f;
+		sphere.radius = maxScale * kBillboardBoundingSphereScale;
 		return sphere;
 	}
-	Matrix4x4 worldMatrixObj = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
+	Matrix4x4 worldMatrixObj = GetWorldMatrix();
 	Matrix4x4 worldMatrix = MultiplyMatrix4x4(rootNode_.localMatrix, worldMatrixObj);
 	return TransformBoundingSphere(localSphere_, worldMatrix);
+}
+
+void Model::Render(class Draw& draw)
+{
+	draw.DrawModel(this);
 }
 
 

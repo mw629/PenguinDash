@@ -10,6 +10,8 @@
 #include "VariableTypes/Vector2Int.h"
 #include "VariableTypes/Vector3.h"
 #include "VariableTypes/Vector3Int.h"
+#include "VariableTypes/Vector4.h"
+#include "Color.h"
 #include <d3d12.h>
 #include <map>
 #include <optional>
@@ -17,15 +19,7 @@
 #include <wrl/client.h>
 #include "../PSO/PipelineState.h"
 
-
 /// 構造体///
-
-struct Vector4 {
-  float x;
-  float y;
-  float z;
-  float w;
-};
 
 struct Quaternion {
   float x;

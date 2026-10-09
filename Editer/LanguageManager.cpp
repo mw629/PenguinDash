@@ -136,7 +136,12 @@ const char* LanguageManager::Tr(const char* englishText) {
         {"Reset to Default", "デフォルト配置に初期化"},
         {"Layout saved.", "レイアウトを保存しました。"},
         {"Layout restored.", "レイアウトを復元しました。"},
-        {"Layout reset to default.", "デフォルト配置に初期化しました。"}
+        {"Layout reset to default.", "デフォルト配置に初期化しました。"},
+        {"Edit", "編集"},
+        {"Undo", "元に戻す"},
+        {"Redo", "やり直す"},
+        {"Clear History", "履歴を消去"},
+        {"Design Patterns", "デザインパターン"}
     };
 
     auto it = dictionary.find(englishText);

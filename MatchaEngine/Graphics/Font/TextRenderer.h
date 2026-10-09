@@ -39,6 +39,16 @@ enum class TextScaleMode {
 
 class TextRenderer {
 public:
+    static constexpr float kDefaultReferenceWidth = 1280.0f;
+    static constexpr float kDefaultReferenceHeight = 720.0f;
+    static constexpr int kDefaultAtlasWidth = 2048;
+    static constexpr int kDefaultAtlasHeight = 2048;
+    static constexpr float kDefaultFontSize = 32.0f;
+    static constexpr float kDefaultOutlineWidth = 0.15f;
+    static constexpr float kDefaultBoldness = 0.08f;
+    static constexpr float kDefaultBaseBoldness = 0.07f;
+    static constexpr float kDefaultMsdfPxRange = 4.0f;
+
     TextRenderer();
     ~TextRenderer();
 
@@ -51,8 +61,8 @@ public:
                     DescriptorHeap* descriptorHeap,
                     GraphicsPipelineState* pipelineState,
                     const std::string& fontPath,
-                    int atlasWidth = 2048,
-                    int atlasHeight = 2048);
+                    int atlasWidth = kDefaultAtlasWidth,
+                    int atlasHeight = kDefaultAtlasHeight);
 
     // 画面サイズの設定 (ウィンドウリサイズ時に呼び出し)
     void SetScreenSize(float screenWidth, float screenHeight);
@@ -84,41 +94,41 @@ public:
     void DrawString(ID3D12GraphicsCommandList* commandList,
                     const std::string& text,
                     const Vector2& pos,
-                    float fontSize = 32.0f,
+                    float fontSize = kDefaultFontSize,
                     const Vector4& color = { 1.0f, 1.0f, 1.0f, 1.0f },
                     bool enableOutline = false,
                     const Vector4& outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f },
-                    float outlineWidth = 0.15f,
+                    float outlineWidth = kDefaultOutlineWidth,
                     float boldness = 0.0f);
 
     // 文字列の描画 (wide string)
     void DrawString(ID3D12GraphicsCommandList* commandList,
                     const std::wstring& text,
                     const Vector2& pos,
-                    float fontSize = 32.0f,
+                    float fontSize = kDefaultFontSize,
                     const Vector4& color = { 1.0f, 1.0f, 1.0f, 1.0f },
                     bool enableOutline = false,
                     const Vector4& outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f },
-                    float outlineWidth = 0.15f,
+                    float outlineWidth = kDefaultOutlineWidth,
                     float boldness = 0.0f);
 
     // 太字描画の簡易メソッド (アウトラインなしで手軽に太字描画)
     void DrawStringBold(ID3D12GraphicsCommandList* commandList,
                         const std::string& text,
                         const Vector2& pos,
-                        float fontSize = 32.0f,
+                        float fontSize = kDefaultFontSize,
                         const Vector4& color = { 1.0f, 1.0f, 1.0f, 1.0f },
-                        float boldness = 0.08f) {
-        DrawString(commandList, text, pos, fontSize, color, false, { 0.0f, 0.0f, 0.0f, 1.0f }, 0.15f, boldness);
+                        float boldness = kDefaultBoldness) {
+        DrawString(commandList, text, pos, fontSize, color, false, { 0.0f, 0.0f, 0.0f, 1.0f }, kDefaultOutlineWidth, boldness);
     }
 
     void DrawStringBold(ID3D12GraphicsCommandList* commandList,
                         const std::wstring& text,
                         const Vector2& pos,
-                        float fontSize = 32.0f,
+                        float fontSize = kDefaultFontSize,
                         const Vector4& color = { 1.0f, 1.0f, 1.0f, 1.0f },
-                        float boldness = 0.08f) {
-        DrawString(commandList, text, pos, fontSize, color, false, { 0.0f, 0.0f, 0.0f, 1.0f }, 0.15f, boldness);
+                        float boldness = kDefaultBoldness) {
+        DrawString(commandList, text, pos, fontSize, color, false, { 0.0f, 0.0f, 0.0f, 1.0f }, kDefaultOutlineWidth, boldness);
     }
 
     // 単色塗りつぶし矩形（背景パネルやゲージ用）の描画
@@ -151,12 +161,13 @@ private:
     GraphicsPipelineState* pipelineState_ = nullptr;
     std::unique_ptr<DynamicFontAtlas> atlas_;
 
-    float screenWidth_ = 1280.0f;
-    float screenHeight_ = 720.0f;
-    float referenceWidth_ = 1280.0f;
-    float referenceHeight_ = 720.0f;
+private:
+    float screenWidth_ = kDefaultReferenceWidth;
+    float screenHeight_ = kDefaultReferenceHeight;
+    float referenceWidth_ = kDefaultReferenceWidth;
+    float referenceHeight_ = kDefaultReferenceHeight;
     TextScaleMode scaleMode_ = TextScaleMode::Fit;
-    float baseBoldness_ = 0.07f; // 全体的なデフォルト太さオフセット (0.0fが標準、0.07fでしっかり太字)
+    float baseBoldness_ = kDefaultBaseBoldness; // 全体的なデフォルト太さオフセット (0.0fが標準、0.07fでしっかり太字)
 
     size_t currentFrameIndex_ = 0;
 

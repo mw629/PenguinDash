@@ -10,4 +10,7 @@ public:
 
     void CreateVertexData() override;
     void CreateIndexResource() override;
+
+private:
+    static constexpr float kDefaultHalfSize = 0.5f;
 };

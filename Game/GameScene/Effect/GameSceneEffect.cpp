@@ -14,28 +14,26 @@ void GameSceneEffect::Initialize() {
   // 六角形バリアの初期化
   if (barrier_) {
     barrier_->Initialize("Resources/Texture/white64x64.png");
-    barrier_->SetRadius(0.5f);
+    barrier_->SetRadius(kDefaultHexRadius);
     barrier_->SetShape(HexBarrierShape::Honeycomb);
   }
 
   dustEffect_->Initialize();
   dustEffect_->LoadFromJson("Dustparticle");
-  dustEffect_->name_ = "Dust Effect";
+  dustEffect_->SetName("Dust Effect");
   dustEffect_->generatorBehavior = nullptr; // JSONの設定に完全に従う
   dustEffect_->SetStop(
       true); // 自動発生を停止（スクリプトから手動でのみEmitする）
-  strncpy_s(dustEffect_->saveFileName_, sizeof(dustEffect_->saveFileName_),
-            "Dustparticle", _TRUNCATE);
+  dustEffect_->SetSaveFileName("Dustparticle");
 
   // 雪パーティクルの初期化
   snowEffect_->Initialize();
   snowEffect_->LoadFromJson("Snowparticle");
-  snowEffect_->name_ = "Snow Effect";
+  snowEffect_->SetName("Snow Effect");
   snowEffect_->generatorBehavior = nullptr; // JSONの設定に従う
   snowEffect_->SetStop(false);              // 常時自動発生
   snowEffect_->SetLoop(true);
-  strncpy_s(snowEffect_->saveFileName_, sizeof(snowEffect_->saveFileName_),
-            "Snowparticle", _TRUNCATE);
+  snowEffect_->SetSaveFileName("Snowparticle");
 }
 
 void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,
@@ -45,7 +43,7 @@ void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,
     dustEffect_->Update(view);
   }
   if (snowEffect_) {
-    Vector3 snowPos = {playerPos.x * 0.2f, 9.0f, playerPos.z + 5.0f};
+    Vector3 snowPos = {playerPos.x * kSnowPosScaleX, kSnowPosY, playerPos.z + kSnowPosZOffset};
     snowEffect_->SetPosition(snowPos);
     snowEffect_->Update(view);
   }
@@ -74,7 +72,7 @@ void GameSceneEffect::EditorUpdate(const Matrix4x4 &view) {
 void GameSceneEffect::EmitDust(const Vector3 &playerPos) {
   EmitterData ed = dustEffect_->GetEmitterData();
   ed.transform.translate = playerPos;
-  ed.transform.translate.y -= 0.8f; // ペンギンの足元（地面Y=2.0付近）に発生させる
+  ed.transform.translate.y -= kDustYOffset; // ペンギンの足元（地面Y=2.0付近）に発生させる
   dustEffect_->SetEmitterData(ed);
   dustEffect_->Emit();
 }
@@ -118,8 +116,8 @@ void GameSceneEffect::UpdateBarrier(const Matrix4x4 &view,
     float t =
         std::clamp(barrierDeployTimer_ / barrierDeployDuration_, 0.0f, 1.0f);
     // EaseOutBack風の弾む展開アニメーション
-    float s = std::sin(t * 1.5707963f);
-    float overshoot = 1.0f + 0.25f * std::sin(t * 3.14159265f);
+    float s = std::sin(t * kPiOver2);
+    float overshoot = 1.0f + kDeployOvershootStrength * std::sin(t * kPi);
     float scaleFactor = s * overshoot;
     currentScale.x *= scaleFactor;
     currentScale.y *= scaleFactor;
@@ -140,8 +138,8 @@ void GameSceneEffect::UpdateBarrier(const Matrix4x4 &view,
   } else if (barrierState_ == BarrierEffectState::Active) {
     barrierPulseTimer_ += deltaTime;
     // 呼吸のようなパルス（拡縮と発光明滅）
-    float pulse = 1.0f + 0.035f * std::sin(barrierPulseTimer_ * 4.0f);
-    float bright = 0.85f + 0.15f * std::sin(barrierPulseTimer_ * 4.0f);
+    float pulse = 1.0f + kPulseScaleAmplitude * std::sin(barrierPulseTimer_ * kPulseFrequency);
+    float bright = kPulseBrightnessBase + kPulseBrightnessAmplitude * std::sin(barrierPulseTimer_ * kPulseFrequency);
 
     currentScale.x *= pulse;
     currentScale.y *= pulse;
@@ -157,14 +155,14 @@ void GameSceneEffect::UpdateBarrier(const Matrix4x4 &view,
         std::clamp(barrierBreakTimer_ / barrierBreakDuration_, 0.0f, 1.0f);
 
     // 急速に拡大しながらフェードアウト
-    float expand = 1.0f + 0.9f * t;
+    float expand = 1.0f + kBreakExpandStrength * t;
     currentScale.x *= expand;
     currentScale.y *= expand;
     currentScale.z *= expand;
 
     // 最初の一瞬はフラッシュ、その後減衰
     float fade = (1.0f - t > 0.0f) ? (1.0f - t) : 0.0f;
-    if (t < 0.15f) {
+    if (t < kBreakFlashThreshold) {
       currentColor = barrierFlashColor_;
     } else {
       currentColor.x = barrierBaseColor_.x * fade;

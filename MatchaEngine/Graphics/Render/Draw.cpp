@@ -166,7 +166,7 @@ void Draw::DrawObj(ObjectBase *obj) {
   CullMode cull = obj->GetCullMode();
 
   // SkyBoxShaderの場合はスカイボックス（背景）なのでカリングを自動補正
-  bool isSkyBox = (shader == SkyBoxShader || obj->name_ == "SkyBox");
+  bool isSkyBox = (shader == SkyBoxShader || obj->GetName() == "SkyBox");
   if (isSkyBox) {
     // 裏面カリングだと立方体の内側から見た時に消えてしまうため、前面カリングに補正
     if (cull == kCullModeBack) {
@@ -182,23 +182,23 @@ void Draw::DrawObj(ObjectBase *obj) {
 
   if (!camera_) {
     LOG_ERROR(std::format("DrawObj failed: camera_ is null for object '{}'!",
-                          obj->name_));
+                          obj->GetName()));
     return;
   }
   if (!obj->GetMaterial() || !obj->GetMaterial()->GetMaterialResource()) {
     LOG_ERROR(std::format("DrawObj failed: Material is null for object '{}'!",
-                          obj->name_));
+                          obj->GetName()));
     return;
   }
   if (!obj->GetWvpDataResource()) {
     LOG_ERROR(
         std::format("DrawObj failed: WvpDataResource is null for object '{}'!",
-                    obj->name_));
+                    obj->GetName()));
     return;
   }
   if (!lightManager_ || !lightManager_->GetDirectionalLightResource()) {
     LOG_ERROR(std::format(
-        "DrawObj failed: lightManager_ is null for object '{}'!", obj->name_));
+        "DrawObj failed: lightManager_ is null for object '{}'!", obj->GetName()));
     return;
   }
 
@@ -355,19 +355,19 @@ void Draw::DrawModel(Model *model) {
 
   if (!camera_) {
     LOG_ERROR(std::format("DrawModel failed: camera_ is null for model '{}'!",
-                          model->name_));
+                          model->GetName()));
     return;
   }
   if (!model->GetWvpDataResource()) {
     LOG_ERROR(
         std::format("DrawModel failed: WvpDataResource is null for model '{}'!",
-                    model->name_));
+                    model->GetName()));
     return;
   }
   if (!lightManager_ || !lightManager_->GetDirectionalLightResource()) {
     LOG_ERROR(
         std::format("DrawModel failed: lightManager_ is null for model '{}'!",
-                    model->name_));
+                    model->GetName()));
     return;
   }
 
@@ -430,10 +430,10 @@ void Draw::DrawParticle(EffectDefinition *particle) {
                                   graphicsPipelineState_->GetComputePipeline());
 
     static std::unordered_set<std::string> s_gpuLoggedNames;
-    if (s_gpuLoggedNames.find(particle->name_) == s_gpuLoggedNames.end()) {
-      s_gpuLoggedNames.insert(particle->name_);
+    if (s_gpuLoggedNames.find(particle->GetName()) == s_gpuLoggedNames.end()) {
+      s_gpuLoggedNames.insert(particle->GetName());
       LOG_INFO(std::format("DrawParticle: GPU Particle drawing. name='{}', shader='{}', blend={}, vertexSize={}",
-                           particle->name_, particle->GetShader(), static_cast<int>(particle->GetBlend()), particle->GetVertexSize()));
+                           particle->GetName(), particle->GetShader(), static_cast<int>(particle->GetBlend()), particle->GetVertexSize()));
     }
 
     preDraw(particle->GetShader(), particle->GetBlend(), kCullModeNone);

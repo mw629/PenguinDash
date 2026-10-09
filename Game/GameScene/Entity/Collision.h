@@ -41,4 +41,7 @@ public:
 	/// <param name="sphere">BoundingSphere</param>
 	/// <returns>交差していたらtrue</returns>
 	static bool CheckAABBSphere(const AABB& aabb, const BoundingSphere& sphere);
+
+private:
+	static constexpr float kHalfExtentFactor = 0.5f;
 };
