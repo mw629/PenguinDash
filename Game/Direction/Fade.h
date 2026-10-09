@@ -48,7 +48,7 @@ public:
 private:
     static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
     static constexpr float kDefaultDuration = 0.5f;
-    static constexpr Vector4 kDefaultFadeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    static constexpr Vector4 kDefaultFadeColor = Color::Black;
 
     Status status_ = Status::None;
     Status lastFinishedStatus_ = Status::None;
