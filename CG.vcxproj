@@ -274,6 +274,8 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="MatchaEngine\Graphics\Font\MsdfGenerator.cpp" />
     <ClCompile Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp" />
     <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp" />
+    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.cpp" />
+    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shader\ComputeShader\Particle.CS.hlsl">
@@ -505,6 +507,8 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="Game\TestScene\TestScene.h" />
     <ClInclude Include="Game\GameScene\System\PauseSystem.h" />
     <ClInclude Include="Game\GameScene\System\SoundManager.h" />
+    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.h" />
+    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

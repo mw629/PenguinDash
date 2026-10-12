@@ -5,6 +5,9 @@
 
 ///自作エンジン///
 
+//Network
+class TcpNetworkClient;
+
 //Common
 #include "CommandContext.h"
 #include "Common/ObjectPool.h"
@@ -141,6 +144,8 @@ public:
 	LineRenderer* GetLineRenderer() const { return lineRenderer.get(); }
 	GpuProfiler* GetGpuProfiler() const { return gpuProfiler.get(); }
 	MatchaEngine::TextRenderer* GetTextRenderer() const { return textRenderer.get(); }
+	TcpNetworkClient* GetTcpNetworkClient() const { return tcpNetworkClient.get(); }
+	TcpNetworkClient* GetNetworkClient() const { return tcpNetworkClient.get(); }
 
 	ID3D12DescriptorHeap* const* GetDescriptorHeaps() const { return descriptorHeaps; }
 
@@ -193,6 +198,7 @@ private:
 	std::unique_ptr<LineRenderer> lineRenderer;
 	std::unique_ptr<GpuProfiler> gpuProfiler;
 	std::unique_ptr<MatchaEngine::TextRenderer> textRenderer;
+	std::unique_ptr<TcpNetworkClient> tcpNetworkClient;
 
 	ID3D12DescriptorHeap* descriptorHeaps[1]{};
 

@@ -1,3 +1,4 @@
+#include "Network/TCPTcpNetwork/TcpNetworkClient.h"
 #include "Engine.h"
 
 #include <iostream>
@@ -11,6 +12,7 @@
 #endif // _USE_IMGUI
 
 #include <thread>
+#include <timeapi.h>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -63,6 +65,9 @@ Engine::Engine(int32_t kClientWidth, int32_t kClientHeight) {
   imGuiManager = std::make_unique<ImGuiManager>();
 
   graphicsPipelineState = std::make_unique<GraphicsPipelineState>();
+
+  // ネットワーク
+  tcpNetworkClient = std::make_unique<TcpNetworkClient>();
 }
 
 void Engine::Setting() {
@@ -528,6 +533,10 @@ void Engine::FlushGpu() {
 void Engine::End() {
 
   Audio::Finalize();
+
+  if (tcpNetworkClient) {
+    tcpNetworkClient->Disconnect();
+  }
 
 #ifdef _USE_IMGUI
   imGuiManager->Shutdown();
