@@ -572,3 +572,11 @@ size_t Engine::GetProcessMemoryUsage() {
   }
   return 0;
 }
+
+void Engine::ImGui() {
+#ifdef _USE_IMGUI
+  if (tcpNetworkClient) {
+    tcpNetworkClient->ImGuiConnectWindow();
+  }
+#endif // _USE_IMGUI
+}

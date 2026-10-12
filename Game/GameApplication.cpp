@@ -35,7 +35,10 @@ void GameApplication::Run() {
     // 3. シーン固有のImGui（Hierarchy, Inspector, GameScene等）
     sceneManager.get()->ImGui();
 
-    // 4. メインシーン描画
+    // 4. Engine固有のImGui（ネットワーク接続等）
+    engine.get()->ImGui();
+
+    // 5. メインシーン描画
     sceneManager.get()->Draw(*engine->GetDraw());
 #else
     // Release/Developmentでは直接シーンを描画

@@ -112,6 +112,7 @@ public:
 	size_t GetProcessMemoryUsage();
 
 	void Debug(); // Editor分離後は非推奨・不要になりますが一旦空で残すか削除します
+	void ImGui();
 
 	GraphicsDevice* GetGraphics() const { return graphics.get(); }
 	CommandContext* GetCommand() const { return command.get(); }
