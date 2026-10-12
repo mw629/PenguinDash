@@ -588,13 +588,14 @@ void Draw::DrawAllLines(LineRenderer *lineRenderer, bool depthTest) {
 
 void Draw::DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle,
                           ShaderName shader, PostEffect *postEffect,
-                          D3D12_GPU_DESCRIPTOR_HANDLE depthTextureHandle) {
-  preDraw(shader, BlendMode::kBlendModeNone);
+                          D3D12_GPU_DESCRIPTOR_HANDLE depthTextureHandle,
+                          BlendMode blend) {
+  preDraw(shader, blend);
 
   // Bind main screen texture using reflection name "gTexture" if present,
   // otherwise fallback to slot 0
   UINT gTexIndex = graphicsPipelineState_->GetRootParameterIndex(
-      shader, BlendMode::kBlendModeNone, "gTexture");
+      shader, blend, "gTexture");
   if (gTexIndex != static_cast<UINT>(-1)) {
     D3D12_GPU_DESCRIPTOR_HANDLE useHandle = textureHandle;
     if (useHandle.ptr == 0) {
@@ -608,7 +609,7 @@ void Draw::DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle,
 
   if (depthTextureHandle.ptr != 0) {
     UINT gDepthTexIndex = graphicsPipelineState_->GetRootParameterIndex(
-        shader, BlendMode::kBlendModeNone, "gDepthTexture");
+        shader, blend, "gDepthTexture");
     if (gDepthTexIndex != static_cast<UINT>(-1)) {
       commandList_->SetGraphicsRootDescriptorTable(gDepthTexIndex,
                                                    depthTextureHandle);
@@ -618,7 +619,7 @@ void Draw::DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle,
   if (postEffect) {
     // Bind post effect parameters constant buffer
     UINT cbIndex = graphicsPipelineState_->GetRootParameterIndex(
-        shader, BlendMode::kBlendModeNone, "gPostEffect");
+        shader, blend, "gPostEffect");
     if (cbIndex != static_cast<UINT>(-1) &&
         postEffect->GetConstantBufferResource()) {
       commandList_->SetGraphicsRootConstantBufferView(
@@ -628,7 +629,7 @@ void Draw::DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle,
 
     // Pixelate 用定数バッファ (register b1) をバインド
     UINT pixelCbIndex = graphicsPipelineState_->GetRootParameterIndex(
-        shader, BlendMode::kBlendModeNone, "PixelationParams");
+        shader, blend, "PixelationParams");
     if (pixelCbIndex != static_cast<UINT>(-1) &&
         postEffect->GetPixelationBufferResource()) {
       commandList_->SetGraphicsRootConstantBufferView(
@@ -639,7 +640,7 @@ void Draw::DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle,
     // Bind any additional textures registered in the post effect
     for (const auto &[name, path] : postEffect->GetTexturePaths()) {
       UINT texIndex = graphicsPipelineState_->GetRootParameterIndex(
-          shader, BlendMode::kBlendModeNone, name);
+          shader, blend, name);
       if (texIndex != static_cast<UINT>(-1)) {
         Texture texture;
         D3D12_GPU_DESCRIPTOR_HANDLE handle = texture.TextureData(path);

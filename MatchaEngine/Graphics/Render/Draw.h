@@ -72,7 +72,7 @@ public:
 	void DrawAllLines(LineRenderer* lineRenderer, bool depthTest = true);
 
 
-	void DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, ShaderName shader = "CopyShader", class PostEffect* postEffect = nullptr, D3D12_GPU_DESCRIPTOR_HANDLE depthTextureHandle = {0});
+	void DrawPostEffect(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, ShaderName shader = "CopyShader", class PostEffect* postEffect = nullptr, D3D12_GPU_DESCRIPTOR_HANDLE depthTextureHandle = {0}, BlendMode blend = BlendMode::kBlendModeNone);
 
 	void SetTextRenderer(class MatchaEngine::TextRenderer* textRenderer) { textRenderer_ = textRenderer; }
 	class MatchaEngine::TextRenderer* GetTextRenderer() const { return textRenderer_; }
