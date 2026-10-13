@@ -1,10 +1,12 @@
 #include "ScoreManager.h"
+#include "Network/Firebase/FirebaseRankingManager.h"
 #include <imgui.h>
 
 void ScoreManager::Reset() {
   currentDistance_ = 0.0f;
   currentScore_ = 0.0f;
   bonusEnemyHitCount_ = 0;
+  isOnlineScoreSent_ = false;
 }
 
 void ScoreManager::Update(float scrollSpeed, float timeScale) {
@@ -19,6 +21,50 @@ void ScoreManager::AddBonusEnemyHit() {
 void ScoreManager::RecordCurrentScores() {
   UpdateRanking();
   UpdateScoreRanking();
+}
+
+void ScoreManager::SetPlayerName(const std::string& name) {
+  playerName_ = name.empty() ? "Player" : name;
+  snprintf(inputPlayerName_, sizeof(inputPlayerName_), "%s", playerName_.c_str());
+}
+
+void ScoreManager::SendCurrentScoreToOnlineRanking(const std::string& playerName) {
+  SetPlayerName(playerName);
+  FirebaseRankingManager::GetInstance()->SendScoreAsync(
+      playerName_,
+      currentDistance_,
+      currentScore_);
+}
+
+void ScoreManager::SendOnlineScoreAndFetchRanking() {
+  if (isOnlineScoreSent_) {
+    return;
+  }
+  isOnlineScoreSent_ = true;
+
+  // inputPlayerName_ の編集内容を反映
+  if (inputPlayerName_[0] != '\0') {
+    playerName_ = inputPlayerName_;
+  }
+
+  // まず現在のキャッシュを取得開始（または即座に表示）
+  auto rankingMgr = FirebaseRankingManager::GetInstance();
+  if (rankingMgr->IsConfigured()) {
+    // スコアを送信し、送信完了時に最新のランキングを再取得
+    rankingMgr->SendScoreAsync(
+        playerName_,
+        currentDistance_,
+        currentScore_,
+        [](bool success, const std::string& /*msg*/) {
+          if (success) {
+            // スコア送信後にランキングを再取得
+            FirebaseRankingManager::GetInstance()->FetchRankingAsync(5);
+          }
+        });
+
+    // 送信待機中にも既存ランキングをすぐに画面に表示できるよう事前取得
+    rankingMgr->FetchRankingAsync(5);
+  }
 }
 
 void ScoreManager::UpdateRanking() {
@@ -47,27 +93,58 @@ void ScoreManager::UpdateScoreRanking() {
 
 void ScoreManager::ImGui() {
 #ifdef _USE_IMGUI
-  ImGui::Text("Current Distance: %.2f m", currentDistance_);
-  if (ImGui::TreeNode("Distance Top 3 Ranking")) {
+  ImGui::Text("現在の走行距離: %.2f m", currentDistance_);
+  if (ImGui::TreeNode("走行距離 TOP 3 ランキング (ローカル)")) {
     for (int i = 0; i < kRankingCount; i++) {
       if (topRankings_[i] > 0.0f) {
-        ImGui::Text("Rank %d: %.2f m", i + 1, topRankings_[i]);
+        ImGui::Text("%d 位: %.2f m", i + 1, topRankings_[i]);
       } else {
-        ImGui::Text("Rank %d: ---", i + 1);
+        ImGui::Text("%d 位: ---", i + 1);
       }
     }
     ImGui::TreePop();
   }
 
-  ImGui::Text("Current Score: %.0f", currentScore_);
-  if (ImGui::TreeNode("Score Top 3 Ranking")) {
+  ImGui::Text("現在のスコア: %.0f", currentScore_);
+  if (ImGui::TreeNode("スコア TOP 3 ランキング (ローカル)")) {
     for (int i = 0; i < kRankingCount; i++) {
       if (topScoreRankings_[i] > 0.0f) {
-        ImGui::Text("Rank %d: %.0f", i + 1, topScoreRankings_[i]);
+        ImGui::Text("%d 位: %.0f", i + 1, topScoreRankings_[i]);
       } else {
-        ImGui::Text("Rank %d: ---", i + 1);
+        ImGui::Text("%d 位: ---", i + 1);
       }
     }
+    ImGui::TreePop();
+  }
+
+  ImGui::Separator();
+  if (ImGui::TreeNode("Firebase オンラインランキング")) {
+    auto rankingMgr = FirebaseRankingManager::GetInstance();
+    ImGui::Text("ステータス: %s", rankingMgr->GetLastStatusMessage().c_str());
+
+    ImGui::InputText("プレイヤー名", inputPlayerName_, sizeof(inputPlayerName_));
+
+    if (rankingMgr->IsSending()) {
+      ImGui::BeginDisabled();
+      ImGui::Button("送信中...");
+      ImGui::EndDisabled();
+    } else {
+      if (ImGui::Button("現在のスコアをFirebaseへ送信")) {
+        SendCurrentScoreToOnlineRanking(inputPlayerName_);
+      }
+    }
+
+    ImGui::SameLine();
+    if (rankingMgr->IsFetching()) {
+      ImGui::BeginDisabled();
+      ImGui::Button("取得中...");
+      ImGui::EndDisabled();
+    } else {
+      if (ImGui::Button("ランキングを取得")) {
+        rankingMgr->FetchRankingAsync();
+      }
+    }
+
     ImGui::TreePop();
   }
 #endif

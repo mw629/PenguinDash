@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 class ScoreManager {
 private:
@@ -35,9 +36,24 @@ public:
     return topScoreRankings_[0] > 0.0f && currentScore_ >= topScoreRankings_[0];
   }
 
+  /// @brief 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
+  void SendCurrentScoreToOnlineRanking(const std::string& playerName);
+
+  /// @brief ゲームオーバー時の自動送信＆ランキング取得（1ゲームにつき1回のみ実行）
+  void SendOnlineScoreAndFetchRanking();
+
+  const std::string& GetPlayerName() const { return playerName_; }
+  void SetPlayerName(const std::string& name);
+
+  bool IsOnlineScoreSent() const { return isOnlineScoreSent_; }
+
   void ImGui();
 
 private:
   void UpdateRanking();
   void UpdateScoreRanking();
+
+  std::string playerName_ = "Player";
+  bool isOnlineScoreSent_ = false;
+  char inputPlayerName_[32] = "Player";
 };

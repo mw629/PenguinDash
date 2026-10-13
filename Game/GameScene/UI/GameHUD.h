@@ -3,11 +3,15 @@
 #include <Math/Calculation.h>
 #include <memory>
 
+#include <vector>
+#include <string>
+
 class Draw;
 class Boss;
 class StageSettings;
 class Sprite;
 class Fade;
+struct RankingEntry;
 
 struct GameHUDContext {
   int gameState = 0;
@@ -33,6 +37,14 @@ struct GameHUDContext {
   bool isFirstPersonView = false;
   Sprite *crashSprite = nullptr;
   Fade *fade = nullptr;
+
+  // オンラインランキング関連
+  const std::vector<RankingEntry>* onlineRankings = nullptr;
+  bool isOnlineRankingSending = false;
+  bool isOnlineRankingFetching = false;
+  bool isOnlineRankingConfigured = false;
+  std::string onlineRankingStatus;
+  std::string playerName;
 };
 
 class GameHUD {

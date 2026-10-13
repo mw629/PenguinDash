@@ -4,6 +4,7 @@
 #include "GameSceneManager.h"
 #include "Graphics/Render/Draw.h"
 #include "System/SoundManager.h"
+#include "Network/Firebase/FirebaseRankingManager.h"
 #include <Engine.h>
 #include <GameObjects/Object/3d/Model.h>
 #include <Math/Calculation.h>
@@ -559,6 +560,7 @@ void GameScene::TriggerPlayerHit(bool isTrip) {
   player_->OnHit(isTrip);
 
   scoreManager_->RecordCurrentScores();
+  scoreManager_->SendOnlineScoreAndFetchRanking();
 }
 
 void GameScene::CheckKeepRolling() {
@@ -677,6 +679,14 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.isFirstPersonView = cameraController_->IsFirstPerson();
   ctx.crashSprite = crashEffect_->GetSprite();
   ctx.fade = fade_.get();
+
+  auto rankingMgr = FirebaseRankingManager::GetInstance();
+  ctx.onlineRankings = &rankingMgr->GetCachedRankings();
+  ctx.isOnlineRankingSending = rankingMgr->IsSending();
+  ctx.isOnlineRankingFetching = rankingMgr->IsFetching();
+  ctx.isOnlineRankingConfigured = rankingMgr->IsConfigured();
+  ctx.onlineRankingStatus = rankingMgr->GetLastStatusMessage();
+  ctx.playerName = scoreManager_->GetPlayerName();
 
   gameHUD_->DrawHUD(draw, ctx);
 

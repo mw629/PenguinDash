@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include "Network/Firebase/FirebaseRankingManager.h"
 
 // GameState values matching GameScene
 enum GameStateEnum {
@@ -564,25 +565,81 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
                         0.06f);
   }
 
-  // 右カラム: スコアランキング TOP 3
-  draw.DrawMSDFString("【 スコアランキング TOP 3 】", kGameOverRankHeaderScorePos,
+  // 右カラム: オンラインランキング (Firebase) または スコアランキング TOP 3
+  bool hasOnlineData = (ctx.onlineRankings != nullptr && !ctx.onlineRankings->empty());
+
+  char headerBuf[96];
+  if (ctx.isOnlineRankingConfigured) {
+    if (ctx.isOnlineRankingSending) {
+      snprintf(headerBuf, sizeof(headerBuf), "【 オンラインランキング (送信中...) 】");
+    } else if (ctx.isOnlineRankingFetching) {
+      snprintf(headerBuf, sizeof(headerBuf), "【 オンラインランキング (取得中...) 】");
+    } else {
+      snprintf(headerBuf, sizeof(headerBuf), "【 オンラインランキング TOP 3 】");
+    }
+  } else {
+    snprintf(headerBuf, sizeof(headerBuf), "【 スコアランキング TOP 3 (ローカル) 】");
+  }
+
+  draw.DrawMSDFString(headerBuf, kGameOverRankHeaderScorePos,
                       kGameOverRankHeaderFontSize, Vector4(1.0f, 0.85f, 0.3f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-  for (int i = 0; i < 3; i++) {
-    char rBuf[64];
-    float sr = ctx.topScoreRankings ? ctx.topScoreRankings[i] : 0.0f;
-    if (sr > 0.0f) {
-      snprintf(rBuf, sizeof(rBuf), " %d位: %.0f pt", i + 1, sr);
-    } else {
-      snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+
+  if (hasOnlineData) {
+    // Firebase から取得したオンラインランキングを表示
+    int displayCount = std::min(3, static_cast<int>(ctx.onlineRankings->size()));
+    for (int i = 0; i < displayCount; i++) {
+      const auto& entry = (*ctx.onlineRankings)[i];
+      char rBuf[96];
+      snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.0f pt (%.1fm)",
+               entry.rank, entry.playerName.c_str(), entry.score, entry.distance);
+
+      Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
+                          : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
+                                     : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
+
+      draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+                          kGameOverRankItemFontSize,
+                          rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+                          0.06f);
     }
-    Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
-                        : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
-                                   : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+    // 3件未満の場合はハイフン
+    for (int i = displayCount; i < 3; i++) {
+      char rBuf[64];
+      snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+      draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+                          kGameOverRankItemFontSize,
+                          Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+                          0.06f);
+    }
+  } else if (ctx.isOnlineRankingConfigured && (ctx.isOnlineRankingSending || ctx.isOnlineRankingFetching)) {
+    // 通信待機中
+    draw.DrawMSDFString(" クラウド通信中...",
+                        Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY),
                         kGameOverRankItemFontSize,
-                        rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                        0.06f);
+                        Vector4(0.5f, 0.85f, 1.0f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    draw.DrawMSDFString(" 最新ランキングを取得しています",
+                        Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + kGameOverRankItemStepY),
+                        kGameOverRankItemFontSize * 0.85f,
+                        Vector4(0.8f, 0.8f, 0.8f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+  } else {
+    // ローカルのスコアランキングを表示
+    for (int i = 0; i < 3; i++) {
+      char rBuf[64];
+      float sr = ctx.topScoreRankings ? ctx.topScoreRankings[i] : 0.0f;
+      if (sr > 0.0f) {
+        snprintf(rBuf, sizeof(rBuf), " %d位: %.0f pt", i + 1, sr);
+      } else {
+        snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+      }
+      Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
+                          : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
+                                     : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
+      draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+                          kGameOverRankItemFontSize,
+                          rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+                          0.06f);
+    }
   }
 
   draw.DrawFillRect(kGameOverDividerPos2, kGameOverDividerSize,
