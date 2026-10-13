@@ -332,4 +332,11 @@ externals/DirectXTex/obj/
 imgui.ini
 **/imgui.ini
 
+# Environment / Secret files
+.env
+.env.*
+*.env
+!.env.example
+
+
 
