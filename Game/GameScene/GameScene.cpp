@@ -681,7 +681,12 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.fade = fade_.get();
 
   auto rankingMgr = FirebaseRankingManager::GetInstance();
-  ctx.onlineRankings = &rankingMgr->GetCachedRankings();
+  ctx.onlineRankings = &rankingMgr->GetCachedScoreRankings();
+  ctx.onlineScoreRankings = &rankingMgr->GetCachedScoreRankings();
+  ctx.onlineDistanceRankings = &rankingMgr->GetCachedDistanceRankings();
+  ctx.lastSubmittedDocId = rankingMgr->GetLastSubmittedDocId();
+  ctx.localDistanceRank = scoreManager_->GetLastDistanceRank();
+  ctx.localScoreRank = scoreManager_->GetLastScoreRank();
   ctx.isOnlineRankingSending = rankingMgr->IsSending();
   ctx.isOnlineRankingFetching = rankingMgr->IsFetching();
   ctx.isOnlineRankingConfigured = rankingMgr->IsConfigured();

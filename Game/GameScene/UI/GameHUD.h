@@ -38,8 +38,13 @@ struct GameHUDContext {
   Sprite *crashSprite = nullptr;
   Fade *fade = nullptr;
 
-  // オンラインランキング関連
+  // ランキング関連
   const std::vector<RankingEntry>* onlineRankings = nullptr;
+  const std::vector<RankingEntry>* onlineScoreRankings = nullptr;
+  const std::vector<RankingEntry>* onlineDistanceRankings = nullptr;
+  std::string lastSubmittedDocId;
+  int localDistanceRank = -1;
+  int localScoreRank = -1;
   bool isOnlineRankingSending = false;
   bool isOnlineRankingFetching = false;
   bool isOnlineRankingConfigured = false;
@@ -145,29 +150,33 @@ private:
 
   // ゲームオーバー画面
   static constexpr float kGameOverDimAlpha = 0.72f;
-  static constexpr Vector2 kGameOverPanelPos = {200.0f, 60.0f};
-  static constexpr Vector2 kGameOverPanelSize = {880.0f, 570.0f};
+  static constexpr Vector2 kGameOverPanelPos = {200.0f, 50.0f};
+  static constexpr Vector2 kGameOverPanelSize = {880.0f, 600.0f};
   static constexpr float kGameOverAccentHeight = 4.0f;
-  static constexpr Vector2 kGameOverTitlePos = {480.0f, 85.0f};
-  static constexpr float kGameOverTitleFontSize = 56.0f;
-  static constexpr Vector2 kGameOverDistPos = {260.0f, 160.0f};
-  static constexpr float kGameOverDistFontSize = 26.0f;
-  static constexpr Vector2 kGameOverScorePos = {260.0f, 200.0f};
-  static constexpr float kGameOverScoreFontSize = 26.0f;
-  static constexpr Vector2 kGameOverBonusPos = {260.0f, 240.0f};
-  static constexpr float kGameOverBonusFontSize = 22.0f;
-  static constexpr Vector2 kGameOverDividerPos1 = {240.0f, 280.0f};
-  static constexpr Vector2 kGameOverDividerPos2 = {240.0f, 470.0f};
+  static constexpr Vector2 kGameOverTitlePos = {480.0f, 75.0f};
+  static constexpr float kGameOverTitleFontSize = 54.0f;
+  static constexpr Vector2 kGameOverDistPos = {260.0f, 142.0f};
+  static constexpr float kGameOverDistFontSize = 25.0f;
+  static constexpr Vector2 kGameOverScorePos = {260.0f, 180.0f};
+  static constexpr float kGameOverScoreFontSize = 25.0f;
+  static constexpr Vector2 kGameOverBonusPos = {260.0f, 218.0f};
+  static constexpr float kGameOverBonusFontSize = 21.0f;
+  static constexpr Vector2 kGameOverDividerPos1 = {240.0f, 255.0f};
+  static constexpr Vector2 kGameOverDividerPos2 = {240.0f, 505.0f};
   static constexpr Vector2 kGameOverDividerSize = {800.0f, 2.0f};
-  static constexpr Vector2 kGameOverRankHeaderDistPos = {260.0f, 305.0f};
-  static constexpr Vector2 kGameOverRankHeaderScorePos = {660.0f, 305.0f};
+  static constexpr Vector2 kGameOverRankHeaderDistPos = {260.0f, 275.0f};
+  static constexpr Vector2 kGameOverRankHeaderScorePos = {660.0f, 275.0f};
   static constexpr float kGameOverRankHeaderFontSize = 22.0f;
-  static constexpr float kGameOverRankItemDistX = 270.0f;
-  static constexpr float kGameOverRankItemScoreX = 670.0f;
-  static constexpr float kGameOverRankItemBaseY = 345.0f;
-  static constexpr float kGameOverRankItemStepY = 35.0f;
+  static constexpr float kGameOverRankItemDistX = 265.0f;
+  static constexpr float kGameOverRankItemScoreX = 665.0f;
+  static constexpr float kGameOverRankItemBaseY = 315.0f;
+  static constexpr float kGameOverRankItemStepY = 36.0f;
   static constexpr float kGameOverRankItemFontSize = 20.0f;
-  static constexpr Vector2 kGameOverBottomBtnPos = {245.0f, 505.0f};
+  static constexpr Vector2 kGameOverMyRankBoxSize = {375.0f, 44.0f};
+  static constexpr float kGameOverMyRankBoxY = 435.0f;
+  static constexpr float kGameOverMyRankTextOffsetY = 11.0f;
+  static constexpr float kGameOverMyRankFontSize = 19.5f;
+  static constexpr Vector2 kGameOverBottomBtnPos = {245.0f, 535.0f};
   static constexpr float kGameOverBottomBtnFontSize = 22.0f;
 
   // タイトル画面

@@ -36,6 +36,9 @@ public:
     return topScoreRankings_[0] > 0.0f && currentScore_ >= topScoreRankings_[0];
   }
 
+  int GetLastDistanceRank() const { return lastDistanceRank_; }
+  int GetLastScoreRank() const { return lastScoreRank_; }
+
   /// @brief 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
   void SendCurrentScoreToOnlineRanking(const std::string& playerName);
 
@@ -53,7 +56,11 @@ private:
   void UpdateRanking();
   void UpdateScoreRanking();
 
+  int lastDistanceRank_ = -1;
+  int lastScoreRank_ = -1;
+
   std::string playerName_ = "Player";
   bool isOnlineScoreSent_ = false;
   char inputPlayerName_[32] = "Player";
 };
+

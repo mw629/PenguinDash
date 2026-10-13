@@ -7,6 +7,8 @@ void ScoreManager::Reset() {
   currentScore_ = 0.0f;
   bonusEnemyHitCount_ = 0;
   isOnlineScoreSent_ = false;
+  lastDistanceRank_ = -1;
+  lastScoreRank_ = -1;
 }
 
 void ScoreManager::Update(float scrollSpeed, float timeScale) {
@@ -33,7 +35,12 @@ void ScoreManager::SendCurrentScoreToOnlineRanking(const std::string& playerName
   FirebaseRankingManager::GetInstance()->SendScoreAsync(
       playerName_,
       currentDistance_,
-      currentScore_);
+      currentScore_,
+      [](bool success, const std::string& /*msg*/) {
+        if (success) {
+          FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
+        }
+      });
 }
 
 void ScoreManager::SendOnlineScoreAndFetchRanking() {
@@ -50,42 +57,45 @@ void ScoreManager::SendOnlineScoreAndFetchRanking() {
   // まず現在のキャッシュを取得開始（または即座に表示）
   auto rankingMgr = FirebaseRankingManager::GetInstance();
   if (rankingMgr->IsConfigured()) {
-    // スコアを送信し、送信完了時に最新のランキングを再取得
+    // スコアを送信し、送信完了時に最新のランキングを再取得 (スコア・距離両方)
     rankingMgr->SendScoreAsync(
         playerName_,
         currentDistance_,
         currentScore_,
         [](bool success, const std::string& /*msg*/) {
           if (success) {
-            // スコア送信後にランキングを再取得
-            FirebaseRankingManager::GetInstance()->FetchRankingAsync(5);
+            FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
           }
         });
 
-    // 送信待機中にも既存ランキングをすぐに画面に表示できるよう事前取得
-    rankingMgr->FetchRankingAsync(5);
+    // 送信待機中にも既存ランキングをすぐに画面に表示できるよう事前取得 (両方)
+    rankingMgr->FetchBothRankingsAsync(10);
   }
 }
 
 void ScoreManager::UpdateRanking() {
+  lastDistanceRank_ = kRankingCount + 1; // デフォルトは圏外
   for (int i = 0; i < kRankingCount; i++) {
     if (currentDistance_ > topRankings_[i]) {
       for (int j = kRankingCount - 1; j > i; j--) {
         topRankings_[j] = topRankings_[j - 1];
       }
       topRankings_[i] = currentDistance_;
+      lastDistanceRank_ = i + 1;
       break;
     }
   }
 }
 
 void ScoreManager::UpdateScoreRanking() {
+  lastScoreRank_ = kRankingCount + 1; // デフォルトは圏外
   for (int i = 0; i < kRankingCount; i++) {
     if (currentScore_ > topScoreRankings_[i]) {
       for (int j = kRankingCount - 1; j > i; j--) {
         topScoreRankings_[j] = topScoreRankings_[j - 1];
       }
       topScoreRankings_[i] = currentScore_;
+      lastScoreRank_ = i + 1;
       break;
     }
   }
@@ -140,8 +150,8 @@ void ScoreManager::ImGui() {
       ImGui::Button("取得中...");
       ImGui::EndDisabled();
     } else {
-      if (ImGui::Button("ランキングを取得")) {
-        rankingMgr->FetchRankingAsync();
+      if (ImGui::Button("ランキングを取得 (距離・スコア)")) {
+        rankingMgr->FetchBothRankingsAsync();
       }
     }
 

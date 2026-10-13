@@ -51,7 +51,8 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "イディング走るポーズキーもう一度遊ぶプレイメニュー"
         "ペンギンダッシュ―—"
         "操作方法十字説明攻略倒し方緑赤色迫る直撃減少命中削切回避手前当てろ避け"
-        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続");
+        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続"
+        "行圏外以成通最新取得設定送信功失敗未判");
   }
 }
 
@@ -544,101 +545,293 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   draw.DrawFillRect(kGameOverDividerPos1, kGameOverDividerSize,
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
-  // 左カラム: 距離ランキング TOP 3
-  draw.DrawMSDFString("【 距離ランキング TOP 3 】", kGameOverRankHeaderDistPos,
+  // ==========================================
+  // ランキング表示アイテム構造体 & リスト構築
+  // ==========================================
+  struct DisplayRankItem {
+    int rank = 0;
+    std::string playerName;
+    float value = 0.0f;
+    bool isCurrentPlay = false;
+  };
+
+  // 走行距離リストの統合構築
+  auto buildDistanceList = [&]() {
+    std::vector<DisplayRankItem> list;
+    bool alreadyInList = false;
+
+    if (ctx.onlineDistanceRankings && !ctx.onlineDistanceRankings->empty()) {
+      for (const auto& e : *ctx.onlineDistanceRankings) {
+        DisplayRankItem item;
+        item.playerName = e.playerName;
+        item.value = e.distance;
+        bool isMe = (!ctx.lastSubmittedDocId.empty() && e.documentId == ctx.lastSubmittedDocId) ||
+                    (e.playerName == ctx.playerName && std::abs(e.distance - ctx.currentDistance) < 0.05f);
+        if (isMe && !alreadyInList) {
+          item.isCurrentPlay = true;
+          alreadyInList = true;
+        }
+        list.push_back(item);
+      }
+    } else if (ctx.topRankings) {
+      for (int i = 0; i < 3; i++) {
+        float d = ctx.topRankings[i];
+        if (d > 0.0f) {
+          DisplayRankItem item;
+          item.playerName = ctx.playerName;
+          item.value = d;
+          if (!alreadyInList && (i + 1 == ctx.localDistanceRank) && std::abs(d - ctx.currentDistance) < 0.05f) {
+            item.isCurrentPlay = true;
+            alreadyInList = true;
+          }
+          list.push_back(item);
+        }
+      }
+    }
+
+    // クラウド反映待ちや未反映の場合、今回のプレイ記録を統合して即時反映
+    if (!alreadyInList && ctx.currentDistance > 0.0f) {
+      DisplayRankItem myItem;
+      myItem.playerName = ctx.playerName.empty() ? "Player" : ctx.playerName;
+      myItem.value = ctx.currentDistance;
+      myItem.isCurrentPlay = true;
+      list.push_back(myItem);
+    }
+
+    // 降順ソート
+    std::stable_sort(list.begin(), list.end(), [](const DisplayRankItem& a, const DisplayRankItem& b) {
+      return a.value > b.value;
+    });
+
+    for (size_t i = 0; i < list.size(); i++) {
+      list[i].rank = static_cast<int>(i + 1);
+    }
+    return list;
+  };
+
+  // スコアリストの統合構築
+  auto buildScoreList = [&]() {
+    std::vector<DisplayRankItem> list;
+    bool alreadyInList = false;
+
+    if (ctx.onlineScoreRankings && !ctx.onlineScoreRankings->empty()) {
+      for (const auto& e : *ctx.onlineScoreRankings) {
+        DisplayRankItem item;
+        item.playerName = e.playerName;
+        item.value = e.score;
+        bool isMe = (!ctx.lastSubmittedDocId.empty() && e.documentId == ctx.lastSubmittedDocId) ||
+                    (e.playerName == ctx.playerName && std::abs(e.score - ctx.currentScore) < 0.5f);
+        if (isMe && !alreadyInList) {
+          item.isCurrentPlay = true;
+          alreadyInList = true;
+        }
+        list.push_back(item);
+      }
+    } else if (ctx.topScoreRankings) {
+      for (int i = 0; i < 3; i++) {
+        float s = ctx.topScoreRankings[i];
+        if (s > 0.0f) {
+          DisplayRankItem item;
+          item.playerName = ctx.playerName;
+          item.value = s;
+          if (!alreadyInList && (i + 1 == ctx.localScoreRank) && std::abs(s - ctx.currentScore) < 0.5f) {
+            item.isCurrentPlay = true;
+            alreadyInList = true;
+          }
+          list.push_back(item);
+        }
+      }
+    }
+
+    // クラウド反映待ちや未反映の場合、今回のプレイ記録を統合して即時反映
+    if (!alreadyInList && ctx.currentScore > 0.0f) {
+      DisplayRankItem myItem;
+      myItem.playerName = ctx.playerName.empty() ? "Player" : ctx.playerName;
+      myItem.value = ctx.currentScore;
+      myItem.isCurrentPlay = true;
+      list.push_back(myItem);
+    }
+
+    // 降順ソート
+    std::stable_sort(list.begin(), list.end(), [](const DisplayRankItem& a, const DisplayRankItem& b) {
+      return a.value > b.value;
+    });
+
+    for (size_t i = 0; i < list.size(); i++) {
+      list[i].rank = static_cast<int>(i + 1);
+    }
+    return list;
+  };
+
+  // ==========================================
+  // 左カラム: 走行距離ランキング TOP 3
+  // ==========================================
+  bool isDistLoading = ctx.isOnlineRankingConfigured && (ctx.isOnlineRankingSending || ctx.isOnlineRankingFetching);
+  char distHeader[96];
+  if (isDistLoading) {
+    snprintf(distHeader, sizeof(distHeader), "【 走行距離ランキング (通信中...) 】");
+  } else {
+    snprintf(distHeader, sizeof(distHeader), "【 走行距離ランキング TOP 3 】");
+  }
+  draw.DrawMSDFString(distHeader, kGameOverRankHeaderDistPos,
                       kGameOverRankHeaderFontSize, Vector4(0.4f, 0.85f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-  for (int i = 0; i < 3; i++) {
-    char rBuf[64];
-    float r = ctx.topRankings ? ctx.topRankings[i] : 0.0f;
-    if (r > 0.0f) {
-      snprintf(rBuf, sizeof(rBuf), " %d位: %.1f m", i + 1, r);
-    } else {
-      snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+
+  auto distList = buildDistanceList();
+  int distMyRank = -1;
+  bool isDistRankIn = false;
+  for (const auto& item : distList) {
+    if (item.isCurrentPlay) {
+      distMyRank = item.rank;
+      if (distMyRank <= 3) {
+        isDistRankIn = true;
+      }
+      break;
     }
-    Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
-                        : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
-                                   : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
+  }
+
+  // 走行距離 TOP 3 リスト描画
+  int distDisplayCount = std::min(3, static_cast<int>(distList.size()));
+  for (int i = 0; i < distDisplayCount; i++) {
+    const auto& item = distList[i];
+    char rBuf[96];
+    if (item.isCurrentPlay) {
+      snprintf(rBuf, sizeof(rBuf), "★%d位: %-8s  %.1f m", item.rank, item.playerName.c_str(), item.value);
+    } else {
+      snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.1f m", item.rank, item.playerName.c_str(), item.value);
+    }
+
+    Vector2 itemPos(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY);
+    if (item.isCurrentPlay) {
+      draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
+                        Vector4(0.2f, 0.45f, 0.8f, 0.28f));
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize + 1.5f,
+                          Vector4(1.0f, 0.95f, 0.25f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.16f, 0.14f);
+    } else {
+      Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
+                          : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
+                                     : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize,
+                          rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+                          0.06f, 0.0f);
+    }
+  }
+  for (int i = distDisplayCount; i < 3; i++) {
+    char rBuf[64];
+    snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
     draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
                         kGameOverRankItemFontSize,
-                        rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                        0.06f);
+                        Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
   }
 
-  // 右カラム: オンラインランキング (Firebase) または スコアランキング TOP 3
-  bool hasOnlineData = (ctx.onlineRankings != nullptr && !ctx.onlineRankings->empty());
+  // 走行距離ランキング下の表示
+  {
+    Vector2 boxPos(kGameOverRankItemDistX - 6.0f, kGameOverMyRankBoxY);
+    draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
+    draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(0.3f, 0.7f, 1.0f, 0.9f));
 
-  char headerBuf[96];
-  if (ctx.isOnlineRankingConfigured) {
-    if (ctx.isOnlineRankingSending) {
-      snprintf(headerBuf, sizeof(headerBuf), "【 オンラインランキング (送信中...) 】");
-    } else if (ctx.isOnlineRankingFetching) {
-      snprintf(headerBuf, sizeof(headerBuf), "【 オンラインランキング (取得中...) 】");
+    char myDistBuf[96];
+    if (isDistRankIn) {
+      snprintf(myDistBuf, sizeof(myDistBuf), "★ 走行距離 %d位 ランクイン達成！", distMyRank);
+      draw.DrawMSDFString(myDistBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.3f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.10f);
     } else {
-      snprintf(headerBuf, sizeof(headerBuf), "【 オンラインランキング TOP 3 】");
+      if (distMyRank > 3) {
+        snprintf(myDistBuf, sizeof(myDistBuf), "あなたの順位:  %d位  (%.1f m)", distMyRank, ctx.currentDistance);
+      } else {
+        snprintf(myDistBuf, sizeof(myDistBuf), "あなたの順位:  圏外  (%.1f m)", ctx.currentDistance);
+      }
+      draw.DrawMSDFString(myDistBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(0.75f, 0.88f, 1.0f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f, 0.04f);
     }
-  } else {
-    snprintf(headerBuf, sizeof(headerBuf), "【 スコアランキング TOP 3 (ローカル) 】");
   }
 
-  draw.DrawMSDFString(headerBuf, kGameOverRankHeaderScorePos,
+  // ==========================================
+  // 右カラム: スコアランキング TOP 3
+  // ==========================================
+  bool isScoreLoading = ctx.isOnlineRankingConfigured && (ctx.isOnlineRankingSending || ctx.isOnlineRankingFetching);
+  char scoreHeader[96];
+  if (isScoreLoading) {
+    snprintf(scoreHeader, sizeof(scoreHeader), "【 スコアランキング (通信中...) 】");
+  } else {
+    snprintf(scoreHeader, sizeof(scoreHeader), "【 スコアランキング TOP 3 】");
+  }
+  draw.DrawMSDFString(scoreHeader, kGameOverRankHeaderScorePos,
                       kGameOverRankHeaderFontSize, Vector4(1.0f, 0.85f, 0.3f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
-  if (hasOnlineData) {
-    // Firebase から取得したオンラインランキングを表示
-    int displayCount = std::min(3, static_cast<int>(ctx.onlineRankings->size()));
-    for (int i = 0; i < displayCount; i++) {
-      const auto& entry = (*ctx.onlineRankings)[i];
-      char rBuf[96];
-      snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.0f pt (%.1fm)",
-               entry.rank, entry.playerName.c_str(), entry.score, entry.distance);
-
-      Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
-                          : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
-                                     : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
-
-      draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
-                          kGameOverRankItemFontSize,
-                          rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                          0.06f);
-    }
-    // 3件未満の場合はハイフン
-    for (int i = displayCount; i < 3; i++) {
-      char rBuf[64];
-      snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
-      draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
-                          kGameOverRankItemFontSize,
-                          Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                          0.06f);
-    }
-  } else if (ctx.isOnlineRankingConfigured && (ctx.isOnlineRankingSending || ctx.isOnlineRankingFetching)) {
-    // 通信待機中
-    draw.DrawMSDFString(" クラウド通信中...",
-                        Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY),
-                        kGameOverRankItemFontSize,
-                        Vector4(0.5f, 0.85f, 1.0f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
-    draw.DrawMSDFString(" 最新ランキングを取得しています",
-                        Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + kGameOverRankItemStepY),
-                        kGameOverRankItemFontSize * 0.85f,
-                        Vector4(0.8f, 0.8f, 0.8f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
-  } else {
-    // ローカルのスコアランキングを表示
-    for (int i = 0; i < 3; i++) {
-      char rBuf[64];
-      float sr = ctx.topScoreRankings ? ctx.topScoreRankings[i] : 0.0f;
-      if (sr > 0.0f) {
-        snprintf(rBuf, sizeof(rBuf), " %d位: %.0f pt", i + 1, sr);
-      } else {
-        snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+  auto scoreList = buildScoreList();
+  int scoreMyRank = -1;
+  bool isScoreRankIn = false;
+  for (const auto& item : scoreList) {
+    if (item.isCurrentPlay) {
+      scoreMyRank = item.rank;
+      if (scoreMyRank <= 3) {
+        isScoreRankIn = true;
       }
+      break;
+    }
+  }
+
+  // スコア TOP 3 リスト描画
+  int scoreDisplayCount = std::min(3, static_cast<int>(scoreList.size()));
+  for (int i = 0; i < scoreDisplayCount; i++) {
+    const auto& item = scoreList[i];
+    char rBuf[96];
+    if (item.isCurrentPlay) {
+      snprintf(rBuf, sizeof(rBuf), "★%d位: %-8s  %.0f pt", item.rank, item.playerName.c_str(), item.value);
+    } else {
+      snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.0f pt", item.rank, item.playerName.c_str(), item.value);
+    }
+
+    Vector2 itemPos(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY);
+    if (item.isCurrentPlay) {
+      draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
+                        Vector4(0.8f, 0.45f, 0.1f, 0.28f));
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize + 1.5f,
+                          Vector4(1.0f, 0.95f, 0.25f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.16f, 0.14f);
+    } else {
       Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
                           : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
                                      : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
-      draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
-                          kGameOverRankItemFontSize,
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize,
                           rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                          0.06f);
+                          0.06f, 0.0f);
+    }
+  }
+  for (int i = scoreDisplayCount; i < 3; i++) {
+    char rBuf[64];
+    snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+                        kGameOverRankItemFontSize,
+                        Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
+  }
+
+  // スコアランキング下の表示
+  {
+    Vector2 boxPos(kGameOverRankItemScoreX - 6.0f, kGameOverMyRankBoxY);
+    draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
+    draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(1.0f, 0.75f, 0.2f, 0.9f));
+
+    char myScoreBuf[96];
+    if (isScoreRankIn) {
+      snprintf(myScoreBuf, sizeof(myScoreBuf), "★ スコア %d位 ランクイン達成！", scoreMyRank);
+      draw.DrawMSDFString(myScoreBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.3f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.10f);
+    } else {
+      if (scoreMyRank > 3) {
+        snprintf(myScoreBuf, sizeof(myScoreBuf), "あなたの順位:  %d位  (%.0f pt)", scoreMyRank, ctx.currentScore);
+      } else {
+        snprintf(myScoreBuf, sizeof(myScoreBuf), "あなたの順位:  圏外  (%.0f pt)", ctx.currentScore);
+      }
+      draw.DrawMSDFString(myScoreBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.75f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f, 0.04f);
     }
   }
 
