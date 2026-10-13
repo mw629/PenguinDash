@@ -27,6 +27,8 @@ public:
         BossHit,        // ボスへダメージ命中音
         BossDefeat,     // ボス撃破爆発音
         Start,          // スタート・決定音
+        Freeze,         // シーン遷移：凍結音
+        IceCracking,    // シーン遷移：氷割れ・破砕音
         Count
     };
 

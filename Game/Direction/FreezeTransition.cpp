@@ -71,8 +71,8 @@ void FreezeTransition::Start(float freezeDuration, float shatterDuration, std::f
         shatterPostEffect_->SetTime(0.0f);
     }
 
-    // 凍結音の再生 (シュオー、キィィンという氷結音)
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    // 凍結音の再生 (Freeze.mp3)
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Freeze);
 
     // 画面外周に最初の氷晶スパークルを少し散らす
     EmitSparkles(kDefaultScreenCenter, 20, 100.0f, 400.0f);
@@ -121,8 +121,8 @@ void FreezeTransition::Update(float deltaTime) {
                 midpointExecuted_ = true;
             }
 
-            // ピキッ！と最初の亀裂が走る衝撃音
-            SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash, 0.4f);
+            // 氷割れ・破砕音 (IceCracking.mp3) 再生！亀裂から破砕・崩落までシンクロ
+            SoundManager::GetInstance()->PlaySE(SoundManager::SE::IceCracking);
 
             // 亀裂の走るインパクトでスパークル
             EmitSparkles(kDefaultScreenCenter, 20, 150.0f, 450.0f);
@@ -157,9 +157,6 @@ void FreezeTransition::Update(float deltaTime) {
                 shatterPostEffect_->SetTime(0.0f);
                 shatterPostEffect_->Update(0.0f);
             }
-
-            // 氷破砕音 (SE_BarrierBreak) 再生！
-            SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
 
             // 画面全体で無数のガラス片・ガラス屑がガラガラと崩れ落ちる！
             EmitGlassCascade(220);
@@ -332,4 +329,6 @@ void FreezeTransition::Reset() {
         shatterPostEffect_->SetRatio(0.0f);
         shatterPostEffect_->SetValue1(0.0f);
     }
+    SoundManager::GetInstance()->StopSE(SoundManager::SE::Freeze);
+    SoundManager::GetInstance()->StopSE(SoundManager::SE::IceCracking);
 }

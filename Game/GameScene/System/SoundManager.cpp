@@ -33,6 +33,8 @@ void SoundManager::Initialize() {
     seHandles_[static_cast<int>(SE::BossHit)]      = Audio::Load("Resources/Audio/SE/SE_BossDamage.wav");
     seHandles_[static_cast<int>(SE::BossDefeat)]   = Audio::Load("Resources/Audio/SE/SE_BossDefeat.wav");
     seHandles_[static_cast<int>(SE::Start)]        = Audio::Load("Resources/Audio/SE/SE_Start.wav");
+    seHandles_[static_cast<int>(SE::Freeze)]       = Audio::Load("Resources/Audio/SE/Transition/Freeze.mp3");
+    seHandles_[static_cast<int>(SE::IceCracking)]  = Audio::Load("Resources/Audio/SE/Transition/IceCracking.mp3");
 
     isInitialized_ = true;
 }
