@@ -121,8 +121,11 @@ void FreezeTransition::Update(float deltaTime) {
                 midpointExecuted_ = true;
             }
 
-            // 亀裂の走るインパクトで少しスパークル
-            EmitSparkles(kDefaultScreenCenter, 25, 200.0f, 600.0f);
+            // ピキッ！と最初の亀裂が走る衝撃音
+            SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash, 0.4f);
+
+            // 亀裂の走るインパクトでスパークル
+            EmitSparkles(kDefaultScreenCenter, 20, 150.0f, 450.0f);
         }
     }
     else if (phase_ == Phase::Cracking) {
@@ -130,13 +133,21 @@ void FreezeTransition::Update(float deltaTime) {
 
         if (shatterPostEffect_) {
             shatterPostEffect_->SetRatio(0.0f);
-            shatterPostEffect_->SetValue1(p); // 亀裂が走る
+            shatterPostEffect_->SetValue1(p); // 亀裂が広がる
             shatterPostEffect_->SetTime(timer_);
             shatterPostEffect_->Update(0.0f);
         }
 
+        // 亀裂が外側へ走るのに合わせて微小なガラス粉スパークルを散らす
+        if (std::rand() % 3 == 0) {
+            float angle = static_cast<float>(std::rand()) / RAND_MAX * 6.28318f;
+            float radius = p * 420.0f;
+            Vector2 sp = { kDefaultScreenCenter.x + std::cos(angle) * radius, kDefaultScreenCenter.y + std::sin(angle) * radius };
+            EmitSparkles(sp, 2, 40.0f, 160.0f);
+        }
+
         if (p >= 1.0f) {
-            // パリーン！破砕フェーズ突入！
+            // パリーン！ガラガラガラッと砕け散る崩落フェーズ突入！
             phase_ = Phase::Shattering;
             timer_ = 0.0f;
 
@@ -150,18 +161,25 @@ void FreezeTransition::Update(float deltaTime) {
             // 氷破砕音 (SE_BarrierBreak) 再生！
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
 
-            // 大量のダイアモンドダスト (氷粉・ガラスダストスパークル) が四散！
-            EmitSparkles(kDefaultScreenCenter, 140, 250.0f, 1200.0f);
+            // 画面全体で無数のガラス片・ガラス屑がガラガラと崩れ落ちる！
+            EmitGlassCascade(220);
         }
     }
     else if (phase_ == Phase::Shattering) {
         float p = std::clamp(timer_ / shatterDuration_, 0.0f, 1.0f);
 
         if (shatterPostEffect_) {
-            shatterPostEffect_->SetRatio(p); // 破片が飛び散る
+            shatterPostEffect_->SetRatio(p); // 破片がガラガラと崩れ落ちる
             shatterPostEffect_->SetValue1(1.0f);
             shatterPostEffect_->SetTime(timer_);
             shatterPostEffect_->Update(0.0f);
+        }
+
+        // 崩落中も割れ目や上部からパラパラと降り注ぐ微小なガラス屑
+        if (p < 0.65f && (std::rand() % 2 == 0)) {
+            float rx = 100.0f + static_cast<float>(std::rand()) / RAND_MAX * 1080.0f;
+            float ry = 30.0f + static_cast<float>(std::rand()) / RAND_MAX * 350.0f;
+            EmitSparkles({ rx, ry }, 3, 20.0f, 100.0f);
         }
 
         if (p >= 1.0f) {
@@ -210,9 +228,9 @@ void FreezeTransition::EmitSparkles(const Vector2& center, int count, float minS
     std::mt19937 rng(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(this) ^ std::rand()));
     std::uniform_real_distribution<float> randAngle(0.0f, 6.2831853f);
     std::uniform_real_distribution<float> randSpeed(minSpeed, maxSpeed);
-    std::uniform_real_distribution<float> randSize(2.5f, 6.0f);
-    std::uniform_real_distribution<float> randLife(0.35f, 0.75f);
-    std::uniform_real_distribution<float> randOffset(-20.0f, 20.0f);
+    std::uniform_real_distribution<float> randSize(1.5f, 6.5f);
+    std::uniform_real_distribution<float> randLife(0.4f, 0.85f);
+    std::uniform_real_distribution<float> randOffset(-25.0f, 25.0f);
 
     for (int i = 0; i < count; ++i) {
         IceSparkle sp;
@@ -226,13 +244,46 @@ void FreezeTransition::EmitSparkles(const Vector2& center, int count, float minS
         sp.maxLife = randLife(rng);
         sp.alpha = 1.0f;
 
-        // キラキラ光る白〜クリスタルシアン〜シルバー
+        // キラキラ光る純白〜クリスタルシアン〜シルバー (鋭いガラスの反射光)
+        if (i % 4 == 0) {
+            sp.color = { 1.0f, 1.0f, 1.0f, 1.0f }; // 純白の閃光
+        } else if (i % 4 == 1) {
+            sp.color = { 0.72f, 0.94f, 1.0f, 1.0f }; // シアン
+        } else if (i % 4 == 2) {
+            sp.color = { 0.88f, 0.97f, 1.0f, 1.0f }; // クリスタルガラス
+        } else {
+            sp.color = { 0.95f, 1.0f, 1.0f, 1.0f }; // プリズムシルバー
+        }
+
+        sparkles_.push_back(sp);
+    }
+}
+
+void FreezeTransition::EmitGlassCascade(int count) {
+    std::mt19937 rng(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(this) ^ std::rand()));
+    std::uniform_real_distribution<float> randX(80.0f, 1200.0f);
+    std::uniform_real_distribution<float> randY(40.0f, 660.0f);
+    std::uniform_real_distribution<float> randVelX(-180.0f, 180.0f);
+    std::uniform_real_distribution<float> randVelY(-60.0f, 260.0f);
+    std::uniform_real_distribution<float> randSize(1.5f, 6.0f);
+    std::uniform_real_distribution<float> randLife(0.5f, 0.95f);
+
+    for (int i = 0; i < count; ++i) {
+        IceSparkle sp;
+        sp.pos = { randX(rng), randY(rng) };
+        sp.velocity = { randVelX(rng), randVelY(rng) };
+        sp.size = randSize(rng);
+        sp.life = 0.0f;
+        sp.maxLife = randLife(rng);
+        sp.alpha = 1.0f;
+
+        // キラキラ光る純白〜クリスタルシアン〜シルバー
         if (i % 4 == 0) {
             sp.color = { 1.0f, 1.0f, 1.0f, 1.0f }; // 純白
         } else if (i % 4 == 1) {
-            sp.color = { 0.75f, 0.95f, 1.0f, 1.0f }; // シアン
+            sp.color = { 0.72f, 0.94f, 1.0f, 1.0f }; // シアン
         } else if (i % 4 == 2) {
-            sp.color = { 0.88f, 0.96f, 1.0f, 1.0f }; // アイスブルー
+            sp.color = { 0.88f, 0.97f, 1.0f, 1.0f }; // クリスタルガラス
         } else {
             sp.color = { 0.95f, 1.0f, 1.0f, 1.0f }; // プリズムシルバー
         }
@@ -242,7 +293,7 @@ void FreezeTransition::EmitSparkles(const Vector2& center, int count, float minS
 }
 
 void FreezeTransition::UpdateSparkles(float deltaTime) {
-    const float gravity = 400.0f; // 氷粉のふわっとした重力
+    const float gravity = 1200.0f; // ガラガラと崩落するガラス片・ガラス屑の重力加速度
 
     for (auto it = sparkles_.begin(); it != sparkles_.end();) {
         it->life += deltaTime;
@@ -256,12 +307,12 @@ void FreezeTransition::UpdateSparkles(float deltaTime) {
         it->velocity.y += gravity * deltaTime;
 
         // 空気抵抗
-        it->velocity.x *= 0.96f;
-        it->velocity.y *= 0.96f;
+        it->velocity.x *= 0.98f;
+        it->velocity.y *= 0.98f;
 
-        // キラキラ瞬く (正弦波で明滅)
+        // 鋭くキラキラ瞬く (ガラス片の回転反射)
         float lifeRatio = it->life / it->maxLife;
-        float twinkle = 0.7f + 0.3f * std::sin(it->life * 25.0f);
+        float twinkle = 0.6f + 0.4f * std::sin(it->life * 45.0f);
         it->alpha = (1.0f - lifeRatio) * twinkle;
 
         ++it;

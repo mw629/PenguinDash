@@ -54,8 +54,8 @@ public:
 private:
     static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
     static constexpr float kDefaultFreezeDuration = 0.85f;
-    static constexpr float kDefaultCrackDuration = 0.14f;
-    static constexpr float kDefaultShatterDuration = 0.85f;
+    static constexpr float kDefaultCrackDuration = 0.50f;
+    static constexpr float kDefaultShatterDuration = 0.95f;
     static constexpr Vector2 kDefaultScreenCenter = { 640.0f, 360.0f };
     static constexpr float kFreezeSparkleRadius = 450.0f;
 
@@ -94,5 +94,6 @@ private:
     bool isInitialized_ = false;
 
     void EmitSparkles(const Vector2& center, int count, float minSpeed, float maxSpeed);
+    void EmitGlassCascade(int count);
     void UpdateSparkles(float deltaTime);
 };
