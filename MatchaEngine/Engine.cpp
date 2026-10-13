@@ -159,11 +159,6 @@ void Engine::Setting() {
                            descriptorHeap->GetDescriptorSizeSRV(),
                            command->GetCommandQueue());
 
-  // 初回表示位置・サイズを厳密に指定（ImGuiCond_Once または ImGuiCond_Always
-  // に変更可能）
-  ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Once);
-  ImGui::SetNextWindowSize(ImVec2(500.0f, 100.0f), ImGuiCond_Once);
-
 #endif // _USE_IMGUI
 
   Audio::Initialize();

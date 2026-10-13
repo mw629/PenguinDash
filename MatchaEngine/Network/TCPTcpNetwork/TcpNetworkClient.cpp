@@ -23,8 +23,7 @@ TcpNetworkClient::~TcpNetworkClient() {
 
 void TcpNetworkClient::ImGuiConnectWindow(bool* p_open) {
 #ifdef _USE_IMGUI
-	ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_FirstUseEver);
 	ImGui::Begin("TCP Connection", p_open);
 	ImGui::BeginDisabled(connected);
 	ImGui::InputText("Host", host, sizeof(host));

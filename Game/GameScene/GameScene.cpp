@@ -722,9 +722,6 @@ void GameScene::ImGui() {
         StartResultTransition(ResultTransition::Title);
       }
       ImGui::SliderFloat("Fade Duration", &fadeDuration_, 0.1f, 2.0f, "%.2f s");
-      if (ImGui::Button("Test Freeze & Shatter Transition", ImVec2(240, 32))) {
-        FreezeTransition::GetInstance()->Start(kResultFreezeDuration, kResultShatterDuration, nullptr);
-      }
       ImGui::Separator();
     }
   }
@@ -1179,6 +1176,12 @@ void GameScene::ImGui() {
   }
 
   effectManager_->ImGui();
+
+  ImGui::Separator();
+  if (ImGui::Button("Play Transition Effect (画面遷移演出)", ImVec2(-1, 32))) {
+    FreezeTransition::GetInstance()->Start();
+  }
+
   ImGui::End();
 
   Matrix4x4 projection = MakePerspectiveFovMatrix(
@@ -1219,19 +1222,6 @@ void GameScene::ImGui() {
     ImGui::End();
   }
 
-  // タイトル中のImGui
-  if (gameState_ == GameState::Title) {
-    ImGuiIO &io = ImGui::GetIO();
-    ImGui::SetNextWindowPos(
-        ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.85f),
-        ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::Begin("Title Menu", nullptr,
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoCollapse);
-    if (ImGui::Button("Start Game (SPACE)", ImVec2(220, 45))) {
-      StartGame();
-    }
-    ImGui::End();
-  }
+
 #endif
 }

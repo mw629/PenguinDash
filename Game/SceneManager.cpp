@@ -17,19 +17,6 @@ void SceneManager::ImGui() {
 	if (scene_) {
 		scene_->ImGui();
 	}
-
-#ifdef _USE_IMGUI
-	if (ImGui::Begin("Scene Transition")) {
-		if (ImGui::Button("Test Freeze & Shatter", ImVec2(220, 30))) {
-			FreezeTransition::GetInstance()->Start();
-		}
-		ImGui::SameLine();
-		const char* phaseNames[] = { "None", "Freezing", "Cracking", "Shattering", "Finished" };
-		int p = static_cast<int>(FreezeTransition::GetInstance()->GetPhase());
-		ImGui::Text("Phase: %s", (p >= 0 && p <= 4) ? phaseNames[p] : "Unknown");
-	}
-	ImGui::End();
-#endif
 }
 
 void SceneManager::Initialize() {
