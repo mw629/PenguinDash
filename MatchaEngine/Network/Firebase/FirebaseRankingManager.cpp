@@ -504,8 +504,8 @@ void FirebaseRankingManager::ImGui() {
       }
       ImGui::EndTabBar();
     }
-    ImGui::End();
   }
+  ImGui::End();
 #endif
 }
 

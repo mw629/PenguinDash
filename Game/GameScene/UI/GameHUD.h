@@ -11,6 +11,7 @@ class Boss;
 class StageSettings;
 class Sprite;
 class Fade;
+class Texture;
 struct RankingEntry;
 
 struct GameHUDContext {
@@ -57,6 +58,7 @@ public:
   GameHUD() = default;
   ~GameHUD() = default;
 
+  void Initialize(Texture *texture);
   void DrawHUD(Draw &draw, const GameHUDContext &ctx);
 
 private:
@@ -86,25 +88,22 @@ private:
   static constexpr float kOneLaneMarginRight = 20.0f;
   static constexpr float kOneLanePanelY = 15.0f;
 
-  // ボスパネル
-  static constexpr Vector2 kBossPanelPos = {320.0f, 15.0f};
-  static constexpr Vector2 kBossPanelSize = {640.0f, 115.0f};
-  static constexpr float kBossTitleFontSize = 28.0f;
-  static constexpr float kBossTitleY = 24.0f;
-  static constexpr float kBossHpFontSize = 22.0f;
-  static constexpr float kBossHpY = 58.0f;
-  static constexpr float kBossGuideFontSize = 20.0f;
-  static constexpr float kBossGuideY = 92.0f;
+  // ボスパネル & 氷HPバー
+  static constexpr Vector2 kBossPanelPos = {310.0f, 10.0f};
+  static constexpr Vector2 kBossPanelSize = {660.0f, 96.0f};
+  static constexpr float kBossTitleFontSize = 24.0f;
+  static constexpr float kBossTitleY = 18.0f;
+  static constexpr Vector2 kBossHpBarPos = {340.0f, 52.0f};
+  static constexpr Vector2 kBossHpBarSize = {600.0f, 32.0f};
+  static constexpr float kBossHpTextFontSize = 20.0f;
   static constexpr float kBossAlertWidth = 740.0f;
   static constexpr float kBossAlertHeight = 40.0f;
-  static constexpr float kBossAlertY = 125.0f;
-  static constexpr float kBossAlertTextY = 130.0f;
-  static constexpr float kBossAlertFontSize = 25.0f;
+  static constexpr float kBossAlertY = 116.0f;
+  static constexpr float kBossAlertTextY = 121.0f;
+  static constexpr float kBossAlertFontSize = 24.0f;
   static constexpr float kBossAlertPulseBase = 0.8f;
   static constexpr float kBossAlertPulseAmp = 0.2f;
   static constexpr float kBossAlertPulseFreq = 12.0f;
-  static constexpr Vector2 kBossHowToPanelPos = {880.0f, 455.0f};
-  static constexpr Vector2 kBossHowToPanelSize = {380.0f, 205.0f};
   static constexpr Vector2 kBossMissionBannerPos = {260.0f, 240.0f};
   static constexpr Vector2 kBossMissionBannerSize = {760.0f, 190.0f};
   static constexpr float kBossMissionBannerBorderY = 426.0f;
@@ -132,6 +131,8 @@ private:
   static constexpr float kPauseDimAlpha = 0.65f;
   static constexpr Vector2 kPausePanelPos = {360.0f, 160.0f};
   static constexpr Vector2 kPausePanelSize = {560.0f, 410.0f};
+  static constexpr Vector2 kPauseBossPanelPos = {300.0f, 95.0f};
+  static constexpr Vector2 kPauseBossPanelSize = {680.0f, 495.0f};
   static constexpr float kPauseAccentHeight = 4.0f;
   static constexpr Vector2 kPauseTitlePos = {490.0f, 190.0f};
   static constexpr float kPauseTitleFontSize = 52.0f;
@@ -223,8 +224,23 @@ private:
   void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alpha);
   void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx) { DrawControlsGuide(draw, ctx, kDefaultGuideAlpha); }
   void DrawPauseHUD(Draw &draw, const GameHUDContext &ctx);
+  void DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawTitleHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawEditorHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawBadgeFPV(Draw &draw);
+
+  // 氷HPバー用スプライトリソース
+  int hpBarFrameTexture_ = -1;
+  int hpBarFillTexture_ = -1;
+  std::unique_ptr<Sprite> hpBarFrameSprite_;
+  std::unique_ptr<Sprite> hpBarFillSprite_;
+  bool isSpritesInitialized_ = false;
+
+  // ボスHPバーのアニメーション演出用
+  int lastKnownBossHp_ = -1;
+  float bossDamageLagHp_ = 5.0f;
+  float bossDamageFlashTimer_ = 0.0f;
+  float bossDamageShakeTimer_ = 0.0f;
+  float lastUiTimer_ = 0.0f;
 };

@@ -6,12 +6,24 @@
 #include <Core/WindowConfig.h>
 #include <Entity/Boss.h>
 #include <GameObjects/Object/2d/Sprite.h>
+#include <Resource/Texture.h>
 #include <Stage/StageSettings.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
 #include "Network/Firebase/FirebaseRankingManager.h"
+
+void GameHUD::Initialize(Texture *texture) {
+  if (!texture) return;
+
+  // ボスHPバーのアニメーション状態をリセット
+  lastKnownBossHp_ = -1;
+  bossDamageLagHp_ = 5.0f;
+  bossDamageFlashTimer_ = 0.0f;
+  bossDamageShakeTimer_ = 0.0f;
+  lastUiTimer_ = 0.0f;
+}
 
 // GameState values matching GameScene
 enum GameStateEnum {
@@ -51,7 +63,7 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "イディング走るポーズキーもう一度遊ぶプレイメニュー"
         "ペンギンダッシュ―—"
         "操作方法十字説明攻略倒し方緑赤色迫る直撃減少命中削切回避手前当てろ避け"
-        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続"
+        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続生"
         "行圏外以成通最新取得設定送信功失敗未判");
   }
 }
@@ -96,6 +108,11 @@ void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
 }
 
 void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
+  // ボス戦中は走行ステータス（距離、スコア、速度、ベスト）や1レーン表示を出さない
+  if (ctx.playingState == PlayState_Boss) {
+    return;
+  }
+
   // 左上: メインステータスパネル
   const float panelX = kStatusPanelPos.x;
   const float panelY = kStatusPanelPos.y;
@@ -193,62 +210,160 @@ void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
 void GameHUD::DrawBossHUD(Draw &draw, const GameHUDContext &ctx) {
   if (!ctx.boss) return;
 
-  const float panelX = kBossPanelPos.x;
-  const float panelY = kBossPanelPos.y;
-  const float panelW = kBossPanelSize.x;
-  const float panelH = kBossPanelSize.y;
-
-  draw.DrawFillRect(Vector2(panelX, panelY), Vector2(panelW, panelH),
-                    Vector4(0.10f, 0.03f, 0.03f, 0.85f));
-  draw.DrawFillRect(Vector2(panelX, panelY), Vector2(panelW, kPanelBorderHeight),
-                    Vector4(0.9f, 0.2f, 0.2f, 0.9f));
-
   auto *tr = draw.GetTextRenderer();
+  bool isPad = GamePadInput::IsConnected();
 
-  // ボスヘッダー
-  const char *titleStr = "=== BOSS: ICE KING ===";
-  const float titleSize = kBossTitleFontSize;
-  float titleW = tr ? tr->MeasureString(titleStr, titleSize).x : 307.0f;
-  float titleX = panelX + (panelW - titleW) * 0.5f;
-  draw.DrawMSDFString(titleStr, Vector2(titleX, kBossTitleY), titleSize,
-                      Vector4(0.8f, 0.95f, 1.0f, 1.0f), true,
-                      Vector4(0.0f, 0.2f, 0.5f, 1.0f), 0.08f);
+  // デルタタイムの計算（アニメーション用）
+  float dt = 0.0166f;
+  if (lastUiTimer_ > 0.0f && ctx.uiTimer > lastUiTimer_) {
+    dt = ctx.uiTimer - lastUiTimer_;
+    if (dt > 0.1f) dt = 0.1f;
+  }
+  lastUiTimer_ = ctx.uiTimer;
 
-  // ボスHPゲージ
+  // ボスHPとダメージ演出計算
   int maxHp = ctx.boss->GetMaxHP();
   int hp = ctx.boss->GetHP();
   if (hp < 0) hp = 0;
   if (hp > maxHp) hp = maxHp;
 
-  std::string hpGauge = "[";
-  for (int i = 0; i < maxHp; i++) {
-    if (i < hp)
-      hpGauge += "■";
-    else
-      hpGauge += "░";
+  if (lastKnownBossHp_ < 0) {
+    // 初回初期化
+    lastKnownBossHp_ = hp;
+    bossDamageLagHp_ = static_cast<float>(hp);
+  } else if (hp < lastKnownBossHp_) {
+    // ダメージヒット！フラッシュ＆激しいシェイク
+    bossDamageFlashTimer_ = 0.35f;
+    bossDamageShakeTimer_ = 0.30f;
+    lastKnownBossHp_ = hp;
+  } else if (hp > lastKnownBossHp_) {
+    bossDamageLagHp_ = static_cast<float>(hp);
+    lastKnownBossHp_ = hp;
   }
-  hpGauge += "]";
 
-  char hpText[128];
-  snprintf(hpText, sizeof(hpText), "HP %s  %d / %d", hpGauge.c_str(), hp, maxHp);
-  const float hpSize = kBossHpFontSize;
-  float hpW = tr ? tr->MeasureString(hpText, hpSize).x : 567.0f;
-  float hpX = panelX + (panelW - hpW) * 0.5f;
-  draw.DrawMSDFString(hpText, Vector2(hpX, kBossHpY), hpSize,
-                      Vector4(1.0f, 0.45f, 0.45f, 1.0f), true,
-                      Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.07f);
+  // タイマー更新
+  if (bossDamageFlashTimer_ > 0.0f) {
+    bossDamageFlashTimer_ = (std::max)(0.0f, bossDamageFlashTimer_ - dt);
+  }
+  if (bossDamageShakeTimer_ > 0.0f) {
+    bossDamageShakeTimer_ = (std::max)(0.0f, bossDamageShakeTimer_ - dt);
+  }
 
-  // 反撃ガイド
-  bool isPad = GamePadInput::IsConnected();
-  const char *guideStr = isPad
-      ? "[X] 左レーン  |  [Y] 中央レーン  |  [B] 右レーン (魚を押して敵へ飛ばす)"
-      : "[1] 左レーン  |  [2] 中央レーン  |  [3] 右レーン (魚を押して敵へ飛ばす)";
-  const float guideSize = kBossGuideFontSize;
-  float subGuideW = tr ? tr->MeasureString(guideStr, guideSize).x : 680.0f;
-  float subGuideX = panelX + (panelW - subGuideW) * 0.5f;
-  draw.DrawMSDFString(guideStr, Vector2(subGuideX, kBossGuideY), guideSize,
-                      Vector4(0.8f, 0.95f, 0.5f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  // 赤色遅延バーの追従更新（被弾フラッシュが落ち着いたらスムーズに現在HPへ追従）
+  if (bossDamageFlashTimer_ <= 0.08f) {
+    if (bossDamageLagHp_ > static_cast<float>(hp)) {
+      bossDamageLagHp_ -= dt * 1.8f;
+      if (bossDamageLagHp_ < static_cast<float>(hp)) {
+        bossDamageLagHp_ = static_cast<float>(hp);
+      }
+    }
+  }
+
+  // 被弾シェイク
+  float shakeX = 0.0f;
+  float shakeY = 0.0f;
+  if (bossDamageShakeTimer_ > 0.0f) {
+    float shakeAmp = (bossDamageShakeTimer_ / 0.30f) * 4.0f;
+    shakeX = std::sin(ctx.uiTimer * 70.0f) * shakeAmp;
+    shakeY = std::cos(ctx.uiTimer * 85.0f) * (shakeAmp * 0.5f);
+  }
+
+  // ボスパネル背景（画面上部中央、氷のダークフロストパネル）
+  draw.DrawFillRect(kBossPanelPos, kBossPanelSize,
+                    Vector4(0.02f, 0.05f, 0.12f, 0.85f));
+  // 上部＆下部の氷のアクセントライン
+  draw.DrawFillRect(kBossPanelPos, Vector2(kBossPanelSize.x, 2.0f),
+                    Vector4(0.35f, 0.85f, 1.0f, 0.90f));
+  draw.DrawFillRect(Vector2(kBossPanelPos.x, kBossPanelPos.y + kBossPanelSize.y - 2.0f),
+                    Vector2(kBossPanelSize.x, 2.0f),
+                    Vector4(0.12f, 0.35f, 0.65f, 0.60f));
+
+  // ボスヘッダー（ボスの名前）
+  const char *titleStr = "=== BOSS: ICE KING ===";
+  const float titleSize = kBossTitleFontSize;
+  float titleW = tr ? tr->MeasureString(titleStr, titleSize).x : 280.0f;
+  float titleX = 640.0f - titleW * 0.5f;
+  draw.DrawMSDFString(titleStr, Vector2(titleX, kBossTitleY), titleSize,
+                      Vector4(0.90f, 0.97f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.20f, 0.50f, 1.0f), 0.12f, 0.06f);
+
+  // ボスHPバー（ライフゲージ）
+  const float barX = kBossHpBarPos.x + shakeX;
+  const float barY = kBossHpBarPos.y + shakeY;
+  const float barW = kBossHpBarSize.x;
+  const float barH = kBossHpBarSize.y;
+
+  // ① 外枠（氷のブルーアクセント + 黒いインナー枠）
+  draw.DrawFillRect(Vector2(barX - 3.0f, barY - 3.0f), Vector2(barW + 6.0f, barH + 6.0f),
+                    Vector4(0.15f, 0.35f, 0.60f, 0.95f));
+  draw.DrawFillRect(Vector2(barX - 1.0f, barY - 1.0f), Vector2(barW + 2.0f, barH + 2.0f),
+                    Vector4(0.02f, 0.04f, 0.08f, 1.0f));
+
+  // ② ゲージ背景溝（ロストHPスロット：失われたHPが暗い溝としてクッキリ見える）
+  draw.DrawFillRect(Vector2(barX, barY), Vector2(barW, barH),
+                    Vector4(0.06f, 0.08f, 0.13f, 0.95f));
+
+  // ③ 遅延ダメージバー（赤色：ダメージを受けた直前の位置が赤く残り、スーッと縮む）
+  float lagRatio = (maxHp > 0) ? (bossDamageLagHp_ / static_cast<float>(maxHp)) : 0.0f;
+  lagRatio = std::clamp(lagRatio, 0.0f, 1.0f);
+  if (lagRatio > 0.001f) {
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * lagRatio, barH),
+                      Vector4(0.95f, 0.22f, 0.18f, 0.95f));
+  }
+
+  // ④ 現在のHPバー（鮮やかなアイスブルー＆クリスタルハイライト）
+  float currentRatio = (maxHp > 0) ? (static_cast<float>(hp) / static_cast<float>(maxHp)) : 0.0f;
+  currentRatio = std::clamp(currentRatio, 0.0f, 1.0f);
+  if (currentRatio > 0.001f) {
+    // 残りHP 1 のときは危険パルス点滅
+    Vector4 baseColor = (hp == 1)
+        ? Lerp(Vector4(0.2f, 0.75f, 1.0f, 1.0f), Vector4(1.0f, 0.25f, 0.2f, 1.0f),
+               0.5f + 0.5f * std::sin(ctx.uiTimer * 10.0f))
+        : Vector4(0.15f, 0.70f, 1.0f, 1.0f);
+
+    // バー本体
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * currentRatio, barH), baseColor);
+
+    // 上半分ハイライト（クリスタルの光沢）
+    float hlHeight = barH * 0.45f;
+    Vector4 hlColor = (hp == 1)
+        ? Vector4(1.0f, 0.85f, 0.85f, 0.65f)
+        : Vector4(0.75f, 0.95f, 1.0f, 0.75f);
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * currentRatio, hlHeight), hlColor);
+
+    // 下部シャドウライン
+    draw.DrawFillRect(Vector2(barX, barY + barH - 3.0f), Vector2(barW * currentRatio, 3.0f),
+                      Vector4(0.04f, 0.32f, 0.60f, 0.85f));
+
+    // 被弾フラッシュ（白フラッシュ）
+    if (bossDamageFlashTimer_ > 0.0f) {
+      float flashAlpha = (bossDamageFlashTimer_ / 0.35f) * 0.85f;
+      draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * currentRatio, barH),
+                        Vector4(1.0f, 1.0f, 1.0f, flashAlpha));
+    }
+  }
+
+  // ⑤ 5分割セグメント区切り線（目盛り）
+  // ゲージを5個の独立したクリスタルブロックに分割し、1ブロック減少を極めて直感的に可視化
+  for (int i = 1; i < maxHp; ++i) {
+    float splitX = barX + (barW / static_cast<float>(maxHp)) * static_cast<float>(i);
+    // 暗い溝スリット
+    draw.DrawFillRect(Vector2(splitX - 1.5f, barY), Vector2(3.0f, barH),
+                      Vector4(0.02f, 0.04f, 0.08f, 0.95f));
+    // 氷のセパレーターライン（青白い光）
+    draw.DrawFillRect(Vector2(splitX - 0.5f, barY), Vector2(1.0f, barH),
+                      Vector4(0.40f, 0.75f, 1.0f, 0.70f));
+  }
+
+  // ⑥ HPテキスト（バー中央にアウトライン付き白文字で大きく表示）
+  char hpText[32];
+  snprintf(hpText, sizeof(hpText), "HP  %d / %d", hp, maxHp);
+  float hpTextW = tr ? tr->MeasureString(hpText, kBossHpTextFontSize).x : 90.0f;
+  float hpTextX = barX + (barW - hpTextW) * 0.5f;
+  float hpTextY = barY + (barH - kBossHpTextFontSize) * 0.5f - 1.0f;
+  draw.DrawMSDFString(hpText, Vector2(hpTextX, hpTextY), kBossHpTextFontSize,
+                      Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                      Vector4(0.02f, 0.06f, 0.16f, 1.0f), 0.12f, 0.06f);
 
   // 反撃チャンスのアラート点滅表示
   if (ctx.reflectLane != -1) {
@@ -281,62 +396,6 @@ void GameHUD::DrawBossHUD(Draw &draw, const GameHUDContext &ctx) {
     draw.DrawMSDFString(alertBuf, Vector2(alertTextX, kBossAlertTextY), kBossAlertFontSize,
                         Vector4(1.0f, 0.95f, 0.15f, pulseScale), true,
                         Vector4(0.5f, 0.1f, 0.0f, 1.0f), 0.09f);
-  }
-
-  // 右下: ボス倒し方（攻略ガイド）パネル
-  {
-    const float guideX = kBossHowToPanelPos.x;
-    const float guideY = kBossHowToPanelPos.y;
-    const float guideW = kBossHowToPanelSize.x;
-    const float guideH = kBossHowToPanelSize.y;
-
-    draw.DrawFillRect(Vector2(guideX, guideY), Vector2(guideW, guideH),
-                      Vector4(0.08f, 0.03f, 0.04f, 0.88f));
-    draw.DrawFillRect(Vector2(guideX, guideY), Vector2(guideW, kPanelBorderHeight),
-                      Vector4(1.0f, 0.45f, 0.2f, 0.95f));
-
-    draw.DrawMSDFString("【 ボスの倒し方 】",
-                        Vector2(guideX + 16.0f, guideY + 12.0f), 22.0f,
-                        Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
-                        Vector4(0.3f, 0.05f, 0.0f, 1.0f), 0.12f, 0.08f);
-    draw.DrawMSDFString("HOW TO DEFEAT",
-                        Vector2(guideX + 225.0f, guideY + 16.0f), 15.0f,
-                        Vector4(0.85f, 0.65f, 0.5f, 0.85f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
-
-    draw.DrawFillRect(Vector2(guideX + 14.0f, guideY + 42.0f),
-                      Vector2(guideW - 28.0f, 1.0f),
-                      Vector4(0.5f, 0.25f, 0.2f, 0.65f));
-
-    draw.DrawMSDFString("① 障害物をよけて進め！",
-                        Vector2(guideX + 16.0f, guideY + 52.0f), 19.0f,
-                        Vector4(1.0f, 0.5f, 0.5f, 1.0f), true,
-                        Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
-    draw.DrawMSDFString("   移動で回避",
-                        Vector2(guideX + 16.0f, guideY + 77.0f), 16.0f,
-                        Vector4(0.9f, 0.9f, 0.9f, 0.9f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
-
-    draw.DrawMSDFString("② 魚がいるレーンを押せ！",
-                        Vector2(guideX + 16.0f, guideY + 104.0f), 19.0f,
-                        Vector4(0.3f, 1.0f, 0.6f, 1.0f), true,
-                        Vector4(0.0f, 0.2f, 0.1f, 1.0f), 0.10f, 0.06f);
-    const char *step2Str = isPad
-        ? "   魚が手前に来たら [X]左 / [Y]中 / [B]右"
-        : "   魚が手前に来たら [1]左 / [2]中 / [3]右";
-    draw.DrawMSDFString(step2Str,
-                        Vector2(guideX + 16.0f, guideY + 129.0f), 16.0f,
-                        Vector4(1.0f, 0.95f, 0.65f, 0.95f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
-
-    draw.DrawMSDFString("③ 魚を敵に飛ばして撃破！",
-                        Vector2(guideX + 16.0f, guideY + 156.0f), 19.0f,
-                        Vector4(1.0f, 0.8f, 0.25f, 1.0f), true,
-                        Vector4(0.2f, 0.1f, 0.0f, 1.0f), 0.10f, 0.06f);
-    draw.DrawMSDFString("   飛ばした魚を当ててHPを削り切れ！",
-                        Vector2(guideX + 16.0f, guideY + 181.0f), 16.0f,
-                        Vector4(0.95f, 0.95f, 0.95f, 0.9f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
   }
 
   // ボス登場時作戦指令バナー
@@ -443,6 +502,12 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   draw.DrawFillRect(Vector2(0.0f, 0.0f), fullScreenSize,
                     Vector4(0.0f, 0.0f, 0.0f, kPauseDimAlpha));
 
+  // ボス戦時はボス戦専用ポーズ画面（移動距離は非表示、ボスの倒し方を表示）
+  if (ctx.playingState == PlayState_Boss) {
+    DrawBossPauseHUD(draw, ctx);
+    return;
+  }
+
   draw.DrawFillRect(kPausePanelPos, kPausePanelSize,
                     Vector4(0.06f, 0.08f, 0.12f, 0.94f));
   draw.DrawFillRect(kPausePanelPos, Vector2(kPausePanelSize.x, kPauseAccentHeight),
@@ -496,6 +561,158 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[  2  ] タイトルへ戻る (TITLE)", kPauseBtnTitlePos,
                         kPauseBtnFontSize, Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+}
+
+void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
+  auto *tr = draw.GetTextRenderer();
+  bool isPad = GamePadInput::IsConnected();
+
+  const Vector2 panelPos = kPauseBossPanelPos;
+  const Vector2 panelSize = kPauseBossPanelSize;
+  const float panelX = panelPos.x;
+  const float panelY = panelPos.y;
+  const float panelW = panelSize.x;
+
+  // メインパネル背景 & アクセントバー
+  draw.DrawFillRect(panelPos, panelSize,
+                    Vector4(0.06f, 0.08f, 0.12f, 0.95f));
+  draw.DrawFillRect(panelPos, Vector2(panelW, kPauseAccentHeight),
+                    Vector4(1.0f, 0.8f, 0.2f, 0.95f));
+
+  // タイトル "=== PAUSE ==="
+  const char *titleStr = "=== PAUSE ===";
+  const float titleSize = 46.0f;
+  float titleW = tr ? tr->MeasureString(titleStr, titleSize).x : 280.0f;
+  draw.DrawMSDFString(titleStr, Vector2(panelX + (panelW - titleW) * 0.5f, panelY + 20.0f),
+                      titleSize, Vector4(1.0f, 0.9f, 0.2f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  // サブタイトル "ゲーム一時停止中 (ボス戦)"
+  const char *subTitleStr = "ゲーム一時停止中 (ボス戦)";
+  const float subTitleSize = 20.0f;
+  float subTitleW = tr ? tr->MeasureString(subTitleStr, subTitleSize).x : 220.0f;
+  draw.DrawMSDFString(subTitleStr, Vector2(panelX + (panelW - subTitleW) * 0.5f, panelY + 70.0f),
+                      subTitleSize, Vector4(0.85f, 0.85f, 0.85f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+
+  // ボスHP表示
+  if (ctx.boss) {
+    int maxHp = ctx.boss->GetMaxHP();
+    int hp = ctx.boss->GetHP();
+    if (hp < 0) hp = 0;
+    if (hp > maxHp) hp = maxHp;
+    std::string hpGauge = "[";
+    for (int i = 0; i < maxHp; i++) {
+      if (i < hp) hpGauge += "■";
+      else hpGauge += "░";
+    }
+    hpGauge += "]";
+    char bossHpBuf[128];
+    snprintf(bossHpBuf, sizeof(bossHpBuf), "BOSS: ICE KING    HP %s  %d / %d",
+             hpGauge.c_str(), hp, maxHp);
+    const float hpSize = 20.0f;
+    float hpW = tr ? tr->MeasureString(bossHpBuf, hpSize).x : 360.0f;
+    draw.DrawMSDFString(bossHpBuf, Vector2(panelX + (panelW - hpW) * 0.5f, panelY + 98.0f),
+                        hpSize, Vector4(1.0f, 0.45f, 0.45f, 1.0f), true,
+                        Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // 仕切り線 1
+  const float dividerX = panelX + 30.0f;
+  const float dividerW = panelW - 60.0f;
+  draw.DrawFillRect(Vector2(dividerX, panelY + 128.0f), Vector2(dividerW, 2.0f),
+                    Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+  // 攻略ガイド内側背景ボックス
+  const float boxX = panelX + 30.0f;
+  const float boxY = panelY + 138.0f;
+  const float boxW = panelW - 60.0f;
+  const float boxH = 196.0f;
+  draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, boxH),
+                    Vector4(0.08f, 0.03f, 0.04f, 0.85f));
+  draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, 2.0f),
+                    Vector4(1.0f, 0.45f, 0.2f, 0.95f));
+
+  // 見出し
+  draw.DrawMSDFString("【 ボスの倒し方 】",
+                      Vector2(boxX + 18.0f, boxY + 12.0f), 22.0f,
+                      Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
+                      Vector4(0.3f, 0.05f, 0.0f, 1.0f), 0.12f, 0.08f);
+  draw.DrawMSDFString("HOW TO DEFEAT",
+                      Vector2(boxX + 240.0f, boxY + 16.0f), 15.0f,
+                      Vector4(0.85f, 0.65f, 0.5f, 0.85f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  draw.DrawFillRect(Vector2(boxX + 16.0f, boxY + 40.0f), Vector2(boxW - 32.0f, 1.0f),
+                    Vector4(0.5f, 0.25f, 0.2f, 0.65f));
+
+  // ①
+  draw.DrawMSDFString("① 障害物をよけて進め！",
+                      Vector2(boxX + 18.0f, boxY + 48.0f), 18.0f,
+                      Vector4(1.0f, 0.55f, 0.55f, 1.0f), true,
+                      Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
+  draw.DrawMSDFString("   移動で回避して生き残れ！",
+                      Vector2(boxX + 18.0f, boxY + 71.0f), 15.0f,
+                      Vector4(0.9f, 0.9f, 0.9f, 0.9f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  // ②
+  draw.DrawMSDFString("② 魚がいるレーンを押せ！",
+                      Vector2(boxX + 18.0f, boxY + 95.0f), 18.0f,
+                      Vector4(0.35f, 1.0f, 0.65f, 1.0f), true,
+                      Vector4(0.0f, 0.2f, 0.1f, 1.0f), 0.10f, 0.06f);
+  const char *step2Str = isPad
+      ? "   魚が手前に来たら [X]左 / [Y]中 / [B]右 ボタンで跳ね返せ！"
+      : "   魚が手前に来たら [1]左 / [2]中 / [3]右 キーで跳ね返せ！";
+  draw.DrawMSDFString(step2Str,
+                      Vector2(boxX + 18.0f, boxY + 118.0f), 15.0f,
+                      Vector4(1.0f, 0.95f, 0.65f, 0.95f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  // ③
+  draw.DrawMSDFString("③ 魚を敵に飛ばして撃破！",
+                      Vector2(boxX + 18.0f, boxY + 142.0f), 18.0f,
+                      Vector4(1.0f, 0.8f, 0.25f, 1.0f), true,
+                      Vector4(0.2f, 0.1f, 0.0f, 1.0f), 0.10f, 0.06f);
+  draw.DrawMSDFString("   飛ばした魚を当ててボスのHPを削り切れ！",
+                      Vector2(boxX + 18.0f, boxY + 165.0f), 15.0f,
+                      Vector4(0.95f, 0.95f, 0.95f, 0.9f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  // 仕切り線 2
+  draw.DrawFillRect(Vector2(dividerX, panelY + 346.0f), Vector2(dividerW, 2.0f),
+                    Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+  // 操作ボタン
+  const float btnX = panelX + 50.0f;
+  const float btnFontSize = 21.0f;
+  if (isPad) {
+    draw.DrawMSDFString("[ START ] ゲームを再開 (RESUME)",
+                        Vector2(btnX, panelY + 360.0f), btnFontSize,
+                        Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Aボタン ] 最初からリスタート (RESTART)",
+                        Vector2(btnX, panelY + 400.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Bボタン ] タイトルへ戻る (TITLE)",
+                        Vector2(btnX, panelY + 440.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  } else {
+    draw.DrawMSDFString("[ ESC ] ゲームを再開 (RESUME)",
+                        Vector2(btnX, panelY + 360.0f), btnFontSize,
+                        Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
+                        Vector2(btnX, panelY + 400.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  2  ] タイトルへ戻る (TITLE)",
+                        Vector2(btnX, panelY + 440.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
   }
 }

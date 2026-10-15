@@ -29,6 +29,7 @@ void GameScene::Initialize() {
 
   titleDirector_->Initialize(texture_.get());
   crashEffect_->Initialize(texture_.get());
+  gameHUD_->Initialize(texture_.get());
 
   if (!EditorManager::IsPlaying()) {
     gameState_ = GameState::Editor;
@@ -701,7 +702,7 @@ void GameScene::DrawUI(class Draw &draw) {
 
 void GameScene::ImGui() {
 #ifdef _USE_IMGUI
-  ImGui::Begin("GameScene");
+  if (ImGui::Begin("GameScene")) {
 
   // ゲームオーバー時の表示
   if (gameState_ == GameState::GameOver) {
@@ -1186,7 +1187,7 @@ void GameScene::ImGui() {
   if (ImGui::Button("Play Transition Effect (画面遷移演出)", ImVec2(-1, 32))) {
     FreezeTransition::GetInstance()->Start();
   }
-
+  }
   ImGui::End();
 
   Matrix4x4 projection = MakePerspectiveFovMatrix(
