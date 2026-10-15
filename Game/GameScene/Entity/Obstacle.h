@@ -21,7 +21,9 @@ public:
     ClearItem,            // 障害物を消すアイテム
     BossItem,             // ボス戦へ移行するアイテム
     BossAttack,           // ボスの攻撃（白、飛び越え不可）
-    BossAttackReflectable // ボスの攻撃（緑、跳ね返し可能）
+    BossAttackReflectable, // ボスの攻撃（緑、跳ね返し可能）
+    BossAttackLow,        // ボスの低空攻撃（ジャンプで避ける）
+    BossAttackHigh        // ボスの高空攻撃（スライディング/ロールで避ける）
   };
 
 private:
@@ -226,8 +228,12 @@ public:
     return type_ == Type::CameraItem || type_ == Type::BarrierItem ||
            type_ == Type::ClearItem || type_ == Type::BossItem;
   }
+  virtual bool IsBossAttackType() const {
+    return type_ == Type::BossAttack || type_ == Type::BossAttackReflectable ||
+           type_ == Type::BossAttackLow || type_ == Type::BossAttackHigh;
+  }
   virtual bool CanRollUnder() const {
-    return type_ == Type::High;
+    return type_ == Type::High || type_ == Type::BossAttackHigh;
   }
   virtual bool RequiresLaneChangeToAvoid() const {
     return type_ == Type::Wall || type_ == Type::BossAttack || type_ == Type::BossAttackReflectable;

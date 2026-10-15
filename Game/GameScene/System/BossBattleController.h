@@ -1,6 +1,8 @@
 #pragma once
+#include <Entity/Obstacle.h>
 #include <Math/Calculation.h>
 #include <functional>
+#include <vector>
 
 class Boss;
 class StageSettings;
@@ -8,6 +10,22 @@ class GameSceneEffect;
 class GameCameraController;
 
 class BossBattleController {
+public:
+  enum class PatternType {
+    Standard,       // 基本：3レーン中 1安全, 1通常, 1反射
+    JumpAction,     // アクション強制：低空ジャンプ回避 ＋ 追撃反射
+    SlideAction,    // アクション強制：高空スライディング回避 ＋ 追撃反射
+    SequentialWave, // 時間差ウェーブ：左→中→右 または 右→中→左 の連続落下
+    DoubleWave,     // 2連波状攻撃：時間差で2波が落ちてくる
+    Count
+  };
+
+  struct QueuedAttack {
+    float delayFrames = 0.0f;
+    int lane = 0; // 0:左, 1:中央, 2:右
+    Obstacle::Type type = Obstacle::Type::BossAttack;
+  };
+
 private:
   static constexpr float kDefaultAttackSpawnZ = -35.0f;
   static constexpr float kDefaultAttackDropHeight = 18.0f;
@@ -43,6 +61,15 @@ private:
 
   int currentReflectLane_ = kNoReflectLane;
 
+  std::vector<QueuedAttack> attackQueue_;
+  int lastPatternIndex_ = -1;
+  PatternType currentPattern_ = PatternType::Standard;
+
+private:
+  void EnqueuePattern(PatternType pattern);
+  void SpawnAttack(StageSettings *stageSettings, int lane, Obstacle::Type type);
+  PatternType SelectNextPattern(int bossHP);
+
 public:
   BossBattleController() = default;
   ~BossBattleController() = default;
@@ -51,10 +78,17 @@ public:
   void Update(float timeScale, Boss *boss, StageSettings *stageSettings,
               GameSceneEffect *effectManager);
 
+  void TriggerPattern(PatternType pattern) {
+    attackQueue_.clear();
+    EnqueuePattern(pattern);
+  }
+
   int GetReflectLane() const { return currentReflectLane_; }
   const Vector3 &GetBossCameraTranslate() const { return bossCameraTranslate_; }
   const Vector3 &GetBossCameraRotate() const { return bossCameraRotate_; }
   float GetReflectMinZ() const { return bossAttackReflectMinZ_; }
+  PatternType GetCurrentPattern() const { return currentPattern_; }
+  size_t GetQueuedAttackCount() const { return attackQueue_.size(); }
 
   void ImGui(Boss *boss, GameCameraController *cameraController,
              bool isPlayingBoss, bool isCameraTransitioning);

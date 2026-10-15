@@ -193,8 +193,8 @@ void Obstacle::SetType(Type type) {
     break;
 
   case Type::BossAttack:
-    currentModel_ = iceBomModel_.get();
-    profile = &kProfileBossAttack;
+    currentModel_ = wallModel_.get();
+    profile = &kProfileWall;
     if (currentModel_) {
       currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
@@ -205,6 +205,26 @@ void Obstacle::SetType(Type type) {
   case Type::BossAttackReflectable:
     currentModel_ = reflectingAttackModel_.get();
     profile = &kProfileBossAttackReflectable;
+    if (currentModel_) {
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
+      currentModel_->SetShader("ObjectShader");
+      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
+    }
+    break;
+
+  case Type::BossAttackLow:
+    currentModel_ = lowModel_.get();
+    profile = &kProfileLow;
+    if (currentModel_) {
+      currentModel_->GetMaterial()->SetColor(kNormalColor);
+      currentModel_->SetShader("ObjectShader");
+      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
+    }
+    break;
+
+  case Type::BossAttackHigh:
+    currentModel_ = highModel_.get();
+    profile = &kProfileHigh;
     if (currentModel_) {
       currentModel_->GetMaterial()->SetColor(kNormalColor);
       currentModel_->SetShader("ObjectShader");
@@ -237,7 +257,7 @@ void Obstacle::SetType(Type type) {
 
 void Obstacle::Spawn(float x, float y, float z) {
   targetY_ = y;
-  if (type_ == Type::BossAttack || type_ == Type::BossAttackReflectable) {
+  if (IsBossAttackType()) {
     isFalling_ = true;
     fallTimer_ = 0.0f;
     justLanded_ = false;
@@ -329,7 +349,7 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
     transform_.rotate.z += kReflectAngularVelocity.z;
   } else {
     // スクロール
-    if (type_ == Type::BossAttack || type_ == Type::BossAttackReflectable) {
+    if (IsBossAttackType()) {
       // 上空からの落下演出
       if (isFalling_) {
         fallTimer_ += 1.0f;
@@ -502,7 +522,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     return false;
   }
 
-  if (type_ == Type::BossAttack || type_ == Type::BossAttackReflectable) {
+  if (IsBossAttackType()) {
     if (isReflected_ || isFalling_) {
       return false;
     }
@@ -519,7 +539,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
   }
 
   // 被弾
-  bool isTrip = (type_ == Type::Low);
+  bool isTrip = (type_ == Type::Low || type_ == Type::BossAttackLow);
   scene->TriggerPlayerHit(isTrip);
   return true;
 }
