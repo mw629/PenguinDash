@@ -24,6 +24,7 @@ GameScene::~GameScene() {
 
 void GameScene::Initialize() {
   sceneID_ = SceneID::Game;
+  FreezeTransition::GetInstance()->Initialize();
   fade_->Initialize();
   resultTransition_ = ResultTransition::None;
 
@@ -248,10 +249,8 @@ void GameScene::StartResultTransition(ResultTransition target) {
       ResetGame();
       gameState_ = GameState::Playing;
       SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
-      fade_->StartFadeIn(fadeDuration_);
     } else if (target == ResultTransition::Title) {
       ReturnToTitle();
-      fade_->StartFadeIn(fadeDuration_);
     }
     resultTransition_ = ResultTransition::None;
   });
@@ -266,18 +265,6 @@ void GameScene::Update() {
   // フェードの更新
   if (fade_) {
     fade_->Update(Engine::kDefaultDeltaTime);
-    if (resultTransition_ != ResultTransition::None && fade_->IsFadeOutFinished()) {
-      if (resultTransition_ == ResultTransition::Restart) {
-        ResetGame();
-        gameState_ = GameState::Playing;
-        SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
-        fade_->StartFadeIn(fadeDuration_);
-      } else if (resultTransition_ == ResultTransition::Title) {
-        ReturnToTitle();
-        fade_->StartFadeIn(fadeDuration_);
-      }
-      resultTransition_ = ResultTransition::None;
-    }
   }
 
   // タイトル開始演出タイマー更新
@@ -498,14 +485,14 @@ void GameScene::TitleUpdate() {
 }
 
 void GameScene::PausedUpdate() {
-  if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
-    ResetGame();
-    gameState_ = GameState::Playing;
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
-    SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
-  }
-  if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
-    ReturnToTitle();
+  if (resultTransition_ == ResultTransition::None && !fade_->IsFading() &&
+      !FreezeTransition::GetInstance()->IsActive()) {
+    if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+      StartResultTransition(ResultTransition::Restart);
+    }
+    if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
+      StartResultTransition(ResultTransition::Title);
+    }
   }
 }
 
@@ -698,6 +685,9 @@ void GameScene::DrawUI(class Draw &draw) {
 
   // タイトル演出ペンギン疾走の描画
   titleDirector_->DrawPenguins(draw);
+
+  // 最前面に氷結・破片トランジションを描画（GameView & メイン画面共通）
+  FreezeTransition::GetInstance()->Draw(draw);
 }
 
 void GameScene::ImGui() {

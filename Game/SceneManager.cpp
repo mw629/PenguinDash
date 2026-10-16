@@ -64,9 +64,10 @@ void SceneManager::Draw(class Draw& draw) {
 void SceneManager::DrawUI(class Draw& draw) {
 	if (scene_) {
 		scene_->DrawUI(draw);
+	} else {
+		// 最前面に氷結・破片トランジションを描画（シーン未ロード時）
+		FreezeTransition::GetInstance()->Draw(draw);
 	}
-	// 最前面に氷結・破片トランジションを描画
-	FreezeTransition::GetInstance()->Draw(draw);
 }
 
 void SceneManager::Run(class Draw& draw)
