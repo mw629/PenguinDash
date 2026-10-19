@@ -8,7 +8,6 @@
 #include <Engine.h>
 #include <GameObjects/Object/3d/Model.h>
 #include <Math/Calculation.h>
-#include <System/CollisionManager.h>
 #include <algorithm>
 #include <cmath>
 #include <imgui.h>
@@ -26,7 +25,6 @@ GameScene::~GameScene() {
 void GameScene::Initialize() {
   sceneID_ = SceneID::Game;
   FreezeTransition::GetInstance()->Initialize();
-  fade_->Initialize();
   resultTransition_ = ResultTransition::None;
 
   titleDirector_->Initialize(texture_.get());
@@ -44,7 +42,6 @@ void GameScene::Initialize() {
   sceneChangeRequest_ = false;
 
   effectManager_->Initialize();
-  collisionManager_ = std::make_unique<CollisionManager>();
   cameraController_->Initialize();
 
   // Game View 描画コールバックの登録
@@ -284,11 +281,6 @@ void GameScene::Update() {
   uiTimer_ += Engine::kDefaultDeltaTime;
   SoundManager::GetInstance()->Update();
 
-  // フェードの更新
-  if (fade_) {
-    fade_->Update(Engine::kDefaultDeltaTime);
-  }
-
   // タイトル開始演出タイマー更新
   titleDirector_->UpdateExit(Engine::kDefaultDeltaTime);
 
@@ -388,7 +380,7 @@ void GameScene::Update() {
     PlayerHitUpdate();
   } else if (gameState_ == GameState::GameOver) {
     effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
-    if (resultTransition_ == ResultTransition::None && !fade_->IsFading() &&
+    if (resultTransition_ == ResultTransition::None &&
         !FreezeTransition::GetInstance()->IsActive()) {
       if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
         StartResultTransition(ResultTransition::Restart);
@@ -490,7 +482,6 @@ void GameScene::PlayingUpdate() {
   stageSettings_->Update(view, timeScale, activeWaterTime);
 
   CheckCollisions();
-  collisionManager_->UpdateCollisions(gameObjectManager_.get());
 
   effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
 
@@ -541,17 +532,16 @@ void GameScene::TitleUpdate() {
       StartPlaying();
     }
   } else {
-    if ((!fade_ || !fade_->IsFading()) &&
-        (Input::PushKey(DIK_SPACE) ||
-         GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
-         GamePadInput::PushButton(XINPUT_GAMEPAD_START))) {
+    if (Input::PushKey(DIK_SPACE) ||
+        GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+        GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
       StartGame();
     }
   }
 }
 
 void GameScene::PausedUpdate() {
-  if (resultTransition_ == ResultTransition::None && !fade_->IsFading() &&
+  if (resultTransition_ == ResultTransition::None &&
       !FreezeTransition::GetInstance()->IsActive()) {
     if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
       StartResultTransition(ResultTransition::Restart);
@@ -743,7 +733,6 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.titleExitDuration = titleDirector_->GetExitDuration();
   ctx.isFirstPersonView = cameraController_->IsFirstPerson();
   ctx.crashSprite = crashEffect_->GetSprite();
-  ctx.fade = fade_.get();
 
   auto rankingMgr = FirebaseRankingManager::GetInstance();
   ctx.onlineRankings = &rankingMgr->GetCachedScoreRankings();
@@ -795,8 +784,6 @@ void GameScene::ImGui() {
         if (ImGui::Button("Return to Title (2)", ImVec2(160, 35))) {
           StartResultTransition(ResultTransition::Title);
         }
-        ImGui::SliderFloat("Fade Duration", &fadeDuration_, 0.1f, 2.0f,
-                           "%.2f s");
         ImGui::Separator();
       }
     }

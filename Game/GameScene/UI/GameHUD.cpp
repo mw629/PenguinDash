@@ -1,5 +1,4 @@
 #include "GameHUD.h"
-#include "../../Direction/Fade.h"
 #include "Graphics/Font/TextRenderer.h"
 #include "Graphics/Render/Draw.h"
 #include "Input/GamePadInput.h"
@@ -101,10 +100,6 @@ void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
     DrawBadgeFPV(draw);
   }
 
-  // フェード描画
-  if (ctx.fade) {
-    ctx.fade->Draw(draw);
-  }
 }
 
 void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {

@@ -1,6 +1,5 @@
 #pragma once
 #include "../../Editer/EditorUI.h"
-#include "../Direction/Fade.h"
 #include "../Direction/FreezeTransition.h"
 #include "../IScene.h"
 #include "Camera/GameCameraController.h"
@@ -17,7 +16,6 @@
 #include <Entity/Collision.h>
 #include <Entity/Player.h>
 #include <Stage/StageSettings.h>
-#include <System/CollisionManager.h>
 #include <memory>
 #include <string>
 
@@ -59,7 +57,6 @@ private:
 
   // 定数
   static constexpr Vector3 kDefaultSkyBoxScale = {100.0f, 100.0f, 100.0f};
-  static constexpr float kDefaultFadeDuration = 0.5f;
   static constexpr float kOneLaneTotalDistance = 200.0f;
   static constexpr float kDustGroundThresholdY = 3.01f;
   static constexpr float kInvertedCameraThresholdRotateY = 1.57f;
@@ -87,7 +84,6 @@ private:
       std::make_unique<GameObjectManager>();
   std::unique_ptr<StageSettings> stageSettings_ =
       std::make_unique<StageSettings>();
-  std::unique_ptr<CollisionManager> collisionManager_;
   std::unique_ptr<GameSceneEffect> effectManager_ =
       std::make_unique<GameSceneEffect>();
   std::unique_ptr<EditorUI> editorUI_ = std::make_unique<EditorUI>();
@@ -99,11 +95,9 @@ private:
   // ボス戦終了後のクールタイム開始用フラグ
   bool wasBossBattle_ = false;
 
-  // 画面遷移・フェード演出
-  std::unique_ptr<Fade> fade_ = std::make_unique<Fade>();
+  // 画面遷移
   enum class ResultTransition { None, Restart, Title };
   ResultTransition resultTransition_ = ResultTransition::None;
-  float fadeDuration_ = kDefaultFadeDuration;
 
   float uiTimer_ = 0.0f;
   class Draw *draw_ = nullptr;

@@ -10,7 +10,6 @@ class Draw;
 class Boss;
 class StageSettings;
 class Sprite;
-class Fade;
 class Texture;
 struct RankingEntry;
 
@@ -37,7 +36,6 @@ struct GameHUDContext {
   float titleExitDuration = kDefaultTitleExitDuration;
   bool isFirstPersonView = false;
   Sprite *crashSprite = nullptr;
-  Fade *fade = nullptr;
 
   // ランキング関連
   const std::vector<RankingEntry>* onlineRankings = nullptr;
