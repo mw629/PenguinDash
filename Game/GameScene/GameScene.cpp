@@ -162,8 +162,6 @@ void GameScene::Initialize() {
                              iceWallModel, bonusEnemyModel, iceBomModel,
                              reflectingAttackModel, gameObjectManager_.get());
 
-  gameObjectManager_->LoadScene(initialSceneJson_);
-
   if (gameState_ == GameState::Title) {
     ReturnToTitle();
   } else {

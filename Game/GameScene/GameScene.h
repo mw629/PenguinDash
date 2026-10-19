@@ -105,8 +105,6 @@ private:
   ResultTransition resultTransition_ = ResultTransition::None;
   float fadeDuration_ = kDefaultFadeDuration;
 
-  // シーン読み込み用
-  std::string initialSceneJson_ = "Resources/Json/Scene/scene.json";
   float uiTimer_ = 0.0f;
   class Draw *draw_ = nullptr;
 
