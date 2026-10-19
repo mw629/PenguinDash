@@ -26,6 +26,7 @@ public:
     BossAttackLow,        // ボスの低空攻撃（ジャンプで避ける）
     BossAttackHigh        // ボスの高空攻撃（スライディング/ロールで避ける）
   };
+  static constexpr float kPlayerObstacleDespawnZ = -100.0f;
 
 private:
   std::unique_ptr<Model> lowModel_ = std::make_unique<Model>();      // FallenTree
@@ -64,7 +65,6 @@ private:
   static constexpr float kBlowAwayCameraZThreshold = -13.0f;
   static constexpr float kBlowAwayDespawnYThreshold = -20.0f;
   static constexpr float kBossAttackDespawnZ = 20.0f;
-  static constexpr float kPlayerObstacleDespawnZ = -10.0f;
   static constexpr float kItemBobbingSpeed = 0.05f;
   static constexpr float kItemBobbingAmplitude = 0.15f;
   static constexpr float kItemBobbingPhaseMultiplier = 2.0f;

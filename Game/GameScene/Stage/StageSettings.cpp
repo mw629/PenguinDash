@@ -1369,6 +1369,8 @@ void StageSettings::ImGui() {
     ImGui::Text("Next Spawn: %.1f m (approx. %.0f frames / %.2f s)",
                 curInterval, estFrames, estFrames / 60.0f);
     ImGui::Text("Dodgeable Range: %.1f m ~ %.1f m", minDistance, maxDistance);
+    ImGui::Text("Spawn Z: +%.1f m | Despawn Z: %.1f m (Max Pool: %d)",
+                kSpawnObstacleZ, Obstacle::kPlayerObstacleDespawnZ, kMaxObstacles_);
 
     Vector4 roadColor = GetRoadColor();
     float roadColorArr[4] = {roadColor.x, roadColor.y, roadColor.z,

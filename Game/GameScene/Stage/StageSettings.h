@@ -58,7 +58,7 @@ private:
   static constexpr int kDefaultMaxConsecutiveNoSpawn = 1;
   static constexpr float kDefaultItemSpawnChance = 0.15f;
   static constexpr float kDefaultCameraItemInterval = 500.0f;
-  static constexpr float kLaneChangeHorizonZ = 70.0f;
+  static constexpr float kLaneChangeHorizonZ = 115.0f;
   static constexpr float kResetSpawnLeadDistance = 3.0f;
   static constexpr float kMinEffectiveSpeed = 0.05f;
   static constexpr int kInitialObstacleTypeCount = 3;
@@ -75,7 +75,7 @@ private:
   static constexpr float kGuideFloorSpawnY = 2.0f;
   static constexpr float kItemSpawnY = 2.5f;
   static constexpr float kItemSpawnZOffset = -5.0f;
-  static constexpr float kSpawnObstacleZ = 45.0f;
+  static constexpr float kSpawnObstacleZ = 105.0f;
 
   static constexpr Vector4 kDefaultRoadColor = {1.0f, 1.0f, 1.0f, 1.0f};
   static constexpr Vector4 kDefaultDriftIceColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -105,7 +105,7 @@ private:
 
   // 道路チャンク
   static constexpr int kBackwardChunks_ = 20; // プレイヤーより手前（カメラ側・背後）のチャンク数（従来の6から20に拡張）
-  static constexpr int kForwardChunks_ = 14; // プレイヤーより奥（進行方向）のチャンク数
+  static constexpr int kForwardChunks_ = 16; // プレイヤーより奥（進行方向）のチャンク数（奥100m+からの出現に対応し160mに拡張）
   static constexpr int kChunkCount_ = kBackwardChunks_ + kForwardChunks_; // チャンクの総数 (34)
   float chunkLength_ = kDefaultChunkLength; // 1チャンクの奥行き（Z軸方向のサイズ）
 
@@ -245,7 +245,7 @@ private:
   std::unique_ptr<Texture> texture_ = std::make_unique<Texture>();
 
   // 障害物管理
-  static constexpr int kMaxObstacles_ = 20; // 障害物の最大保持数
+  static constexpr int kMaxObstacles_ = 128; // 障害物の最大保持数（長距離化に伴い20から128に拡張）
   std::shared_ptr<Obstacle>
       obstacles_[kMaxObstacles_]; // 障害物インスタンス配列
   int nextObstacleIndex_ = 0;     // 次に使用する障害物のインデックス
