@@ -25,6 +25,7 @@ public:
 	}
 
 	void SetColor(Vector4 color) { materialData_->color = color; }
+	Vector4 GetColor() const { return materialData_ ? materialData_->color : kDefaultColor; }
 	void SetMaterialLighting(bool isActive) { materialData_->enableLighting = isActive ? 1 : 0; }
 	void SetUVTransform(const Matrix4x4& uvTransform) { materialData_->uvTransform = uvTransform; }
 

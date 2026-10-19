@@ -51,10 +51,42 @@ void GameObjectManager::DrawAll(class Draw& draw)
         draw.GetLightManager()->UpdateLights(objects_);
     }
 
+    std::vector<std::shared_ptr<GameObject>> opaqueObjects;
+    std::vector<std::pair<float, std::shared_ptr<GameObject>>> transparentObjects;
+
+    Vector3 camPos = { 0.0f, 0.0f, 0.0f };
+    if (draw.GetCamera()) {
+        camPos = draw.GetCamera()->GetTransform().translate;
+    }
+
     for (auto& obj : objects_) {
-        if (obj && obj->GetIsActive()) {
-            obj->Draw(draw);
+        if (!obj || !obj->GetIsActive()) continue;
+
+        if (obj->IsTransparent()) {
+            Vector3 objPos = obj->GetTransform().translate;
+            float dx = objPos.x - camPos.x;
+            float dy = objPos.y - camPos.y;
+            float dz = objPos.z - camPos.z;
+            float distSq = dx * dx + dy * dy + dz * dz;
+            transparentObjects.push_back({ distSq, obj });
+        } else {
+            opaqueObjects.push_back(obj);
         }
+    }
+
+    // 1. 不透明オブジェクトを先に描画（深度バッファに書き込まれ、背景が確立される）
+    for (auto& obj : opaqueObjects) {
+        obj->Draw(draw);
+    }
+
+    // 2. 半透明オブジェクトをカメラから遠い順（降順: Back-to-Front）にソートして描画
+    std::sort(transparentObjects.begin(), transparentObjects.end(),
+        [](const auto& a, const auto& b) {
+            return a.first > b.first;
+        });
+
+    for (auto& pair : transparentObjects) {
+        pair.second->Draw(draw);
     }
 }
 

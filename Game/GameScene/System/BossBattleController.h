@@ -76,7 +76,8 @@ public:
 
   void Reset();
   void Update(float timeScale, Boss *boss, StageSettings *stageSettings,
-              GameSceneEffect *effectManager);
+              GameSceneEffect *effectManager,
+              GameCameraController *cameraController = nullptr);
 
   void TriggerPattern(PatternType pattern) {
     attackQueue_.clear();

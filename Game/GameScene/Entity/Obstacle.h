@@ -202,6 +202,8 @@ public:
            GameObject::HasMaterial();
   }
 
+  bool IsTransparent() const override;
+
   /// <summary>
   /// 画面の手前を過ぎたら非アクティブにする
   /// </summary>

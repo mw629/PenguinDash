@@ -105,3 +105,28 @@ public:
   void DrawPenguins(Draw &draw);
   void ImGui();
 };
+}
+bool IsInputAllowed() const {
+  if (countdownMode_ == CountdownMode::None)
+    return true;
+  return countdownTimer_ >= (prepDuration_ + 3.0f * kCountdownStepDuration);
+}
+
+float GetExitTimer() const { return countdownTimer_; }
+float GetExitDuration() const { return kTitleExitDuration; }
+
+void UpdateCountdown(float dt);
+void UpdateExit(float dt) { UpdateCountdown(dt); }
+bool IsExitComplete(StageSettings *stageSettings) const;
+
+void UpdateAutoPilot(Player *player, StageSettings *stageSettings);
+void CheckCollisions(Player *player, StageSettings *stageSettings,
+                     ScoreManager *scoreManager);
+void UpdateCamera(Player *player, GameCameraController *cameraController,
+                  float dt);
+
+void DrawPenguins(Draw &draw);
+void DrawCountdown(Draw &draw);
+void ImGui();
+}
+;

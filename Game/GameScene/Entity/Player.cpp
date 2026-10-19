@@ -98,16 +98,16 @@ void PlayerRunState::Update(Player &player, float speedMultiplier) {
   // レーン入力処理
   player.ProcessLaneInput();
 
-  // アクション判定
+  // アクション判定 (先行入力バッファまたはキー押下)
   if (player.CanAct() && !player.GetAutoPilot()) {
-    if (GameSceneManager::GetInstance()->IsPushJump()) {
+    if (player.ConsumeBufferedJump() || GameSceneManager::GetInstance()->IsPushJump()) {
       player.ChangeActionState(PlayerActionType::Jump);
       if (player.GetCurrentActionState()) {
         player.GetCurrentActionState()->Update(player, speedMultiplier);
       }
       return;
     }
-    if (GameSceneManager::GetInstance()->IsPushRoll()) {
+    if (player.ConsumeBufferedRoll() || GameSceneManager::GetInstance()->IsPushRoll()) {
       player.ChangeActionState(PlayerActionType::Roll);
       if (player.GetCurrentActionState()) {
         player.GetCurrentActionState()->Update(player, speedMultiplier);
@@ -147,6 +147,30 @@ void PlayerJumpState::Update(Player &player, float speedMultiplier) {
     player.GetVelocityYRef() = 0.0f;
     player.GetCurrentRecoveryTimerRef() = player.GetJumpRecovery();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
+
+    // 着地時カメラシェイク演出コールバック
+    if (player.GetOnLandCallback()) {
+      player.GetOnLandCallback()();
+    }
+
+    // 先行入力バッファ判定（着地直後の連続ジャンプまたはスライディング）
+    if (!player.GetAutoPilot()) {
+      if (player.ConsumeBufferedJump()) {
+        player.ChangeActionState(PlayerActionType::Jump);
+        if (player.GetCurrentActionState()) {
+          player.GetCurrentActionState()->Update(player, speedMultiplier);
+        }
+        return;
+      }
+      if (player.ConsumeBufferedRoll()) {
+        player.ChangeActionState(PlayerActionType::Roll);
+        if (player.GetCurrentActionState()) {
+          player.GetCurrentActionState()->Update(player, speedMultiplier);
+        }
+        return;
+      }
+    }
+
     player.ChangeActionState(PlayerActionType::Run);
   }
 }
@@ -166,9 +190,9 @@ void PlayerRollState::Update(Player &player, float speedMultiplier) {
     return;
   }
 
-  // 転がり中でもジャンプでキャンセル可能
+  // 転がり中でもジャンプでキャンセル可能（先行入力バッファまたはキー押下）
   if (player.CanAct() && !player.GetAutoPilot()) {
-    if (GameSceneManager::GetInstance()->IsPushJump()) {
+    if (player.ConsumeBufferedJump() || GameSceneManager::GetInstance()->IsPushJump()) {
       if (!player.GetKeepRolling()) {
         player.ChangeActionState(PlayerActionType::Jump);
         if (player.GetCurrentActionState()) {
@@ -193,6 +217,25 @@ void PlayerRollState::Update(Player &player, float speedMultiplier) {
   player.GetRollTimerRef() -= speedMultiplier;
   if (player.GetRollTimerRef() <= 0.0f && !player.GetKeepRolling()) {
     player.GetCurrentRecoveryTimerRef() = player.GetRollRecovery();
+
+    // ロール終了時の先行入力判定
+    if (!player.GetAutoPilot()) {
+      if (player.ConsumeBufferedJump()) {
+        player.ChangeActionState(PlayerActionType::Jump);
+        if (player.GetCurrentActionState()) {
+          player.GetCurrentActionState()->Update(player, speedMultiplier);
+        }
+        return;
+      }
+      if (player.ConsumeBufferedRoll()) {
+        player.ChangeActionState(PlayerActionType::Roll);
+        if (player.GetCurrentActionState()) {
+          player.GetCurrentActionState()->Update(player, speedMultiplier);
+        }
+        return;
+      }
+    }
+
     player.ChangeActionState(PlayerActionType::Run);
   }
 }
@@ -310,6 +353,8 @@ void Player::Reset() {
   forcedCenterDuration_ = kDefaultForcedCenterDuration;
   forcedCenterStartX_ = 0.0f;
 
+  ClearInputBuffer();
+
   SetHasBarrier(false);
   isInvertedControls_ = false;
   isAutoPilot_ = false;
@@ -354,37 +399,116 @@ void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
   }
 }
 
-void Player::ProcessLaneInput() {
-  if (laneIndex_ != targetLaneIndex_) {
-    return; // 移動中は入力を受け付けない
+void Player::UpdateInputBuffer(float speedMultiplier) {
+  float decay = (speedMultiplier > 0.0f) ? speedMultiplier : 1.0f;
+  if (bufferedJumpTimer_ > 0.0f) {
+    bufferedJumpTimer_ -= decay;
+    if (bufferedJumpTimer_ < 0.0f) {
+      bufferedJumpTimer_ = 0.0f;
+    }
   }
+  if (bufferedRollTimer_ > 0.0f) {
+    bufferedRollTimer_ -= decay;
+    if (bufferedRollTimer_ < 0.0f) {
+      bufferedRollTimer_ = 0.0f;
+    }
+  }
+  if (bufferedLaneTimer_ > 0.0f) {
+    bufferedLaneTimer_ -= decay;
+    if (bufferedLaneTimer_ < 0.0f) {
+      bufferedLaneTimer_ = 0.0f;
+      bufferedLaneDirection_ = 0;
+    }
+  }
+
+  if (isAutoPilot_) {
+    return;
+  }
+
+  if (GameSceneManager::GetInstance()->IsPushJump()) {
+    bufferedJumpTimer_ = kDefaultInputBufferFrames;
+  }
+  if (GameSceneManager::GetInstance()->IsPushRoll()) {
+    bufferedRollTimer_ = kDefaultInputBufferFrames;
+  }
+
+  bool pushLeft = GameSceneManager::GetInstance()->IsPushLeft();
+  bool pushRight = GameSceneManager::GetInstance()->IsPushRight();
+  if (pushLeft || pushRight) {
+    int dir = 0;
+    if (isInvertedControls_) {
+      dir = pushLeft ? +1 : -1;
+    } else {
+      dir = pushLeft ? -1 : +1;
+    }
+    bufferedLaneDirection_ = dir;
+    bufferedLaneTimer_ = kDefaultInputBufferFrames;
+  }
+}
+
+void Player::ProcessLaneInput() {
   if (!CanAct() || isAutoPilot_) {
     return;
   }
 
   bool pushLeft = GameSceneManager::GetInstance()->IsPushLeft();
   bool pushRight = GameSceneManager::GetInstance()->IsPushRight();
-  if (isInvertedControls_) {
-    if (pushLeft)
-      targetLaneIndex_ = laneIndex_ + 1;
-    if (pushRight)
-      targetLaneIndex_ = laneIndex_ - 1;
-  } else {
-    if (pushLeft)
-      targetLaneIndex_ = laneIndex_ - 1;
-    if (pushRight)
-      targetLaneIndex_ = laneIndex_ + 1;
+
+  int inputDir = 0;
+  if (pushLeft && !pushRight) {
+    inputDir = isInvertedControls_ ? +1 : -1;
+  } else if (pushRight && !pushLeft) {
+    inputDir = isInvertedControls_ ? -1 : +1;
   }
 
-  if (targetLaneIndex_ < minLane_)
-    targetLaneIndex_ = minLane_;
-  if (targetLaneIndex_ > maxLane_)
-    targetLaneIndex_ = maxLane_;
+  // 1. レーン移動中 (クイック切り返し & 同方向先行入力)
+  if (laneIndex_ != targetLaneIndex_) {
+    if (inputDir != 0) {
+      int currentDir = (targetLaneIndex_ > laneIndex_) ? 1 : -1;
+      if (inputDir == -currentDir) {
+        // === クイック切り返し (Quick Reverse) ===
+        // 移動途中で逆方向の入力があった場合、即座に反転して元のレーンへ戻る
+        int oldTarget = targetLaneIndex_;
+        int oldOrigin = laneIndex_;
+        targetLaneIndex_ = oldOrigin;
+        laneIndex_ = oldTarget;
 
-  if (targetLaneIndex_ != laneIndex_) {
-    startX_ = transform_.translate.x;
-    lerpTime_ = 0.0f;
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+        startX_ = static_cast<float>(laneIndex_) * laneWidth_;
+        lerpTime_ = 1.0f - lerpTime_;
+        if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
+        if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
+
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+
+        bufferedLaneTimer_ = 0.0f;
+        bufferedLaneDirection_ = 0;
+      } else {
+        // 同方向の入力は先行入力バッファに保持
+        bufferedLaneDirection_ = inputDir;
+        bufferedLaneTimer_ = kDefaultInputBufferFrames;
+      }
+    }
+    return;
+  }
+
+  // 2. 停止中 (即時入力またはバッファの消費)
+  if (inputDir == 0 && bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0) {
+    inputDir = ConsumeBufferedLane();
+  } else if (inputDir != 0) {
+    bufferedLaneTimer_ = 0.0f;
+    bufferedLaneDirection_ = 0;
+  }
+
+  if (inputDir != 0) {
+    int nextTarget = laneIndex_ + inputDir;
+    nextTarget = std::clamp(nextTarget, minLane_, maxLane_);
+
+    if (nextTarget != laneIndex_) {
+      targetLaneIndex_ = nextTarget;
+      startX_ = transform_.translate.x;
+      lerpTime_ = 0.0f;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+    }
   }
 }
 
@@ -394,21 +518,35 @@ void Player::UpdateLaneMovement(float speedMultiplier) {
   }
 
   lerpTime_ += laneChangeSpeed_ * speedMultiplier;
-  if (lerpTime_ > 1.0f) {
-    lerpTime_ = 1.0f;
-  }
-
-  float targetX = static_cast<float>(targetLaneIndex_) * laneWidth_;
-  transform_.translate.x = Lerp(startX_, targetX, lerpTime_);
-
   if (lerpTime_ >= 1.0f) {
+    lerpTime_ = 1.0f;
     laneIndex_ = targetLaneIndex_;
+    transform_.translate.x = static_cast<float>(laneIndex_) * laneWidth_;
     currentRecoveryTimer_ = laneChangeRecovery_;
+
+    // 到着直後の先行入力バッファチェック (連打による連続移動)
+    if (bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0 && CanAct() && !isAutoPilot_) {
+      int nextTarget = std::clamp(laneIndex_ + bufferedLaneDirection_, minLane_, maxLane_);
+      if (nextTarget != laneIndex_) {
+        targetLaneIndex_ = nextTarget;
+        startX_ = transform_.translate.x;
+        lerpTime_ = 0.0f;
+        bufferedLaneTimer_ = 0.0f;
+        bufferedLaneDirection_ = 0;
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+      }
+    }
+  } else {
+    float targetX = static_cast<float>(targetLaneIndex_) * laneWidth_;
+    transform_.translate.x = Lerp(startX_, targetX, lerpTime_);
   }
 }
 
 void Player::Update(Matrix4x4 view, float speedMultiplier) {
   currentSpeedMultiplier_ = speedMultiplier;
+
+  // 先行入力バッファの更新
+  UpdateInputBuffer(speedMultiplier);
 
   // 硬直タイマーの更新
   if (currentRecoveryTimer_ > 0.0f) {
@@ -572,37 +710,79 @@ bool Player::TriggerRoll() {
 }
 
 bool Player::TriggerMoveLeft() {
-  if (laneIndex_ == targetLaneIndex_ && CanAct() && !GetIsForcedCentering()) {
-    int nextLane = laneIndex_ - 1;
-    if (nextLane >= minLane_) {
-      targetLaneIndex_ = nextLane;
-      startX_ = transform_.translate.x;
-      lerpTime_ = 0.0f;
+  if (!CanAct() || GetIsForcedCentering()) {
+    return false;
+  }
+  // 右移動中ならクイック切り返し
+  if (laneIndex_ != targetLaneIndex_) {
+    if (targetLaneIndex_ > laneIndex_) {
+      int oldTarget = targetLaneIndex_;
+      int oldOrigin = laneIndex_;
+      targetLaneIndex_ = oldOrigin;
+      laneIndex_ = oldTarget;
+      startX_ = static_cast<float>(laneIndex_) * laneWidth_;
+      lerpTime_ = 1.0f - lerpTime_;
+      if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
+      if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-
       if (GetIsRolling() && !keepRolling_) {
         ChangeActionState(PlayerActionType::Run);
       }
       return true;
     }
+    return false;
+  }
+
+  int nextLane = laneIndex_ - 1;
+  if (nextLane >= minLane_) {
+    targetLaneIndex_ = nextLane;
+    startX_ = transform_.translate.x;
+    lerpTime_ = 0.0f;
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+
+    if (GetIsRolling() && !keepRolling_) {
+      ChangeActionState(PlayerActionType::Run);
+    }
+    return true;
   }
   return false;
 }
 
 bool Player::TriggerMoveRight() {
-  if (laneIndex_ == targetLaneIndex_ && CanAct() && !GetIsForcedCentering()) {
-    int nextLane = laneIndex_ + 1;
-    if (nextLane <= maxLane_) {
-      targetLaneIndex_ = nextLane;
-      startX_ = transform_.translate.x;
-      lerpTime_ = 0.0f;
+  if (!CanAct() || GetIsForcedCentering()) {
+    return false;
+  }
+  // 左移動中ならクイック切り返し
+  if (laneIndex_ != targetLaneIndex_) {
+    if (targetLaneIndex_ < laneIndex_) {
+      int oldTarget = targetLaneIndex_;
+      int oldOrigin = laneIndex_;
+      targetLaneIndex_ = oldOrigin;
+      laneIndex_ = oldTarget;
+      startX_ = static_cast<float>(laneIndex_) * laneWidth_;
+      lerpTime_ = 1.0f - lerpTime_;
+      if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
+      if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-
       if (GetIsRolling() && !keepRolling_) {
         ChangeActionState(PlayerActionType::Run);
       }
       return true;
     }
+    return false;
+  }
+
+  int nextLane = laneIndex_ + 1;
+  if (nextLane <= maxLane_) {
+    targetLaneIndex_ = nextLane;
+    startX_ = transform_.translate.x;
+    lerpTime_ = 0.0f;
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+
+    if (GetIsRolling() && !keepRolling_) {
+      ChangeActionState(PlayerActionType::Run);
+    }
+    return true;
   }
   return false;
 }

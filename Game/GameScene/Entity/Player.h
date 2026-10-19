@@ -2,6 +2,7 @@
 
 #include <Engine.h>
 #include <memory>
+#include <functional>
 
 #include "GameObject.h"
 #include <CharacterAnimator.h>
@@ -202,6 +203,16 @@ private:
   // 表示・非表示（一人称視点時の自キャラメッシュ非表示用など）
   bool isVisible_ = true;
 
+  // 先行入力バッファパラメータ (操作感向上: 約0.16秒)
+  static constexpr float kDefaultInputBufferFrames = 10.0f;
+  float bufferedJumpTimer_ = 0.0f;
+  float bufferedRollTimer_ = 0.0f;
+  int bufferedLaneDirection_ = 0; // -1: 左, +1: 右, 0: なし
+  float bufferedLaneTimer_ = 0.0f;
+
+  // 着地コールバック (演出・カメラシェイク用)
+  std::function<void()> onLandCallback_ = nullptr;
+
   void UpdateDrawTransform(float speedMultiplier);
   void UpdateDrawTransform() { UpdateDrawTransform(kDefaultSpeedMultiplier); }
 
@@ -285,6 +296,50 @@ public:
   bool CanAct() const {
     return (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
   }
+
+  // 先行入力バッファ (操作感向上用)
+  void UpdateInputBuffer(float speedMultiplier);
+  bool HasBufferedJump() const { return bufferedJumpTimer_ > 0.0f; }
+  bool HasBufferedRoll() const { return bufferedRollTimer_ > 0.0f; }
+  bool HasBufferedLane() const { return bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0; }
+  int GetBufferedLaneDirection() const { return bufferedLaneDirection_; }
+
+  bool ConsumeBufferedJump() {
+    if (bufferedJumpTimer_ > 0.0f) {
+      bufferedJumpTimer_ = 0.0f;
+      return true;
+    }
+    return false;
+  }
+
+  bool ConsumeBufferedRoll() {
+    if (bufferedRollTimer_ > 0.0f) {
+      bufferedRollTimer_ = 0.0f;
+      return true;
+    }
+    return false;
+  }
+
+  int ConsumeBufferedLane() {
+    if (bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0) {
+      int dir = bufferedLaneDirection_;
+      bufferedLaneTimer_ = 0.0f;
+      bufferedLaneDirection_ = 0;
+      return dir;
+    }
+    return 0;
+  }
+
+  void ClearInputBuffer() {
+    bufferedJumpTimer_ = 0.0f;
+    bufferedRollTimer_ = 0.0f;
+    bufferedLaneTimer_ = 0.0f;
+    bufferedLaneDirection_ = 0;
+  }
+
+  // 着地演出コールバック
+  void SetOnLandCallback(std::function<void()> callback) { onLandCallback_ = callback; }
+  const std::function<void()>& GetOnLandCallback() const { return onLandCallback_; }
 
   // ヒット演出用
   void OnHit(bool isTrip = false);

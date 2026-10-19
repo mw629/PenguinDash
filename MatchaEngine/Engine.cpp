@@ -573,5 +573,157 @@ void Engine::ImGui() {
   if (tcpNetworkClient) {
     tcpNetworkClient->ImGuiConnectWindow();
   }
+
+  // Engine デバッグウィンドウ (カメラ・パフォーマンス・描画情報の一元化)
+  if (ImGui::Begin("Engine Debug")) {
+    if (ImGui::BeginTabBar("EngineDebugTabs")) {
+
+      // === 1. Camera タブ ===
+      if (ImGui::BeginTabItem("Camera")) {
+        Camera *activeCam = draw ? draw->GetCamera() : nullptr;
+        const auto &instances = Camera::GetInstances();
+
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Camera Debugger");
+        ImGui::Text("Active Draw Camera: %s",
+                    activeCam ? activeCam->GetDebugName().c_str() : "None");
+        ImGui::Text("Registered Camera Count: %d",
+                    static_cast<int>(instances.size()));
+
+        // 全カメラ一括テスト (Game View & Scene View 同期)
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Broadcast Effects to All Cameras (Game View & Scene View):");
+        if (ImGui::Button("Broadcast Shake (0.7f, 0.35s)")) {
+          for (auto *cam : instances) {
+            if (cam) cam->Shake(0.7f, 0.35f, 25.0f);
+          }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Broadcast Landing Shake")) {
+          for (auto *cam : instances) {
+            if (cam) cam->ShakeDirectional({0.0f, -1.0f, 0.0f}, 0.5f, 0.25f, 30.0f);
+          }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Stop All Shake")) {
+          for (auto *cam : instances) {
+            if (cam) cam->StopShake();
+          }
+        }
+
+        if (ImGui::Button("Broadcast Speed FOV (0.60)")) {
+          for (auto *cam : instances) {
+            if (cam) cam->AnimateFov(0.60f, 0.4f);
+          }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Broadcast Reset FOV")) {
+          for (auto *cam : instances) {
+            if (cam) cam->ResetFov(0.3f);
+          }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Broadcast Hit Zoom (-0.08)")) {
+          for (auto *cam : instances) {
+            if (cam) cam->AddFovImpulse(-0.08f, 0.15f);
+          }
+        }
+
+        ImGui::Separator();
+
+        if (instances.empty()) {
+          ImGui::TextDisabled("No Camera instances registered.");
+        } else {
+          static int selectedCameraIdx = 0;
+          if (selectedCameraIdx >= static_cast<int>(instances.size())) {
+            selectedCameraIdx = 0;
+          }
+
+          std::string comboPreview =
+              "[" + std::to_string(selectedCameraIdx) + "] " +
+              instances[selectedCameraIdx]->GetDebugName();
+          if (instances[selectedCameraIdx] == activeCam) {
+            comboPreview += " (Active)";
+          }
+
+          if (ImGui::BeginCombo("Select Camera", comboPreview.c_str())) {
+            for (int i = 0; i < static_cast<int>(instances.size()); ++i) {
+              std::string label = "[" + std::to_string(i) + "] " +
+                                  instances[i]->GetDebugName();
+              if (instances[i] == activeCam) {
+                label += " (Active)";
+              }
+              bool isSelected = (selectedCameraIdx == i);
+              if (ImGui::Selectable(label.c_str(), isSelected)) {
+                selectedCameraIdx = i;
+              }
+              if (isSelected) {
+                ImGui::SetItemDefaultFocus();
+              }
+            }
+            ImGui::EndCombo();
+          }
+
+          ImGui::Separator();
+          if (selectedCameraIdx < static_cast<int>(instances.size()) &&
+              instances[selectedCameraIdx]) {
+            instances[selectedCameraIdx]->DrawDebugDetails();
+          }
+        }
+        ImGui::EndTabItem();
+      }
+
+      // === 2. System / Stats タブ ===
+      if (ImGui::BeginTabItem("System / Stats")) {
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
+                           "Performance & Memory");
+        ImGui::Text("FPS: %.1f (%.3f ms)", ImGui::GetIO().Framerate,
+                    1000.0f / (ImGui::GetIO().Framerate > 0.0f
+                                   ? ImGui::GetIO().Framerate
+                                   : 60.0f));
+
+        size_t memBytes = GetProcessMemoryUsage();
+        ImGui::Text("Physical Memory: %.2f MB",
+                    static_cast<double>(memBytes) / (1024.0 * 1024.0));
+
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f),
+                           "Rendering & Culling Stats");
+        if (draw) {
+          ImGui::Text("Total Draw Calls: %u", draw->GetTotalDrawCalls());
+          ImGui::Text("Culled Draw Calls: %u", draw->GetCulledDrawCalls());
+          bool culling = draw->IsFrustumCullingEnabled();
+          if (ImGui::Checkbox("Frustum Culling", &culling)) {
+            draw->SetFrustumCullingEnabled(culling);
+          }
+          bool debugAabb = draw->IsDebugDrawAABB();
+          if (ImGui::Checkbox("Debug Draw AABB", &debugAabb)) {
+            draw->SetDebugDrawAABB(debugAabb);
+          }
+        }
+        ImGui::EndTabItem();
+      }
+
+      // === 3. Lights タブ ===
+      if (lightManager && ImGui::BeginTabItem("Lights")) {
+        lightManager->ImGui();
+        ImGui::EndTabItem();
+      }
+
+      // === 4. Post Effects タブ ===
+      if (!postEffects_.empty() && ImGui::BeginTabItem("Post Effects")) {
+        ImGui::Text("Active Post Effects: %d",
+                    static_cast<int>(postEffects_.size()));
+        for (size_t i = 0; i < postEffects_.size(); ++i) {
+          ImGui::PushID(static_cast<int>(i));
+          ImGui::Text("Effect [%zu]", i);
+          ImGui::PopID();
+        }
+        ImGui::EndTabItem();
+      }
+
+      ImGui::EndTabBar();
+    }
+  }
+  ImGui::End();
 #endif // _USE_IMGUI
 }

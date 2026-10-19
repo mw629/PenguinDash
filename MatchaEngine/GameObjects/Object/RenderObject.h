@@ -131,6 +131,19 @@ public:
         return objectBase_ && objectBase_->GetComponent<MaterialComponent>() != nullptr || GameObject::HasMaterial();
     }
 
+    bool IsTransparent() const override {
+        if (objectBase_) {
+            BlendMode blend = objectBase_->GetBlend();
+            if (blend != BlendMode::kBlendModeNone && blend != BlendMode::kBlendModeNormal) {
+                return true;
+            }
+            if (auto mat = objectBase_->GetComponent<MaterialComponent>()) {
+                if (mat->GetColor().w < 0.999f) return true;
+            }
+        }
+        return GameObject::IsTransparent();
+    }
+
     void SetColor(const Vector4& color) {
         if (objectBase_) {
             if (auto model = dynamic_cast<Model*>(objectBase_.get())) {

@@ -158,7 +158,8 @@ BossBattleController::SelectNextPattern(int bossHP) {
 
 void BossBattleController::Update(float timeScale, Boss *boss,
                                   StageSettings *stageSettings,
-                                  GameSceneEffect *effectManager) {
+                                  GameSceneEffect *effectManager,
+                                  GameCameraController *cameraController) {
   if (!boss || !stageSettings)
     return;
 
@@ -244,6 +245,9 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossReflect);
             GamePadInput::Rumble(kReflectRumbleDuration, kReflectRumbleSpeed,
                                  kReflectRumbleSpeed);
+            if (cameraController) {
+              cameraController->ShakeReflect();
+            }
           }
         }
       } else if (obs->GetIsReflected()) {
@@ -261,11 +265,17 @@ void BossBattleController::Update(float timeScale, Boss *boss,
           obs->Deactivate();
           boss->OnDamage();
           SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossHit);
+          if (cameraController) {
+            cameraController->ShakeDefeat();
+          }
 
           if (boss->GetState() == BossState::Defeat) {
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossDefeat);
             GamePadInput::Rumble(kDefeatRumbleDuration, kMaxRumbleSpeed,
                                  kMaxRumbleSpeed);
+            if (cameraController) {
+              cameraController->ShakeBossDefeat();
+            }
             attackQueue_.clear();
             // 画面内のボス攻撃をすべて消す
             for (int k = 0; k < stageSettings->GetMaxObstacles(); k++) {

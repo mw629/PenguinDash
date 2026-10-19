@@ -141,6 +141,7 @@ public:
   class StageSettings* GetStageSettings() { return stageSettings_.get(); }
   class Player* GetPlayer() { return player_.get(); }
   class Boss* GetBoss() { return boss_.get(); }
+  class GameCameraController* GetCameraController() { return cameraController_.get(); }
   PlayingState GetPlayingState() const { return playingState_; }
   void TriggerPlayerHit(bool isTrip);
 };

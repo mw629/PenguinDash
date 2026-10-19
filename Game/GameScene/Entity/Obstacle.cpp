@@ -147,7 +147,7 @@ void Obstacle::SetType(Type type) {
     currentModel_ = wallModel_.get();
     profile = &kProfileWall;
     if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
+      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 0.6f});
       currentModel_->SetShader("ObjectShader");
       currentModel_->SetBlend(BlendMode::kBlendModeNormal);
     }
@@ -452,6 +452,7 @@ void Obstacle::ImGuiInnerComponents() {
 
 #include "../GameScene.h"
 #include "Player.h"
+#include "../Camera/GameCameraController.h"
 #include "../System/ScoreManager.h"
 #include "../Stage/StageSettings.h"
 #include "../Effect/GameSceneEffect.h"
@@ -471,6 +472,9 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     OnBlowAway();
     if (scene->GetScoreManager()) {
       scene->GetScoreManager()->AddBonusEnemyHit();
+    }
+    if (scene->GetCameraController()) {
+      scene->GetCameraController()->ShakeDefeat();
     }
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
     return false;
@@ -496,6 +500,9 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
   if (type_ == Type::ClearItem) {
     OnHit();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
+    if (scene->GetCameraController()) {
+      scene->GetCameraController()->ShakeDefeat();
+    }
     if (scene->GetStageSettings()) {
       for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
         Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
@@ -531,6 +538,9 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
   if (player->GetHasBarrier()) {
     player->SetHasBarrier(false);
     OnBlowAway();
+    if (scene->GetCameraController()) {
+      scene->GetCameraController()->ShakeDefeat();
+    }
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
     if (scene->GetEffectManager()) {
       scene->GetEffectManager()->BreakBarrier(player->GetTransform().translate);
@@ -542,4 +552,19 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
   bool isTrip = (type_ == Type::Low || type_ == Type::BossAttackLow);
   scene->TriggerPlayerHit(isTrip);
   return true;
+}
+
+bool Obstacle::IsTransparent() const {
+  if (currentModel_) {
+    BlendMode blend = currentModel_->GetBlend();
+    if (blend != BlendMode::kBlendModeNone && blend != BlendMode::kBlendModeNormal) {
+      return true;
+    }
+    if (currentModel_->GetMaterial()) {
+      if (currentModel_->GetMaterial()->GetColor().w < 0.999f) {
+        return true;
+      }
+    }
+  }
+  return GameObject::IsTransparent();
 }

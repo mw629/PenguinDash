@@ -271,6 +271,22 @@ public:
         return GetComponent<MaterialComponent>() != nullptr;
     }
 
+    /// <summary>
+    /// 半透明オブジェクトとして描画順を後回し（奥から手前へソート）にするかどうか
+    /// </summary>
+    virtual bool IsTransparent() const {
+        if (auto mat = GetComponent<MaterialComponent>()) {
+            BlendMode blend = mat->GetBlend();
+            if (blend != BlendMode::kBlendModeNone && blend != BlendMode::kBlendModeNormal) {
+                return true;
+            }
+            if (mat->GetColor().w < 0.999f) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool GetIsActive() const { return isActive_; }
     void SetIsActive(bool active) { isActive_ = active; }
 

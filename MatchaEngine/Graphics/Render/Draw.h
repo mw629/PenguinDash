@@ -37,6 +37,7 @@ public:
 	LineRenderer* GetLineRenderer() const { return lineRenderer_; }
 
 	void SetCamera(Camera* setcamera);
+	Camera* GetCamera() const { return camera_; }
 	void SetEnvironmentTexture(int textureHandle);
 	void SetGpuProfiler(class GpuProfiler* profiler) { gpuProfiler_ = profiler; }
 
