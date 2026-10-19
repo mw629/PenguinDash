@@ -484,4 +484,6 @@ public:
 
   // リセット
   void Reset();
+
+  void ImGui();
 };

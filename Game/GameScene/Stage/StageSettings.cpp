@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <format>
+#include <imgui.h>
 
 
 void StageSettings::Initialize(
@@ -1276,3 +1277,239 @@ bool StageSettings::IsItemCoolDownReady(Obstacle::Type type) const {
   }
   return true;
 }
+
+#ifdef _USE_IMGUI
+void StageSettings::ImGui() {
+  // ステージデバッグパネル
+  if (ImGui::CollapsingHeader("Stage Settings Debug")) {
+    int currentLane = GetLaneCount();
+    ImGui::Text("Current (Player Foot) Lane: %d", currentLane);
+
+    int targetLane = GetTargetLaneCount();
+    if (ImGui::SliderInt("Target Lane Count", &targetLane, 1, 11)) {
+      SetLaneCount(targetLane);
+    }
+
+    float laneWidth = GetLaneWidth();
+    if (ImGui::SliderFloat("Lane Width", &laneWidth, 1.0f, 10.0f)) {
+      SetLaneWidth(laneWidth);
+    }
+
+    float oneLaneMult = GetOneLaneWidthMultiplier();
+    if (ImGui::SliderFloat("One Lane Width Multiplier", &oneLaneMult, 1.0f,
+                           3.0f, "%.2f")) {
+      SetOneLaneWidthMultiplier(oneLaneMult);
+    }
+
+    float baseSpeed = GetBaseScrollSpeed();
+    if (ImGui::SliderFloat("Base Scroll Speed", &baseSpeed, 0.0f, 1.0f)) {
+      SetBaseScrollSpeed(baseSpeed);
+    }
+
+    float maxSpeed = GetMaxScrollSpeed();
+    if (ImGui::SliderFloat("Max Scroll Speed", &maxSpeed, baseSpeed, 2.0f)) {
+      SetMaxScrollSpeed(maxSpeed);
+    }
+
+    float accel = GetScrollAcceleration();
+    if (ImGui::SliderFloat("Scroll Acceleration", &accel, 0.0f, 0.01f)) {
+      SetScrollAcceleration(accel);
+    }
+
+    float minDistance = GetMinObstacleDistance();
+    float maxDistance = GetMaxObstacleDistance();
+    if (ImGui::SliderFloat("Min Obstacle Distance", &minDistance, 3.0f, 30.0f,
+                           "%.1f m")) {
+      if (minDistance > maxDistance)
+        maxDistance = minDistance;
+      SetMinObstacleDistance(minDistance);
+      SetMaxObstacleDistance(maxDistance);
+    }
+    if (ImGui::SliderFloat("Max Obstacle Distance", &maxDistance, 5.0f, 60.0f,
+                           "%.1f m")) {
+      if (maxDistance < minDistance)
+        minDistance = maxDistance;
+      SetMinObstacleDistance(minDistance);
+      SetMaxObstacleDistance(maxDistance);
+    }
+
+    float baseActionFrames = GetBaseActionFrames();
+    if (ImGui::SliderFloat("Base Action Frames", &baseActionFrames, 0.0f,
+                           60.0f, "%.0f f")) {
+      SetBaseActionFrames(baseActionFrames);
+    }
+
+    float minGrace = GetMinGraceFrames();
+    float maxGrace = GetMaxGraceFrames();
+    if (ImGui::SliderFloat("Min Grace Frames", &minGrace, 5.0f, 60.0f,
+                           "%.0f f")) {
+      if (minGrace > maxGrace)
+        maxGrace = minGrace;
+      SetMinGraceFrames(minGrace);
+      SetMaxGraceFrames(maxGrace);
+    }
+    if (ImGui::SliderFloat("Max Grace Frames", &maxGrace, 5.0f, 80.0f,
+                           "%.0f f")) {
+      if (maxGrace < minGrace)
+        minGrace = maxGrace;
+      SetMinGraceFrames(minGrace);
+      SetMaxGraceFrames(maxGrace);
+    }
+
+    float noSpawnChance = GetNoSpawnChance() * 100.0f;
+    if (ImGui::SliderFloat("No Spawn Chance (%)", &noSpawnChance, 0.0f, 30.0f,
+                           "%.1f %%")) {
+      SetNoSpawnChance(noSpawnChance / 100.0f);
+    }
+
+    float currentSpeed = GetScrollSpeed();
+    float curInterval = GetObstacleInterval();
+    float estFrames =
+        currentSpeed > 0.0f ? (curInterval / currentSpeed) : 0.0f;
+    ImGui::Text("Next Spawn: %.1f m (approx. %.0f frames / %.2f s)",
+                curInterval, estFrames, estFrames / 60.0f);
+    ImGui::Text("Dodgeable Range: %.1f m ~ %.1f m", minDistance, maxDistance);
+
+    Vector4 roadColor = GetRoadColor();
+    float roadColorArr[4] = {roadColor.x, roadColor.y, roadColor.z,
+                             roadColor.w};
+    if (ImGui::ColorEdit4("Ground Color", roadColorArr)) {
+      SetRoadColor({roadColorArr[0], roadColorArr[1],
+                    roadColorArr[2], roadColorArr[3]});
+    }
+
+    bool driftIceEnabled = GetDriftIceEnabled();
+    if (ImGui::Checkbox("Enable Drift Ice (流氷)", &driftIceEnabled)) {
+      SetDriftIceEnabled(driftIceEnabled);
+    }
+    if (driftIceEnabled) {
+      Vector4 driftIceColor = GetDriftIceColor();
+      float driftIceColorArr[4] = {driftIceColor.x, driftIceColor.y,
+                                   driftIceColor.z, driftIceColor.w};
+      if (ImGui::ColorEdit4("Drift Ice Color", driftIceColorArr)) {
+        SetDriftIceColor(
+            {driftIceColorArr[0], driftIceColorArr[1], driftIceColorArr[2],
+             driftIceColorArr[3]});
+      }
+      float bobbingScale = GetDriftIceBobbingScale();
+      if (ImGui::SliderFloat("Drift Ice Bobbing Scale (揺れ幅)",
+                             &bobbingScale, 0.0f, 3.0f, "%.2f")) {
+        SetDriftIceBobbingScale(bobbingScale);
+      }
+      float bobbingSpeed = GetDriftIceBobbingSpeedScale();
+      if (ImGui::SliderFloat("Drift Ice Bobbing Speed (揺れ速度)",
+                             &bobbingSpeed, 0.0f, 3.0f, "%.2f")) {
+        SetDriftIceBobbingSpeedScale(bobbingSpeed);
+      }
+      float sizeScale = GetDriftIceSizeScale();
+      if (ImGui::SliderFloat("Drift Ice Size Scale (大きさ倍率)", &sizeScale,
+                             0.1f, 3.0f, "%.2f")) {
+        SetDriftIceSizeScale(sizeScale);
+      }
+      float thicknessScale = GetDriftIceThicknessScale();
+      if (ImGui::SliderFloat("Drift Ice Thickness (厚み・縦の太さ)",
+                             &thicknessScale, 0.5f, 6.0f, "%.2f")) {
+        SetDriftIceThicknessScale(thicknessScale);
+      }
+      float heightOffset = GetDriftIceHeightOffset();
+      if (ImGui::SliderFloat("Drift Ice Height (浮遊高さ)", &heightOffset,
+                             -1.0f, 5.0f, "%.2f m")) {
+        SetDriftIceHeightOffset(heightOffset);
+      }
+      float distOffset = GetDriftIceDistanceOffset();
+      if (ImGui::SliderFloat("Drift Ice Distance (地面からの離れ具合)",
+                             &distOffset, 0.0f, 20.0f, "%.1f m")) {
+        SetDriftIceDistanceOffset(distOffset);
+      }
+      bool lighting = GetDriftIceLighting();
+      if (ImGui::Checkbox("Drift Ice Lighting (ライティング)", &lighting)) {
+        SetDriftIceLighting(lighting);
+      }
+      float sealSpin = GetBabySealSpinSpeed();
+      if (ImGui::SliderFloat("Baby Seal Spin Speed (アザラシ回転速度)",
+                             &sealSpin, 0.0f, 10.0f, "%.1f rad/s")) {
+        SetBabySealSpinSpeed(sealSpin);
+      }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Road Backwards: %d chunks (-%.0f m)",
+                GetBackwardChunks(),
+                static_cast<float>(GetBackwardChunks()) * GetChunkLength());
+    float waterForwardExt = GetWaterForwardExtension();
+    if (ImGui::SliderFloat("Water Forward Ext (波の奥への拡張)",
+                           &waterForwardExt, 50.0f, 1200.0f, "%.0f m")) {
+      SetWaterForwardExtension(waterForwardExt);
+    }
+    float waterBackwardExt = GetWaterBackwardExtension();
+    if (ImGui::SliderFloat("Water Backward Ext (波の手前への拡張)",
+                           &waterBackwardExt, 50.0f, 800.0f, "%.0f m")) {
+      SetWaterBackwardExtension(waterBackwardExt);
+    }
+    float waterWidthScale = GetWaterWidthScale();
+    if (ImGui::SliderFloat("Water Width Scale (波の横幅)", &waterWidthScale,
+                           50.0f, 400.0f, "%.0f m")) {
+      SetWaterWidthScale(waterWidthScale);
+    }
+  }
+
+  // アイテムクールタイム設定
+  if (ImGui::CollapsingHeader("Item CoolDowns (アイテムクールタイム設定)",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    float spawnChance = GetItemSpawnChance() * 100.0f;
+    if (ImGui::SliderFloat("Item Spawn Chance (%)", &spawnChance, 0.0f,
+                           100.0f, "%.1f %%")) {
+      SetItemSpawnChance(spawnChance / 100.0f);
+    }
+    ImGui::Separator();
+
+    struct ItemInfo {
+      Obstacle::Type type;
+      const char *name;
+      const char *desc;
+    };
+    ItemInfo items[] = {
+        {Obstacle::Type::Bonus, "Bonus (ボーナス)", "スコア加算"},
+        {Obstacle::Type::BarrierItem, "Barrier (バリア)", "ミスを1回防御"},
+        {Obstacle::Type::ClearItem, "Clear (障害物全消去)",
+         "画面内の障害物を一掃"},
+        {Obstacle::Type::CameraItem, "Camera (視点切替)",
+         "1レーンモードへ移行"},
+        {Obstacle::Type::BossItem, "Boss (ボス戦突入)", "ボスバトル開始"},
+    };
+
+    for (const auto &item : items) {
+      ImGui::PushID(static_cast<int>(item.type));
+      float duration = GetItemCoolDownDuration(item.type);
+      float current = GetItemCoolDownTimer(item.type);
+
+      ImGui::Text("%s - %s", item.name, item.desc);
+      if (ImGui::SliderFloat("CoolTime (s)", &duration, 0.0f, 120.0f,
+                             "%.1f s")) {
+        SetItemCoolDownDuration(item.type, duration);
+      }
+
+      if (current <= 0.0f) {
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f),
+                           "  Status: READY (出現可能)");
+      } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
+                           "  Status: COOLDOWN (残り %.1f s)", current);
+      }
+
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Reset CD (即時可能)")) {
+        SetItemCoolDownTimer(item.type, 0.0f);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Trigger CD")) {
+        SetItemCoolDownTimer(item.type, duration);
+      }
+      ImGui::Separator();
+      ImGui::PopID();
+    }
+  }
+}
+#else
+void StageSettings::ImGui() {}
+#endif

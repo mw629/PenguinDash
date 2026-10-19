@@ -275,9 +275,7 @@ void TitleDirector::CheckCollisions(Player *player,
     if (!obstacle || !obstacle->GetIsActive() || obstacle->GetIsHit())
       continue;
 
-    AABB obstacleAABB = Collision::MakeAABB(
-        obstacle->GetTransform(), obstacle->GetCollisionWidth(),
-        obstacle->GetCollisionHeight(), obstacle->GetCollisionDepth());
+    AABB obstacleAABB = obstacle->GetColliderAABB();
 
     if (Collision::CheckAABB(playerAABB, obstacleAABB)) {
       if (obstacle->GetType() == Obstacle::Type::Bonus) {

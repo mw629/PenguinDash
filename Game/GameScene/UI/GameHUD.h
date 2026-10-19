@@ -37,18 +37,16 @@ struct GameHUDContext {
   bool isFirstPersonView = false;
   Sprite *crashSprite = nullptr;
 
-  // ランキング関連
-  const std::vector<RankingEntry>* onlineRankings = nullptr;
+  // ランキング関連（毎フレームの文字列コピー・ヒープ確保を避けるためポインタ参照）
   const std::vector<RankingEntry>* onlineScoreRankings = nullptr;
   const std::vector<RankingEntry>* onlineDistanceRankings = nullptr;
-  std::string lastSubmittedDocId;
+  const std::string* lastSubmittedDocId = nullptr;
+  const std::string* playerName = nullptr;
   int localDistanceRank = -1;
   int localScoreRank = -1;
   bool isOnlineRankingSending = false;
   bool isOnlineRankingFetching = false;
   bool isOnlineRankingConfigured = false;
-  std::string onlineRankingStatus;
-  std::string playerName;
 };
 
 class GameHUD {

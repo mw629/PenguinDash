@@ -771,14 +771,16 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   auto buildDistanceList = [&]() {
     std::vector<DisplayRankItem> list;
     bool alreadyInList = false;
+    const std::string myName = (ctx.playerName && !ctx.playerName->empty()) ? *ctx.playerName : "Player";
+    const std::string myDocId = (ctx.lastSubmittedDocId) ? *ctx.lastSubmittedDocId : "";
 
     if (ctx.onlineDistanceRankings && !ctx.onlineDistanceRankings->empty()) {
       for (const auto& e : *ctx.onlineDistanceRankings) {
         DisplayRankItem item;
         item.playerName = e.playerName;
         item.value = e.distance;
-        bool isMe = (!ctx.lastSubmittedDocId.empty() && e.documentId == ctx.lastSubmittedDocId) ||
-                    (e.playerName == ctx.playerName && std::abs(e.distance - ctx.currentDistance) < 0.05f);
+        bool isMe = (!myDocId.empty() && e.documentId == myDocId) ||
+                    (e.playerName == myName && std::abs(e.distance - ctx.currentDistance) < 0.05f);
         if (isMe && !alreadyInList) {
           item.isCurrentPlay = true;
           alreadyInList = true;
@@ -790,7 +792,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
         float d = ctx.topRankings[i];
         if (d > 0.0f) {
           DisplayRankItem item;
-          item.playerName = ctx.playerName;
+          item.playerName = myName;
           item.value = d;
           if (!alreadyInList && (i + 1 == ctx.localDistanceRank) && std::abs(d - ctx.currentDistance) < 0.05f) {
             item.isCurrentPlay = true;
@@ -804,7 +806,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
     // クラウド反映待ちや未反映の場合、今回のプレイ記録を統合して即時反映
     if (!alreadyInList && ctx.currentDistance > 0.0f) {
       DisplayRankItem myItem;
-      myItem.playerName = ctx.playerName.empty() ? "Player" : ctx.playerName;
+      myItem.playerName = myName;
       myItem.value = ctx.currentDistance;
       myItem.isCurrentPlay = true;
       list.push_back(myItem);
@@ -825,14 +827,16 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   auto buildScoreList = [&]() {
     std::vector<DisplayRankItem> list;
     bool alreadyInList = false;
+    const std::string myName = (ctx.playerName && !ctx.playerName->empty()) ? *ctx.playerName : "Player";
+    const std::string myDocId = (ctx.lastSubmittedDocId) ? *ctx.lastSubmittedDocId : "";
 
     if (ctx.onlineScoreRankings && !ctx.onlineScoreRankings->empty()) {
       for (const auto& e : *ctx.onlineScoreRankings) {
         DisplayRankItem item;
         item.playerName = e.playerName;
         item.value = e.score;
-        bool isMe = (!ctx.lastSubmittedDocId.empty() && e.documentId == ctx.lastSubmittedDocId) ||
-                    (e.playerName == ctx.playerName && std::abs(e.score - ctx.currentScore) < 0.5f);
+        bool isMe = (!myDocId.empty() && e.documentId == myDocId) ||
+                    (e.playerName == myName && std::abs(e.score - ctx.currentScore) < 0.5f);
         if (isMe && !alreadyInList) {
           item.isCurrentPlay = true;
           alreadyInList = true;
@@ -844,7 +848,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
         float s = ctx.topScoreRankings[i];
         if (s > 0.0f) {
           DisplayRankItem item;
-          item.playerName = ctx.playerName;
+          item.playerName = myName;
           item.value = s;
           if (!alreadyInList && (i + 1 == ctx.localScoreRank) && std::abs(s - ctx.currentScore) < 0.5f) {
             item.isCurrentPlay = true;
@@ -858,7 +862,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
     // クラウド反映待ちや未反映の場合、今回のプレイ記録を統合して即時反映
     if (!alreadyInList && ctx.currentScore > 0.0f) {
       DisplayRankItem myItem;
-      myItem.playerName = ctx.playerName.empty() ? "Player" : ctx.playerName;
+      myItem.playerName = myName;
       myItem.value = ctx.currentScore;
       myItem.isCurrentPlay = true;
       list.push_back(myItem);

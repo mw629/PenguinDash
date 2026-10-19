@@ -102,6 +102,7 @@ private:
   float uiTimer_ = 0.0f;
   class Draw *draw_ = nullptr;
 
+  void UpdateWorldEntities(float timeScale, float speedMultiplier);
   void CheckCollisions();
   void CheckKeepRolling();
   void StartResultTransition(ResultTransition target);

@@ -568,3 +568,8 @@ bool Obstacle::IsTransparent() const {
   }
   return GameObject::IsTransparent();
 }
+
+AABB Obstacle::GetColliderAABB() const {
+  return Collision::MakeAABB(transform_, collisionWidth_, collisionHeight_,
+                             collisionDepth_);
+}

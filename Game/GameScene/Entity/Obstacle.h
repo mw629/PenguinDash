@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "GameObject.h"
+#include "Collision.h"
 
 /// <summary>
 /// 障害物を表すクラス
@@ -221,6 +222,7 @@ public:
   float GetCollisionWidth() const { return collisionWidth_; }
   float GetCollisionHeight() const { return collisionHeight_; }
   float GetCollisionDepth() const { return collisionDepth_; }
+  AABB GetColliderAABB() const;
 
   // ポリモーフィズム用メソッド
   virtual bool IsRegularObstacle() const {

@@ -337,26 +337,26 @@ void GameScene::Update() {
     }
   });
 
-  // カメラの更新 (FPV or タイトルオービット or プレイ中追従)
+  // カメラの更新 (タイトルオービット or プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
   float timeScale = EditorManager::GetPlaySpeed();
-  if (cameraController_->IsFirstPerson()) {
-    cameraController_->UpdateFirstPersonCamera(player_.get());
-  } else if (gameState_ == GameState::Title) {
-    titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
-                                 Engine::kDefaultDeltaTime * timeScale);
-  } else if (gameState_ == GameState::Playing ||
-             gameState_ == GameState::Editor) {
-    cameraController_->UpdateGameplayCamera(
-        player_.get(), Engine::kDefaultDeltaTime * timeScale);
+  if (!cameraController_->IsFirstPerson()) {
+    if (gameState_ == GameState::Title) {
+      titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
+                                   Engine::kDefaultDeltaTime * timeScale);
+    } else if (gameState_ == GameState::Playing ||
+               gameState_ == GameState::Editor) {
+      cameraController_->UpdateGameplayCamera(
+          player_.get(), Engine::kDefaultDeltaTime * timeScale);
+    }
+
+    cameraController_->Update();
+
+    // SkyBoxをカメラの位置に追従
+    Transform skyboxTransform = skyBox_->GetTransform();
+    skyboxTransform.translate =
+        cameraController_->GetCamera()->GetTransform().translate;
+    skyBox_->SetTransform(skyboxTransform);
   }
-
-  cameraController_->Update();
-
-  // SkyBoxをカメラの位置に追従
-  Transform skyboxTransform = skyBox_->GetTransform();
-  skyboxTransform.translate =
-      cameraController_->GetCamera()->GetTransform().translate;
-  skyBox_->SetTransform(skyboxTransform);
 
   // 各ステート別の更新
   if (gameState_ == GameState::Title) {
@@ -397,10 +397,28 @@ void GameScene::Update() {
   if (cameraController_->IsFirstPerson()) {
     cameraController_->UpdateFirstPersonCamera(player_.get());
     cameraController_->Update();
-    skyboxTransform = skyBox_->GetTransform();
+    Transform skyboxTransform = skyBox_->GetTransform();
     skyboxTransform.translate =
         cameraController_->GetCamera()->GetTransform().translate;
     skyBox_->SetTransform(skyboxTransform);
+  }
+}
+
+void GameScene::UpdateWorldEntities(float timeScale, float speedMultiplier) {
+  const Matrix4x4 &view = cameraController_->GetViewMatrix();
+  gameObjectManager_->UpdateAll(view, speedMultiplier * timeScale);
+
+  float activeWaterTime =
+      cameraController_->GetGameCamera()
+          ? cameraController_->GetGameCamera()->GetTotalTime()
+          : cameraController_->GetCamera()->GetTotalTime();
+  stageSettings_->Update(view, timeScale, activeWaterTime);
+
+  effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
+
+  if (!player_->GetIsRolling() &&
+      player_->GetTransform().translate.y <= kDustGroundThresholdY) {
+    effectManager_->EmitDust(player_->GetTransform().translate);
   }
 }
 
@@ -472,31 +490,13 @@ void GameScene::PlayingUpdate() {
                                kInvertedCameraThresholdRotateY);
   player_->SetInvertedControls(isCameraInverted);
 
-  const Matrix4x4 &view = cameraController_->GetViewMatrix();
-  gameObjectManager_->UpdateAll(view, speedMultiplier * timeScale);
-
-  float activeWaterTime =
-      cameraController_->GetGameCamera()
-          ? cameraController_->GetGameCamera()->GetTotalTime()
-          : cameraController_->GetCamera()->GetTotalTime();
-  stageSettings_->Update(view, timeScale, activeWaterTime);
-
+  UpdateWorldEntities(timeScale, speedMultiplier);
   CheckCollisions();
-
-  effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
-
-  if (!player_->GetIsRolling() &&
-      player_->GetTransform().translate.y <= kDustGroundThresholdY) {
-    effectManager_->EmitDust(player_->GetTransform().translate);
-  }
 }
 
 void GameScene::TitleUpdate() {
   float timeScale = EditorManager::GetPlaySpeed();
   float speedMultiplier = 1.0f;
-
-  stageSettings_->SetBaseScrollSpeed(kTitleBaseScrollSpeed);
-  stageSettings_->SetScrollAcceleration(0.0f);
   stageSettings_->SetSpawningPaused(titleDirector_->IsExiting());
 
   titleDirector_->UpdateAutoPilot(player_.get(), stageSettings_.get());
@@ -508,23 +508,9 @@ void GameScene::TitleUpdate() {
 
   CheckKeepRolling();
 
-  const Matrix4x4 &view = cameraController_->GetViewMatrix();
-  gameObjectManager_->UpdateAll(view, speedMultiplier * timeScale);
-
-  float activeWaterTime =
-      cameraController_->GetGameCamera()
-          ? cameraController_->GetGameCamera()->GetTotalTime()
-          : cameraController_->GetCamera()->GetTotalTime();
-  stageSettings_->Update(view, timeScale, activeWaterTime);
-
+  UpdateWorldEntities(timeScale, speedMultiplier);
   titleDirector_->CheckCollisions(player_.get(), stageSettings_.get(),
                                   scoreManager_.get());
-  effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
-
-  if (!player_->GetIsRolling() &&
-      player_->GetTransform().translate.y <= kDustGroundThresholdY) {
-    effectManager_->EmitDust(player_->GetTransform().translate);
-  }
 
   if (titleDirector_->IsExiting()) {
     // GO!の瞬間に直ちにゲームプレイを開始し、スタート演出からシームレスにゲームへ繋げる
@@ -582,9 +568,7 @@ void GameScene::CheckCollisions() {
     if (!obstacle->GetIsActive() || obstacle->GetIsHit())
       continue;
 
-    AABB obstacleAABB = Collision::MakeAABB(
-        obstacle->GetTransform(), obstacle->GetCollisionWidth(),
-        obstacle->GetCollisionHeight(), obstacle->GetCollisionDepth());
+    AABB obstacleAABB = obstacle->GetColliderAABB();
 
     if (Collision::CheckAABB(playerAABB, obstacleAABB)) {
       if (obstacle->OnPlayerCollision(this, player_.get())) {
@@ -626,9 +610,7 @@ void GameScene::CheckKeepRolling() {
         continue;
 
       if (obstacle->CanRollUnder()) {
-        AABB obstacleAABB = Collision::MakeAABB(
-            obstacle->GetTransform(), obstacle->GetCollisionWidth(),
-            obstacle->GetCollisionHeight(), obstacle->GetCollisionDepth());
+        AABB obstacleAABB = obstacle->GetColliderAABB();
 
         if (Collision::CheckAABB(standingAABB, obstacleAABB)) {
           if (playerTransform.translate.z >
@@ -735,17 +717,15 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.crashSprite = crashEffect_->GetSprite();
 
   auto rankingMgr = FirebaseRankingManager::GetInstance();
-  ctx.onlineRankings = &rankingMgr->GetCachedScoreRankings();
   ctx.onlineScoreRankings = &rankingMgr->GetCachedScoreRankings();
   ctx.onlineDistanceRankings = &rankingMgr->GetCachedDistanceRankings();
-  ctx.lastSubmittedDocId = rankingMgr->GetLastSubmittedDocId();
+  ctx.lastSubmittedDocId = &rankingMgr->GetLastSubmittedDocId();
+  ctx.playerName = &scoreManager_->GetPlayerName();
   ctx.localDistanceRank = scoreManager_->GetLastDistanceRank();
   ctx.localScoreRank = scoreManager_->GetLastScoreRank();
   ctx.isOnlineRankingSending = rankingMgr->IsSending();
   ctx.isOnlineRankingFetching = rankingMgr->IsFetching();
   ctx.isOnlineRankingConfigured = rankingMgr->IsConfigured();
-  ctx.onlineRankingStatus = rankingMgr->GetLastStatusMessage();
-  ctx.playerName = scoreManager_->GetPlayerName();
 
   gameHUD_->DrawHUD(draw, ctx);
 
@@ -983,236 +963,8 @@ void GameScene::ImGui() {
       ImGui::TextDisabled("Default: 0.070 (Thick / Bold)");
     }
 
-    // ステージデバッグパネル
-    if (ImGui::CollapsingHeader("Stage Settings Debug")) {
-      int currentLane = stageSettings_->GetLaneCount();
-      ImGui::Text("Current (Player Foot) Lane: %d", currentLane);
-
-      int targetLane = stageSettings_->GetTargetLaneCount();
-      if (ImGui::SliderInt("Target Lane Count", &targetLane, 1, 11)) {
-        stageSettings_->SetLaneCount(targetLane);
-      }
-
-      float laneWidth = stageSettings_->GetLaneWidth();
-      if (ImGui::SliderFloat("Lane Width", &laneWidth, 1.0f, 10.0f)) {
-        stageSettings_->SetLaneWidth(laneWidth);
-      }
-
-      float oneLaneMult = stageSettings_->GetOneLaneWidthMultiplier();
-      if (ImGui::SliderFloat("One Lane Width Multiplier", &oneLaneMult, 1.0f,
-                             3.0f, "%.2f")) {
-        stageSettings_->SetOneLaneWidthMultiplier(oneLaneMult);
-      }
-
-      float baseSpeed = stageSettings_->GetBaseScrollSpeed();
-      if (ImGui::SliderFloat("Base Scroll Speed", &baseSpeed, 0.0f, 1.0f)) {
-        stageSettings_->SetBaseScrollSpeed(baseSpeed);
-      }
-
-      float maxSpeed = stageSettings_->GetMaxScrollSpeed();
-      if (ImGui::SliderFloat("Max Scroll Speed", &maxSpeed, baseSpeed, 2.0f)) {
-        stageSettings_->SetMaxScrollSpeed(maxSpeed);
-      }
-
-      float accel = stageSettings_->GetScrollAcceleration();
-      if (ImGui::SliderFloat("Scroll Acceleration", &accel, 0.0f, 0.01f)) {
-        stageSettings_->SetScrollAcceleration(accel);
-      }
-
-      float minDistance = stageSettings_->GetMinObstacleDistance();
-      float maxDistance = stageSettings_->GetMaxObstacleDistance();
-      if (ImGui::SliderFloat("Min Obstacle Distance", &minDistance, 3.0f, 30.0f,
-                             "%.1f m")) {
-        if (minDistance > maxDistance)
-          maxDistance = minDistance;
-        stageSettings_->SetMinObstacleDistance(minDistance);
-        stageSettings_->SetMaxObstacleDistance(maxDistance);
-      }
-      if (ImGui::SliderFloat("Max Obstacle Distance", &maxDistance, 5.0f, 60.0f,
-                             "%.1f m")) {
-        if (maxDistance < minDistance)
-          minDistance = maxDistance;
-        stageSettings_->SetMinObstacleDistance(minDistance);
-        stageSettings_->SetMaxObstacleDistance(maxDistance);
-      }
-
-      float baseActionFrames = stageSettings_->GetBaseActionFrames();
-      if (ImGui::SliderFloat("Base Action Frames", &baseActionFrames, 0.0f,
-                             60.0f, "%.0f f")) {
-        stageSettings_->SetBaseActionFrames(baseActionFrames);
-      }
-
-      float minGrace = stageSettings_->GetMinGraceFrames();
-      float maxGrace = stageSettings_->GetMaxGraceFrames();
-      if (ImGui::SliderFloat("Min Grace Frames", &minGrace, 5.0f, 60.0f,
-                             "%.0f f")) {
-        if (minGrace > maxGrace)
-          maxGrace = minGrace;
-        stageSettings_->SetMinGraceFrames(minGrace);
-        stageSettings_->SetMaxGraceFrames(maxGrace);
-      }
-      if (ImGui::SliderFloat("Max Grace Frames", &maxGrace, 5.0f, 80.0f,
-                             "%.0f f")) {
-        if (maxGrace < minGrace)
-          minGrace = maxGrace;
-        stageSettings_->SetMinGraceFrames(minGrace);
-        stageSettings_->SetMaxGraceFrames(maxGrace);
-      }
-
-      float noSpawnChance = stageSettings_->GetNoSpawnChance() * 100.0f;
-      if (ImGui::SliderFloat("No Spawn Chance (%)", &noSpawnChance, 0.0f, 30.0f,
-                             "%.1f %%")) {
-        stageSettings_->SetNoSpawnChance(noSpawnChance / 100.0f);
-      }
-
-      float currentSpeed = stageSettings_->GetScrollSpeed();
-      float curInterval = stageSettings_->GetObstacleInterval();
-      float estFrames =
-          currentSpeed > 0.0f ? (curInterval / currentSpeed) : 0.0f;
-      ImGui::Text("Next Spawn: %.1f m (approx. %.0f frames / %.2f s)",
-                  curInterval, estFrames, estFrames / 60.0f);
-      ImGui::Text("Dodgeable Range: %.1f m ~ %.1f m", minDistance, maxDistance);
-
-      Vector4 roadColor = stageSettings_->GetRoadColor();
-      float roadColorArr[4] = {roadColor.x, roadColor.y, roadColor.z,
-                               roadColor.w};
-      if (ImGui::ColorEdit4("Ground Color", roadColorArr)) {
-        stageSettings_->SetRoadColor({roadColorArr[0], roadColorArr[1],
-                                      roadColorArr[2], roadColorArr[3]});
-      }
-
-      bool driftIceEnabled = stageSettings_->GetDriftIceEnabled();
-      if (ImGui::Checkbox("Enable Drift Ice (流氷)", &driftIceEnabled)) {
-        stageSettings_->SetDriftIceEnabled(driftIceEnabled);
-      }
-      if (driftIceEnabled) {
-        Vector4 driftIceColor = stageSettings_->GetDriftIceColor();
-        float driftIceColorArr[4] = {driftIceColor.x, driftIceColor.y,
-                                     driftIceColor.z, driftIceColor.w};
-        if (ImGui::ColorEdit4("Drift Ice Color", driftIceColorArr)) {
-          stageSettings_->SetDriftIceColor(
-              {driftIceColorArr[0], driftIceColorArr[1], driftIceColorArr[2],
-               driftIceColorArr[3]});
-        }
-        float bobbingScale = stageSettings_->GetDriftIceBobbingScale();
-        if (ImGui::SliderFloat("Drift Ice Bobbing Scale (揺れ幅)",
-                               &bobbingScale, 0.0f, 3.0f, "%.2f")) {
-          stageSettings_->SetDriftIceBobbingScale(bobbingScale);
-        }
-        float bobbingSpeed = stageSettings_->GetDriftIceBobbingSpeedScale();
-        if (ImGui::SliderFloat("Drift Ice Bobbing Speed (揺れ速度)",
-                               &bobbingSpeed, 0.0f, 3.0f, "%.2f")) {
-          stageSettings_->SetDriftIceBobbingSpeedScale(bobbingSpeed);
-        }
-        float sizeScale = stageSettings_->GetDriftIceSizeScale();
-        if (ImGui::SliderFloat("Drift Ice Size Scale (大きさ倍率)", &sizeScale,
-                               0.1f, 3.0f, "%.2f")) {
-          stageSettings_->SetDriftIceSizeScale(sizeScale);
-        }
-        float thicknessScale = stageSettings_->GetDriftIceThicknessScale();
-        if (ImGui::SliderFloat("Drift Ice Thickness (厚み・縦の太さ)",
-                               &thicknessScale, 0.5f, 6.0f, "%.2f")) {
-          stageSettings_->SetDriftIceThicknessScale(thicknessScale);
-        }
-        float heightOffset = stageSettings_->GetDriftIceHeightOffset();
-        if (ImGui::SliderFloat("Drift Ice Height (浮遊高さ)", &heightOffset,
-                               -1.0f, 5.0f, "%.2f m")) {
-          stageSettings_->SetDriftIceHeightOffset(heightOffset);
-        }
-        float distOffset = stageSettings_->GetDriftIceDistanceOffset();
-        if (ImGui::SliderFloat("Drift Ice Distance (地面からの離れ具合)",
-                               &distOffset, 0.0f, 20.0f, "%.1f m")) {
-          stageSettings_->SetDriftIceDistanceOffset(distOffset);
-        }
-        bool lighting = stageSettings_->GetDriftIceLighting();
-        if (ImGui::Checkbox("Drift Ice Lighting (ライティング)", &lighting)) {
-          stageSettings_->SetDriftIceLighting(lighting);
-        }
-        float sealSpin = stageSettings_->GetBabySealSpinSpeed();
-        if (ImGui::SliderFloat("Baby Seal Spin Speed (アザラシ回転速度)",
-                               &sealSpin, 0.0f, 10.0f, "%.1f rad/s")) {
-          stageSettings_->SetBabySealSpinSpeed(sealSpin);
-        }
-      }
-
-      ImGui::Separator();
-      ImGui::Text("Road Backwards: %d chunks (-%.0f m)",
-                  stageSettings_->GetBackwardChunks(),
-                  static_cast<float>(stageSettings_->GetBackwardChunks()) *
-                      stageSettings_->GetChunkLength());
-      float waterForwardExt = stageSettings_->GetWaterForwardExtension();
-      if (ImGui::SliderFloat("Water Forward Ext (波の奥への拡張)",
-                             &waterForwardExt, 50.0f, 1200.0f, "%.0f m")) {
-        stageSettings_->SetWaterForwardExtension(waterForwardExt);
-      }
-      float waterBackwardExt = stageSettings_->GetWaterBackwardExtension();
-      if (ImGui::SliderFloat("Water Backward Ext (波の手前への拡張)",
-                             &waterBackwardExt, 50.0f, 800.0f, "%.0f m")) {
-        stageSettings_->SetWaterBackwardExtension(waterBackwardExt);
-      }
-      float waterWidthScale = stageSettings_->GetWaterWidthScale();
-      if (ImGui::SliderFloat("Water Width Scale (波の横幅)", &waterWidthScale,
-                             50.0f, 400.0f, "%.0f m")) {
-        stageSettings_->SetWaterWidthScale(waterWidthScale);
-      }
-    }
-
-    // アイテムクールタイム設定
-    if (ImGui::CollapsingHeader("Item CoolDowns (アイテムクールタイム設定)",
-                                ImGuiTreeNodeFlags_DefaultOpen)) {
-      float spawnChance = stageSettings_->GetItemSpawnChance() * 100.0f;
-      if (ImGui::SliderFloat("Item Spawn Chance (%)", &spawnChance, 0.0f,
-                             100.0f, "%.1f %%")) {
-        stageSettings_->SetItemSpawnChance(spawnChance / 100.0f);
-      }
-      ImGui::Separator();
-
-      struct ItemInfo {
-        Obstacle::Type type;
-        const char *name;
-        const char *desc;
-      };
-      ItemInfo items[] = {
-          {Obstacle::Type::Bonus, "Bonus (ボーナス)", "スコア加算"},
-          {Obstacle::Type::BarrierItem, "Barrier (バリア)", "ミスを1回防御"},
-          {Obstacle::Type::ClearItem, "Clear (障害物全消去)",
-           "画面内の障害物を一掃"},
-          {Obstacle::Type::CameraItem, "Camera (視点切替)",
-           "1レーンモードへ移行"},
-          {Obstacle::Type::BossItem, "Boss (ボス戦突入)", "ボスバトル開始"},
-      };
-
-      for (const auto &item : items) {
-        ImGui::PushID(static_cast<int>(item.type));
-        float duration = stageSettings_->GetItemCoolDownDuration(item.type);
-        float current = stageSettings_->GetItemCoolDownTimer(item.type);
-
-        ImGui::Text("%s - %s", item.name, item.desc);
-        if (ImGui::SliderFloat("CoolTime (s)", &duration, 0.0f, 120.0f,
-                               "%.1f s")) {
-          stageSettings_->SetItemCoolDownDuration(item.type, duration);
-        }
-
-        if (current <= 0.0f) {
-          ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f),
-                             "  Status: READY (出現可能)");
-        } else {
-          ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
-                             "  Status: COOLDOWN (残り %.1f s)", current);
-        }
-
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset CD (即時可能)")) {
-          stageSettings_->SetItemCoolDownTimer(item.type, 0.0f);
-        }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Trigger CD")) {
-          stageSettings_->SetItemCoolDownTimer(item.type, duration);
-        }
-        ImGui::Separator();
-        ImGui::PopID();
-      }
-    }
+    // ステージ・アイテム設定
+    stageSettings_->ImGui();
 
     // アイテム効果のデバッグ
     if (ImGui::CollapsingHeader("Item Debug / Effects",
@@ -1325,25 +1077,6 @@ void GameScene::ImGui() {
   }
 #endif
 
-  // ポーズメニュー
-  if (gameState_ == GameState::Paused) {
-    ImGuiIO &io = ImGui::GetIO();
-    ImGui::SetNextWindowPos(
-        ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f),
-        ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::Begin("Pause Menu", nullptr,
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoCollapse);
-    ImGui::Text("PAUSED");
-    ImGui::Separator();
-    if (ImGui::Button("Resume (ESC)", ImVec2(200, 40))) {
-      gameState_ = GameState::Playing;
-    }
-    if (ImGui::Button("Return to Title", ImVec2(200, 40))) {
-      ReturnToTitle();
-    }
-    ImGui::End();
-  }
 
 #endif
 }
