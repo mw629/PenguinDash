@@ -338,5 +338,10 @@ imgui.ini
 *.env
 !.env.example
 
+# AI / User generated documents and outputs
+Generated/
+[Gg]enerated/
+[Gg]eneratedDocs/
+
 
 

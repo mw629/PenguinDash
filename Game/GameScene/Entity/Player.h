@@ -200,6 +200,9 @@ private:
   // オートパイロット（タイトル画面での自動運転モード）
   bool isAutoPilot_ = false;
 
+  // プレイヤー入力有効フラグ（カウントダウン中などの操作ロック用）
+  bool isInputEnabled_ = true;
+
   // 表示・非表示（一人称視点時の自キャラメッシュ非表示用など）
   bool isVisible_ = true;
 
@@ -280,6 +283,10 @@ public:
   void SetAutoPilot(bool autoPilot) { isAutoPilot_ = autoPilot; }
   bool GetAutoPilot() const { return isAutoPilot_; }
 
+  // プレイヤー入力有効フラグ設定
+  void SetInputEnabled(bool enable) { isInputEnabled_ = enable; }
+  bool GetInputEnabled() const { return isInputEnabled_; }
+
   // 表示設定
   void SetVisible(bool visible) { isVisible_ = visible; }
   bool GetVisible() const { return isVisible_; }
@@ -294,7 +301,7 @@ public:
   int GetTargetLaneIndex() const { return targetLaneIndex_; }
   bool IsChangingLane() const { return laneIndex_ != targetLaneIndex_; }
   bool CanAct() const {
-    return (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
+    return isInputEnabled_ && (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
   }
 
   // 先行入力バッファ (操作感向上用)

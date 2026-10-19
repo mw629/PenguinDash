@@ -3,6 +3,7 @@
 #include <GameObjects/Object/2d/Sprite.h>
 #include <Math/Calculation.h>
 #include <memory>
+#include <array>
 
 class Player;
 class StageSettings;
@@ -12,17 +13,27 @@ class Texture;
 class Draw;
 
 class TitleDirector {
+public:
+  enum class CountdownMode {
+    None,
+    TitleExit,
+    Restart
+  };
+
 private:
-  static constexpr int kTitlePenguinCount = 15;
-  static constexpr float kTitleExitDuration = 3.0f;
-  static constexpr float kExitTimeoutOffset = 3.0f;
+  // カウントダウン演出パラメータ
+  static constexpr float kTitlePrepDuration = 1.0f;      // タイトル時のカメラ復帰ディレイ (障害物クリア待ち)
+  static constexpr float kRestartPrepDuration = 0.6f;    // リスタート時の呼吸・準備ディレイ (間を持たせる)
+  static constexpr float kCountdownStepDuration = 0.85f; // 各カウントの間隔 (3, 2, 1) をしっかり認識できるよう調整
+  static constexpr float kGoDuration = 1.0f;             // GO!の表示時間
+  static constexpr float kTitleExitDuration = 4.55f;     // タイトル演出全体: 1.0s + 2.55s + 1.0s
+  static constexpr float kRestartDuration = 4.15f;       // リスタート演出全体: 0.6s + 2.55s + 1.0s
+  static constexpr float kExitTimeoutOffset = 2.0f;
   static constexpr float kDefaultOrbitSpeed = 0.35f;
   static constexpr float kDefaultOrbitRadius = 14.0f;
   static constexpr float kDefaultOrbitHeight = 4.0f;
   static constexpr float kDefaultTargetOffsetY = 1.2f;
 
-  static constexpr Vector3 kPenguinInitialPos = {-300.0f, 360.0f, 0.0f};
-  static constexpr Vector2 kPenguinSpriteSize = {130.0f, 130.0f};
   static constexpr Vector2 kCenterPivot = {0.5f, 0.5f};
   static constexpr Vector4 kDefaultSpriteColor = {1.0f, 1.0f, 1.0f, 1.0f};
 
@@ -44,34 +55,21 @@ private:
   static constexpr float kAiReturnCenterMinDist = 22.0f;
   static constexpr float kAiReturnCenterWallDist = 30.0f;
 
-  // 群れペンギン疾走演出パラメータ
-  static constexpr float kStampedeStartX = -100.0f;
-  static constexpr float kStampedeEndX = 1620.0f;
-  static constexpr float kStampedeBaseY = 360.0f;
-  static constexpr float kStampedeStepY = 41.5f;
-  static constexpr float kStampedeSlopeX = 26.0f;
-  static constexpr float kStampedeMaxOffsetY = 290.5f;
-  static constexpr float kStampedeBaseDepth = 0.92f;
-  static constexpr float kStampedeDepthScale = 0.10f;
-  static constexpr float kStampedeLeaderScale = 1.10f;
-  static constexpr float kStampedeAnimTimeStep = 0.09f;
-  static constexpr float kStampedeAnimFps = 10.0f;
-  static constexpr float kStampedeBobbingHeight = 4.0f;
-  static constexpr float kStampedeTiltAngle = -0.05f;
-  static constexpr float kStampedeMaxDrawX = 1360.0f;
-  static constexpr float kStampedeTrailAlphaScale = 1.5f;
-  static constexpr float kStampedeTrailMaxAlpha = 0.65f;
-  static constexpr Vector2 kStampedeTrailOffset = {-65.0f, 5.0f};
-  static constexpr Vector2 kStampedeTrailSize = {55.0f, 2.5f};
-  static constexpr float kStampedeTrailAlphaMultiplier = 0.7f;
+  // カウントダウン表示位置・サイズパラメータ
+  static constexpr Vector2 kPenguinCenterPos = {640.0f, 380.0f};
+  static constexpr Vector2 kCountSpriteSize = {330.0f, 330.0f};
+  static constexpr Vector2 kGoSpriteSize = {370.0f, 370.0f};
 
-  bool isTitleExiting_ = false;
-  float titleExitTimer_ = 0.0f;
+  CountdownMode countdownMode_ = CountdownMode::None;
+  float countdownTimer_ = 0.0f;
+  float prepDuration_ = 0.0f;
+  float totalDuration_ = 0.0f;
+  int lastCountStep_ = -1;
   Transform titleExitStartCamTransform_;
 
-  // 15体ペンギン疾走演出
-  std::unique_ptr<Sprite> titlePenguinSprites_[kTitlePenguinCount];
-  int titlePenguinTextureHandle_ = -1;
+  // カウントダウン用ペンギンスプライト (0: 3, 1: 2, 2: 1, 3: GO!)
+  std::array<std::unique_ptr<Sprite>, 4> countSprites_;
+  std::array<int, 4> countTextureHandles_{-1, -1, -1, -1};
 
   // オービットカメラ
   bool isTitleOrbitCamera_ = true;
@@ -89,11 +87,27 @@ public:
   void Reset();
 
   void StartExit(const Transform &currentCamTransform);
-  bool IsExiting() const { return isTitleExiting_; }
-  float GetExitTimer() const { return titleExitTimer_; }
+  void StartRestartCountdown();
+
+  bool IsExiting() const { return countdownMode_ == CountdownMode::TitleExit; }
+  bool IsCountdownActive() const {
+    return countdownMode_ != CountdownMode::None && countdownTimer_ < totalDuration_;
+  }
+  bool IsGoStarted() const {
+    if (countdownMode_ == CountdownMode::None)
+      return true;
+    return countdownTimer_ >= (prepDuration_ + 3.0f * kCountdownStepDuration);
+  }
+  bool IsInputAllowed() const {
+    return IsGoStarted();
+  }
+
+  CountdownMode GetCountdownMode() const { return countdownMode_; }
+  float GetExitTimer() const { return countdownTimer_; }
   float GetExitDuration() const { return kTitleExitDuration; }
 
-  void UpdateExit(float dt);
+  void UpdateCountdown(float dt);
+  void UpdateExit(float dt) { UpdateCountdown(dt); }
   bool IsExitComplete(StageSettings *stageSettings) const;
 
   void UpdateAutoPilot(Player *player, StageSettings *stageSettings);
@@ -102,31 +116,7 @@ public:
   void UpdateCamera(Player *player, GameCameraController *cameraController,
                     float dt);
 
-  void DrawPenguins(Draw &draw);
+  void DrawPenguins(Draw &draw) { DrawCountdown(draw); }
+  void DrawCountdown(Draw &draw);
   void ImGui();
 };
-}
-bool IsInputAllowed() const {
-  if (countdownMode_ == CountdownMode::None)
-    return true;
-  return countdownTimer_ >= (prepDuration_ + 3.0f * kCountdownStepDuration);
-}
-
-float GetExitTimer() const { return countdownTimer_; }
-float GetExitDuration() const { return kTitleExitDuration; }
-
-void UpdateCountdown(float dt);
-void UpdateExit(float dt) { UpdateCountdown(dt); }
-bool IsExitComplete(StageSettings *stageSettings) const;
-
-void UpdateAutoPilot(Player *player, StageSettings *stageSettings);
-void CheckCollisions(Player *player, StageSettings *stageSettings,
-                     ScoreManager *scoreManager);
-void UpdateCamera(Player *player, GameCameraController *cameraController,
-                  float dt);
-
-void DrawPenguins(Draw &draw);
-void DrawCountdown(Draw &draw);
-void ImGui();
-}
-;

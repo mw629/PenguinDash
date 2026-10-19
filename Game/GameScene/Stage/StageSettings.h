@@ -208,10 +208,12 @@ private:
   static constexpr float kIceBobbingBaseAmount = 0.05f;
   static constexpr float kIceRollPitchBaseMultiplier = 0.012f;
   static constexpr float kIceSealSpinVariationBase = 0.85f;
+  static constexpr float kDefaultDriftIceFlowSpeed = 0.20f; // 停止時・潮流による流氷の基本流速 (m/frame)
 
   static constexpr int kDriftIceCount_ = 72;
   std::vector<DriftIce> driftIces_;
   bool driftIceEnabled_ = true;
+  bool isDriftIceFlowingWhenStopped_ = true; // 道路が停止中（カウントダウン時等）も流氷を潮流で流すフラグ
   Vector4 driftIceColor_ = kDefaultDriftIceColor;
   float driftIceBobbingScale_ = kDefaultScale;
   float driftIceBobbingSpeedScale_ = kDefaultScale;
@@ -465,6 +467,8 @@ public:
   void SetDriftIceLighting(bool enabled);
   float GetBabySealSpinSpeed() const { return babySealSpinSpeed_; }
   void SetBabySealSpinSpeed(float speed);
+  bool GetDriftIceFlowingWhenStopped() const { return isDriftIceFlowingWhenStopped_; }
+  void SetDriftIceFlowingWhenStopped(bool flowing) { isDriftIceFlowingWhenStopped_ = flowing; }
 
   float GetWaterTime() const { return waterTime_; }
   void SetWaterTime(float time) { waterTime_ = time; }

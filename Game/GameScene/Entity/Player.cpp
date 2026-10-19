@@ -358,6 +358,7 @@ void Player::Reset() {
   SetHasBarrier(false);
   isInvertedControls_ = false;
   isAutoPilot_ = false;
+  isInputEnabled_ = true;
   isVisible_ = true;
 
   ChangeActionState(PlayerActionType::Run);
@@ -421,7 +422,7 @@ void Player::UpdateInputBuffer(float speedMultiplier) {
     }
   }
 
-  if (isAutoPilot_) {
+  if (isAutoPilot_ || !isInputEnabled_) {
     return;
   }
 

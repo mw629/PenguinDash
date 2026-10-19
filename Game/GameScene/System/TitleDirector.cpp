@@ -15,61 +15,92 @@ void TitleDirector::Initialize(Texture *texture) {
   if (!texture)
     return;
 
-  titlePenguinTextureHandle_ =
-      texture->CreateTexture("Resources/Texture/penguin_run.png");
-  for (int i = 0; i < kTitlePenguinCount; ++i) {
-    SpriteData penguinSpriteData;
-    penguinSpriteData.transform.scale = {1.0f, 1.0f, 1.0f};
-    penguinSpriteData.transform.translate = kPenguinInitialPos;
-    penguinSpriteData.transform.rotate = {0.0f, 0.0f, 0.0f};
-    penguinSpriteData.size = kPenguinSpriteSize;
-    penguinSpriteData.pivot = kCenterPivot;
-    penguinSpriteData.textureArea[0] = {0.0f, 0.0f};
-    penguinSpriteData.textureArea[1] = {0.5f, 1.0f};
-    penguinSpriteData.scaleMode = SpriteScaleMode::Fit;
+  // カウントダウン用の4種スプライト (3, 2, 1, GO!)
+  const char *texturePaths[4] = {
+      "Resources/Texture/penguin_count_3.png",
+      "Resources/Texture/penguin_count_2.png",
+      "Resources/Texture/penguin_count_1.png",
+      "Resources/Texture/penguin_count_go.png",
+  };
 
-    titlePenguinSprites_[i] = std::make_unique<Sprite>();
-    titlePenguinSprites_[i]->Initialize(penguinSpriteData,
-                                        titlePenguinTextureHandle_);
-    titlePenguinSprites_[i]->GetMaterial()->SetColor(kDefaultSpriteColor);
+  for (int i = 0; i < 4; ++i) {
+    countTextureHandles_[i] = texture->CreateTexture(texturePaths[i]);
+
+    SpriteData data;
+    data.transform.scale = {1.0f, 1.0f, 1.0f};
+    data.transform.translate = {kPenguinCenterPos.x, kPenguinCenterPos.y, 0.0f};
+    data.transform.rotate = {0.0f, 0.0f, 0.0f};
+    data.size = (i == 3) ? kGoSpriteSize : kCountSpriteSize;
+    data.pivot = kCenterPivot;
+    data.textureArea[0] = {0.0f, 0.0f};
+    data.textureArea[1] = {1.0f, 1.0f};
+    data.scaleMode = SpriteScaleMode::Fit;
+
+    countSprites_[i] = std::make_unique<Sprite>();
+    countSprites_[i]->Initialize(data, countTextureHandles_[i]);
+    countSprites_[i]->GetMaterial()->SetColor(kDefaultSpriteColor);
   }
 }
 
 void TitleDirector::Reset() {
-  isTitleExiting_ = false;
-  titleExitTimer_ = 0.0f;
+  countdownMode_ = CountdownMode::None;
+  countdownTimer_ = 0.0f;
+  prepDuration_ = 0.0f;
+  totalDuration_ = 0.0f;
+  lastCountStep_ = -1;
   titleCameraAngle_ = 0.0f;
-
-  for (int i = 0; i < kTitlePenguinCount; ++i) {
-    if (titlePenguinSprites_[i]) {
-      Transform pt = titlePenguinSprites_[i]->GetTransform();
-      pt.translate = kPenguinInitialPos;
-      pt.rotate = {0.0f, 0.0f, 0.0f};
-      titlePenguinSprites_[i]->SetTransform(pt);
-      titlePenguinSprites_[i]->SettingWvp();
-    }
-  }
 }
 
 void TitleDirector::StartExit(const Transform &currentCamTransform) {
-  if (isTitleExiting_)
+  if (countdownMode_ != CountdownMode::None)
     return;
 
-  isTitleExiting_ = true;
-  titleExitTimer_ = 0.0f;
+  countdownMode_ = CountdownMode::TitleExit;
+  prepDuration_ = kTitlePrepDuration;  // 1.0s: カメラ復帰＆障害物クリア待ち
+  totalDuration_ = kTitleExitDuration; // 4.4s: 1.0s + 2.4s(3,2,1) + 1.0s(GO)
+  countdownTimer_ = 0.0f;
+  lastCountStep_ = -1;
   titleExitStartCamTransform_ = currentCamTransform;
-
-  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
 }
 
-void TitleDirector::UpdateExit(float dt) {
-  if (isTitleExiting_) {
-    titleExitTimer_ += dt;
+void TitleDirector::StartRestartCountdown() {
+  countdownMode_ = CountdownMode::Restart;
+  prepDuration_ = kRestartPrepDuration; // 0.6s: 画面切り替え直後にしっかり間を持たせる！
+  totalDuration_ = kRestartDuration;    // 4.15s: 0.6s(準備間) + 2.55s(3,2,1) + 1.0s(GO)
+  countdownTimer_ = 0.0f;
+  lastCountStep_ = -1; // 準備ディレイ終了後に初めて「3」のSEを鳴らす
+}
+
+void TitleDirector::UpdateCountdown(float dt) {
+  if (countdownMode_ == CountdownMode::None)
+    return;
+
+  countdownTimer_ += dt;
+
+  // 準備期間（カメラ復帰中）を引いたアクティブタイマー
+  float activeTimer = countdownTimer_ - prepDuration_;
+  if (activeTimer >= 0.0f) {
+    int currentStep = static_cast<int>(activeTimer / kCountdownStepDuration);
+    if (currentStep != lastCountStep_) {
+      if (currentStep >= 0 && currentStep <= 2) {
+        // 「3」「2」「1」のカウント音
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet, 1.2f);
+      } else if (currentStep == 3 && lastCountStep_ < 3) {
+        // 「GO!」のスタート音
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start, 1.4f);
+      }
+      lastCountStep_ = currentStep;
+    }
+  }
+
+  // 演出完了
+  if (countdownTimer_ >= totalDuration_) {
+    countdownMode_ = CountdownMode::None;
   }
 }
 
 bool TitleDirector::IsExitComplete(StageSettings *stageSettings) const {
-  if (!isTitleExiting_)
+  if (countdownMode_ != CountdownMode::TitleExit)
     return false;
 
   bool hasActiveObstacles = false;
@@ -83,8 +114,8 @@ bool TitleDirector::IsExitComplete(StageSettings *stageSettings) const {
     }
   }
 
-  return (!hasActiveObstacles && titleExitTimer_ >= kTitleExitDuration) ||
-         (titleExitTimer_ >= kTitleExitDuration + kExitTimeoutOffset);
+  return (!hasActiveObstacles && countdownTimer_ >= kTitleExitDuration) ||
+         (countdownTimer_ >= kTitleExitDuration + kExitTimeoutOffset);
 }
 
 void TitleDirector::UpdateAutoPilot(Player *player,
@@ -280,12 +311,10 @@ void TitleDirector::UpdateCamera(Player *player,
 
   Transform camTransform;
 
-  if (isTitleExiting_) {
-    float progress = (kTitleExitDuration > 0.0f)
-                         ? (titleExitTimer_ / kTitleExitDuration)
-                         : 1.0f;
-    if (progress > 1.0f)
-      progress = 1.0f;
+  if (countdownMode_ == CountdownMode::TitleExit) {
+    const float camTransitionDuration = 1.2f;
+    float progress =
+        std::clamp(countdownTimer_ / camTransitionDuration, 0.0f, 1.0f);
 
     float easeT = (progress < 0.5f)
                       ? (2.0f * progress * progress)
@@ -336,90 +365,92 @@ void TitleDirector::UpdateCamera(Player *player,
   cameraController->SetTransform(camTransform);
 }
 
-void TitleDirector::DrawPenguins(Draw &draw) {
-  if (!isTitleExiting_ || !titlePenguinSprites_[0])
+void TitleDirector::DrawCountdown(Draw &draw) {
+  if (countdownMode_ == CountdownMode::None)
     return;
 
-  float progress = std::clamp(titleExitTimer_ / kTitleExitDuration, 0.0f, 1.0f);
-  float runProgress =
-      progress * progress * (3.0f - 2.0f * progress) * 0.15f + progress * 0.85f;
-  float runStartX = kStampedeStartX;
-  float runEndX = kStampedeEndX;
-  float leaderX = runStartX + (runEndX - runStartX) * runProgress;
+  float timer = countdownTimer_;
+  if (timer > totalDuration_)
+    return;
 
-  const float baseY = kStampedeBaseY;
+  // 準備期間中 (カメラ復帰中) はまだカウントダウンを描画しない
+  float activeTimer = timer - prepDuration_;
+  if (activeTimer < 0.0f)
+    return;
 
-  struct FormationParam {
-    float offsetX;
-    float offsetY;
-    float animTimeOffset;
-    float scale;
-  };
+  // ステップ算出: 0="3", 1="2", 2="1", 3="GO!"
+  int step = static_cast<int>(activeTimer / kCountdownStepDuration);
+  if (step > 3)
+    step = 3;
+  float stepTimer = activeTimer - step * kCountdownStepDuration;
+  float stepProgress =
+      std::clamp(stepTimer / kCountdownStepDuration, 0.0f, 1.0f);
 
-  const float stepY = kStampedeStepY;
-  const float slopeX = kStampedeSlopeX;
-
-  FormationParam formations[kTitlePenguinCount];
-  for (int i = 0; i < kTitlePenguinCount; ++i) {
-    int distFromCenter = std::abs(i - 7);
-    float offsetY = (i - 7) * stepY;
-    float offsetX = -distFromCenter * slopeX;
-
-    float depth = kStampedeBaseDepth +
-                  (offsetY / kStampedeMaxOffsetY) * kStampedeDepthScale;
-    float scale = (i == 7) ? kStampedeLeaderScale : (1.00f * depth);
-    float animTimeOffset = distFromCenter * kStampedeAnimTimeStep;
-
-    formations[i] = {offsetX, offsetY, animTimeOffset, scale};
+  // 1. 集中背景演出（中央を引き立てるシネマティックな暗転）
+  float bgAlpha = std::clamp(activeTimer * 2.0f, 0.0f, 0.28f);
+  float remaining = totalDuration_ - timer;
+  if (remaining < 0.4f) {
+    // 終了直前にスムーズにフェードアウト
+    bgAlpha = std::clamp(remaining / 0.4f, 0.0f, 1.0f) * 0.28f;
+  }
+  if (bgAlpha > 0.01f) {
+    draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(1280.0f, 720.0f),
+                      Vector4(0.02f, 0.04f, 0.08f, bgAlpha));
   }
 
-  for (int idx = 0; idx < kTitlePenguinCount; ++idx) {
-    if (!titlePenguinSprites_[idx])
-      continue;
+  // 2. 「GO!」の瞬間のホワイトフラッシュ演出
+  if (step == 3 && stepTimer < 0.25f) {
+    float flashAlpha = (1.0f - (stepTimer / 0.25f)) * 0.35f;
+    draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(1280.0f, 720.0f),
+                      Vector4(1.0f, 1.0f, 1.0f, flashAlpha));
+  }
 
-    const auto &form = formations[idx];
-    float posX = leaderX + form.offsetX;
-    float posY = baseY + form.offsetY;
+  // 3. ペンギンの位置・バウンス・スケール計算
+  Vector2 basePos = kPenguinCenterPos;
+  float jumpY = 0.0f;
+  float rotZ = 0.0f;
+  Vector2 scale = {1.0f, 1.0f};
 
-    float timerWithOffset = titleExitTimer_ + form.animTimeOffset;
-    int animFrame = (static_cast<int>(timerWithOffset * kStampedeAnimFps)) % 2;
-    Vector2 uvArea[2];
-    if (animFrame == 0) {
-      uvArea[0] = {0.0f, 0.0f};
-      uvArea[1] = {0.5f, 1.0f};
-    } else {
-      uvArea[0] = {0.5f, 0.0f};
-      uvArea[1] = {1.0f, 1.0f};
+  if (step < 3) {
+    // カウントダウン (3, 2, 1): 各カウント開始時にピョンと跳ねる
+    float jumpT = std::clamp(stepProgress * 2.5f, 0.0f, 1.0f);
+    jumpY = -std::sin(jumpT * 3.14159f) * 35.0f;
+    scale.y = 1.0f - jumpY * 0.003f;
+    scale.x = 1.0f + jumpY * 0.002f;
+  } else {
+    // GO!: バナーを掲げて歓喜の大ジャンプ！
+    float jumpT = std::clamp(stepProgress * 1.5f, 0.0f, 1.0f);
+    jumpY = -std::sin(jumpT * 3.14159f) * 75.0f;
+    rotZ = std::sin(stepTimer * 16.0f) * 0.06f;
+    scale = {1.08f, 1.08f};
+    if (remaining < 0.4f) {
+      // 終了間際に前方に飛び出すようなスケールアップ
+      float exitT = (0.4f - remaining) / 0.4f;
+      scale.x += exitT * 0.35f;
+      scale.y += exitT * 0.35f;
     }
+  }
 
-    float bobbing = (animFrame == 1)
-                        ? -kStampedeBobbingHeight * (form.scale / 1.00f)
-                        : 0.0f;
-    float tilt = kStampedeTiltAngle;
+  // 4. ペンギンの足元にドロップシャドウ（影）
+  float shadowWidth = 140.0f * (1.0f + jumpY * 0.004f);
+  float shadowAlpha = std::clamp(0.45f + jumpY * 0.004f, 0.15f, 0.45f);
+  if (shadowWidth > 40.0f) {
+    draw.DrawFillRect(
+        Vector2(basePos.x - shadowWidth * 0.5f, basePos.y + 130.0f),
+        Vector2(shadowWidth, 14.0f),
+        Vector4(0.01f, 0.02f, 0.05f, shadowAlpha));
+  }
 
-    Transform pTransform;
-    pTransform.scale = {form.scale, form.scale, 1.0f};
-    pTransform.rotate = {0.0f, 0.0f, tilt};
-    pTransform.translate = {posX, posY + bobbing, 0.0f};
-
-    titlePenguinSprites_[idx]->SetTransform(pTransform);
-    titlePenguinSprites_[idx]->SetTextureArea(uvArea);
-    titlePenguinSprites_[idx]->UpdateVertexBuffer();
-    titlePenguinSprites_[idx]->SettingWvp();
-
-    if (posX > 0.0f && posX < kStampedeMaxDrawX) {
-      float trailAlpha = std::clamp(runProgress * kStampedeTrailAlphaScale,
-                                    0.0f, kStampedeTrailMaxAlpha) *
-                         form.scale;
-      draw.DrawFillRect(
-          Vector2(posX + kStampedeTrailOffset.x * form.scale,
-                  posY + kStampedeTrailOffset.y + bobbing),
-          Vector2(kStampedeTrailSize.x * form.scale, kStampedeTrailSize.y),
-          Vector4(0.85f, 0.95f, 1.0f,
-                  trailAlpha * kStampedeTrailAlphaMultiplier));
-    }
-
-    draw.DrawSprite(titlePenguinSprites_[idx].get());
+  // 5. ペンギンスプライトの描画 (3, 2, 1, GO! それぞれの画像)
+  Sprite *activePenguin = countSprites_[step].get();
+  if (activePenguin) {
+    Transform pt;
+    pt.scale = {scale.x, scale.y, 1.0f};
+    pt.rotate = {0.0f, 0.0f, rotZ};
+    pt.translate = {basePos.x, basePos.y + jumpY, 0.0f};
+    activePenguin->SetTransform(pt);
+    activePenguin->SettingWvp();
+    draw.DrawSprite(activePenguin);
   }
 }
 

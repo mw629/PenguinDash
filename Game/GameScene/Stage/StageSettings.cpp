@@ -870,11 +870,16 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
     return;
 
   // スクロール速度の加速（最大速度まで徐々に上がる）
-  if (scrollSpeed_ < maxScrollSpeed_) {
-    scrollSpeed_ += scrollAcceleration_ * timeScale;
-    if (scrollSpeed_ > maxScrollSpeed_) {
-      scrollSpeed_ = maxScrollSpeed_;
+  // ※ baseScrollSpeed_ が 0 以下の場合は停止状態（リスタートカウントダウン中等）なので加速せず 0 を維持
+  if (baseScrollSpeed_ > 0.0f) {
+    if (scrollSpeed_ < maxScrollSpeed_) {
+      scrollSpeed_ += scrollAcceleration_ * timeScale;
+      if (scrollSpeed_ > maxScrollSpeed_) {
+        scrollSpeed_ = maxScrollSpeed_;
+      }
     }
+  } else {
+    scrollSpeed_ = 0.0f;
   }
   if (scrollSpeed_ > maxScrollSpeed_ / 2) {
     // PostEffect::SetActivePostEffect(PostEffect::Type::Vignetting);
@@ -917,8 +922,13 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
     }
   }
 
-  // 海に浮かぶ流氷の更新
-  UpdateDriftIce(view, currentScroll, timeScale);
+  // 海に浮かぶ流氷の更新（道路が停止中・カウントダウン中も海の潮の流れによって自然に流れる）
+  float driftIceScroll = currentScroll;
+  if ((baseScrollSpeed_ <= 0.0f || driftIceScroll < kDefaultDriftIceFlowSpeed * timeScale) &&
+      isDriftIceFlowingWhenStopped_) {
+    driftIceScroll = kDefaultDriftIceFlowSpeed * timeScale;
+  }
+  UpdateDriftIce(view, driftIceScroll, timeScale);
 
   // アイテムのクールタイム減算（実時間・秒単位）
   float dt = Engine::kDefaultDeltaTime * timeScale;

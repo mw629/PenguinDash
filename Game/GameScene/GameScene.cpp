@@ -200,8 +200,21 @@ void GameScene::ResetGame() {
 void GameScene::StartGame() {
   if (titleDirector_->IsExiting())
     return;
-  titleDirector_->StartExit(cameraController_->GetTransform());
+  // タイトルの障害物を一瞬で消さず、新規スポーンのみ停止して手前の障害物がGOまでに自然に捌けるようにする
   stageSettings_->SetSpawningPaused(true);
+
+  // 遠すぎる障害物（Z > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
+  // 3.4秒のカウントダウン（3, 2, 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
+  for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
+    Obstacle *obs = stageSettings_->GetObstacle(i);
+    if (obs && obs->GetIsActive()) {
+      if (obs->GetTransform().translate.z > 28.0f) {
+        obs->Deactivate();
+      }
+    }
+  }
+
+  titleDirector_->StartExit(cameraController_->GetTransform());
 }
 
 void GameScene::StartPlaying() {
@@ -251,7 +264,15 @@ void GameScene::StartResultTransition(ResultTransition target) {
         if (target == ResultTransition::Restart) {
           ResetGame();
           gameState_ = GameState::Playing;
-          SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
+          cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
+          player_->SetAutoPilot(false);
+          player_->SetInvertedControls(false);
+          player_->SetInputEnabled(false);
+          stageSettings_->ClearObstacles(kStartObstacleClearDistance);
+          stageSettings_->SetSpawningPaused(true);
+          stageSettings_->SetBaseScrollSpeed(kPlayBaseScrollSpeed);
+          stageSettings_->SetScrollAcceleration(0.0f);
+          titleDirector_->StartRestartCountdown();
         } else if (target == ResultTransition::Title) {
           ReturnToTitle();
         }
@@ -394,6 +415,26 @@ void GameScene::Update() {
 }
 
 void GameScene::PlayingUpdate() {
+  // リスタート等のカウントダウン演出中の制御（走っている感を出してGOで加速・操作解禁）
+  if (titleDirector_->IsCountdownActive() &&
+      titleDirector_->GetCountdownMode() == TitleDirector::CountdownMode::Restart) {
+    if (titleDirector_->IsInputAllowed()) {
+      // GO! に達したら加速・スポーン・操作解禁・BGM開始
+      if (stageSettings_->GetScrollAcceleration() == 0.0f) {
+        stageSettings_->SetScrollAcceleration(kPlayScrollAcceleration);
+        stageSettings_->ClearObstacles(kStartObstacleClearDistance);
+        stageSettings_->SetSpawningPaused(false);
+        player_->SetInputEnabled(true);
+        SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
+      }
+    } else {
+      // 3, 2, 1 の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
+      stageSettings_->SetSpawningPaused(true);
+      player_->SetInputEnabled(false);
+      player_->ClearInputBuffer();
+    }
+  }
+
   GameSceneManager::GetInstance()->SetInBossBattle(playingState_ ==
                                                    PlayingState::Boss);
 
@@ -404,12 +445,17 @@ void GameScene::PlayingUpdate() {
         stageSettings_->GetScrollSpeed() / stageSettings_->GetBaseScrollSpeed();
   }
 
-  scoreManager_->Update(stageSettings_->GetScrollSpeed(), timeScale);
+  float scoreScrollSpeed = stageSettings_->GetScrollSpeed();
+  if (titleDirector_->IsCountdownActive() && !titleDirector_->IsInputAllowed()) {
+    scoreScrollSpeed = 0.0f; // GO! まではスコア・走行距離の加算を保留
+  }
+
+  scoreManager_->Update(scoreScrollSpeed, timeScale);
   CheckKeepRolling();
 
   // 1レーン（右サイドカメラ）モードの走行距離加算
   if (isRightSideMode_) {
-    rightSideDistance_ += stageSettings_->GetScrollSpeed() * timeScale;
+    rightSideDistance_ += scoreScrollSpeed * timeScale;
     if (rightSideDistance_ >= kOneLaneTotalDistance) {
       ChangePlayingState(PlayingState::ThreeLane);
     }
@@ -492,7 +538,8 @@ void GameScene::TitleUpdate() {
   }
 
   if (titleDirector_->IsExiting()) {
-    if (titleDirector_->IsExitComplete(stageSettings_.get())) {
+    // GO!の瞬間に直ちにゲームプレイを開始し、スタート演出からシームレスにゲームへ繋げる
+    if (titleDirector_->IsGoStarted()) {
       StartPlaying();
     }
   } else {
@@ -536,6 +583,10 @@ void GameScene::EditorUpdate() {
 }
 
 void GameScene::CheckCollisions() {
+  if (titleDirector_->IsCountdownActive() && !titleDirector_->IsInputAllowed()) {
+    return; // カウントダウン中（GO前）は衝突判定を行わない安全ガード
+  }
+
   AABB playerAABB = player_->GetColliderAABB();
 
   for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
