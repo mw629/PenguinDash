@@ -40,7 +40,6 @@ void GameScene::Initialize() {
   } else {
     gameState_ = GameState::Title;
   }
-  cameraController_->SetDebugCamera(true);
   sceneChangeRequest_ = false;
 
   effectManager_->Initialize();
@@ -177,6 +176,14 @@ void GameScene::Initialize() {
   if (std::filesystem::exists(defaultSettingsPath)) {
     LoadSettingsFromJson("GameSceneSettings");
   }
+
+  if (gameState_ == GameState::Title) {
+    cameraController_->SetDebugCamera(false);
+    if (player_) {
+      titleDirector_->UpdateCamera(player_.get(), cameraController_.get(), 0.0f);
+      cameraController_->Update();
+    }
+  }
 }
 
 void GameScene::ResetGame() {
@@ -203,6 +210,7 @@ void GameScene::ResetGame() {
 void GameScene::StartGame() {
   if (titleDirector_->IsExiting())
     return;
+  cameraController_->SetDebugCamera(false);
   // タイトルの障害物を一瞬で消さず、新規スポーンのみ停止して手前の障害物がGOまでに自然に捌けるようにする
   stageSettings_->SetSpawningPaused(true);
 
@@ -223,6 +231,7 @@ void GameScene::StartGame() {
 void GameScene::StartPlaying() {
   gameState_ = GameState::Playing;
 
+  cameraController_->SetDebugCamera(false);
   cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
 
   player_->SetAutoPilot(false);
@@ -244,6 +253,7 @@ void GameScene::StartPlaying() {
 }
 
 void GameScene::ReturnToTitle() {
+  cameraController_->SetDebugCamera(false);
   ResetGame();
   player_->SetAutoPilot(true);
   stageSettings_->SetItemSpawnChance(0.0f);
@@ -259,6 +269,10 @@ void GameScene::ReturnToTitle() {
   }
 
   titleDirector_->Reset();
+  if (player_) {
+    titleDirector_->UpdateCamera(player_.get(), cameraController_.get(), 0.0f);
+    cameraController_->Update();
+  }
   SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Title);
 }
 
@@ -273,6 +287,7 @@ void GameScene::StartResultTransition(ResultTransition target) {
         if (target == ResultTransition::Restart) {
           ResetGame();
           gameState_ = GameState::Playing;
+          cameraController_->SetDebugCamera(false);
           cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
           player_->SetAutoPilot(false);
           player_->SetInvertedControls(false);

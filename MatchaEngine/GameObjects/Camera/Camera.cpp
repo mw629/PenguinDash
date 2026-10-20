@@ -225,8 +225,9 @@ void Camera::ResetDebugCameraToGameCamera() {
 
 void Camera::ResetDebugCamera(const Transform &transform) {
   debugCamera_.ResetToCamera(transform.translate, transform.rotate);
-  transform_.translate = transform.translate;
-  finalTransform_ = transform_;
+  gameTransform_ = transform;
+  transform_ = transform;
+  finalTransform_ = transform;
   viewMatrix_ = debugCamera_.GetViewMatrix();
 }
 

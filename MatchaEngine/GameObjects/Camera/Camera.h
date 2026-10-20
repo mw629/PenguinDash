@@ -130,6 +130,9 @@ public:
 	void SetDebugCamera(bool isDebug) {
 		if (isDebug && !isDebugCamera_) {
 			ResetDebugCameraToGameCamera();
+		} else if (!isDebug && isDebugCamera_) {
+			transform_ = gameTransform_;
+			finalTransform_ = gameTransform_;
 		}
 		isDebugCamera_ = isDebug;
 	}

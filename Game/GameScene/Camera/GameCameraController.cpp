@@ -1,4 +1,5 @@
 #include "GameCameraController.h"
+#include "../../../Editer/EditorManager.h"
 #include <Entity/Player.h>
 #include <Stage/StageSettings.h>
 #include <cmath>
@@ -7,7 +8,8 @@
 void GameCameraController::Initialize() {
   camera_->SetDebugName("GameScene MainCamera");
   camera_->SetTransform(cameraTransform_);
-  camera_->SetDebugCamera(true);
+  camera_->ResetDebugCamera(cameraTransform_);
+  camera_->SetDebugCamera(!EditorManager::IsPlaying());
   camera_->Update();
 
   gameCamera_->SetDebugName("GameScene GameCamera");
@@ -22,10 +24,15 @@ void GameCameraController::Reset(const Transform &defaultTransform) {
   isCameraTransitionPending_ = false;
   isCameraTransitioning_ = false;
   cameraTransitionTimer_ = 0.0f;
+  currentFollowOffset_ = {0.0f, 0.0f, 0.0f};
+  currentBankRoll_ = 0.0f;
 
   cameraTransform_ = defaultTransform;
   camera_->SetTransform(cameraTransform_);
+  camera_->ResetDebugCamera(cameraTransform_);
   gameCamera_->SetTransform(cameraTransform_);
+  camera_->Update();
+  gameCamera_->Update();
 }
 
 void GameCameraController::Update() {
