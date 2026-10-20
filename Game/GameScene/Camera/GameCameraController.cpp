@@ -7,6 +7,7 @@
 void GameCameraController::Initialize() {
   camera_->SetDebugName("GameScene MainCamera");
   camera_->SetTransform(cameraTransform_);
+  camera_->SetDebugCamera(true);
   camera_->Update();
 
   gameCamera_->SetDebugName("GameScene GameCamera");
@@ -252,14 +253,26 @@ void GameCameraController::StopDollyZoom() {
 void GameCameraController::ImGui(Player *player,
                                  std::function<void(int)> onPresetSelected) {
 #ifdef _USE_IMGUI
-  if (ImGui::CollapsingHeader("GameScene Camera Settings",
+  if (ImGui::CollapsingHeader("ゲームカメラ設定",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
+    bool isDebug = camera_->GetDebugCamera();
+    if (ImGui::Checkbox("Scene View: Debug Camera (自由移動カメラ)", &isDebug)) {
+      camera_->SetDebugCamera(isDebug);
+    }
+    if (isDebug) {
+      ImGui::SameLine();
+      if (ImGui::Button("ゲームカメラ位置にリセット##gc")) {
+        camera_->ResetDebugCameraToGameCamera();
+      }
+    }
+    ImGui::Separator();
+
     bool cameraChanged = false;
-    if (ImGui::DragFloat3("Translate", &cameraTransform_.translate.x, 0.1f))
+    if (ImGui::DragFloat3("位置 (Translate)", &cameraTransform_.translate.x, 0.1f))
       cameraChanged = true;
-    if (ImGui::DragFloat3("Rotate", &cameraTransform_.rotate.x, 0.01f))
+    if (ImGui::DragFloat3("回転 (Rotate)", &cameraTransform_.rotate.x, 0.01f))
       cameraChanged = true;
-    if (ImGui::DragFloat3("Scale", &cameraTransform_.scale.x, 0.01f))
+    if (ImGui::DragFloat3("スケール (Scale)", &cameraTransform_.scale.x, 0.01f))
       cameraChanged = true;
 
     if (cameraChanged) {
@@ -269,83 +282,83 @@ void GameCameraController::ImGui(Player *player,
 
     ImGui::Separator();
     // プレイヤー追従設定
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Player Follow Camera:");
-    ImGui::Checkbox("Enable Follow Player", &isFollowPlayer_);
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "プレイヤー追従カメラ設定:");
+    ImGui::Checkbox("プレイヤー追従を有効化", &isFollowPlayer_);
     if (isFollowPlayer_) {
-      ImGui::SliderFloat("Follow Speed", &followSmoothSpeed_, 1.0f, 30.0f);
-      ImGui::SliderFloat("Lane X Weight", &followWeightX_, 0.0f, 1.0f);
-      ImGui::SliderFloat("Jump Y Weight", &followWeightY_, 0.0f, 1.0f);
-      ImGui::SliderFloat("Bank Roll", &bankRollMultiplier_, 0.0f, 0.1f);
+      ImGui::SliderFloat("追従速度", &followSmoothSpeed_, 1.0f, 30.0f);
+      ImGui::SliderFloat("レーンX追従ウェイト", &followWeightX_, 0.0f, 1.0f);
+      ImGui::SliderFloat("ジャンプY追従ウェイト", &followWeightY_, 0.0f, 1.0f);
+      ImGui::SliderFloat("バンク傾き量", &bankRollMultiplier_, 0.0f, 0.1f);
     }
 
     ImGui::Separator();
     // カメラ演出テスト (Game View & Scene View 同期)
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Synchronized Camera Effects (Game View Sync):");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "カメラ演出テスト (Game View 同期):");
     static float gShakeInt = 0.7f;
     static float gShakeDur = 0.35f;
-    ImGui::SliderFloat("Shake Intensity##gc", &gShakeInt, 0.05f, 2.0f);
-    ImGui::SliderFloat("Shake Duration##gc", &gShakeDur, 0.05f, 1.5f);
-    if (ImGui::Button("Impact Shake##gc")) {
+    ImGui::SliderFloat("揺れ強度##gc", &gShakeInt, 0.05f, 2.0f);
+    ImGui::SliderFloat("揺れ持続時間##gc", &gShakeDur, 0.05f, 1.5f);
+    if (ImGui::Button("衝撃シェイク##gc")) {
       ShakeImpact();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Defeat Shake##gc")) {
+    if (ImGui::Button("撃破シェイク##gc")) {
       ShakeDefeat();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Landing Shake##gc")) {
+    if (ImGui::Button("着地シェイク##gc")) {
       ShakeLand();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Stop Shake##gc")) {
+    if (ImGui::Button("シェイク停止##gc")) {
       StopShake();
     }
 
-    if (ImGui::Button("Speed FOV (0.60)")) {
+    if (ImGui::Button("高速時FOV (0.60)")) {
       AnimateFov(0.60f, 0.4f);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Reset FOV##gc")) {
+    if (ImGui::Button("FOVリセット##gc")) {
       ResetFov(0.3f);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Hit Zoom (-0.08)")) {
+    if (ImGui::Button("被弾ズーム (-0.08)")) {
       AddFovImpulse(-0.08f, 0.15f);
     }
 
     ImGui::Separator();
-    ImGui::Text("Presets:");
-    if (ImGui::Button("Behind View") && onPresetSelected) {
+    ImGui::Text("視点プリセット:");
+    if (ImGui::Button("後方視点 (Behind)") && onPresetSelected) {
       onPresetSelected(static_cast<int>(Preset::BehindView));
     }
     ImGui::SameLine();
-    if (ImGui::Button("Left Side View")) {
+    if (ImGui::Button("左サイド視点 (Left)")) {
       cameraTransform_ = kDefaultLeftSideViewTransform;
       camera_->SetTransform(cameraTransform_);
       gameCamera_->SetTransform(cameraTransform_);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Right Side View") && onPresetSelected) {
+    if (ImGui::Button("右サイド視点 (Right)") && onPresetSelected) {
       onPresetSelected(static_cast<int>(Preset::RightSideView));
     }
     ImGui::SameLine();
-    if (ImGui::Button("Boss View") && onPresetSelected) {
+    if (ImGui::Button("ボス視点 (Boss)") && onPresetSelected) {
       onPresetSelected(static_cast<int>(Preset::BossView));
     }
     ImGui::SameLine();
-    if (ImGui::Button(isFirstPersonView_ ? "Disable FPV (F2)" : "First Person View (F2)")) {
+    if (ImGui::Button(isFirstPersonView_ ? "一人称解除 (F2)" : "一人称視点 (F2)")) {
       ToggleFirstPerson(player);
     }
 
     ImGui::Separator();
-    if (ImGui::Button("Reset Debug Camera to Game Camera")) {
+    if (ImGui::Button("デバッグカメラをゲームカメラ位置にリセット")) {
       camera_->ResetDebugCamera(cameraTransform_);
     }
   }
 
-  if (ImGui::CollapsingHeader("First Person Camera Settings (F2)",
+  if (ImGui::CollapsingHeader("一人称視点カメラ設定 (F2)",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
-    if (ImGui::Checkbox("Enable First Person View (F2)", &isFirstPersonView_)) {
+    if (ImGui::Checkbox("一人称視点を有効化 (F2)", &isFirstPersonView_)) {
       if (!isFirstPersonView_) {
         camera_->SetTransform(cameraTransform_);
         gameCamera_->SetTransform(cameraTransform_);
@@ -354,9 +367,9 @@ void GameCameraController::ImGui(Player *player,
         }
       }
     }
-    ImGui::Checkbox("Draw Player Body in First Person", &drawPlayerInFirstPerson_);
-    ImGui::DragFloat3("FPV Camera Offset", &firstPersonOffset_.x, 0.02f);
-    ImGui::DragFloat3("FPV Camera Rotate", &firstPersonRotate_.x, 0.01f);
+    ImGui::Checkbox("一人称時にプレイヤー体を表示", &drawPlayerInFirstPerson_);
+    ImGui::DragFloat3("一人称カメラ位置オフセット", &firstPersonOffset_.x, 0.02f);
+    ImGui::DragFloat3("一人称カメラ回転オフセット", &firstPersonRotate_.x, 0.01f);
   }
 #endif
 }

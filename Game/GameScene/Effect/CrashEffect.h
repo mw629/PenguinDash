@@ -34,4 +34,16 @@ public:
   void ImGui();
 
   Sprite *GetSprite() const { return crashSprite_.get(); }
+  const Vector2 &GetCrashPosition() const { return crashPosition_; }
+  void SetCrashPosition(const Vector2 &pos) { crashPosition_ = pos; }
+  float GetCrashScaleDuration() const { return crashScaleDuration_; }
+  void SetCrashScaleDuration(float dur) { crashScaleDuration_ = dur; }
+  const Vector2 &GetCrashBaseSize() const { return crashBaseSize_; }
+  void SetCrashBaseSize(const Vector2 &size) {
+    crashBaseSize_ = size;
+    if (crashSprite_) {
+      crashSprite_->SetSize(crashBaseSize_);
+      crashSprite_->UpdateVertexBuffer();
+    }
+  }
 };

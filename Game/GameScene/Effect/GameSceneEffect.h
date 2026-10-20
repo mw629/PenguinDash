@@ -30,6 +30,22 @@ public:
   void Draw(class Draw &draw);
   void ImGui();
 
+  // バリアパラメータ設定・取得
+  const Vector3 &GetBarrierOffset() const { return barrierOffset_; }
+  void SetBarrierOffset(const Vector3 &offset) { barrierOffset_ = offset; }
+  const Vector3 &GetBarrierBaseScale() const { return barrierBaseScale_; }
+  void SetBarrierBaseScale(const Vector3 &scale) { barrierBaseScale_ = scale; }
+  const Vector4 &GetBarrierBaseColor() const { return barrierBaseColor_; }
+  void SetBarrierBaseColor(const Vector4 &color) { barrierBaseColor_ = color; }
+  const Vector4 &GetBarrierFlashColor() const { return barrierFlashColor_; }
+  void SetBarrierFlashColor(const Vector4 &color) { barrierFlashColor_ = color; }
+  float GetBarrierRadius() const { return barrier_ ? barrier_->GetRadius() : 0.5f; }
+  void SetBarrierRadius(float r) { if (barrier_) barrier_->SetRadius(r); }
+  bool GetBarrierPointyTopped() const { return barrier_ ? barrier_->GetPointyTopped() : false; }
+  void SetBarrierPointyTopped(bool p) { if (barrier_) barrier_->SetPointyTopped(p); }
+  int GetBarrierShape() const { return barrier_ ? static_cast<int>(barrier_->GetShape()) : 1; }
+  void SetBarrierShape(int s) { if (barrier_) barrier_->SetShape(static_cast<HexBarrierShape>(s)); }
+
 private:
   static constexpr float kDefaultBarrierDeployDuration = 0.25f;
   static constexpr float kDefaultBarrierBreakDuration = 0.35f;

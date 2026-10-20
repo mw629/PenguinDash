@@ -119,4 +119,16 @@ public:
   void DrawPenguins(Draw &draw) { DrawCountdown(draw); }
   void DrawCountdown(Draw &draw);
   void ImGui();
+
+  // オービットカメラ設定
+  bool GetTitleOrbitCamera() const { return isTitleOrbitCamera_; }
+  void SetTitleOrbitCamera(bool enable) { isTitleOrbitCamera_ = enable; }
+  float GetTitleCameraSpeed() const { return titleCameraSpeed_; }
+  void SetTitleCameraSpeed(float speed) { titleCameraSpeed_ = speed; }
+  float GetTitleCameraRadius() const { return titleCameraRadius_; }
+  void SetTitleCameraRadius(float radius) { titleCameraRadius_ = radius; }
+  float GetTitleCameraHeight() const { return titleCameraHeight_; }
+  void SetTitleCameraHeight(float height) { titleCameraHeight_ = height; }
+  float GetTitleTargetOffsetY() const { return titleTargetOffsetY_; }
+  void SetTitleTargetOffsetY(float offset) { titleTargetOffsetY_ = offset; }
 };

@@ -129,6 +129,17 @@ public:
   void PlayerHitUpdate();
   void EditorUpdate();
 
+  // 設定のJSON保存・読み込み
+  bool SaveSettingsToJson(const std::string &fileName = "GameSceneSettings");
+  bool LoadSettingsFromJson(const std::string &fileName = "GameSceneSettings");
+  void ResetSettingsToDefault();
+
+private:
+  char settingsFileName_[128] = "GameSceneSettings";
+  std::string settingsStatusMessage_ = "";
+  float settingsStatusTimer_ = 0.0f;
+
+public:
   class ScoreManager* GetScoreManager() { return scoreManager_.get(); }
   class GameSceneEffect* GetEffectManager() { return effectManager_.get(); }
   class StageSettings* GetStageSettings() { return stageSettings_.get(); }

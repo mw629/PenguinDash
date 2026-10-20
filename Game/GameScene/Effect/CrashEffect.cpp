@@ -71,10 +71,10 @@ void CrashEffect::Render(Draw &draw) {
 
 void CrashEffect::ImGui() {
 #ifdef _USE_IMGUI
-  if (ImGui::TreeNode("Crash Effect Settings")) {
-    ImGui::DragFloat2("Position", &crashPosition_.x, 1.0f, 0.0f, 1280.0f);
-    ImGui::DragFloat("Scale Duration", &crashScaleDuration_, 0.02f, 0.05f, 2.0f);
-    if (ImGui::DragFloat2("Base Size", &crashBaseSize_.x, 1.0f, 50.0f, 1280.0f)) {
+  if (ImGui::TreeNode("クラッシュ演出設定")) {
+    ImGui::DragFloat2("画面位置", &crashPosition_.x, 1.0f, 0.0f, 1280.0f);
+    ImGui::DragFloat("拡大演出持続時間", &crashScaleDuration_, 0.02f, 0.05f, 2.0f);
+    if (ImGui::DragFloat2("基本サイズ", &crashBaseSize_.x, 1.0f, 50.0f, 1280.0f)) {
       if (crashSprite_) {
         crashSprite_->SetSize(crashBaseSize_);
         crashSprite_->UpdateVertexBuffer();

@@ -1,0 +1,156 @@
+{
+    "barrierEffect": {
+        "baseColor": [
+            0.25,
+            0.800000011920929,
+            1.0,
+            0.8500000238418579
+        ],
+        "baseScale": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
+        ],
+        "flashColor": [
+            1.0,
+            1.0,
+            1.0,
+            0.949999988079071
+        ],
+        "offset": [
+            0.0,
+            0.0,
+            1.2000000476837158
+        ],
+        "pointyTopped": false,
+        "radius": 0.5,
+        "shape": 1
+    },
+    "boss": {
+        "attackDropHeight": 18.0,
+        "attackFallDuration": 28.0,
+        "attackReflectMinZ": -15.0,
+        "attackSpawnZ": -35.0,
+        "cameraRotate": [
+            0.23999999463558197,
+            3.25,
+            0.0
+        ],
+        "cameraTranslate": [
+            0.0,
+            7.0,
+            14.0
+        ],
+        "reflectArcHeight": 7.0,
+        "reflectDuration": 36.0
+    },
+    "camera": {
+        "bankRollMultiplier": 0.0,
+        "followSmoothSpeed": 10.0,
+        "followWeightX": 0.44999998807907104,
+        "followWeightY": 0.25,
+        "isFollowPlayer": true,
+        "transform": {
+            "rotate": [
+                0.30000001192092896,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "translate": [
+                0.0,
+                8.0,
+                -15.0
+            ]
+        }
+    },
+    "crashEffect": {
+        "baseSize": [
+            580.0,
+            322.25
+        ],
+        "position": [
+            640.0,
+            320.0
+        ],
+        "scaleDuration": 0.3499999940395355
+    },
+    "font": {
+        "boldness": 0.07000000029802322
+    },
+    "player": {
+        "gravity": 0.014000000432133675,
+        "jumpPower": 0.20999999344348907,
+        "laneChangeSpeed": 0.20000000298023224,
+        "rollDuration": 30.0
+    },
+    "sound": {
+        "bgmVolume": 0.3499999940395355,
+        "masterVolume": 0.5,
+        "seVolume": 1.0
+    },
+    "stage": {
+        "baseActionFrames": 30.0,
+        "baseScrollSpeed": 0.20000000298023224,
+        "driftIce": {
+            "babySealSpinSpeed": 3.5,
+            "bobbingScale": 1.0,
+            "bobbingSpeedScale": 1.0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "distanceOffset": 0.0,
+            "enabled": true,
+            "heightOffset": 0.0,
+            "lighting": false,
+            "sizeScale": 1.0,
+            "thicknessScale": 1.0
+        },
+        "items": {
+            "cooldowns": {
+                "barrier": 15.0,
+                "bonus": 5.0,
+                "boss": 45.0,
+                "camera": 30.0,
+                "clear": 20.0
+            },
+            "spawnChance": 0.15000000596046448
+        },
+        "laneCount": 3,
+        "laneWidth": 2.0,
+        "maxGraceFrames": 15.0,
+        "maxObstacleDistance": 45.0,
+        "maxScrollSpeed": 1.0,
+        "minGraceFrames": 5.0,
+        "minObstacleDistance": 6.0,
+        "noSpawnChance": 0.05000000074505806,
+        "oneLaneWidthMultiplier": 1.0,
+        "roadColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "scrollAcceleration": 9.999999747378752e-05,
+        "spawnObstacleZ": 50.0,
+        "water": {
+            "backwardExtension": 200.0,
+            "forwardExtension": 500.0,
+            "widthScale": 120.0
+        }
+    },
+    "title": {
+        "isTitleOrbitCamera": true,
+        "titleCameraHeight": 4.0,
+        "titleCameraRadius": 14.0,
+        "titleCameraSpeed": 0.3499999940395355,
+        "titleTargetOffsetY": 1.2000000476837158
+    }
+}

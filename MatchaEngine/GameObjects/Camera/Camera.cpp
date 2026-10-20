@@ -195,6 +195,7 @@ void Camera::Initialize() {
   finalTransform_ = transform_;
   baseFovY_ = fovY_;
   debugCamera_.Initialize();
+  debugCamera_.ResetToCamera(transform_.translate, transform_.rotate);
   viewMatrix_ = Inverse(MakeAffineMatrix(transform_.translate, transform_.scale,
                                          transform_.rotate));
   projectionMatrix_ =
@@ -212,10 +213,9 @@ void Camera::Initialize() {
 
 void Camera::SetTransform(Transform transform) {
   gameTransform_ = transform;
-  transform_ = transform;
-  finalTransform_ = transform;
-  if (isDebugCamera_) {
-    debugCamera_.SetEye(transform.translate);
+  if (!isDebugCamera_) {
+    transform_ = transform;
+    finalTransform_ = transform;
   }
 }
 

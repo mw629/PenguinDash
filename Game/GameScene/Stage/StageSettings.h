@@ -75,7 +75,8 @@ private:
   static constexpr float kGuideFloorSpawnY = 2.0f;
   static constexpr float kItemSpawnY = 2.5f;
   static constexpr float kItemSpawnZOffset = -5.0f;
-  static constexpr float kSpawnObstacleZ = 105.0f;
+  static constexpr float kDefaultSpawnObstacleZ = 105.0f;
+  static constexpr float kSpawnObstacleZ = kDefaultSpawnObstacleZ;
 
   static constexpr Vector4 kDefaultRoadColor = {1.0f, 1.0f, 1.0f, 1.0f};
   static constexpr Vector4 kDefaultDriftIceColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -253,6 +254,8 @@ private:
   float obstacleInterval_ =
       kDefaultObstacleInterval; // 次回生成までの距離（動的計算値・さらに狭めた設定）
   float distanceSinceLastSpawn_ = 0.0f; // 前回生成からの移動距離
+  float spawnObstacleZ_ = kDefaultSpawnObstacleZ; // 障害物・アイテムの生成Z距離
+  bool showSpawnGizmo_ = false;                  // スポーン地点の3Dギズモ描画フラグ
 
   float baseActionFrames_ =
       kDefaultBaseActionFrames; // 回避アクション所要フレーム数（ジャンプ・しゃがみ完了所要フレーム）
@@ -423,6 +426,14 @@ public:
 
   // 生成の一時停止設定
   void SetSpawningPaused(bool paused) { isSpawningPaused_ = paused; }
+  bool GetIsSpawningPaused() const { return isSpawningPaused_; }
+
+  // スポーン地点（Z距離）および3Dギズモ設定
+  float GetSpawnObstacleZ() const { return spawnObstacleZ_; }
+  void SetSpawnObstacleZ(float z) { spawnObstacleZ_ = z; }
+  float GetDistanceSinceLastSpawn() const { return distanceSinceLastSpawn_; }
+  bool GetShowSpawnGizmo() const { return showSpawnGizmo_; }
+  void SetShowSpawnGizmo(bool show) { showSpawnGizmo_ = show; }
 
   // 狭まる区間の設定
   void SetNarrowingSection(bool isNarrowing) {

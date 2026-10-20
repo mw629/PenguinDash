@@ -2,6 +2,8 @@
 #include "AssetManager.h"
 #include "Core/LogHandler.h"
 #include "PSO/PipelineState.h"
+#include "Graphics/Render/Draw.h"
+#include "Graphics/Render/LineRenderer.h"
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
@@ -953,7 +955,7 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   while (distanceSinceLastSpawn_ >= obstacleInterval_) {
     // 奥の固定位置(チャンクの向こう側)に生成
     if (!isSpawningPaused_) {
-      SpawnObstacles(kSpawnObstacleZ);
+      SpawnObstacles(spawnObstacleZ_);
     }
     distanceSinceLastSpawn_ -= obstacleInterval_;
 
@@ -989,7 +991,60 @@ void StageSettings::EditorUpdate(Matrix4x4 view, float waterTime) {
 }
 
 void StageSettings::Draw(class Draw &draw) {
-  // 描画はGameObjectManagerが一括で行うため、ここでは何もしない
+#ifdef _USE_IMGUI
+  if (showSpawnGizmo_) {
+    LineRenderer *lineRenderer = draw.GetLineRenderer();
+    if (lineRenderer) {
+      float z = spawnObstacleZ_;
+      int currentMinLane = GetMinLaneIndexAtZ(z);
+      int currentMaxLane = GetMaxLaneIndexAtZ(z);
+      float currentLaneWidth = GetEffectiveLaneWidthAtZ(z);
+
+      float xLeft = (static_cast<float>(currentMinLane) - 0.5f) * currentLaneWidth;
+      float xRight = (static_cast<float>(currentMaxLane) + 0.5f) * currentLaneWidth;
+      float yGround = 0.05f;
+      float yTop = 5.5f;
+
+      Vector4 gateColor = {0.0f, 0.9f, 1.0f, 1.0f};      // シアン：スポーンゲート
+      Vector4 subGateColor = {0.0f, 0.5f, 0.8f, 0.6f};
+
+      // 外枠ゲート
+      lineRenderer->AddLine({xLeft, yGround, z}, {xRight, yGround, z}, gateColor);
+      lineRenderer->AddLine({xLeft, yTop, z}, {xRight, yTop, z}, gateColor);
+      lineRenderer->AddLine({xLeft, yGround, z}, {xLeft, yTop, z}, gateColor);
+      lineRenderer->AddLine({xRight, yGround, z}, {xRight, yTop, z}, gateColor);
+
+      // 各レーンの中心線と高さ指標
+      for (int lane = currentMinLane; lane <= currentMaxLane; lane++) {
+        float x = static_cast<float>(lane) * currentLaneWidth;
+
+        // レーン中心の縦線
+        lineRenderer->AddLine({x, yGround, z}, {x, yTop, z}, subGateColor);
+
+        // Low (木 / ジャンプ) 高さ: 緑
+        lineRenderer->AddLine({x - 0.45f, kObstacleSpawnYLow, z},
+                              {x + 0.45f, kObstacleSpawnYLow, z},
+                              {0.2f, 1.0f, 0.3f, 1.0f});
+
+        // High (アーチ / スライド) 高さ: 黄
+        lineRenderer->AddLine({x - 0.45f, kObstacleSpawnYHigh, z},
+                              {x + 0.45f, kObstacleSpawnYHigh, z},
+                              {1.0f, 0.9f, 0.2f, 1.0f});
+
+        // Wall (氷壁) 高さ: 赤橙
+        lineRenderer->AddLine({x - 0.45f, kObstacleSpawnYWall, z},
+                              {x + 0.45f, kObstacleSpawnYWall, z},
+                              {1.0f, 0.4f, 0.1f, 1.0f});
+      }
+
+      // アイテムスポーンライン（オフセット手前）
+      float itemZ = z + kItemSpawnZOffset;
+      Vector4 itemColor = {1.0f, 0.84f, 0.0f, 0.8f}; // ゴールド
+      lineRenderer->AddLine({xLeft, yGround, itemZ}, {xRight, yGround, itemZ}, itemColor);
+      lineRenderer->AddLine({xLeft, kItemSpawnY, itemZ}, {xRight, kItemSpawnY, itemZ}, itemColor);
+    }
+  }
+#endif
 }
 
 void StageSettings::SpawnObstacles(float z) {
@@ -1281,51 +1336,51 @@ bool StageSettings::IsItemCoolDownReady(Obstacle::Type type) const {
 #ifdef _USE_IMGUI
 void StageSettings::ImGui() {
   // ステージデバッグパネル
-  if (ImGui::CollapsingHeader("Stage Settings Debug")) {
+  if (ImGui::CollapsingHeader("ステージ設定デバッグ (Stage Settings)")) {
     int currentLane = GetLaneCount();
-    ImGui::Text("Current (Player Foot) Lane: %d", currentLane);
+    ImGui::Text("現在レーン (プレイヤー位置): %d", currentLane);
 
     int targetLane = GetTargetLaneCount();
-    if (ImGui::SliderInt("Target Lane Count", &targetLane, 1, 11)) {
+    if (ImGui::SliderInt("目標レーン数", &targetLane, 1, 11)) {
       SetLaneCount(targetLane);
     }
 
     float laneWidth = GetLaneWidth();
-    if (ImGui::SliderFloat("Lane Width", &laneWidth, 1.0f, 10.0f)) {
+    if (ImGui::SliderFloat("レーン幅", &laneWidth, 1.0f, 10.0f)) {
       SetLaneWidth(laneWidth);
     }
 
     float oneLaneMult = GetOneLaneWidthMultiplier();
-    if (ImGui::SliderFloat("One Lane Width Multiplier", &oneLaneMult, 1.0f,
+    if (ImGui::SliderFloat("1レーン時幅倍率", &oneLaneMult, 1.0f,
                            3.0f, "%.2f")) {
       SetOneLaneWidthMultiplier(oneLaneMult);
     }
 
     float baseSpeed = GetBaseScrollSpeed();
-    if (ImGui::SliderFloat("Base Scroll Speed", &baseSpeed, 0.0f, 1.0f)) {
+    if (ImGui::SliderFloat("基本スクロール速度", &baseSpeed, 0.0f, 1.0f)) {
       SetBaseScrollSpeed(baseSpeed);
     }
 
     float maxSpeed = GetMaxScrollSpeed();
-    if (ImGui::SliderFloat("Max Scroll Speed", &maxSpeed, baseSpeed, 2.0f)) {
+    if (ImGui::SliderFloat("最高スクロール速度", &maxSpeed, baseSpeed, 2.0f)) {
       SetMaxScrollSpeed(maxSpeed);
     }
 
     float accel = GetScrollAcceleration();
-    if (ImGui::SliderFloat("Scroll Acceleration", &accel, 0.0f, 0.01f)) {
+    if (ImGui::SliderFloat("スクロール加速度", &accel, 0.0f, 0.01f)) {
       SetScrollAcceleration(accel);
     }
 
     float minDistance = GetMinObstacleDistance();
     float maxDistance = GetMaxObstacleDistance();
-    if (ImGui::SliderFloat("Min Obstacle Distance", &minDistance, 3.0f, 30.0f,
+    if (ImGui::SliderFloat("最小障害物間隔", &minDistance, 3.0f, 30.0f,
                            "%.1f m")) {
       if (minDistance > maxDistance)
         maxDistance = minDistance;
       SetMinObstacleDistance(minDistance);
       SetMaxObstacleDistance(maxDistance);
     }
-    if (ImGui::SliderFloat("Max Obstacle Distance", &maxDistance, 5.0f, 60.0f,
+    if (ImGui::SliderFloat("最大障害物間隔", &maxDistance, 5.0f, 60.0f,
                            "%.1f m")) {
       if (maxDistance < minDistance)
         minDistance = maxDistance;
@@ -1334,21 +1389,21 @@ void StageSettings::ImGui() {
     }
 
     float baseActionFrames = GetBaseActionFrames();
-    if (ImGui::SliderFloat("Base Action Frames", &baseActionFrames, 0.0f,
+    if (ImGui::SliderFloat("基本アクション所要フレーム", &baseActionFrames, 0.0f,
                            60.0f, "%.0f f")) {
       SetBaseActionFrames(baseActionFrames);
     }
 
     float minGrace = GetMinGraceFrames();
     float maxGrace = GetMaxGraceFrames();
-    if (ImGui::SliderFloat("Min Grace Frames", &minGrace, 5.0f, 60.0f,
+    if (ImGui::SliderFloat("最小猶予フレーム", &minGrace, 5.0f, 60.0f,
                            "%.0f f")) {
       if (minGrace > maxGrace)
         maxGrace = minGrace;
       SetMinGraceFrames(minGrace);
       SetMaxGraceFrames(maxGrace);
     }
-    if (ImGui::SliderFloat("Max Grace Frames", &maxGrace, 5.0f, 80.0f,
+    if (ImGui::SliderFloat("最大猶予フレーム", &maxGrace, 5.0f, 80.0f,
                            "%.0f f")) {
       if (maxGrace < minGrace)
         minGrace = maxGrace;
@@ -1357,7 +1412,7 @@ void StageSettings::ImGui() {
     }
 
     float noSpawnChance = GetNoSpawnChance() * 100.0f;
-    if (ImGui::SliderFloat("No Spawn Chance (%)", &noSpawnChance, 0.0f, 30.0f,
+    if (ImGui::SliderFloat("障害物スキップ確率 (%)", &noSpawnChance, 0.0f, 30.0f,
                            "%.1f %%")) {
       SetNoSpawnChance(noSpawnChance / 100.0f);
     }
@@ -1366,100 +1421,367 @@ void StageSettings::ImGui() {
     float curInterval = GetObstacleInterval();
     float estFrames =
         currentSpeed > 0.0f ? (curInterval / currentSpeed) : 0.0f;
-    ImGui::Text("Next Spawn: %.1f m (approx. %.0f frames / %.2f s)",
+    ImGui::Text("次回スポーン間隔: %.1f m (約 %.0f フレーム / %.2f 秒)",
                 curInterval, estFrames, estFrames / 60.0f);
-    ImGui::Text("Dodgeable Range: %.1f m ~ %.1f m", minDistance, maxDistance);
-    ImGui::Text("Spawn Z: +%.1f m | Despawn Z: %.1f m (Max Pool: %d)",
-                kSpawnObstacleZ, Obstacle::kPlayerObstacleDespawnZ, kMaxObstacles_);
+    ImGui::Text("回避可能間隔範囲: %.1f m 〜 %.1f m", minDistance, maxDistance);
+    if (ImGui::SliderFloat("障害物スポーンZ距離", &spawnObstacleZ_, 20.0f, 160.0f, "%.1f m")) {
+    }
+    ImGui::Text("デスポーンZ: %.1f m (プール上限: %d)",
+                Obstacle::kPlayerObstacleDespawnZ, kMaxObstacles_);
 
     Vector4 roadColor = GetRoadColor();
     float roadColorArr[4] = {roadColor.x, roadColor.y, roadColor.z,
                              roadColor.w};
-    if (ImGui::ColorEdit4("Ground Color", roadColorArr)) {
+    if (ImGui::ColorEdit4("地面の色 (Ground Color)", roadColorArr)) {
       SetRoadColor({roadColorArr[0], roadColorArr[1],
                     roadColorArr[2], roadColorArr[3]});
     }
 
     bool driftIceEnabled = GetDriftIceEnabled();
-    if (ImGui::Checkbox("Enable Drift Ice (流氷)", &driftIceEnabled)) {
+    if (ImGui::Checkbox("流氷を有効化 (Drift Ice)", &driftIceEnabled)) {
       SetDriftIceEnabled(driftIceEnabled);
     }
     if (driftIceEnabled) {
       Vector4 driftIceColor = GetDriftIceColor();
       float driftIceColorArr[4] = {driftIceColor.x, driftIceColor.y,
                                    driftIceColor.z, driftIceColor.w};
-      if (ImGui::ColorEdit4("Drift Ice Color", driftIceColorArr)) {
+      if (ImGui::ColorEdit4("流氷の色", driftIceColorArr)) {
         SetDriftIceColor(
             {driftIceColorArr[0], driftIceColorArr[1], driftIceColorArr[2],
              driftIceColorArr[3]});
       }
       float bobbingScale = GetDriftIceBobbingScale();
-      if (ImGui::SliderFloat("Drift Ice Bobbing Scale (揺れ幅)",
+      if (ImGui::SliderFloat("流氷の揺れ幅",
                              &bobbingScale, 0.0f, 3.0f, "%.2f")) {
         SetDriftIceBobbingScale(bobbingScale);
       }
       float bobbingSpeed = GetDriftIceBobbingSpeedScale();
-      if (ImGui::SliderFloat("Drift Ice Bobbing Speed (揺れ速度)",
+      if (ImGui::SliderFloat("流氷の揺れ速度",
                              &bobbingSpeed, 0.0f, 3.0f, "%.2f")) {
         SetDriftIceBobbingSpeedScale(bobbingSpeed);
       }
       float sizeScale = GetDriftIceSizeScale();
-      if (ImGui::SliderFloat("Drift Ice Size Scale (大きさ倍率)", &sizeScale,
+      if (ImGui::SliderFloat("流氷の大きさ倍率", &sizeScale,
                              0.1f, 3.0f, "%.2f")) {
         SetDriftIceSizeScale(sizeScale);
       }
       float thicknessScale = GetDriftIceThicknessScale();
-      if (ImGui::SliderFloat("Drift Ice Thickness (厚み・縦の太さ)",
+      if (ImGui::SliderFloat("流氷の厚み (縦の太さ)",
                              &thicknessScale, 0.5f, 6.0f, "%.2f")) {
         SetDriftIceThicknessScale(thicknessScale);
       }
       float heightOffset = GetDriftIceHeightOffset();
-      if (ImGui::SliderFloat("Drift Ice Height (浮遊高さ)", &heightOffset,
+      if (ImGui::SliderFloat("流氷の浮遊高度", &heightOffset,
                              -1.0f, 5.0f, "%.2f m")) {
         SetDriftIceHeightOffset(heightOffset);
       }
       float distOffset = GetDriftIceDistanceOffset();
-      if (ImGui::SliderFloat("Drift Ice Distance (地面からの離れ具合)",
+      if (ImGui::SliderFloat("流氷の配置間隔 (地面からの距離)",
                              &distOffset, 0.0f, 20.0f, "%.1f m")) {
         SetDriftIceDistanceOffset(distOffset);
       }
       bool lighting = GetDriftIceLighting();
-      if (ImGui::Checkbox("Drift Ice Lighting (ライティング)", &lighting)) {
+      if (ImGui::Checkbox("流氷ライティングを有効化", &lighting)) {
         SetDriftIceLighting(lighting);
       }
       float sealSpin = GetBabySealSpinSpeed();
-      if (ImGui::SliderFloat("Baby Seal Spin Speed (アザラシ回転速度)",
+      if (ImGui::SliderFloat("アザラシ回転速度",
                              &sealSpin, 0.0f, 10.0f, "%.1f rad/s")) {
         SetBabySealSpinSpeed(sealSpin);
       }
     }
 
     ImGui::Separator();
-    ImGui::Text("Road Backwards: %d chunks (-%.0f m)",
+    ImGui::Text("後方道路チャンク数: %d 個 (-%.0f m)",
                 GetBackwardChunks(),
                 static_cast<float>(GetBackwardChunks()) * GetChunkLength());
     float waterForwardExt = GetWaterForwardExtension();
-    if (ImGui::SliderFloat("Water Forward Ext (波の奥への拡張)",
+    if (ImGui::SliderFloat("水面・前方拡張距離 (波奥)",
                            &waterForwardExt, 50.0f, 1200.0f, "%.0f m")) {
       SetWaterForwardExtension(waterForwardExt);
     }
     float waterBackwardExt = GetWaterBackwardExtension();
-    if (ImGui::SliderFloat("Water Backward Ext (波の手前への拡張)",
+    if (ImGui::SliderFloat("水面・後方拡張距離 (波手前)",
                            &waterBackwardExt, 50.0f, 800.0f, "%.0f m")) {
       SetWaterBackwardExtension(waterBackwardExt);
     }
     float waterWidthScale = GetWaterWidthScale();
-    if (ImGui::SliderFloat("Water Width Scale (波の横幅)", &waterWidthScale,
+    if (ImGui::SliderFloat("水面・横幅スケール", &waterWidthScale,
                            50.0f, 400.0f, "%.0f m")) {
       SetWaterWidthScale(waterWidthScale);
     }
   }
 
+  // 障害物スポーン地点・状況モニター
+  if (ImGui::CollapsingHeader("Obstacle Spawn & Monitor (障害物スポーン地点・状況)",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    float currentSpeed = GetScrollSpeed();
+
+    // 1. スポーン地点の位置・設定
+    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "[ スポーン地点の位置・設定 ]");
+    ImGui::SliderFloat("Spawn Distance Z (奥の生成距離)", &spawnObstacleZ_,
+                       20.0f, 160.0f, "%.1f m");
+    ImGui::Text("プリセット:");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("50m")) { spawnObstacleZ_ = 50.0f; }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("80m")) { spawnObstacleZ_ = 80.0f; }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("105m(標準)")) { spawnObstacleZ_ = kDefaultSpawnObstacleZ; }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("130m")) { spawnObstacleZ_ = 130.0f; }
+
+    float framesToPlayer = currentSpeed > 0.0f ? (spawnObstacleZ_ / currentSpeed) : 0.0f;
+    ImGui::Text("スポーン位置: Z = +%.1f m (プレイヤーから前方 %.1f m)", spawnObstacleZ_, spawnObstacleZ_);
+    ImGui::Text("到達予測時間: 約 %.0f フレーム (%.2f 秒) [@ 速度 %.3f]",
+                framesToPlayer, framesToPlayer / 60.0f, currentSpeed);
+
+    ImGui::Checkbox("3Dビューにスポーンゲート・マーカーを描画 (Show 3D Spawn Gate)",
+                    &showSpawnGizmo_);
+    if (showSpawnGizmo_) {
+      ImGui::TextDisabled("  シアン: 外枠ゲート | 緑: Low(2.5m) | 黄: High(4.6m) | 赤橙: Wall(3.5m) | 金: アイテム");
+    }
+
+    ImGui::Separator();
+
+    // 2. 各レーンのスポーン座標 (X, Y, Z)
+    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "[ 各レーンのスポーン座標 (Z = +%.1f m) ]", spawnObstacleZ_);
+    int currentLaneCount = GetLaneCountAtZ(spawnObstacleZ_);
+    int currentMinLane = GetMinLaneIndexAtZ(spawnObstacleZ_);
+    int currentMaxLane = GetMaxLaneIndexAtZ(spawnObstacleZ_);
+    float currentLaneWidth = GetEffectiveLaneWidthAtZ(spawnObstacleZ_);
+
+    ImGui::Text("レーン数: %d | レーン幅: %.2f m (範囲: %d 〜 %d)",
+                currentLaneCount, currentLaneWidth, currentMinLane, currentMaxLane);
+
+    if (ImGui::BeginTable("SpawnPointsTable", 6,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_SizingStretchProp)) {
+      ImGui::TableSetupColumn("レーン", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+      ImGui::TableSetupColumn("World X", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+      ImGui::TableSetupColumn("Low(木/飛越)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("High(氷/潜り)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("Wall(氷壁/回避)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("Item(アイテム)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableHeadersRow();
+
+      for (int lane = currentMinLane; lane <= currentMaxLane; lane++) {
+        ImGui::TableNextRow();
+        float x = static_cast<float>(lane) * currentLaneWidth;
+
+        ImGui::TableSetColumnIndex(0);
+        if (lane == 0) {
+          ImGui::Text("中央 (%+d)", lane);
+        } else if (lane < 0) {
+          ImGui::Text("左 (%+d)", lane);
+        } else {
+          ImGui::Text("右 (%+d)", lane);
+        }
+
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%+.2f m", x);
+
+        ImGui::TableSetColumnIndex(2);
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.3f, 1.0f), "Y=%.2fm", kObstacleSpawnYLow);
+
+        ImGui::TableSetColumnIndex(3);
+        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.2f, 1.0f), "Y=%.2fm", kObstacleSpawnYHigh);
+
+        ImGui::TableSetColumnIndex(4);
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.1f, 1.0f), "Y=%.2fm", kObstacleSpawnYWall);
+
+        ImGui::TableSetColumnIndex(5);
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "Y=%.2fm (Z%+.1fm)",
+                           kItemSpawnY, kItemSpawnZOffset);
+      }
+      ImGui::EndTable();
+    }
+
+    ImGui::Separator();
+
+    // 3. 次回スポーン進行度・タイミング
+    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "[ 次回スポーン進行度 ]");
+    if (isSpawningPaused_) {
+      ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "状態: 一時停止中 (PAUSED)");
+    } else {
+      ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "状態: スポーン稼働中 (ACTIVE)");
+    }
+
+    float remainingDist = (std::max)(0.0f, obstacleInterval_ - distanceSinceLastSpawn_);
+    float remFrames = currentSpeed > 0.0f ? (remainingDist / currentSpeed) : 0.0f;
+    float remSec = remFrames / 60.0f;
+
+    if (distanceSinceLastSpawn_ < 0.0f) {
+      ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f),
+                         "助走区間中: 残り %.1f m 走行後に通常スポーン開始",
+                         -distanceSinceLastSpawn_);
+    } else {
+      float progress = (obstacleInterval_ > 0.0f)
+                           ? (distanceSinceLastSpawn_ / obstacleInterval_)
+                           : 0.0f;
+      if (progress < 0.0f) progress = 0.0f;
+      if (progress > 1.0f) progress = 1.0f;
+
+      char progressBuf[96];
+      snprintf(progressBuf, sizeof(progressBuf),
+               "次回まで: %.1f m / %.1f m (約 %.0f f / %.2f s)",
+               remainingDist, obstacleInterval_, remFrames, remSec);
+      ImGui::ProgressBar(progress, ImVec2(-1, 0), progressBuf);
+    }
+
+    // 4. スポーン操作・テスト
+    if (ImGui::Button("今すぐスポーン実行 (Spawn Now)")) {
+      SpawnObstacles(spawnObstacleZ_);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(isSpawningPaused_ ? "スポーン再開 (Resume)" : "一時停止 (Pause)")) {
+      isSpawningPaused_ = !isSpawningPaused_;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("全障害物を消去 (Clear All)")) {
+      ClearObstacles();
+    }
+
+    ImGui::Separator();
+
+    // 5. 出現中の障害物一覧
+    int activeCount = 0;
+    for (int i = 0; i < kMaxObstacles_; i++) {
+      if (obstacles_[i] && obstacles_[i]->GetIsActive()) {
+        activeCount++;
+      }
+    }
+
+    char activeHeader[64];
+    snprintf(activeHeader, sizeof(activeHeader), "出現中の障害物一覧 (%d / %d 個使用中)###ActiveObsList",
+             activeCount, kMaxObstacles_);
+    if (ImGui::TreeNode(activeHeader)) {
+      if (activeCount == 0) {
+        ImGui::TextDisabled("現在アクティブな障害物はありません。");
+      } else {
+        if (ImGui::BeginTable("ActiveObstaclesTable", 6,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable,
+                              ImVec2(0.0f, 180.0f))) {
+          ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 40.0f);
+          ImGui::TableSetupColumn("種別", ImGuiTableColumnFlags_WidthFixed, 130.0f);
+          ImGui::TableSetupColumn("座標 (X, Y, Z)", ImGuiTableColumnFlags_WidthStretch);
+          ImGui::TableSetupColumn("プレイヤー距離", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+          ImGui::TableSetupColumn("到達予測", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+          ImGui::TableSetupColumn("状態", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+          ImGui::TableHeadersRow();
+
+          for (int i = 0; i < kMaxObstacles_; i++) {
+            Obstacle *obs = obstacles_[i].get();
+            if (!obs || !obs->GetIsActive())
+              continue;
+
+            ImGui::TableNextRow();
+            const Transform &t = obs->GetTransform();
+            float distZ = t.translate.z; // プレイヤーは Z ≈ 0
+            float etaSec = (distZ > 0.0f && currentSpeed > 0.0f)
+                               ? (distZ / currentSpeed / 60.0f)
+                               : 0.0f;
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("#%d", i);
+
+            ImGui::TableSetColumnIndex(1);
+            const char *typeName = "不明";
+            ImVec4 typeColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+            switch (obs->GetType()) {
+            case Obstacle::Type::Low:
+              typeName = "Low (木/ジャンプ)";
+              typeColor = ImVec4(0.2f, 1.0f, 0.3f, 1.0f);
+              break;
+            case Obstacle::Type::High:
+              typeName = "High (アーチ/潜り)";
+              typeColor = ImVec4(1.0f, 0.9f, 0.2f, 1.0f);
+              break;
+            case Obstacle::Type::Wall:
+              typeName = "Wall (氷壁/レーン)";
+              typeColor = ImVec4(1.0f, 0.4f, 0.1f, 1.0f);
+              break;
+            case Obstacle::Type::Bonus:
+              typeName = "Bonus (ボーナス)";
+              typeColor = ImVec4(0.9f, 0.4f, 1.0f, 1.0f);
+              break;
+            case Obstacle::Type::GuideFloor:
+              typeName = "Guide (誘導床)";
+              typeColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f);
+              break;
+            case Obstacle::Type::BarrierItem:
+              typeName = "Item: Barrier";
+              typeColor = ImVec4(0.2f, 0.8f, 1.0f, 1.0f);
+              break;
+            case Obstacle::Type::ClearItem:
+              typeName = "Item: Bomb";
+              typeColor = ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
+              break;
+            case Obstacle::Type::CameraItem:
+              typeName = "Item: 1Lane";
+              typeColor = ImVec4(0.3f, 1.0f, 0.6f, 1.0f);
+              break;
+            case Obstacle::Type::BossItem:
+              typeName = "Item: Boss";
+              typeColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
+              break;
+            case Obstacle::Type::BossAttack:
+            case Obstacle::Type::BossAttackReflectable:
+            case Obstacle::Type::BossAttackLow:
+            case Obstacle::Type::BossAttackHigh:
+              typeName = "Boss Attack";
+              typeColor = ImVec4(1.0f, 0.3f, 0.6f, 1.0f);
+              break;
+            }
+            ImGui::TextColored(typeColor, "%s", typeName);
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("(%+.1f, %+.1f, %+.1f)", t.translate.x, t.translate.y,
+                        t.translate.z);
+
+            ImGui::TableSetColumnIndex(3);
+            if (distZ > 0.0f) {
+              ImGui::Text("%+.1f m", distZ);
+            } else {
+              ImGui::TextDisabled("通過済み (%+.1fm)", distZ);
+            }
+
+            ImGui::TableSetColumnIndex(4);
+            if (distZ > 0.0f && currentSpeed > 0.0f) {
+              if (etaSec < 1.0f) {
+                ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "%.2f s (近接!)",
+                                   etaSec);
+              } else if (etaSec < 2.5f) {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "%.2f s", etaSec);
+              } else {
+                ImGui::Text("%.2f s", etaSec);
+              }
+            } else {
+              ImGui::TextDisabled("---");
+            }
+
+            ImGui::TableSetColumnIndex(5);
+            if (obs->GetIsHit()) {
+              ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "衝突");
+            } else if (distZ < 0.0f) {
+              ImGui::TextDisabled("通過");
+            } else {
+              ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "接近中");
+            }
+          }
+          ImGui::EndTable();
+        }
+      }
+      ImGui::TreePop();
+    }
+  }
+
   // アイテムクールタイム設定
-  if (ImGui::CollapsingHeader("Item CoolDowns (アイテムクールタイム設定)",
+  if (ImGui::CollapsingHeader("アイテムクールタイム設定 (Item CoolDowns)",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
     float spawnChance = GetItemSpawnChance() * 100.0f;
-    if (ImGui::SliderFloat("Item Spawn Chance (%)", &spawnChance, 0.0f,
+    if (ImGui::SliderFloat("アイテム生成確率 (%)", &spawnChance, 0.0f,
                            100.0f, "%.1f %%")) {
       SetItemSpawnChance(spawnChance / 100.0f);
     }
@@ -1486,25 +1808,25 @@ void StageSettings::ImGui() {
       float current = GetItemCoolDownTimer(item.type);
 
       ImGui::Text("%s - %s", item.name, item.desc);
-      if (ImGui::SliderFloat("CoolTime (s)", &duration, 0.0f, 120.0f,
+      if (ImGui::SliderFloat("クールタイム (秒)", &duration, 0.0f, 120.0f,
                              "%.1f s")) {
         SetItemCoolDownDuration(item.type, duration);
       }
 
       if (current <= 0.0f) {
         ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f),
-                           "  Status: READY (出現可能)");
+                           "  状態: 出現可能 (READY)");
       } else {
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
-                           "  Status: COOLDOWN (残り %.1f s)", current);
+                           "  状態: クールダウン中 (残り %.1f 秒)", current);
       }
 
       ImGui::SameLine();
-      if (ImGui::SmallButton("Reset CD (即時可能)")) {
+      if (ImGui::SmallButton("即時可能にする (リセット)")) {
         SetItemCoolDownTimer(item.type, 0.0f);
       }
       ImGui::SameLine();
-      if (ImGui::SmallButton("Trigger CD")) {
+      if (ImGui::SmallButton("クールダウン開始")) {
         SetItemCoolDownTimer(item.type, duration);
       }
       ImGui::Separator();

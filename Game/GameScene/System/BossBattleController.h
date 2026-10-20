@@ -86,10 +86,25 @@ public:
 
   int GetReflectLane() const { return currentReflectLane_; }
   const Vector3 &GetBossCameraTranslate() const { return bossCameraTranslate_; }
+  void SetBossCameraTranslate(const Vector3 &tr) { bossCameraTranslate_ = tr; }
   const Vector3 &GetBossCameraRotate() const { return bossCameraRotate_; }
+  void SetBossCameraRotate(const Vector3 &rot) { bossCameraRotate_ = rot; }
   float GetReflectMinZ() const { return bossAttackReflectMinZ_; }
   PatternType GetCurrentPattern() const { return currentPattern_; }
   size_t GetQueuedAttackCount() const { return attackQueue_.size(); }
+
+  float GetAttackSpawnZ() const { return bossAttackSpawnZ_; }
+  void SetAttackSpawnZ(float z) { bossAttackSpawnZ_ = z; }
+  float GetAttackDropHeight() const { return bossAttackDropHeight_; }
+  void SetAttackDropHeight(float h) { bossAttackDropHeight_ = h; }
+  float GetAttackFallDuration() const { return bossAttackFallDuration_; }
+  void SetAttackFallDuration(float d) { bossAttackFallDuration_ = d; }
+  float GetAttackReflectMinZ() const { return bossAttackReflectMinZ_; }
+  void SetAttackReflectMinZ(float z) { bossAttackReflectMinZ_ = z; }
+  float GetReflectArcHeight() const { return bossReflectArcHeight_; }
+  void SetReflectArcHeight(float h) { bossReflectArcHeight_ = h; }
+  float GetReflectDuration() const { return bossReflectDuration_; }
+  void SetReflectDuration(float d) { bossReflectDuration_ = d; }
 
   void ImGui(Boss *boss, GameCameraController *cameraController,
              bool isPlayingBoss, bool isCameraTransitioning);

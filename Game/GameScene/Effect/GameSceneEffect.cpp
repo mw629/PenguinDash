@@ -213,52 +213,52 @@ void GameSceneEffect::Draw(class Draw &draw) {
 
 void GameSceneEffect::ImGui() {
 #ifdef _USE_IMGUI
-  if (ImGui::CollapsingHeader("Barrier Effect")) {
-    const char *stateNames[] = {"Inactive", "Deploying", "Active", "Breaking"};
-    ImGui::Text("Current State: %s",
+  if (ImGui::CollapsingHeader("バリアエフェクト")) {
+    const char *stateNames[] = {"非アクティブ", "展開中", "アクティブ", "破壊中"};
+    ImGui::Text("現在の状態: %s",
                 stateNames[static_cast<int>(barrierState_)]);
 
-    if (ImGui::Button("Emit Barrier")) {
+    if (ImGui::Button("バリア展開")) {
       EmitBarrier(lastPlayerPos_);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Break Barrier")) {
+    if (ImGui::Button("バリア破壊")) {
       BreakBarrier(lastPlayerPos_);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Clear Barrier")) {
+    if (ImGui::Button("バリア消去")) {
       ClearBarrier();
     }
 
     ImGui::Separator();
-    ImGui::DragFloat3("Barrier Offset", &barrierOffset_.x, 0.05f);
-    ImGui::DragFloat3("Barrier Scale", &barrierBaseScale_.x, 0.05f, 0.1f,
+    ImGui::DragFloat3("バリア位置オフセット", &barrierOffset_.x, 0.05f);
+    ImGui::DragFloat3("バリアスケール", &barrierBaseScale_.x, 0.05f, 0.1f,
                       10.0f);
-    ImGui::ColorEdit4("Barrier Color", &barrierBaseColor_.x);
-    ImGui::ColorEdit4("Flash Color", &barrierFlashColor_.x);
+    ImGui::ColorEdit4("バリアカラー", &barrierBaseColor_.x);
+    ImGui::ColorEdit4("フラッシュカラー", &barrierFlashColor_.x);
 
     if (barrier_) {
       float r = barrier_->GetRadius();
-      if (ImGui::DragFloat("Hex Radius", &r, 0.02f, 0.1f, 5.0f)) {
+      if (ImGui::DragFloat("ヘキサゴン半径", &r, 0.02f, 0.1f, 5.0f)) {
         barrier_->SetRadius(r);
       }
 
       bool pointy = barrier_->GetPointyTopped();
-      if (ImGui::Checkbox("Pointy Topped", &pointy)) {
+      if (ImGui::Checkbox("頂点上向き (Pointy Topped)", &pointy)) {
         barrier_->SetPointyTopped(pointy);
       }
 
       int shapeType = static_cast<int>(barrier_->GetShape());
-      const char *shapes[] = {"Single", "Honeycomb (7-cell)"};
-      if (ImGui::Combo("Shape", &shapeType, shapes, IM_ARRAYSIZE(shapes))) {
+      const char *shapes[] = {"単一六角形 (Single)", "ハニカム (7セル)"};
+      if (ImGui::Combo("形状", &shapeType, shapes, IM_ARRAYSIZE(shapes))) {
         barrier_->SetShape(static_cast<HexBarrierShape>(shapeType));
       }
 
       if (auto mat = barrier_->GetComponent<MaterialComponent>()) {
         int blendMode = static_cast<int>(mat->GetBlend());
-        const char *blendNames[] = {"None",     "Normal",   "Add",
-                                    "Subtract", "Multiply", "Screen"};
-        if (ImGui::Combo("Blend Mode", &blendMode, blendNames,
+        const char *blendNames[] = {"なし (None)",     "通常 (Normal)",   "加算 (Add)",
+                                    "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)"};
+        if (ImGui::Combo("ブレンドモード", &blendMode, blendNames,
                          IM_ARRAYSIZE(blendNames))) {
           mat->SetBlend(static_cast<BlendMode>(blendMode));
         }
@@ -266,7 +266,7 @@ void GameSceneEffect::ImGui() {
     }
   }
 
-  if (ImGui::CollapsingHeader("Particles")) {
+  if (ImGui::CollapsingHeader("パーティクル")) {
     if (dustEffect_)
       dustEffect_->ImGui();
     if (snowEffect_)

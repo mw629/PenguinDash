@@ -127,7 +127,12 @@ public:
 	Vector3 GetFinalPosition() const { return finalTransform_.translate; }
 	Vector3 GetFinalRotation() const { return finalTransform_.rotate; }
 
-	void SetDebugCamera(bool isDebug) { isDebugCamera_ = isDebug; }
+	void SetDebugCamera(bool isDebug) {
+		if (isDebug && !isDebugCamera_) {
+			ResetDebugCameraToGameCamera();
+		}
+		isDebugCamera_ = isDebug;
+	}
 	bool GetDebugCamera() const { return isDebugCamera_; }
 	void ResetDebugCameraToGameCamera();
 	void ResetDebugCamera(const Transform& transform);

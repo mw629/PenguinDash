@@ -297,65 +297,65 @@ void BossBattleController::ImGui(Boss *boss,
                                  bool isCameraTransitioning) {
 #ifdef _USE_IMGUI
   if (boss && boss->GetIsActive()) {
-    if (ImGui::TreeNode("Boss Info")) {
+    if (ImGui::TreeNode("ボス情報")) {
       ImGui::Text("HP: %d / %d", boss->GetHP(), boss->GetMaxHP());
-      ImGui::DragFloat3("Target Pos", &boss->GetTargetPosRef().x, 0.1f);
-      ImGui::DragFloat("Attack Spawn Z", &bossAttackSpawnZ_, 0.5f, -100.0f,
+      ImGui::DragFloat3("ボス目標位置", &boss->GetTargetPosRef().x, 0.1f);
+      ImGui::DragFloat("攻撃生成距離 Z", &bossAttackSpawnZ_, 0.5f, -100.0f,
                        0.0f, "%.1f m");
-      ImGui::DragFloat("Attack Drop Height", &bossAttackDropHeight_, 0.5f,
+      ImGui::DragFloat("攻撃落下開始高度", &bossAttackDropHeight_, 0.5f,
                        5.0f, 40.0f, "%.1f m");
-      ImGui::DragFloat("Attack Fall Frames", &bossAttackFallDuration_, 1.0f,
+      ImGui::DragFloat("攻撃落下フレーム数", &bossAttackFallDuration_, 1.0f,
                        5.0f, 60.0f, "%.0f frames");
-      ImGui::DragFloat("Reflect Min Z", &bossAttackReflectMinZ_, 0.5f, -40.0f,
+      ImGui::DragFloat("反射可能最小距離 Z", &bossAttackReflectMinZ_, 0.5f, -40.0f,
                        0.0f, "%.1f m");
-      ImGui::DragFloat("Reflect Arc Height", &bossReflectArcHeight_, 0.2f,
+      ImGui::DragFloat("反射円弧の高さ", &bossReflectArcHeight_, 0.2f,
                        1.0f, 25.0f, "%.1f m");
-      ImGui::DragFloat("Reflect Duration", &bossReflectDuration_, 1.0f,
+      ImGui::DragFloat("反射飛翔フレーム数", &bossReflectDuration_, 1.0f,
                        10.0f, 120.0f, "%.0f frames");
-      ImGui::Text("Attack Distance to Player: %.1f m", -bossAttackSpawnZ_);
+      ImGui::Text("プレイヤーまでの攻撃生成距離: %.1f m", -bossAttackSpawnZ_);
 
       ImGui::Separator();
-      ImGui::Text("Attack Patterns:");
+      ImGui::Text("攻撃パターン:");
       const char *patternNames[] = {
-          "Standard (1 Safe / 1 Bomb / 1 Reflect)",
-          "Jump Action (Low Wave + Reflect)",
-          "Slide Action (High Arch + Reflect)",
-          "Sequential Wave (L->R or R->L)",
-          "Double Wave (2-Step Meteor)"};
-      ImGui::Text("Current: %s",
+          "通常 (安全1 / ボム1 / 反射弾1)",
+          "ジャンプアクション (低波 + 反射弾)",
+          "スライドアクション (高アーチ + 反射弾)",
+          "連続ウェーブ (左->右 または 右->左)",
+          "二重ウェーブ (2段メテオ)"};
+      ImGui::Text("現在のパターン: %s",
                   patternNames[static_cast<int>(currentPattern_)]);
-      ImGui::Text("Queued: %zu attacks", attackQueue_.size());
-      ImGui::Text("Interval: %.1f / %.1f", bossAttackTimer_,
+      ImGui::Text("待機中攻撃数: %zu 発", attackQueue_.size());
+      ImGui::Text("攻撃間隔タイマー: %.1f / %.1f", bossAttackTimer_,
                   kAttackIntervalFrames);
 
-      if (ImGui::Button("Trigger: Standard")) {
+      if (ImGui::Button("発動: 通常")) {
         TriggerPattern(PatternType::Standard);
       }
       ImGui::SameLine();
-      if (ImGui::Button("Trigger: Jump Action")) {
+      if (ImGui::Button("発動: ジャンプ")) {
         TriggerPattern(PatternType::JumpAction);
       }
-      if (ImGui::Button("Trigger: Slide Action")) {
+      if (ImGui::Button("発動: スライド")) {
         TriggerPattern(PatternType::SlideAction);
       }
       ImGui::SameLine();
-      if (ImGui::Button("Trigger: Sequential Wave")) {
+      if (ImGui::Button("発動: 連続ウェーブ")) {
         TriggerPattern(PatternType::SequentialWave);
       }
-      if (ImGui::Button("Trigger: Double Wave")) {
+      if (ImGui::Button("発動: 二重ウェーブ")) {
         TriggerPattern(PatternType::DoubleWave);
       }
 
       ImGui::Separator();
-      ImGui::Text("Boss Camera Settings:");
-      if (ImGui::DragFloat3("Boss Cam Pos", &bossCameraTranslate_.x, 0.1f)) {
+      ImGui::Text("ボスカメラ設定:");
+      if (ImGui::DragFloat3("ボスカメラ位置", &bossCameraTranslate_.x, 0.1f)) {
         if (isPlayingBoss && !isCameraTransitioning && cameraController) {
           Transform ct = cameraController->GetTransform();
           ct.translate = bossCameraTranslate_;
           cameraController->SetTransform(ct);
         }
       }
-      if (ImGui::DragFloat3("Boss Cam Rot", &bossCameraRotate_.x, 0.01f)) {
+      if (ImGui::DragFloat3("ボスカメラ回転", &bossCameraRotate_.x, 0.01f)) {
         if (isPlayingBoss && !isCameraTransitioning && cameraController) {
           Transform ct = cameraController->GetTransform();
           ct.rotate = bossCameraRotate_;

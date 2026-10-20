@@ -454,16 +454,16 @@ void TitleDirector::DrawCountdown(Draw &draw) {
 
 void TitleDirector::ImGui() {
 #ifdef _USE_IMGUI
-  if (ImGui::CollapsingHeader("Title Orbit Camera Settings",
+  if (ImGui::CollapsingHeader("タイトル周回カメラ設定",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
-    ImGui::Checkbox("Enable Orbit Camera", &isTitleOrbitCamera_);
-    ImGui::SliderFloat("Orbit Speed", &titleCameraSpeed_, -2.0f, 2.0f,
+    ImGui::Checkbox("周回カメラを有効化", &isTitleOrbitCamera_);
+    ImGui::SliderFloat("周回速度", &titleCameraSpeed_, -2.0f, 2.0f,
                        "%.2f rad/s");
-    ImGui::DragFloat("Orbit Radius", &titleCameraRadius_, 0.2f, 3.0f, 40.0f);
-    ImGui::DragFloat("Orbit Height", &titleCameraHeight_, 0.2f, -10.0f, 20.0f);
-    ImGui::DragFloat("Target Offset Y", &titleTargetOffsetY_, 0.1f, -5.0f,
+    ImGui::DragFloat("周回半径", &titleCameraRadius_, 0.2f, 3.0f, 40.0f);
+    ImGui::DragFloat("周回高度", &titleCameraHeight_, 0.2f, -10.0f, 20.0f);
+    ImGui::DragFloat("注視点オフセットY", &titleTargetOffsetY_, 0.1f, -5.0f,
                      10.0f);
-    ImGui::SliderAngle("Current Angle", &titleCameraAngle_);
+    ImGui::SliderAngle("現在の回転角度", &titleCameraAngle_);
   }
 #endif
 }

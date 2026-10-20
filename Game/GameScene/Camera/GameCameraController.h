@@ -91,6 +91,8 @@ public:
   Matrix4x4 GetGameViewMatrix() const { return gameCamera_->GetViewMatrix(); }
 
   void SetDebugCamera(bool debug);
+  bool GetDebugCamera() const { return camera_ ? camera_->GetDebugCamera() : false; }
+  bool IsDebugCamera() const { return GetDebugCamera(); }
   bool IsFirstPerson() const { return isFirstPersonView_; }
   bool IsTransitioning() const { return isCameraTransitioning_; }
   bool IsTransitionPending() const { return isCameraTransitionPending_; }
@@ -98,6 +100,14 @@ public:
   // プレイヤー追従設定
   void SetFollowPlayer(bool follow) { isFollowPlayer_ = follow; }
   bool IsFollowPlayer() const { return isFollowPlayer_; }
+  float GetFollowSmoothSpeed() const { return followSmoothSpeed_; }
+  void SetFollowSmoothSpeed(float speed) { followSmoothSpeed_ = speed; }
+  float GetFollowWeightX() const { return followWeightX_; }
+  void SetFollowWeightX(float weight) { followWeightX_ = weight; }
+  float GetFollowWeightY() const { return followWeightY_; }
+  void SetFollowWeightY(float weight) { followWeightY_ = weight; }
+  float GetBankRollMultiplier() const { return bankRollMultiplier_; }
+  void SetBankRollMultiplier(float mult) { bankRollMultiplier_ = mult; }
 
   // =================================================================
   // カメラ演出 (camera_ と gameCamera_ の両方に同時に適用・Game View同期)

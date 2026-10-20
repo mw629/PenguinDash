@@ -932,6 +932,23 @@ void EditorManager::Update(Engine* engine)
 	const char* aspectLabels[] = { "Free", "16:9", "4:3", "1:1", "21:9" };
 	const float aspectRatios[] = { 0.0f, 16.0f / 9.0f, 4.0f / 3.0f, 1.0f, 21.0f / 9.0f };
 	ImGui::Combo(LanguageManager::Tr("Aspect Ratio"), &sceneAspectRatioIndex_, aspectLabels, IM_ARRAYSIZE(aspectLabels));
+
+	ImGui::SameLine();
+	// --- デバッグカメラ操作 ---
+	Camera *sceneCamera = engine->GetDraw()->GetCamera();
+	if (sceneCamera) {
+		bool isDebug = sceneCamera->GetDebugCamera();
+		if (ImGui::Checkbox(LanguageManager::Tr("Debug Camera"), &isDebug)) {
+			sceneCamera->SetDebugCamera(isDebug);
+		}
+		if (isDebug) {
+			ImGui::SameLine();
+			if (ImGui::Button(LanguageManager::Tr("Reset View"))) {
+				sceneCamera->ResetDebugCameraToGameCamera();
+			}
+		}
+	}
+
 	ImGui::Separator();
 
 	ImVec2 availSize = ImGui::GetContentRegionAvail();
@@ -963,7 +980,36 @@ void EditorManager::Update(Engine* engine)
 
 	if (engine->GetFinalRenderTexture()) {
 		ImGui::Image((ImTextureID)engine->GetFinalRenderTexture()->GetSrvHandleGPU().ptr, imageSize);
-		
+		bool isSceneHovered = ImGui::IsItemHovered();
+
+		// Sceneウィンドウ上での直感的なデバッグカメラ操作 (Orbit / Pan / Zoom)
+		if (sceneCamera) {
+			sceneCamera->GetDebugCameraRef().SetEnableInput(false); // エディタ内ではImGuiマウス操作に専念
+			if (sceneCamera->GetDebugCamera() && isSceneHovered && !ImGuizmo::IsUsing()) {
+				ImGuiIO &io = ImGui::GetIO();
+				if (io.MouseWheel != 0.0f) {
+					sceneCamera->GetDebugCameraRef().Zoom(io.MouseWheel * 2.0f);
+				}
+				// 右ドラッグ または Alt+左ドラッグ で Orbit (視点回転)
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) || (io.KeyAlt && ImGui::IsMouseDragging(ImGuiMouseButton_Left))) {
+					ImGuiMouseButton btn = ImGui::IsMouseDragging(ImGuiMouseButton_Right) ? ImGuiMouseButton_Right : ImGuiMouseButton_Left;
+					ImVec2 dragDelta = ImGui::GetMouseDragDelta(btn);
+					ImGui::ResetMouseDragDelta(btn);
+					if (io.KeyShift) {
+						sceneCamera->GetDebugCameraRef().Pan(dragDelta.x, dragDelta.y);
+					} else {
+						sceneCamera->GetDebugCameraRef().Orbit(dragDelta.x, dragDelta.y);
+					}
+				}
+				// 中ボタンドラッグ で Pan (平行移動)
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+					ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
+					ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
+					sceneCamera->GetDebugCameraRef().Pan(dragDelta.x, dragDelta.y);
+				}
+			}
+		}
+
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("RESOURCE_FILE")) {
 				const char* dropPath = (const char*)payload->Data;
