@@ -264,6 +264,7 @@ void GameScene::ReturnToTitle() {
 
   titleSubView_ = TitleSubView::None;
   titleMenuIndex_ = TitleMenuItem::GameStart;
+  isEditingTitlePlayerName_ = false;
   if (scoreManager_) {
     titlePlayerName_ = scoreManager_->GetPlayerName();
   }
@@ -640,33 +641,44 @@ void GameScene::TitleUpdate() {
   // ==========================================================
   // タイトル画面のメニュー選択・名前登録入力処理
   // ==========================================================
-  // 1. 名前登録バー選択中の文字入力
-  if (titleMenuIndex_ == TitleMenuItem::PlayerName) {
+  if (isEditingTitlePlayerName_) {
+    // --------------------------------------------------------
+    // 名前入力中（編集中）の処理
+    // Enter / Numpad Enter / パッドA / START で決定確定
+    // --------------------------------------------------------
+    bool confirmInput = Input::PushKey(DIK_RETURN) ||
+                        Input::PushKey(DIK_NUMPADENTER) ||
+                        GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+                        GamePadInput::PushButton(XINPUT_GAMEPAD_START);
+    bool cancelInput = Input::PushKey(DIK_ESCAPE);
+
+    if (confirmInput || cancelInput) {
+      if (titlePlayerName_.empty()) {
+        titlePlayerName_ = "Player";
+      }
+      if (scoreManager_) {
+        scoreManager_->SetPlayerName(titlePlayerName_);
+      }
+      isEditingTitlePlayerName_ = false;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
+      return;
+    }
+
+    // 文字入力処理 (W/S も名前に文字として入力可能)
     UpdateTitleTextInput();
+    return;
   }
 
-  // 2. 上下カーソル移動
-  bool moveUp = false;
-  bool moveDown = false;
-
-  if (titleMenuIndex_ == TitleMenuItem::PlayerName) {
-    // 名前入力中は、W/Sは文字入力に使うため、矢印キーやパッド、Enterで移動
-    moveUp = Input::PushKey(DIK_UP) ||
-             GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
-             GamePadInput::PushLeftStickUp();
-    moveDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_RETURN) ||
-               Input::PushKey(DIK_NUMPADENTER) ||
-               GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
-               GamePadInput::PushLeftStickDown();
-  } else {
-    // 通常メニュー項目選択中は、W/S や 矢印キー、パッドで移動可能
-    moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
-             GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
-             GamePadInput::PushLeftStickUp();
-    moveDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
-               GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
-               GamePadInput::PushLeftStickDown();
-  }
+  // ----------------------------------------------------------
+  // メニュー選択中（未編集中）の処理
+  // 1. 上下カーソル移動（名前登録バーを含め全項目で W/S・矢印キー・パッドが利用可能）
+  // ----------------------------------------------------------
+  bool moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
+                GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                GamePadInput::PushLeftStickUp();
+  bool moveDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
+                  GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                  GamePadInput::PushLeftStickDown();
 
   constexpr int kMenuCount = static_cast<int>(TitleMenuItem::Count);
   if (moveUp) {
@@ -681,62 +693,55 @@ void GameScene::TitleUpdate() {
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
   }
 
-  // 3. 決定操作
-  bool selectTriggered = false;
+  // 2. 決定・アクション操作
   if (titleMenuIndex_ == TitleMenuItem::PlayerName) {
-    // 名前入力バーでは Enter または Aボタン で確定して GameStart へ進む
-    if (Input::PushKey(DIK_RETURN) || Input::PushKey(DIK_NUMPADENTER) ||
+    // 名前登録バー選択時は、SPACEキー（またはENTER/Aボタン）で名前入力モードへ移行
+    if (Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
+        Input::PushKey(DIK_NUMPADENTER) ||
         GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+      isEditingTitlePlayerName_ = true;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    }
+  } else {
+    // 通常メニュー項目上では SPACE, ENTER, ゲームパッドA, START で実行
+    bool selectTriggered = Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
+                          Input::PushKey(DIK_NUMPADENTER) ||
+                          GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+                          GamePadInput::PushButton(XINPUT_GAMEPAD_START);
+
+    if (selectTriggered) {
       if (titlePlayerName_.empty()) {
         titlePlayerName_ = "Player";
         if (scoreManager_) {
           scoreManager_->SetPlayerName(titlePlayerName_);
         }
       }
-      titleMenuIndex_ = TitleMenuItem::GameStart;
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
-    }
-  } else {
-    // メニュー項目上では SPACE, ENTER, ゲームパッドA, START で実行
-    selectTriggered = Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
-                      Input::PushKey(DIK_NUMPADENTER) ||
-                      GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
-                      GamePadInput::PushButton(XINPUT_GAMEPAD_START);
-  }
 
-  if (selectTriggered) {
-    // 名前が空ならデフォルトに設定
-    if (titlePlayerName_.empty()) {
-      titlePlayerName_ = "Player";
-      if (scoreManager_) {
-        scoreManager_->SetPlayerName(titlePlayerName_);
+      switch (titleMenuIndex_) {
+      case TitleMenuItem::GameStart:
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
+        StartGame();
+        break;
+
+      case TitleMenuItem::Ranking:
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+        FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
+        titleSubView_ = TitleSubView::Ranking;
+        break;
+
+      case TitleMenuItem::HowToPlay:
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+        titleSubView_ = TitleSubView::HowToPlay;
+        break;
+
+      case TitleMenuItem::Exit:
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
+        PostQuitMessage(0);
+        break;
+
+      default:
+        break;
       }
-    }
-
-    switch (titleMenuIndex_) {
-    case TitleMenuItem::GameStart:
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
-      StartGame();
-      break;
-
-    case TitleMenuItem::Ranking:
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
-      FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
-      titleSubView_ = TitleSubView::Ranking;
-      break;
-
-    case TitleMenuItem::HowToPlay:
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
-      titleSubView_ = TitleSubView::HowToPlay;
-      break;
-
-    case TitleMenuItem::Exit:
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
-      PostQuitMessage(0);
-      break;
-
-    default:
-      break;
     }
   }
 }
@@ -946,6 +951,7 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.titleMenuIndex = static_cast<int>(titleMenuIndex_);
   ctx.titleSubView = static_cast<int>(titleSubView_);
   ctx.titlePlayerName = &titlePlayerName_;
+  ctx.isEditingTitlePlayerName = isEditingTitlePlayerName_;
 
   gameHUD_->DrawHUD(draw, ctx);
 
@@ -1067,6 +1073,7 @@ void GameScene::ImGui() {
           scoreManager_->SetPlayerName(titlePlayerName_);
         }
       }
+      ImGui::Checkbox("名前入力中 (Space入力/Enter決定)", &isEditingTitlePlayerName_);
 
       const char *menuNames[] = {
           "0: 名前登録バー", "1: ゲームスタート", "2: ランキング確認",

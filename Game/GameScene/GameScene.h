@@ -158,6 +158,7 @@ private:
   TitleMenuItem titleMenuIndex_ = TitleMenuItem::GameStart;
   TitleSubView titleSubView_ = TitleSubView::None;
   std::string titlePlayerName_ = "Player";
+  bool isEditingTitlePlayerName_ = false;
   void UpdateTitleTextInput();
 
 public:

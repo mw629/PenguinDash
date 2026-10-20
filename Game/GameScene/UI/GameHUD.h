@@ -51,6 +51,7 @@ struct GameHUDContext {
   int titleMenuIndex = 1;
   int titleSubView = 0;
   const std::string* titlePlayerName = nullptr;
+  bool isEditingTitlePlayerName = false;
 };
 
 class GameHUD {

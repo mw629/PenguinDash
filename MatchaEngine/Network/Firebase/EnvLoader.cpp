@@ -1,4 +1,5 @@
 #include "EnvLoader.h"
+#include "EmbeddedEnv.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -23,9 +24,10 @@ std::string EnvLoader::Trim(const std::string& str) {
 bool EnvLoader::Load(const std::string& filePath) {
   envMap_.clear();
   isLoaded_ = false;
+  isEmbedded_ = false;
   loadedPath_.clear();
 
-  // 探索候補パス
+  // 1. 外部探索候補パス
   std::vector<std::string> candidatePaths = {
     filePath,
     "./" + filePath,
@@ -42,17 +44,54 @@ bool EnvLoader::Load(const std::string& filePath) {
     }
   }
 
-  if (targetPath.empty()) {
-    targetPath = filePath;
+  // 外部ファイルが見つかった場合は優先して読み込み
+  if (!targetPath.empty()) {
+    std::ifstream file(targetPath);
+    if (file.is_open()) {
+      if (ParseStream(file)) {
+        isLoaded_ = true;
+        isEmbedded_ = false;
+        loadedPath_ = targetPath;
+        return true;
+      }
+    }
   }
 
-  std::ifstream file(targetPath);
-  if (!file.is_open()) {
-    return false;
+  // 2. 外部ファイルが存在しない場合はexe埋め込み設定を使用
+  if (EmbeddedEnv::HasEmbeddedData()) {
+    std::string embedded = EmbeddedEnv::GetEmbeddedEnvContent();
+    if (!embedded.empty()) {
+      std::istringstream iss(embedded);
+      if (ParseStream(iss)) {
+        isLoaded_ = true;
+        isEmbedded_ = true;
+        loadedPath_ = "(Embedded in exe)";
+        return true;
+      }
+    }
   }
 
+  return false;
+}
+
+bool EnvLoader::LoadFromString(const std::string& content, const std::string& sourceName) {
+  envMap_.clear();
+  isLoaded_ = false;
+  isEmbedded_ = false;
+  loadedPath_.clear();
+
+  std::istringstream iss(content);
+  if (ParseStream(iss)) {
+    isLoaded_ = true;
+    loadedPath_ = sourceName;
+    return true;
+  }
+  return false;
+}
+
+bool EnvLoader::ParseStream(std::istream& stream) {
   std::string line;
-  while (std::getline(file, line)) {
+  while (std::getline(stream, line)) {
     // UTF-8 BOM の除去
     if (line.size() >= 3 &&
         static_cast<unsigned char>(line[0]) == 0xEF &&
@@ -88,8 +127,6 @@ bool EnvLoader::Load(const std::string& filePath) {
     }
   }
 
-  isLoaded_ = true;
-  loadedPath_ = targetPath;
   return true;
 }
 

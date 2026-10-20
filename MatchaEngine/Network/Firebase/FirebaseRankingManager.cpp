@@ -29,9 +29,10 @@ bool FirebaseRankingManager::Initialize(const std::string& envPath) {
   }
 
   if (IsConfigured()) {
-    lastStatusMessage_ = "初期化完了。Firebase (プロジェクト: " + projectId_ + ") への接続準備完了";
+    std::string sourceInfo = envLoader_.IsEmbedded() ? "内蔵設定" : envLoader_.GetLoadedPath();
+    lastStatusMessage_ = "初期化完了。Firebase (プロジェクト: " + projectId_ + ", ソース: " + sourceInfo + ") への接続準備完了";
   } else {
-    lastStatusMessage_ = "初期化完了。ただし " + envPath + " に FIREBASE_PROJECT_ID または FIREBASE_API_KEY が設定されていません";
+    lastStatusMessage_ = "初期化完了。ただし FIREBASE_PROJECT_ID または FIREBASE_API_KEY が設定されていません";
   }
 
   return loaded;
@@ -411,14 +412,14 @@ void FirebaseRankingManager::ImGui() {
   if (ImGui::Begin("オンラインランキング (Firebase)")) {
     ImGui::Text("=== 接続設定・ステータス ===");
     ImGui::Text("設定ファイルパス: %s", envLoader_.GetLoadedPath().c_str());
-    ImGui::Text("接続準備: %s", IsConfigured() ? "OK (設定完了)" : "未設定 (My.envを確認してください)");
+    ImGui::Text("接続準備: %s", IsConfigured() ? "OK (設定完了)" : "未設定 (My.envまたは内蔵設定を確認してください)");
     ImGui::Text("プロジェクトID: %s", projectId_.empty() ? "(未入力)" : projectId_.c_str());
     ImGui::Text("APIキー: %s", apiKey_.empty() ? "(未入力)" : MaskKey(apiKey_).c_str());
     ImGui::Text("コレクション名: %s", collectionName_.c_str());
     ImGui::Text("プレイヤー名最大文字数: %d 文字", nicknameMaxLength_);
     ImGui::Text("取得件数リミット: %d 件", rankingLimit_);
 
-    if (ImGui::Button("My.env を再読み込み")) {
+    if (ImGui::Button("設定を再読み込み (My.env / 内蔵)")) {
       Initialize("My.env");
     }
 

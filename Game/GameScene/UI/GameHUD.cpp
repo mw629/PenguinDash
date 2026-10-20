@@ -469,7 +469,11 @@ void GameHUD::DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alp
   const char *guideText = "";
   if (isPad) {
     if (ctx.gameState == State_Title) {
-      guideText = "メニュー選択: [Lスティック / 十字キー]    決定: [Aボタン]    [↑] プレイヤー名登録";
+      if (ctx.isEditingTitlePlayerName) {
+        guideText = "名前決定: [Aボタン / START]";
+      } else {
+        guideText = "メニュー選択: [Lスティック / 十字キー]    決定: [Aボタン]";
+      }
     } else if (ctx.playingState == PlayState_ThreeLane) {
       guideText = "移動: [Lスティック / 十字]    ジャンプ: [Aボタン]    スライド: [Bボタン]    ポーズ: [START]";
     } else if (ctx.playingState == PlayState_OneLane) {
@@ -479,7 +483,11 @@ void GameHUD::DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alp
     }
   } else {
     if (ctx.gameState == State_Title) {
-      guideText = "メニュー選択: [W / S] or [↑ / ↓]    決定: [ENTER / SPACE]    [↑] プレイヤー名登録";
+      if (ctx.isEditingTitlePlayerName) {
+        guideText = "名前入力: [キーボード入力]    決定: [ENTER]    削除: [BACKSPACE]";
+      } else {
+        guideText = "メニュー選択: [W / S] or [↑ / ↓]    決定: [ENTER / SPACE]";
+      }
     } else if (ctx.playingState == PlayState_ThreeLane) {
       guideText = "移動: [A/D / ← →]    ジャンプ: [SPACE / W]    スライド: [S / ↓]    ポーズ: [ESC]";
     } else if (ctx.playingState == PlayState_OneLane) {
@@ -1146,36 +1154,48 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 
   // ==========================================================
-  // 1. 名前登録バー（プレイヤーネーム入力バー）
+  // 1. 名前登録バー＆選択式メニュー（画面左下・スリムレイアウト）
   // ==========================================================
   if (menuAlpha > 0.02f) {
-    const float inputBarW = 480.0f;
-    const float inputBarH = 46.0f;
-    const float inputBarX = (screenWidth - inputBarW) * 0.5f;
-    const float inputBarY = 225.0f + elementsOffsetY;
+    const float menuLeftX = 70.0f;
+    const float menuPanelW = 230.0f;
+
+    // 1-1. 名前登録バー（プレイヤーネーム入力バー）
+    const float inputBarW = menuPanelW;
+    const float inputBarH = 44.0f;
+    const float inputBarX = menuLeftX;
+    const float inputBarY = 384.0f + elementsOffsetY;
     const bool isNameSelected = (ctx.titleMenuIndex == 0);
+    const bool isEditing = isNameSelected && ctx.isEditingTitlePlayerName;
 
     // 見出しラベル
-    const char *nameLabel = "PLAYER NAME  [ プレイヤー名登録 ]";
-    draw.DrawMSDFString(nameLabel, Vector2(inputBarX + 4.0f, inputBarY - 22.0f), 15.0f,
-                        isNameSelected ? Vector4(0.4f, 0.95f, 1.0f, menuAlpha)
-                                       : Vector4(0.65f, 0.75f, 0.85f, 0.8f * menuAlpha),
+    const char *nameLabel = isEditing ? "PLAYER NAME [ ENTER決定 ]"
+                                      : (isNameSelected ? "PLAYER NAME [ SPACE編集 ]"
+                                                        : "PLAYER NAME");
+    draw.DrawMSDFString(nameLabel, Vector2(inputBarX + 4.0f, inputBarY - 18.0f), 12.5f,
+                        isEditing ? Vector4(1.0f, 0.85f, 0.2f, menuAlpha)
+                                  : (isNameSelected ? Vector4(0.4f, 0.95f, 1.0f, menuAlpha)
+                                                    : Vector4(0.65f, 0.75f, 0.85f, 0.8f * menuAlpha)),
                         true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.08f);
 
-    // 外枠（選択時はシアン・ゴールドパルス発光）
+    // 外枠（選択時はシアンパルス発光、編集中はゴールドパルス発光）
     float pulse = 0.5f + 0.5f * sinf(ctx.uiTimer * 4.0f);
-    Vector4 borderColor = isNameSelected
-        ? Vector4(0.2f + 0.2f * pulse, 0.85f + 0.15f * pulse, 1.0f, menuAlpha)
-        : Vector4(0.25f, 0.35f, 0.45f, 0.7f * menuAlpha);
+    Vector4 borderColor = isEditing
+        ? Vector4(1.0f, 0.8f + 0.2f * pulse, 0.2f, menuAlpha)
+        : (isNameSelected
+            ? Vector4(0.2f + 0.2f * pulse, 0.85f + 0.15f * pulse, 1.0f, menuAlpha)
+            : Vector4(0.25f, 0.35f, 0.45f, 0.7f * menuAlpha));
 
     draw.DrawFillRect(Vector2(inputBarX - 2.0f, inputBarY - 2.0f),
                       Vector2(inputBarW + 4.0f, inputBarH + 4.0f),
                       borderColor);
 
     // 内側背景
-    Vector4 innerBgColor = isNameSelected
-        ? Vector4(0.06f, 0.12f, 0.22f, 0.95f * menuAlpha)
-        : Vector4(0.04f, 0.06f, 0.10f, 0.85f * menuAlpha);
+    Vector4 innerBgColor = isEditing
+        ? Vector4(0.08f, 0.15f, 0.25f, 0.98f * menuAlpha)
+        : (isNameSelected
+            ? Vector4(0.06f, 0.12f, 0.22f, 0.95f * menuAlpha)
+            : Vector4(0.04f, 0.06f, 0.10f, 0.85f * menuAlpha));
     draw.DrawFillRect(Vector2(inputBarX, inputBarY), Vector2(inputBarW, inputBarH), innerBgColor);
 
     // プレイヤー名文字列と点滅カーソル
@@ -1184,43 +1204,52 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
                                   : "Player";
     bool cursorBlink = fmodf(ctx.uiTimer, 0.8f) < 0.4f;
     std::string textWithCursor = displayName;
-    if (isNameSelected && cursorBlink) {
+    if (isEditing && cursorBlink) {
       textWithCursor += "|";
     }
 
     // "NAME:" プレフィックス
-    draw.DrawMSDFString("NAME:", Vector2(inputBarX + 16.0f, inputBarY + 11.0f), 19.0f,
-                        isNameSelected ? Vector4(0.3f, 0.9f, 1.0f, menuAlpha)
-                                       : Vector4(0.6f, 0.7f, 0.8f, 0.8f * menuAlpha),
+    draw.DrawMSDFString("NAME:", Vector2(inputBarX + 10.0f, inputBarY + 12.0f), 15.0f,
+                        isEditing ? Vector4(1.0f, 0.85f, 0.2f, menuAlpha)
+                                  : (isNameSelected ? Vector4(0.3f, 0.9f, 1.0f, menuAlpha)
+                                                    : Vector4(0.6f, 0.7f, 0.8f, 0.8f * menuAlpha)),
                         true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.07f);
 
     // プレイヤー名
-    draw.DrawMSDFString(textWithCursor, Vector2(inputBarX + 85.0f, inputBarY + 9.0f), 24.0f,
-                        isNameSelected ? Vector4(1.0f, 1.0f, 1.0f, menuAlpha)
-                                       : Vector4(0.85f, 0.9f, 0.95f, 0.9f * menuAlpha),
+    draw.DrawMSDFString(textWithCursor, Vector2(inputBarX + 60.0f, inputBarY + 10.0f), 19.0f,
+                        isEditing ? Vector4(1.0f, 0.98f, 0.6f, menuAlpha)
+                                  : (isNameSelected ? Vector4(1.0f, 1.0f, 1.0f, menuAlpha)
+                                                    : Vector4(0.85f, 0.9f, 0.95f, 0.9f * menuAlpha)),
                         true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.09f);
 
-    // 右側ガイドテキスト
-    const char *hintText = isNameSelected ? "[キーボード直接入力 / ENTER確定]" : "[↑] で編集";
-    draw.DrawMSDFString(hintText, Vector2(inputBarX + inputBarW - 225.0f, inputBarY + 13.0f), 14.0f,
-                        isNameSelected ? Vector4(0.4f, 1.0f, 0.7f, menuAlpha)
-                                       : Vector4(0.5f, 0.6f, 0.7f, 0.6f * menuAlpha),
-                        true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.06f);
+    // 選択時に右側に日本語補足ガイドを表示
+    if (isNameSelected) {
+      const char *nameSub = isEditing ? "キーボード直接入力" : "プレイヤー名登録";
+      draw.DrawMSDFString(nameSub, Vector2(inputBarX + inputBarW + 12.0f, inputBarY + 13.0f), 14.0f,
+                          isEditing ? Vector4(1.0f, 0.85f, 0.25f, 0.95f * menuAlpha)
+                                    : Vector4(0.45f, 0.92f, 1.0f, 0.9f * menuAlpha),
+                          true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.07f);
+    }
 
     // ==========================================================
-    // 2. 選択式メニュー一覧
+    // 1-2. 選択式メニュー一覧
     // ==========================================================
     const char *menuLabels[] = {
-        "1. GAME START       (ゲームスタート)",
-        "2. ONLINE RANKING   (ランキング確認)",
-        "3. HOW TO PLAY      (あそびかた)",
-        "4. EXIT             (ゲーム終了)"
+        "1. GAME START",
+        "2. RANKING",
+        "3. HOW TO PLAY",
+        "4. EXIT"
+    };
+    const char *menuSubLabels[] = {
+        "ゲームスタート",
+        "ランキング確認",
+        "あそびかた",
+        "ゲーム終了"
     };
     constexpr int kMenuCount = 4;
-    const float menuStartY = 310.0f + elementsOffsetY;
-    const float menuRowH = 50.0f;
-    const float menuPanelW = 500.0f;
-    const float menuPanelX = (screenWidth - menuPanelW) * 0.5f;
+    const float menuStartY = 456.0f + elementsOffsetY;
+    const float menuRowH = 48.0f;
+    const float menuPanelX = menuLeftX;
 
     for (int i = 0; i < kMenuCount; i++) {
       int itemIndex = i + 1; // 0 は PlayerName
@@ -1232,7 +1261,7 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
         draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 42.0f),
                           Vector4(0.10f, 0.28f, 0.55f, 0.88f * menuAlpha));
         // 左アクセントバー
-        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(6.0f, 42.0f),
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(5.0f, 42.0f),
                           Vector4(1.0f, 0.85f, 0.2f, menuAlpha));
         // 上下ボーダー
         draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 1.5f),
@@ -1241,21 +1270,28 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
                           Vector4(0.3f, 0.8f, 1.0f, 0.7f * menuAlpha));
 
         // カーソル記号
-        draw.DrawMSDFString("▶", Vector2(menuPanelX + 16.0f, rowY + 8.0f), 22.0f,
+        draw.DrawMSDFString("▶", Vector2(menuPanelX + 10.0f, rowY + 9.0f), 19.0f,
                             Vector4(1.0f, 0.85f, 0.2f, menuAlpha), true,
                             Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.10f);
 
         // テキスト
-        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 44.0f, rowY + 8.0f), 22.0f,
+        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 9.0f), 19.0f,
                             Vector4(1.0f, 0.96f, 0.5f, menuAlpha), true,
                             Vector4(0.05f, 0.15f, 0.3f, menuAlpha), 0.12f);
+
+        // 選択中項目の右側に日本語補足を表示
+        draw.DrawMSDFString(menuSubLabels[i],
+                            Vector2(menuPanelX + menuPanelW + 12.0f, rowY + 11.0f),
+                            14.0f,
+                            Vector4(0.45f, 0.92f, 1.0f, 0.9f * menuAlpha), true,
+                            Vector4(0.0f, 0.0f, 0.0f, 0.9f * menuAlpha), 0.07f);
       } else {
         // 非選択行背景（うっすら）
         draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 42.0f),
                           Vector4(0.03f, 0.05f, 0.09f, 0.45f * menuAlpha));
 
         // テキスト
-        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 44.0f, rowY + 9.0f), 21.0f,
+        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 10.0f), 18.0f,
                             Vector4(0.75f, 0.85f, 0.95f, 0.75f * menuAlpha), true,
                             Vector4(0.0f, 0.0f, 0.0f, 0.75f * menuAlpha), 0.08f);
       }
@@ -1263,18 +1299,13 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 
   // ==========================================================
-  // 3. サブモーダル表示（ランキング / 操作説明）
+  // 2. サブモーダル表示（ランキング / 操作説明）
   // ==========================================================
   if (ctx.titleSubView == 1) {
     DrawTitleRankingModal(draw, ctx);
   } else if (ctx.titleSubView == 2) {
     DrawTitleHowToPlayModal(draw, ctx);
   }
-
-  float guideAlpha = ctx.isTitleExiting
-                         ? std::clamp(1.0f - (ctx.titleExitTimer / kTitleExitGuideDuration), 0.0f, 1.0f)
-                         : mainAlpha;
-  DrawControlsGuide(draw, ctx, guideAlpha);
 }
 
 void GameHUD::DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx) {

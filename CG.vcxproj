@@ -89,6 +89,9 @@
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
@@ -118,6 +121,9 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
@@ -150,6 +156,9 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
@@ -513,6 +522,7 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.h" />
     <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.h" />
     <ClInclude Include="MatchaEngine\Network\Firebase\EnvLoader.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\EmbeddedEnv.h" />
     <ClInclude Include="MatchaEngine\Network\Firebase\HttpClient.h" />
     <ClInclude Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.h" />
   </ItemGroup>
