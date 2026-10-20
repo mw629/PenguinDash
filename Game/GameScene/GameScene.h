@@ -134,10 +134,31 @@ public:
   bool LoadSettingsFromJson(const std::string &fileName = "GameSceneSettings");
   void ResetSettingsToDefault();
 
-private:
   char settingsFileName_[128] = "GameSceneSettings";
   std::string settingsStatusMessage_ = "";
   float settingsStatusTimer_ = 0.0f;
+
+public:
+  enum class TitleMenuItem {
+    PlayerName = 0,
+    GameStart,
+    Ranking,
+    HowToPlay,
+    Exit,
+    Count
+  };
+
+  enum class TitleSubView {
+    None = 0,
+    Ranking,
+    HowToPlay
+  };
+
+private:
+  TitleMenuItem titleMenuIndex_ = TitleMenuItem::GameStart;
+  TitleSubView titleSubView_ = TitleSubView::None;
+  std::string titlePlayerName_ = "Player";
+  void UpdateTitleTextInput();
 
 public:
   class ScoreManager* GetScoreManager() { return scoreManager_.get(); }

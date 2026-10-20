@@ -252,6 +252,12 @@ void GameScene::ReturnToTitle() {
   stageSettings_->SetSpawningPaused(false);
   gameState_ = GameState::Title;
 
+  titleSubView_ = TitleSubView::None;
+  titleMenuIndex_ = TitleMenuItem::GameStart;
+  if (scoreManager_) {
+    titlePlayerName_ = scoreManager_->GetPlayerName();
+  }
+
   titleDirector_->Reset();
   SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Title);
 }
@@ -506,6 +512,73 @@ void GameScene::PlayingUpdate() {
   CheckCollisions();
 }
 
+void GameScene::UpdateTitleTextInput() {
+  bool isShift = Input::PressKey(DIK_LSHIFT) || Input::PressKey(DIK_RSHIFT);
+
+  // A - Z
+  static const struct {
+    uint32_t key;
+    char lower;
+    char upper;
+  } kAlphabetKeys[] = {
+    {DIK_A, 'a', 'A'}, {DIK_B, 'b', 'B'}, {DIK_C, 'c', 'C'}, {DIK_D, 'd', 'D'},
+    {DIK_E, 'e', 'E'}, {DIK_F, 'f', 'F'}, {DIK_G, 'g', 'G'}, {DIK_H, 'h', 'H'},
+    {DIK_I, 'i', 'I'}, {DIK_J, 'j', 'J'}, {DIK_K, 'k', 'K'}, {DIK_L, 'l', 'L'},
+    {DIK_M, 'm', 'M'}, {DIK_N, 'n', 'N'}, {DIK_O, 'o', 'O'}, {DIK_P, 'p', 'P'},
+    {DIK_Q, 'q', 'Q'}, {DIK_R, 'r', 'R'}, {DIK_S, 's', 'S'}, {DIK_T, 't', 'T'},
+    {DIK_U, 'u', 'U'}, {DIK_V, 'v', 'V'}, {DIK_W, 'w', 'W'}, {DIK_X, 'x', 'X'},
+    {DIK_Y, 'y', 'Y'}, {DIK_Z, 'z', 'Z'}
+  };
+
+  // 0 - 9
+  static const struct {
+    uint32_t key;
+    char num;
+  } kNumberKeys[] = {
+    {DIK_0, '0'}, {DIK_1, '1'}, {DIK_2, '2'}, {DIK_3, '3'}, {DIK_4, '4'},
+    {DIK_5, '5'}, {DIK_6, '6'}, {DIK_7, '7'}, {DIK_8, '8'}, {DIK_9, '9'},
+    {DIK_NUMPAD0, '0'}, {DIK_NUMPAD1, '1'}, {DIK_NUMPAD2, '2'}, {DIK_NUMPAD3, '3'},
+    {DIK_NUMPAD4, '4'}, {DIK_NUMPAD5, '5'}, {DIK_NUMPAD6, '6'}, {DIK_NUMPAD7, '7'},
+    {DIK_NUMPAD8, '8'}, {DIK_NUMPAD9, '9'}
+  };
+
+  constexpr size_t kMaxNameLength = 14;
+
+  bool textChanged = false;
+  if (titlePlayerName_.size() < kMaxNameLength) {
+    for (const auto &entry : kAlphabetKeys) {
+      if (Input::PushKey(entry.key)) {
+        titlePlayerName_.push_back(isShift ? entry.upper : entry.lower);
+        textChanged = true;
+      }
+    }
+    for (const auto &entry : kNumberKeys) {
+      if (Input::PushKey(entry.key)) {
+        titlePlayerName_.push_back(entry.num);
+        textChanged = true;
+      }
+    }
+    if (Input::PushKey(DIK_MINUS)) {
+      titlePlayerName_.push_back(isShift ? '_' : '-');
+      textChanged = true;
+    }
+    if (Input::PushKey(DIK_SPACE)) {
+      titlePlayerName_.push_back(' ');
+      textChanged = true;
+    }
+  }
+
+  // Backspace で1文字削除
+  if (Input::PushKey(DIK_BACKSPACE) && !titlePlayerName_.empty()) {
+    titlePlayerName_.pop_back();
+    textChanged = true;
+  }
+
+  if (textChanged && scoreManager_) {
+    scoreManager_->SetPlayerName(titlePlayerName_);
+  }
+}
+
 void GameScene::TitleUpdate() {
   float timeScale = EditorManager::GetPlaySpeed();
   float speedMultiplier = 1.0f;
@@ -529,11 +602,126 @@ void GameScene::TitleUpdate() {
     if (titleDirector_->IsGoStarted()) {
       StartPlaying();
     }
+    return;
+  }
+
+  // ==========================================================
+  // モーダル表示中（ランキング または 操作説明）の入力処理
+  // ==========================================================
+  if (titleSubView_ != TitleSubView::None) {
+    bool closeTriggered =
+        Input::PushKey(DIK_ESCAPE) || Input::PushKey(DIK_SPACE) ||
+        Input::PushKey(DIK_RETURN) || Input::PushKey(DIK_NUMPADENTER) ||
+        GamePadInput::PushButton(XINPUT_GAMEPAD_B) ||
+        GamePadInput::PushButton(XINPUT_GAMEPAD_A);
+
+    if (closeTriggered) {
+      titleSubView_ = TitleSubView::None;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
+    }
+    return;
+  }
+
+  // ==========================================================
+  // タイトル画面のメニュー選択・名前登録入力処理
+  // ==========================================================
+  // 1. 名前登録バー選択中の文字入力
+  if (titleMenuIndex_ == TitleMenuItem::PlayerName) {
+    UpdateTitleTextInput();
+  }
+
+  // 2. 上下カーソル移動
+  bool moveUp = false;
+  bool moveDown = false;
+
+  if (titleMenuIndex_ == TitleMenuItem::PlayerName) {
+    // 名前入力中は、W/Sは文字入力に使うため、矢印キーやパッド、Enterで移動
+    moveUp = Input::PushKey(DIK_UP) ||
+             GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+             GamePadInput::PushLeftStickUp();
+    moveDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_RETURN) ||
+               Input::PushKey(DIK_NUMPADENTER) ||
+               GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+               GamePadInput::PushLeftStickDown();
   } else {
-    if (Input::PushKey(DIK_SPACE) ||
-        GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
-        GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
+    // 通常メニュー項目選択中は、W/S や 矢印キー、パッドで移動可能
+    moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
+             GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+             GamePadInput::PushLeftStickUp();
+    moveDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
+               GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+               GamePadInput::PushLeftStickDown();
+  }
+
+  constexpr int kMenuCount = static_cast<int>(TitleMenuItem::Count);
+  if (moveUp) {
+    int cur = static_cast<int>(titleMenuIndex_);
+    cur = (cur - 1 + kMenuCount) % kMenuCount;
+    titleMenuIndex_ = static_cast<TitleMenuItem>(cur);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+  } else if (moveDown) {
+    int cur = static_cast<int>(titleMenuIndex_);
+    cur = (cur + 1) % kMenuCount;
+    titleMenuIndex_ = static_cast<TitleMenuItem>(cur);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+  }
+
+  // 3. 決定操作
+  bool selectTriggered = false;
+  if (titleMenuIndex_ == TitleMenuItem::PlayerName) {
+    // 名前入力バーでは Enter または Aボタン で確定して GameStart へ進む
+    if (Input::PushKey(DIK_RETURN) || Input::PushKey(DIK_NUMPADENTER) ||
+        GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+      if (titlePlayerName_.empty()) {
+        titlePlayerName_ = "Player";
+        if (scoreManager_) {
+          scoreManager_->SetPlayerName(titlePlayerName_);
+        }
+      }
+      titleMenuIndex_ = TitleMenuItem::GameStart;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
+    }
+  } else {
+    // メニュー項目上では SPACE, ENTER, ゲームパッドA, START で実行
+    selectTriggered = Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
+                      Input::PushKey(DIK_NUMPADENTER) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_START);
+  }
+
+  if (selectTriggered) {
+    // 名前が空ならデフォルトに設定
+    if (titlePlayerName_.empty()) {
+      titlePlayerName_ = "Player";
+      if (scoreManager_) {
+        scoreManager_->SetPlayerName(titlePlayerName_);
+      }
+    }
+
+    switch (titleMenuIndex_) {
+    case TitleMenuItem::GameStart:
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
       StartGame();
+      break;
+
+    case TitleMenuItem::Ranking:
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+      FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
+      titleSubView_ = TitleSubView::Ranking;
+      break;
+
+    case TitleMenuItem::HowToPlay:
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+      titleSubView_ = TitleSubView::HowToPlay;
+      break;
+
+    case TitleMenuItem::Exit:
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
+      PostQuitMessage(0);
+      break;
+
+    default:
+      break;
     }
   }
 }
@@ -739,6 +927,11 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.isOnlineRankingFetching = rankingMgr->IsFetching();
   ctx.isOnlineRankingConfigured = rankingMgr->IsConfigured();
 
+  // タイトル画面メニュー＆名前登録
+  ctx.titleMenuIndex = static_cast<int>(titleMenuIndex_);
+  ctx.titleSubView = static_cast<int>(titleSubView_);
+  ctx.titlePlayerName = &titlePlayerName_;
+
   gameHUD_->DrawHUD(draw, ctx);
 
   // タイトル演出ペンギン疾走の描画
@@ -846,6 +1039,36 @@ void GameScene::ImGui() {
 
     // タイトル設定
     titleDirector_->ImGui();
+
+    // タイトルメニュー・プレイヤー名デバッグ設定
+    if (gameState_ == GameState::Title &&
+        ImGui::CollapsingHeader("タイトルメニュー・プレイヤー名設定",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+      char nameBuf[32];
+      snprintf(nameBuf, sizeof(nameBuf), "%s", titlePlayerName_.c_str());
+      if (ImGui::InputText("登録プレイヤー名", nameBuf, sizeof(nameBuf))) {
+        titlePlayerName_ = nameBuf;
+        if (scoreManager_) {
+          scoreManager_->SetPlayerName(titlePlayerName_);
+        }
+      }
+
+      const char *menuNames[] = {
+          "0: 名前登録バー", "1: ゲームスタート", "2: ランキング確認",
+          "3: 操作説明", "4: ゲーム終了"};
+      int curMenuIdx = static_cast<int>(titleMenuIndex_);
+      if (ImGui::Combo("選択中メニュー項目", &curMenuIdx, menuNames,
+                       IM_ARRAYSIZE(menuNames))) {
+        titleMenuIndex_ = static_cast<TitleMenuItem>(curMenuIdx);
+      }
+
+      const char *subViewNames[] = {"なし", "オンラインランキング", "操作説明"};
+      int curSubView = static_cast<int>(titleSubView_);
+      if (ImGui::Combo("モーダルサブビュー", &curSubView, subViewNames,
+                       IM_ARRAYSIZE(subViewNames))) {
+        titleSubView_ = static_cast<TitleSubView>(curSubView);
+      }
+    }
 
     // サウンド設定
     if (ImGui::CollapsingHeader("サウンド設定",

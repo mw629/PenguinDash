@@ -47,6 +47,10 @@ struct GameHUDContext {
   bool isOnlineRankingSending = false;
   bool isOnlineRankingFetching = false;
   bool isOnlineRankingConfigured = false;
+  // タイトル画面用メニュー・名前登録・サブビュー
+  int titleMenuIndex = 1;
+  int titleSubView = 0;
+  const std::string* titlePlayerName = nullptr;
 };
 
 class GameHUD {
@@ -223,6 +227,8 @@ private:
   void DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawTitleHUD(Draw &draw, const GameHUDContext &ctx);
+  void DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx);
+  void DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx);
   void DrawEditorHUD(Draw &draw, const GameHUDContext &ctx);
   void DrawBadgeFPV(Draw &draw);
 
