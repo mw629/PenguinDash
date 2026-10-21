@@ -5,7 +5,6 @@
 #include <imgui.h>
 #endif
 
-// コンストラクタ
 TcpNetworkClient::TcpNetworkClient() {
 	// WSAStartup関数を呼び出す
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -14,7 +13,6 @@ TcpNetworkClient::TcpNetworkClient() {
 	}
 }
 
-// デストラクタ
 TcpNetworkClient::~TcpNetworkClient() {
 	if (clientSocket != INVALID_SOCKET) {
 		closesocket(clientSocket);
@@ -22,7 +20,6 @@ TcpNetworkClient::~TcpNetworkClient() {
 	WSACleanup();
 }
 
-// ImGuiによるTCP接続設定ウィンドウの描画
 void TcpNetworkClient::ImGuiConnectWindow(bool* p_open) {
 #ifdef _USE_IMGUI
 	ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_FirstUseEver);
@@ -46,7 +43,6 @@ void TcpNetworkClient::ImGuiConnectWindow(bool* p_open) {
 #endif
 }
 
-// サーバーへTCP接続
 void TcpNetworkClient::Connect() {
 	// 文字列を接続先情報にする
 	hints.ai_family = AF_INET;       // IPv4
@@ -68,11 +64,11 @@ void TcpNetworkClient::Connect() {
 	}
 }
 
-// 接続切断
 void TcpNetworkClient::Disconnect() {
 	closesocket(clientSocket);
 	clientSocket = INVALID_SOCKET;
 	connected = false;
 }
+
 
 

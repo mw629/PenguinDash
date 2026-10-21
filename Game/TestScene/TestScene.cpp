@@ -5,12 +5,10 @@
 #include <memory>
 #include <cmath>
 
-// デストラクタ
 TestScene::~TestScene()
 {
 }
 
-// ImGuiデバッグウィンドウの描画
 void TestScene::ImGui()
 {
 #ifdef _USE_IMGUI
@@ -83,7 +81,6 @@ void TestScene::ImGui()
 #endif // _USE_IMGUI
 }
 
-// テストシーンの初期化
 void TestScene::Initialize() {
 
 	sceneID_ = SceneID::Test;
@@ -234,7 +231,6 @@ void TestScene::Initialize() {
 	}
 }
 
-// 毎フレーム更新処理
 void TestScene::Update() {
 
 	camera_.get()->Update();
@@ -317,7 +313,6 @@ void TestScene::Update() {
 	axe_->SettingWvp(view);
 }
 
-// テストシーンの描画処理
 void TestScene::Draw(class Draw& draw) {
 	draw.SetCamera(camera_.get());
 	draw.SetEnvironmentTexture(skyBoxTexture_);

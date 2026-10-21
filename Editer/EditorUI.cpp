@@ -17,7 +17,6 @@
 #include "../MatchaEngine/GameObjects/Light/PointLight.h"
 #include "../MatchaEngine/GameObjects/Light/SpotLight.h"
 
-// マウスレイキャストによるオブジェクト選択（ピッキング）処理
 void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const Matrix4x4& view, const Matrix4x4& projection) {
 #ifdef _USE_IMGUI
     if (!gameObjectManager) return;
@@ -116,7 +115,6 @@ void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const M
 #endif
 }
 
-// 選択オブジェクトのトランスフォームギズモ描画と操作受付
 void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
 #ifdef _USE_IMGUI
     if (!selectedObject_ || selectedObject_->GetIsLocked()) return;
@@ -196,7 +194,6 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
 #endif
 }
 
-// エディタUI全体の描画と更新
 void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view, const Matrix4x4& projection)
 {
 #ifdef _USE_IMGUI
@@ -441,3 +438,4 @@ void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view,
     ImGui::End();
 #endif
 }
+

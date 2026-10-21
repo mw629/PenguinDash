@@ -9,7 +9,6 @@
 #include "Calculation.h"
 #include "Draw.h"
 
-// ImGuiデバッグUIの描画処理
 void JsonScene::ImGui()
 {
 #ifdef _USE_IMGUI
@@ -77,7 +76,6 @@ void JsonScene::ImGui()
 #endif
 }
 
-// JSONシーンの初期化
 void JsonScene::Initialize()
 {
 	sceneID_ = SceneID::Json;
@@ -140,7 +138,6 @@ void JsonScene::Initialize()
 #endif
 }
 
-// 毎フレームの更新処理
 void JsonScene::Update()
 {
 	if (showInitJsonSelectPopup_) {
@@ -157,7 +154,6 @@ void JsonScene::Update()
 	gameObjectManager_->UpdateAll(view_, speedMultiplier);
 }
 
-// 3Dオブジェクトの描画処理
 void JsonScene::Draw(class Draw& draw)
 {
 	if (showInitJsonSelectPopup_) {
@@ -167,3 +163,4 @@ void JsonScene::Draw(class Draw& draw)
 	draw.SetCamera(camera_.get());
 	gameObjectManager_->DrawAll(draw);
 }
+

@@ -6,7 +6,6 @@
 #include "../Editer/EditorManager.h"
 #include <imgui.h>
 
-// コンストラクタ
 SceneManager::SceneManager()
 {
 	// 最初のシーンをJsonSceneに設定
@@ -14,14 +13,12 @@ SceneManager::SceneManager()
 	Initialize();
 }
 
-// シーン管理のImGuiデバッグUI描画
 void SceneManager::ImGui() {
 	if (scene_) {
 		scene_->ImGui();
 	}
 }
 
-// 初期シーンの生成と初期化
 void SceneManager::Initialize() {
 	FreezeTransition::GetInstance()->Initialize();
 	if (scene_) {
@@ -29,7 +26,6 @@ void SceneManager::Initialize() {
 	}
 }
 
-// 更新前の事前処理
 void SceneManager::PreUpdate() {
 	auto* transition = FreezeTransition::GetInstance();
 	transition->Update();
@@ -40,7 +36,6 @@ void SceneManager::PreUpdate() {
 	}
 }
 
-// 氷結・破砕演出付きのシーン切り替え
 void SceneManager::ChangeScene(int nextSceneID) {
 	if (isTransitioning_) return;
 	isTransitioning_ = true;
@@ -54,21 +49,18 @@ void SceneManager::ChangeScene(int nextSceneID) {
 	});
 }
 
-// シーンおよび画面遷移の更新処理
 void SceneManager::Update() {
 	if (scene_) {
 		scene_->Update();
 	}
 }
 
-// 現在のシーンの3Dオブジェクト描画処理
 void SceneManager::Draw(class Draw& draw) {
 	if (scene_) {
 		scene_->Draw(draw);
 	}
 }
 
-// 現在のシーンの2D UI描画処理
 void SceneManager::DrawUI(class Draw& draw) {
 	if (scene_) {
 		scene_->DrawUI(draw);
@@ -78,7 +70,6 @@ void SceneManager::DrawUI(class Draw& draw) {
 	}
 }
 
-// 毎フレームの更新と描画の一括実行
 void SceneManager::Run(class Draw& draw)
 {
 	ImGui();
@@ -86,7 +77,6 @@ void SceneManager::Run(class Draw& draw)
 	Draw(draw);
 }
 
-// 指定IDに応じたシーンインスタンスを生成
 std::unique_ptr<IScene> SceneManager::CreateScene(int sceneID)
 {
 	switch (sceneID) {
@@ -96,3 +86,4 @@ std::unique_ptr<IScene> SceneManager::CreateScene(int sceneID)
 	default: return nullptr;
 	}
 }
+

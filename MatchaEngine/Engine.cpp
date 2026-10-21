@@ -18,10 +18,8 @@
 
 bool Engine::isEnd_ = false;
 
-// デストラクタ
 Engine::~Engine() {}
 
-// エンジン本体のコンストラクタ
 Engine::Engine(int32_t kClientWidth, int32_t kClientHeight) {
   kClientWidth_ = kClientWidth;
   kClientHeight_ = kClientHeight;
@@ -70,7 +68,6 @@ Engine::Engine(int32_t kClientWidth, int32_t kClientHeight) {
   tcpNetworkClient = std::make_unique<TcpNetworkClient>();
 }
 
-// エンジンの各種初期設定（ウィンドウ、入力、D3D12環境、ポストプロセスなど）
 void Engine::Setting() {
 
   window.DrawWindow(kClientWidth_, kClientHeight_);
@@ -230,7 +227,6 @@ void Engine::Setting() {
   postEffects_.push_back(std::move(fogEffect));
 }
 
-// ポストプロセスチェーンの適用およびUI描画
 void Engine::PostDraw(const std::function<void()> &drawUI) {
   // Draw all lines using the active camera from Draw class
   draw->DrawAllLines(lineRenderer.get());
@@ -338,7 +334,6 @@ RenderTexture *Engine::GetFinalRenderTexture() {
   return renderTextures[finalIndex].get();
 }
 
-// 新規フレーム開始処理（描画コマンドリストのリセットとレンダーターゲット準備）
 void Engine::NewFrame() {
 
   RECT clientRect;
@@ -438,7 +433,6 @@ void Engine::NewFrame() {
   }
 }
 
-// フレーム終了処理（ポストエフェクト実行・バックバッファへのブリット・画面表示）
 void Engine::EndFrame(const std::function<void()> &drawUI) {
 
   PostDraw(drawUI);
@@ -491,7 +485,6 @@ void Engine::EndFrame(const std::function<void()> &drawUI) {
   }
 }
 
-// GPUコマンドの完了を待機
 void Engine::FlushGpu() {
   // 蓄積されたコマンドリストを確定してキック
   hr_ = command->GetCommandList()->Close();
@@ -525,7 +518,6 @@ void Engine::FlushGpu() {
   }
 }
 
-// エンジン終了処理
 void Engine::End() {
 
   Audio::Finalize();
@@ -541,7 +533,6 @@ void Engine::End() {
   window.Finalize();
 }
 
-// 60FPS固定化更新処理
 void Engine::UpdateFixFPS() {
   constexpr float kMicrosecondsPerSecond = 1000000.0f;
   const std::chrono::microseconds kMinTime(uint64_t(kMicrosecondsPerSecond / kTargetFPS));
@@ -561,7 +552,6 @@ void Engine::UpdateFixFPS() {
   reference_ = std::chrono::steady_clock::now();
 }
 
-// プロセスの物理メモリ使用量を取得
 size_t Engine::GetProcessMemoryUsage() {
   PROCESS_MEMORY_COUNTERS_EX pmc{};
   if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *)&pmc,
@@ -571,7 +561,6 @@ size_t Engine::GetProcessMemoryUsage() {
   return 0;
 }
 
-// エンジン情報のImGuiデバッグウィンドウ描画
 void Engine::ImGui() {
 #ifdef _USE_IMGUI
   if (tcpNetworkClient) {

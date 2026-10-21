@@ -11,7 +11,6 @@
 #include <cstdlib>
 #include <imgui.h>
 
-// カウントダウンスプライト等のリソース初期化
 void TitleDirector::Initialize(Texture *texture) {
   if (!texture)
     return;
@@ -43,7 +42,6 @@ void TitleDirector::Initialize(Texture *texture) {
   }
 }
 
-// タイトル演出状態のリセット
 void TitleDirector::Reset() {
   countdownMode_ = CountdownMode::None;
   countdownTimer_ = 0.0f;
@@ -53,7 +51,6 @@ void TitleDirector::Reset() {
   titleCameraAngle_ = 0.0f;
 }
 
-// タイトル画面からゲーム開始演出（カウントダウン）を開始
 void TitleDirector::StartExit(const Transform &currentCamTransform) {
   if (countdownMode_ != CountdownMode::None)
     return;
@@ -66,7 +63,6 @@ void TitleDirector::StartExit(const Transform &currentCamTransform) {
   titleExitStartCamTransform_ = currentCamTransform;
 }
 
-// リスタート時のカウントダウン演出を開始
 void TitleDirector::StartRestartCountdown() {
   countdownMode_ = CountdownMode::Restart;
   prepDuration_ = kRestartPrepDuration; // 0.6s: 画面切り替え直後にしっかり間を持たせる！
@@ -75,7 +71,6 @@ void TitleDirector::StartRestartCountdown() {
   lastCountStep_ = -1; // 準備ディレイ終了後に初めて「3」のSEを鳴らす
 }
 
-// カウントダウンタイマーおよびスプライトアニメーションの更新
 void TitleDirector::UpdateCountdown(float dt) {
   if (countdownMode_ == CountdownMode::None)
     return;
@@ -104,7 +99,6 @@ void TitleDirector::UpdateCountdown(float dt) {
   }
 }
 
-// タイトル演出が完全に終了したかを判定
 bool TitleDirector::IsExitComplete(StageSettings *stageSettings) const {
   if (countdownMode_ != CountdownMode::TitleExit)
     return false;
@@ -124,7 +118,6 @@ bool TitleDirector::IsExitComplete(StageSettings *stageSettings) const {
          (countdownTimer_ >= kTitleExitDuration + kExitTimeoutOffset);
 }
 
-// タイトル画面でのペンギン自動操縦（オートパイロットAI）の更新
 void TitleDirector::UpdateAutoPilot(Player *player,
                                     StageSettings *stageSettings) {
   if (!player || !stageSettings)
@@ -269,7 +262,6 @@ void TitleDirector::UpdateAutoPilot(Player *player,
   }
 }
 
-// タイトル画面での衝突判定（ボーナス等）
 void TitleDirector::CheckCollisions(Player *player,
                                     StageSettings *stageSettings,
                                     ScoreManager *scoreManager) {
@@ -301,7 +293,6 @@ void TitleDirector::CheckCollisions(Player *player,
   }
 }
 
-// タイトル画面のカメラ更新（オービット回転またはゲーム開始トランジション）
 void TitleDirector::UpdateCamera(Player *player,
                                  GameCameraController *cameraController,
                                  float dt) {
@@ -372,7 +363,6 @@ void TitleDirector::UpdateCamera(Player *player,
   cameraController->SetTransform(camTransform);
 }
 
-// カウントダウン演出（3, 2, 1, GO!）の描画
 void TitleDirector::DrawCountdown(Draw &draw) {
   if (countdownMode_ == CountdownMode::None)
     return;
@@ -462,7 +452,6 @@ void TitleDirector::DrawCountdown(Draw &draw) {
   }
 }
 
-// ImGuiデバッグ設定の描画
 void TitleDirector::ImGui() {
 #ifdef _USE_IMGUI
   if (ImGui::CollapsingHeader("タイトル周回カメラ設定",
@@ -478,3 +467,4 @@ void TitleDirector::ImGui() {
   }
 #endif
 }
+

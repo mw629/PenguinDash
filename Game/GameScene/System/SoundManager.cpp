@@ -4,13 +4,11 @@
 #include <cmath>
 #include <algorithm>
 
-// シングルトンインスタンスの取得
 SoundManager* SoundManager::GetInstance() {
     static SoundManager instance;
     return &instance;
 }
 
-// サウンドアセット（BGM/SE）の読み込み・初期化
 void SoundManager::Initialize() {
     if (isInitialized_) return;
 
@@ -41,13 +39,11 @@ void SoundManager::Initialize() {
     isInitialized_ = true;
 }
 
-// 再生中サウンドの停止と解放処理
 void SoundManager::Finalize() {
     StopBGM();
     isInitialized_ = false;
 }
 
-// EffectiveBGMVolume を取得
 float SoundManager::GetEffectiveBGMVolume() const {
     auto* gsm = GameSceneManager::GetInstance();
     float vol = gsm->GetMasterVolume() * gsm->GetBGMVolume();
@@ -62,14 +58,12 @@ float SoundManager::GetEffectiveBGMVolume() const {
     return std::clamp(vol, 0.0f, 1.0f);
 }
 
-// EffectiveSEVolume を取得
 float SoundManager::GetEffectiveSEVolume(float volumeMultiplier) const {
     auto* gsm = GameSceneManager::GetInstance();
     float vol = gsm->GetMasterVolume() * gsm->GetSEVolume() * volumeMultiplier;
     return std::clamp(vol, 0.0f, 1.0f);
 }
 
-// 指定BGMの再生
 void SoundManager::PlayBGM(BGM bgm, bool loop) {
     if (!isInitialized_) Initialize();
 
@@ -96,7 +90,6 @@ void SoundManager::PlayBGM(BGM bgm, bool loop) {
     }
 }
 
-// 現在再生中のBGMを停止
 void SoundManager::StopBGM() {
     if (currentBgmHandle_ >= 0) {
         Audio::Stop(currentBgmHandle_);
@@ -106,7 +99,6 @@ void SoundManager::StopBGM() {
     isBgmPaused_ = false;
 }
 
-// 現在再生中のBGMを一時停止
 void SoundManager::PauseBGM() {
     if (currentBgmHandle_ >= 0 && !isBgmPaused_) {
         Audio::Stop(currentBgmHandle_);
@@ -114,7 +106,6 @@ void SoundManager::PauseBGM() {
     }
 }
 
-// 一時停止中のBGMを再開
 void SoundManager::ResumeBGM() {
     if (currentBgmHandle_ >= 0 && isBgmPaused_) {
         float vol = GetEffectiveBGMVolume();
@@ -123,7 +114,6 @@ void SoundManager::ResumeBGM() {
     }
 }
 
-// 効果音（SE）の再生
 void SoundManager::PlaySE(SE se, float volumeMultiplier) {
     if (!isInitialized_) Initialize();
 
@@ -141,7 +131,6 @@ void SoundManager::PlaySE(SE se, float volumeMultiplier) {
     }
 }
 
-// 指定SEの停止
 void SoundManager::StopSE(SE se) {
     int seIdx = static_cast<int>(se);
     if (seIdx < 0 || seIdx >= static_cast<int>(SE::Count)) return;
@@ -152,7 +141,6 @@ void SoundManager::StopSE(SE se) {
     }
 }
 
-// 全SEの停止
 void SoundManager::StopAllSE() {
     for (int i = 0; i < static_cast<int>(SE::Count); ++i) {
         int handle = seHandles_[i];
@@ -162,13 +150,11 @@ void SoundManager::StopAllSE() {
     }
 }
 
-// 全BGMおよび全SEの停止
 void SoundManager::StopAll() {
     StopBGM();
     StopAllSE();
 }
 
-// 音量設定の毎フレーム更新
 void SoundManager::Update() {
     if (currentBgmHandle_ >= 0) {
         float currentVol = GetEffectiveBGMVolume();
@@ -178,3 +164,4 @@ void SoundManager::Update() {
         }
     }
 }
+

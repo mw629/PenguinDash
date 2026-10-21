@@ -4,14 +4,12 @@
 #include <cstdlib>
 #include <imgui.h>
 
-// コンストラクタ
 GameSceneEffect::GameSceneEffect() {
   dustEffect_ = std::make_unique<Emitter>();
   snowEffect_ = std::make_unique<Emitter>();
   barrier_ = std::make_unique<HexBarrier>();
 }
 
-// エフェクト（雪、砂埃、六角形バリア等）の初期化
 void GameSceneEffect::Initialize() {
   // 六角形バリアの初期化
   if (barrier_) {
@@ -38,7 +36,6 @@ void GameSceneEffect::Initialize() {
   snowEffect_->SetSaveFileName("Snowparticle");
 }
 
-// ゲームプレイ中のエフェクト更新（パーティクル放出・バリア追従）
 void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,
                                     const Vector3 &playerPos) {
   UpdateBarrier(view, playerPos);
@@ -52,7 +49,6 @@ void GameSceneEffect::PlayingUpdate(const Matrix4x4 &view,
   }
 }
 
-// プレイヤー被弾時のエフェクト更新
 void GameSceneEffect::PlayerHitUpdate(const Matrix4x4 &view) {
   UpdateBarrier(view, lastPlayerPos_);
   if (dustEffect_) {
@@ -63,7 +59,6 @@ void GameSceneEffect::PlayerHitUpdate(const Matrix4x4 &view) {
   }
 }
 
-// エディターモード時のエフェクト更新
 void GameSceneEffect::EditorUpdate(const Matrix4x4 &view) {
   UpdateBarrier(view, lastPlayerPos_);
   if (dustEffect_) {
@@ -74,7 +69,6 @@ void GameSceneEffect::EditorUpdate(const Matrix4x4 &view) {
   }
 }
 
-// 走行時の雪煙・砂埃パーティクルの発生
 void GameSceneEffect::EmitDust(const Vector3 &playerPos) {
   EmitterData ed = dustEffect_->GetEmitterData();
   ed.transform.translate = playerPos;
@@ -85,7 +79,6 @@ void GameSceneEffect::EmitDust(const Vector3 &playerPos) {
 
 
 
-// 氷バリアの展開演出を開始
 void GameSceneEffect::EmitBarrier(const Vector3 &playerPos) {
   barrierState_ = BarrierEffectState::Deploying;
   barrierDeployTimer_ = 0.0f;
@@ -93,24 +86,20 @@ void GameSceneEffect::EmitBarrier(const Vector3 &playerPos) {
   lastPlayerPos_ = playerPos;
 }
 
-// 氷バリアの破壊・破散演出を開始
 void GameSceneEffect::BreakBarrier(const Vector3 &playerPos) {
   barrierState_ = BarrierEffectState::Breaking;
   barrierBreakTimer_ = 0.0f;
   lastPlayerPos_ = playerPos;
 }
 
-// 氷バリアを即時消去
 void GameSceneEffect::ClearBarrier() {
   barrierState_ = BarrierEffectState::Inactive;
 }
 
-// バリアが展開中または有効状態かどうかを取得
 bool GameSceneEffect::IsBarrierActive() const {
   return barrierState_ != BarrierEffectState::Inactive;
 }
 
-// UpdateBarrier 処理
 void GameSceneEffect::UpdateBarrier(const Matrix4x4 &view,
                                     const Vector3 &playerPos, float deltaTime) {
   if (!barrier_ || barrierState_ == BarrierEffectState::Inactive) {
@@ -206,7 +195,6 @@ void GameSceneEffect::UpdateBarrier(const Matrix4x4 &view,
   barrier_->SettingWvp(view);
 }
 
-// 各種エフェクト（バリア、パーティクル）の描画処理
 void GameSceneEffect::Draw(class Draw &draw) {
   if (dustEffect_) {
     dustEffect_->Draw(draw);
@@ -223,7 +211,6 @@ void GameSceneEffect::Draw(class Draw &draw) {
   }
 }
 
-// ImGuiによるエフェクトパラメータ調整UI
 void GameSceneEffect::ImGui() {
 #ifdef _USE_IMGUI
   if (ImGui::CollapsingHeader("バリアエフェクト")) {
@@ -287,3 +274,4 @@ void GameSceneEffect::ImGui() {
   }
 #endif
 }
+

@@ -18,7 +18,6 @@ constexpr float kFallbackBoundingExtent = 0.5f;
 constexpr float kFallbackBoundingSphereRadius = 0.866025f; // sqrt(3) / 2
 }
 
-// マテリアルテンプレートファイル（.mtl）の読み込み
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
 	MaterialData materialData;//構築するMaterialData
 	std::string line;//ファイルから読んだ一行を格納する
@@ -48,7 +47,6 @@ MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const st
 }
 
 
-// OBJファイルの読み込み
 ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
 	std::unique_ptr<ModelManager> objManager = std::make_unique<ModelManager>();
@@ -212,7 +210,6 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 
 }
 
-// Assimpを使用したOBJ/GLTFモデルデータの読み込み
 ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
 	std::unique_ptr<ModelManager> objManager = std::make_unique<ModelManager>();
@@ -374,7 +371,6 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 
 }
 
-// AssimpのaiNodeからNodeデータへ再帰的に変換
 Node ReadNode(aiNode* node)
 {
 	Node result;
@@ -396,7 +392,6 @@ Node ReadNode(aiNode* node)
 	return result;
 }
 
-// アニメーションファイルの読み込み
 Animation LoadAnimationFile(const std::string& directoryPath, const std::string& filename)
 {
 	Animation animation;
@@ -456,10 +451,6 @@ Animation LoadAnimationFile(const std::string& directoryPath, const std::string&
 	return animation;
 }
 
-///テクスチャの読み込み///
-
-
-// テクスチャファイルの読み込み
 DirectX::ScratchImage LoadTexture(const std::string& filePath) {
 
 	//テクスチャファイルを読み込んでプログラムで扱えるようにする
@@ -500,7 +491,6 @@ DirectX::ScratchImage LoadTexture(const std::string& filePath) {
 	return mipImages;
 }
 
-// テクスチャ用D3D12リソースの生成
 Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata)
 {
 
@@ -538,7 +528,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(ID3D12Device* devic
 	return resource;
 }
 
-// テクスチャデータのGPUアップロード
 [[nodiscard]]
 Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
 {
@@ -575,7 +564,6 @@ namespace {
 	int GPUNum = 1;
 }
 
-// CPUディスクリプタハンドルの取得
 D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriprtorSize)
 {
 
@@ -585,7 +573,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	return handleCPU;
 }
 
-// GPUディスクリプタハンドルの取得
 D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriprtorSize)
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
@@ -593,3 +580,4 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	GPUNum++;
 	return handleGPU;
 }
+

@@ -27,7 +27,6 @@ ConditionAchievement::ConditionAchievement(
       progressFunc_(std::move(progressFunc)),
       progressTextFunc_(std::move(progressTextFunc)) {}
 
-// 実績達成条件の判定
 bool ConditionAchievement::CheckCondition(const AchievementContext& ctx) {
     if (isUnlocked_) {
         return false;
@@ -38,7 +37,6 @@ bool ConditionAchievement::CheckCondition(const AchievementContext& ctx) {
     return false;
 }
 
-// Progress を取得
 float ConditionAchievement::GetProgress(const AchievementContext& ctx) const {
     if (isUnlocked_) {
         return 1.0f;
@@ -50,7 +48,6 @@ float ConditionAchievement::GetProgress(const AchievementContext& ctx) const {
     return 0.0f;
 }
 
-// ProgressText を取得
 std::string ConditionAchievement::GetProgressText(const AchievementContext& ctx) const {
     if (isUnlocked_) {
         return "達成！";
@@ -77,7 +74,6 @@ ProgressAchievement::ProgressAchievement(
       valueGetter_(std::move(valueGetter)),
       unit_(unit) {}
 
-// 実績達成条件の判定
 bool ProgressAchievement::CheckCondition(const AchievementContext& ctx) {
     if (isUnlocked_) {
         return false;
@@ -88,7 +84,6 @@ bool ProgressAchievement::CheckCondition(const AchievementContext& ctx) {
     return false;
 }
 
-// Progress を取得
 float ProgressAchievement::GetProgress(const AchievementContext& ctx) const {
     if (isUnlocked_) {
         return 1.0f;
@@ -104,7 +99,6 @@ float ProgressAchievement::GetProgress(const AchievementContext& ctx) const {
     return 0.0f;
 }
 
-// ProgressText を取得
 std::string ProgressAchievement::GetProgressText(const AchievementContext& ctx) const {
     if (isUnlocked_) {
         return "達成！";
@@ -119,3 +113,4 @@ std::string ProgressAchievement::GetProgressText(const AchievementContext& ctx) 
     }
     return std::string(buf);
 }
+

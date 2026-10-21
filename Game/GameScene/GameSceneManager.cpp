@@ -3,13 +3,11 @@
 #include <dinput.h>
 #include <Xinput.h>
 
-// Instance を取得
 GameSceneManager* GameSceneManager::GetInstance() {
 	static GameSceneManager instance;
 	return &instance;
 }
 
-// コンストラクタ
 GameSceneManager::GameSceneManager() {
 	// キーコンフィグの初期データ
 	keyConfig_.leftKeys = { DIK_A, DIK_LEFT };
@@ -23,10 +21,8 @@ GameSceneManager::GameSceneManager() {
 	keyConfig_.rollPadButtons = { XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_B };
 }
 
-// デストラクタ
 GameSceneManager::~GameSceneManager() {}
 
-// 左移動入力の判定（キーボード/ゲームパッド）
 bool GameSceneManager::IsPushLeft() const {
 	for (int key : keyConfig_.leftKeys) {
 		if (Input::PushKey(key)) return true;
@@ -38,7 +34,6 @@ bool GameSceneManager::IsPushLeft() const {
 	return false;
 }
 
-// 右移動入力の判定（キーボード/ゲームパッド）
 bool GameSceneManager::IsPushRight() const {
 	for (int key : keyConfig_.rightKeys) {
 		if (Input::PushKey(key)) return true;
@@ -50,7 +45,6 @@ bool GameSceneManager::IsPushRight() const {
 	return false;
 }
 
-// ジャンプ入力の判定（キーボード/ゲームパッド）
 bool GameSceneManager::IsPushJump() const {
 	for (int key : keyConfig_.jumpKeys) {
 		if (Input::PushKey(key)) return true;
@@ -62,7 +56,6 @@ bool GameSceneManager::IsPushJump() const {
 	return false;
 }
 
-// スライディング（ロール）入力の判定（キーボード/ゲームパッド）
 bool GameSceneManager::IsPushRoll() const {
 	for (int key : keyConfig_.rollKeys) {
 		if (Input::PushKey(key)) return true;
@@ -75,3 +68,4 @@ bool GameSceneManager::IsPushRoll() const {
 	if (GamePadInput::PushLeftStickDown()) return true;
 	return false;
 }
+

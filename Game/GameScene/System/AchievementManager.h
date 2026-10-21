@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Achievement.h"
 #include <vector>
 #include <memory>
@@ -50,7 +50,7 @@ public:
     /// <param name="description">説明文 (例: "走行距離100mを突破する")</param>
     /// <param name="scoreReward">解除時に加点されるスコア (例: 500.0f)</param>
     /// <param name="targetValue">達成に必要な目標値 (例: 100.0f)</param>
-    /// <param name="valueGetter">現在の判定値を取得する関数 (例: [](const auto& c){ return c.distance; })</param>
+    /// <param name="valueGetter">現在の判定値を取得する関数 (例: [](const auto&amp; c){ return c.distance; })</param>
     /// <param name="unit">単位表示 (例: "m", "体", "pt")</param>
     Achievement* RegisterProgress(
         const std::string& id,

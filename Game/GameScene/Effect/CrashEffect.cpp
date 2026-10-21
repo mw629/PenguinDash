@@ -4,7 +4,6 @@
 #include <cmath>
 #include <imgui.h>
 
-// クラッシュスプライトリソースの初期化
 void CrashEffect::Initialize(Texture *texture) {
   if (!texture) return;
   crashTextureHandle_ = texture->CreateTexture("Resources/Texture/Crash.png");
@@ -24,7 +23,6 @@ void CrashEffect::Initialize(Texture *texture) {
   crashSprite_->SettingWvp();
 }
 
-// 激突・クラッシュ演出を発動
 void CrashEffect::Trigger() {
   crashTimer_ = 0.0f;
   if (crashSprite_) {
@@ -36,7 +34,6 @@ void CrashEffect::Trigger() {
   }
 }
 
-// クラッシュ演出タイマー等のリセット
 void CrashEffect::Reset() {
   crashTimer_ = 0.0f;
   if (crashSprite_) {
@@ -48,7 +45,6 @@ void CrashEffect::Reset() {
   }
 }
 
-// クラッシュ演出アニメーションの毎フレーム更新
 void CrashEffect::Update(float dt) {
   crashTimer_ += dt;
   if (crashSprite_) {
@@ -67,14 +63,12 @@ void CrashEffect::Update(float dt) {
   }
 }
 
-// クラッシュスプライトの描画
 void CrashEffect::Render(Draw &draw) {
   if (crashSprite_) {
     draw.DrawSprite(crashSprite_.get());
   }
 }
 
-// ImGuiによるクラッシュ演出パラメータ調整UI
 void CrashEffect::ImGui() {
 #ifdef _USE_IMGUI
   if (ImGui::TreeNode("クラッシュ演出設定")) {
@@ -90,3 +84,4 @@ void CrashEffect::ImGui() {
   }
 #endif
 }
+

@@ -146,7 +146,6 @@ float GamePadInput::GetRightStickY()
 	return (std::abs(y) > s_deadZone_) ? y / kStickNormalizationDivisor : 0.0f;
 }
 
-// スティックを倒した瞬間（Push）の入力チェック
 bool GamePadInput::PushLeftStickLeft()
 {
 	return (s_currentState_.Gamepad.sThumbLX < -kStickThreshold) &&
@@ -195,7 +194,6 @@ bool GamePadInput::PushRightStickDown()
 		!(s_prevState_.Gamepad.sThumbRY < -kStickThreshold);
 }
 
-// トリガーの入力チェック
 bool GamePadInput::PushLeftTrigger()
 {
 	return (s_currentState_.Gamepad.bLeftTrigger > kTriggerThreshold) &&
@@ -241,4 +239,5 @@ void GamePadInput::SetPad()
 	s_isConnected_ = isConnected_;
 	s_activeUserIndex_ = userIndex_;
 }
+
 

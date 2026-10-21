@@ -2,7 +2,6 @@
 #include "Network/Firebase/FirebaseRankingManager.h"
 #include <imgui.h>
 
-// スコア、走行距離、ボーナス加算などの状態をリセット
 void ScoreManager::Reset() {
   currentDistance_ = 0.0f;
   currentScore_ = 0.0f;
@@ -13,7 +12,6 @@ void ScoreManager::Reset() {
   lastScoreRank_ = -1;
 }
 
-// 走行距離とスコアの毎フレーム加算更新
 void ScoreManager::Update(float scrollSpeed, float timeScale) {
   currentDistance_ += scrollSpeed * timeScale;
   currentScore_ = currentDistance_ +
@@ -21,29 +19,24 @@ void ScoreManager::Update(float scrollSpeed, float timeScale) {
                   achievementBonusScore_;
 }
 
-// ボーナスエネミー撃破時のスコア加算
 void ScoreManager::AddBonusEnemyHit() {
   bonusEnemyHitCount_++;
 }
 
-// 実績解除に伴うボーナススコア加算
 void ScoreManager::AddAchievementScore(float score) {
   achievementBonusScore_ += score;
 }
 
-// ゲームオーバー時のスコア・距離をローカルランキングへ記録
 void ScoreManager::RecordCurrentScores() {
   UpdateRanking();
   UpdateScoreRanking();
 }
 
-// PlayerName を設定
 void ScoreManager::SetPlayerName(const std::string& name) {
   playerName_ = name.empty() ? "Player" : name;
   snprintf(inputPlayerName_, sizeof(inputPlayerName_), "%s", playerName_.c_str());
 }
 
-// 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
 void ScoreManager::SendCurrentScoreToOnlineRanking(const std::string& playerName) {
   SetPlayerName(playerName);
   FirebaseRankingManager::GetInstance()->SendScoreAsync(
@@ -57,7 +50,6 @@ void ScoreManager::SendCurrentScoreToOnlineRanking(const std::string& playerName
       });
 }
 
-// ゲームオーバー時の自動送信＆ランキング取得（1ゲームにつき1回のみ実行）
 void ScoreManager::SendOnlineScoreAndFetchRanking() {
   if (isOnlineScoreSent_) {
     return;
@@ -88,7 +80,6 @@ void ScoreManager::SendOnlineScoreAndFetchRanking() {
   }
 }
 
-// UpdateRanking 処理
 void ScoreManager::UpdateRanking() {
   lastDistanceRank_ = kRankingCount + 1; // デフォルトは圏外
   for (int i = 0; i < kRankingCount; i++) {
@@ -103,7 +94,6 @@ void ScoreManager::UpdateRanking() {
   }
 }
 
-// UpdateScoreRanking 処理
 void ScoreManager::UpdateScoreRanking() {
   lastScoreRank_ = kRankingCount + 1; // デフォルトは圏外
   for (int i = 0; i < kRankingCount; i++) {
@@ -118,7 +108,6 @@ void ScoreManager::UpdateScoreRanking() {
   }
 }
 
-// 今回のプレイがスコアランキング1位であるか
 bool ScoreManager::IsScoreFirstPlace() const {
   if (currentScore_ <= 1.0f) {
     return false;
@@ -133,7 +122,6 @@ bool ScoreManager::IsScoreFirstPlace() const {
   return (lastScoreRank_ == 1);
 }
 
-// 今回のプレイが走行距離ランキング1位であるか
 bool ScoreManager::IsDistanceFirstPlace() const {
   if (currentDistance_ <= 1.0f) {
     return false;
@@ -148,12 +136,10 @@ bool ScoreManager::IsDistanceFirstPlace() const {
   return (lastDistanceRank_ == 1);
 }
 
-// 今回のプレイがランキング1位（スコアまたは走行距離）であるか
 bool ScoreManager::IsFirstPlace() const {
   return IsScoreFirstPlace() || IsDistanceFirstPlace();
 }
 
-// ImGuiデバッグUIの描画処理
 void ScoreManager::ImGui() {
 #ifdef _USE_IMGUI
   ImGui::Text("現在の走行距離: %.2f m", currentDistance_);
@@ -212,3 +198,4 @@ void ScoreManager::ImGui() {
   }
 #endif
 }
+

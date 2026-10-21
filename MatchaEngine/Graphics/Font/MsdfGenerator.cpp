@@ -145,7 +145,6 @@ struct Contour {
     std::vector<Segment> segments;
 };
 
-// 輪郭のエッジにRGBを割り振る (Edge Coloring)
 void ColorContourEdges(Contour& contour) {
     if (contour.segments.empty()) return;
 
@@ -204,7 +203,6 @@ void ColorContourEdges(Contour& contour) {
     }
 }
 
-// 点Pが輪郭の内側にあるかどうかの内外判定 (Winding number法)
 int ComputeContourWinding(const Contour& contour, const Point2D& p) {
     int winding = 0;
     for (const auto& seg : contour.segments) {
@@ -477,3 +475,4 @@ MsdfGlyphBitmap MsdfGenerator::GenerateGlyph(uint32_t codepoint, float glyphSize
 }
 
 } // namespace MatchaEngine
+

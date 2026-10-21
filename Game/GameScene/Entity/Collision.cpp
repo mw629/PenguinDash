@@ -1,6 +1,5 @@
 ﻿#include "Collision.h"
 
-// AABB同士の交差判定
 bool Collision::CheckAABB(const AABB& a, const AABB& b)
 {
 	// 各軸で重なりがあるかチェック
@@ -11,7 +10,6 @@ bool Collision::CheckAABB(const AABB& a, const AABB& b)
 	return true;
 }
 
-// TransformとサイズからAABBを生成する
 AABB Collision::MakeAABB(const Transform& transform, float width, float height, float depth)
 {
 	AABB aabb;
@@ -31,7 +29,6 @@ AABB Collision::MakeAABB(const Transform& transform, float width, float height, 
 	return aabb;
 }
 
-// 球体同士の交差判定
 bool Collision::CheckSphere(const BoundingSphere& a, const BoundingSphere& b)
 {
 	float dx = a.center.x - b.center.x;
@@ -42,7 +39,6 @@ bool Collision::CheckSphere(const BoundingSphere& a, const BoundingSphere& b)
 	return distSquared <= (radiusSum * radiusSum);
 }
 
-// AABBと球体の交差判定
 bool Collision::CheckAABBSphere(const AABB& aabb, const BoundingSphere& sphere)
 {
 	// AABB上の球の中心に最も近い点を見つける
@@ -58,3 +54,4 @@ bool Collision::CheckAABBSphere(const AABB& aabb, const BoundingSphere& sphere)
 	float distSquared = dx * dx + dy * dy + dz * dz;
 	return distSquared <= (sphere.radius * sphere.radius);
 }
+

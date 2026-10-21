@@ -11,7 +11,6 @@
 #include <imgui.h>
 
 
-// ステージおよび全障害物・アイテムモデルの初期化
 void StageSettings::Initialize(
     ModelData roadModelData, ModelData fallenTreeModelData,
     ModelData iceArchwayModelData, ModelData iceWallModelData,
@@ -68,7 +67,6 @@ void StageSettings::Initialize(
       kBossCooldownDuration, kBossInitialCooldown}; // ボス（開始時猶予あり）
 }
 
-// ステージおよび全障害物・アイテムモデルの初期化
 void StageSettings::Initialize(ModelData roadModelData,
                                ModelData fallenTreeModelData,
                                ModelData iceArchwayModelData,
@@ -80,7 +78,6 @@ void StageSettings::Initialize(ModelData roadModelData,
              iceWallModelData, manager);
 }
 
-// ステージおよび全障害物・アイテムモデルの初期化
 void StageSettings::Initialize(ModelData roadModelData,
                                ModelData obstacleModelData,
                                ModelData bonusModelData,
@@ -89,7 +86,6 @@ void StageSettings::Initialize(ModelData roadModelData,
              obstacleModelData, bonusModelData, manager);
 }
 
-// 次回障害物生成までの距離間隔を動的計算
 void StageSettings::CalculateNextObstacleInterval() {
   // 猶予フレームを最小〜最大の間でランダムに選定（等間隔にならないようにバリエーションを持たせる）
   float graceFrames = minGraceFrames_; // 決定された猶予フレーム数
@@ -121,7 +117,7 @@ void StageSettings::CalculateNextObstacleInterval() {
 }
 
 const StageSettings::ChunkRowInfo &
-// 指定Z座標におけるチャンク行情報を取得
+
 StageSettings::GetChunkRowInfoAtZ(float z) const {
   float defaultWidth =
       (laneCount_ == 1) ? (laneWidth_ * oneLaneWidthMultiplier_) : laneWidth_;
@@ -151,27 +147,22 @@ StageSettings::GetChunkRowInfoAtZ(float z) const {
   return fallbackInfo;
 }
 
-// 指定Z座標におけるレーン数を取得
 int StageSettings::GetLaneCountAtZ(float z) const {
   return GetChunkRowInfoAtZ(z).laneCount;
 }
 
-// 指定Z座標における最小レーン番号を取得
 int StageSettings::GetMinLaneIndexAtZ(float z) const {
   return GetChunkRowInfoAtZ(z).minLaneIndex;
 }
 
-// 指定Z座標における最大レーン番号を取得
 int StageSettings::GetMaxLaneIndexAtZ(float z) const {
   return GetChunkRowInfoAtZ(z).maxLaneIndex;
 }
 
-// 指定Z座標における有効レーン幅を取得
 float StageSettings::GetEffectiveLaneWidthAtZ(float z) const {
   return GetChunkRowInfoAtZ(z).effectiveLaneWidth;
 }
 
-// レーン数の変更（奥から新しく出現する床から徐々に切り替え）
 void StageSettings::SetLaneCount(int count) {
   if (count < 1)
     count = 1;
@@ -191,7 +182,6 @@ void StageSettings::SetLaneCount(int count) {
   }
 }
 
-// 全チャンクのレーン数を即時変更（リセット・初期化等）
 void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
   if (count < 1)
     count = 1;
@@ -202,7 +192,6 @@ void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
   isDirty_ = true;
 }
 
-// 道路の描画色を設定
 void StageSettings::SetRoadColor(const Vector4 &color) {
   roadColor_ = color;
   for (auto &row : roadChunks_) {
@@ -223,7 +212,6 @@ void StageSettings::SetRoadColor(const Vector4 &color) {
   }
 }
 
-// 流氷の描画色を設定
 void StageSettings::SetDriftIceColor(const Vector4 &color) {
   driftIceColor_ = color;
   for (auto &ice : driftIces_) {
@@ -232,7 +220,6 @@ void StageSettings::SetDriftIceColor(const Vector4 &color) {
   }
 }
 
-// 流氷の表示/非表示を設定
 void StageSettings::SetDriftIceEnabled(bool enabled) {
   driftIceEnabled_ = enabled;
   for (auto &ice : driftIces_) {
@@ -242,7 +229,6 @@ void StageSettings::SetDriftIceEnabled(bool enabled) {
   }
 }
 
-// 流氷のサイズスケールを設定
 void StageSettings::SetDriftIceSizeScale(float scale) {
   if (scale <= kMinDriftIceScale)
     scale = kMinDriftIceScale;
@@ -259,7 +245,6 @@ void StageSettings::SetDriftIceSizeScale(float scale) {
   }
 }
 
-// 流氷の厚みスケールを設定
 void StageSettings::SetDriftIceThicknessScale(float scale) {
   if (scale <= kMinDriftIceScale)
     scale = kMinDriftIceScale;
@@ -270,7 +255,6 @@ void StageSettings::SetDriftIceThicknessScale(float scale) {
   }
 }
 
-// 流氷のライティング有効/無効を設定
 void StageSettings::SetDriftIceLighting(bool enabled) {
   driftIceLighting_ = enabled;
   for (auto &ice : driftIces_) {
@@ -279,7 +263,6 @@ void StageSettings::SetDriftIceLighting(bool enabled) {
   }
 }
 
-// アザラシの回転速度を設定
 void StageSettings::SetBabySealSpinSpeed(float speed) {
   babySealSpinSpeed_ = speed;
   for (auto &ice : driftIces_) {
@@ -291,25 +274,21 @@ void StageSettings::SetBabySealSpinSpeed(float speed) {
   }
 }
 
-// 海面の前方拡張距離を設定
 void StageSettings::SetWaterForwardExtension(float ext) {
   waterForwardExtension_ = (std::max)(0.0f, ext);
   UpdateSidePlanesTransform();
 }
 
-// 海面の後方拡張距離を設定
 void StageSettings::SetWaterBackwardExtension(float ext) {
   waterBackwardExtension_ = (std::max)(0.0f, ext);
   UpdateSidePlanesTransform();
 }
 
-// 海面の横幅スケールを設定
 void StageSettings::SetWaterWidthScale(float scale) {
   waterWidthScale_ = (std::max)(kMinWaterWidthScale, scale);
   UpdateSidePlanesTransform();
 }
 
-// チャンク行の道路メッシュ再構築
 void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
                                     Matrix4x4 view) {
   if (rowIndex < 0 || rowIndex >= kChunkCount_)
@@ -417,7 +396,6 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
   }
 }
 
-// 全道路チャンクの初期生成
 void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
   // 既存のZ座標を保存（ゲーム中にレーン数が変わった際に地面が飛ぶのを防ぐため）
   std::vector<float> currentZs(kChunkCount_);
@@ -469,7 +447,6 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
   UpdateSidePlanesTransform(view);
 }
 
-// 道路両脇の海面プレーンのTransform更新
 void StageSettings::UpdateSidePlanesTransform(Matrix4x4 view) {
   float effectiveLaneWidth = GetEffectiveLaneWidth();
   float halfLane = effectiveLaneWidth * kHalfFactor;
@@ -500,7 +477,6 @@ void StageSettings::UpdateSidePlanesTransform(Matrix4x4 view) {
   }
 }
 
-// 指定座標における波の高さ計算
 float StageSettings::CalculateWaterHeight(float x, float z, float time) const {
   struct WaveParam {
     Vector2 dir;
@@ -531,7 +507,6 @@ float StageSettings::CalculateWaterHeight(float x, float z, float time) const {
   return totalY;
 }
 
-// 海面に浮かぶ流氷・アザラシの生成
 void StageSettings::GenerateDriftIce(Matrix4x4 view) {
   auto createModel = [&](const ModelData &mData) {
     auto model = std::make_shared<Model>();
@@ -572,7 +547,6 @@ void StageSettings::GenerateDriftIce(Matrix4x4 view) {
   UpdateDriftIce(view, 0.0f, 0.0f);
 }
 
-// 単一流氷・アザラシのパラメータ初期設定
 void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*index*/) {
   // アザラシの出現確率（約15%：およそ6〜7個に1個の割合で時々アザラシが流れてくる）
   bool isSeal = (std::rand() % 100 < kBabySealSpawnChancePercent);
@@ -700,7 +674,6 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   ice.speedMultiplier = 1.0f;
 }
 
-// 流氷・アザラシの波連動アニメーションとスクロール更新
 void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float timeScale) {
   if (!driftIceEnabled_) return;
 
@@ -879,14 +852,12 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
   }
 }
 
-// 全流氷・アザラシの位置リセット
 void StageSettings::ResetDriftIce() {
   for (int i = 0; i < static_cast<int>(driftIces_.size()); ++i) {
     SetupSingleDriftIce(driftIces_[i], false, i);
   }
 }
 
-// ステージの毎フレーム更新（道路スクロール、障害物スポーン、流氷アニメーション等）
 void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   if (waterTime >= 0.0f) {
     waterTime_ = waterTime;
@@ -994,7 +965,6 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   }
 }
 
-// エディターモード時のステージ更新
 void StageSettings::EditorUpdate(Matrix4x4 view, float waterTime) {
   if (waterTime >= 0.0f) {
     waterTime_ = waterTime;
@@ -1016,7 +986,6 @@ void StageSettings::EditorUpdate(Matrix4x4 view, float waterTime) {
   }
 }
 
-// ステージ内オブジェクト（道路、流氷、海面）の描画処理
 void StageSettings::Draw(class Draw &draw) {
 #ifdef _USE_IMGUI
   if (showSpawnGizmo_) {
@@ -1074,7 +1043,6 @@ void StageSettings::Draw(class Draw &draw) {
 #endif
 }
 
-// 障害物・アイテムのスポーン処理
 void StageSettings::SpawnObstacles(float z) {
   int currentLaneCount = GetLaneCountAtZ(z);
   int currentMinLane = GetMinLaneIndexAtZ(z);
@@ -1259,7 +1227,6 @@ void StageSettings::SpawnObstacles(float z) {
   }
 }
 
-// 画面内の障害物を一掃消去（ゲーム開始・リスタート時用）
 void StageSettings::ClearObstacles(float safeDistance) {
   // 画面内および奥の障害物を全て非アクティブにしてクリアにする
   for (int i = 0; i < kMaxObstacles_; i++) {
@@ -1283,7 +1250,6 @@ void StageSettings::ClearObstacles(float safeDistance) {
   itemCoolDowns_[Obstacle::Type::BossItem].currentTimer = kBossInitialCooldown;
 }
 
-// ステージ状態（速度、スクロール、流氷、障害物）のリセット
 void StageSettings::Reset() {
   isGameOver_ = false;
   isNarrowingSection_ = false;
@@ -1330,7 +1296,6 @@ void StageSettings::Reset() {
       kBossInitialCooldown; // 開始後すぐのボス突入を防ぐ猶予
 }
 
-// アイテムのクールダウン所要時間を取得
 float StageSettings::GetItemCoolDownDuration(Obstacle::Type type) const {
   auto it = itemCoolDowns_.find(type);
   if (it != itemCoolDowns_.end()) {
@@ -1339,13 +1304,11 @@ float StageSettings::GetItemCoolDownDuration(Obstacle::Type type) const {
   return 0.0f;
 }
 
-// アイテムのクールダウン所要時間を設定
 void StageSettings::SetItemCoolDownDuration(Obstacle::Type type,
                                             float duration) {
   itemCoolDowns_[type].duration = (std::max)(0.0f, duration);
 }
 
-// アイテムの現在のクールダウンタイマーを取得
 float StageSettings::GetItemCoolDownTimer(Obstacle::Type type) const {
   auto it = itemCoolDowns_.find(type);
   if (it != itemCoolDowns_.end()) {
@@ -1354,12 +1317,10 @@ float StageSettings::GetItemCoolDownTimer(Obstacle::Type type) const {
   return 0.0f;
 }
 
-// アイテムの現在のクールダウンタイマーを設定
 void StageSettings::SetItemCoolDownTimer(Obstacle::Type type, float timer) {
   itemCoolDowns_[type].currentTimer = (std::max)(0.0f, timer);
 }
 
-// アイテムが出現可能（クールダウン完了）かどうかを取得
 bool StageSettings::IsItemCoolDownReady(Obstacle::Type type) const {
   auto it = itemCoolDowns_.find(type);
   if (it != itemCoolDowns_.end()) {
@@ -1369,7 +1330,7 @@ bool StageSettings::IsItemCoolDownReady(Obstacle::Type type) const {
 }
 
 #ifdef _USE_IMGUI
-// ImGuiによるステージパラメータ調整UI
+
 void StageSettings::ImGui() {
   // ステージデバッグパネル
   if (ImGui::CollapsingHeader("ステージ設定デバッグ (Stage Settings)")) {
@@ -1871,6 +1832,7 @@ void StageSettings::ImGui() {
   }
 }
 #else
-// ImGuiによるステージパラメータ調整UI
+
 void StageSettings::ImGui() {}
 #endif
+
