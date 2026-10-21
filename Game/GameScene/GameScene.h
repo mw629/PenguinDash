@@ -8,6 +8,7 @@
 #include "Effect/RankingCutinEffect.h"
 #include "GameObjectManager.h"
 #include "RenderObject.h"
+#include "System/AchievementManager.h"
 #include "System/BossBattleController.h"
 #include "System/ScoreManager.h"
 #include "System/TitleDirector.h"
@@ -48,17 +49,29 @@ private:
       std::make_unique<GameCameraController>();
   std::unique_ptr<ScoreManager> scoreManager_ =
       std::make_unique<ScoreManager>();
+  std::unique_ptr<AchievementManager> achievementManager_ =
+      std::make_unique<AchievementManager>();
   std::unique_ptr<CrashEffect> crashEffect_ =
       std::make_unique<CrashEffect>();
   std::unique_ptr<RankingCutinEffect> rankingCutinEffect_ =
       std::make_unique<RankingCutinEffect>();
   bool forceFirstPlaceCutInTest_ = false;
+  int testCutinType_ = 0; // 0: Score, 1: Distance, 2: Double
   std::unique_ptr<BossBattleController> bossBattleController_ =
       std::make_unique<BossBattleController>();
   std::unique_ptr<TitleDirector> titleDirector_ =
       std::make_unique<TitleDirector>();
   std::unique_ptr<GameHUD> gameHUD_ =
       std::make_unique<GameHUD>();
+
+  // 実績トラッキング用変数
+  float playTime_ = 0.0f;
+  int jumpCount_ = 0;
+  int rollCount_ = 0;
+  int laneChangeCount_ = 0;
+  bool wasJumping_ = false;
+  bool wasRolling_ = false;
+  int lastPlayerLane_ = 0;
 
   // 定数
   static constexpr Vector3 kDefaultSkyBoxScale = {100.0f, 100.0f, 100.0f};
@@ -169,6 +182,7 @@ private:
 
 public:
   class ScoreManager* GetScoreManager() { return scoreManager_.get(); }
+  class AchievementManager* GetAchievementManager() { return achievementManager_.get(); }
   class GameSceneEffect* GetEffectManager() { return effectManager_.get(); }
   class StageSettings* GetStageSettings() { return stageSettings_.get(); }
   class Player* GetPlayer() { return player_.get(); }

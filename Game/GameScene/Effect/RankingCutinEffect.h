@@ -11,9 +11,15 @@ public:
   enum class State {
     Inactive,
     FlashAndSlash, // 0.00s ~ 0.25s: 閃光・衝撃音・スライドアタック
-    BannerHold,    // 0.25s ~ 1.70s: カットイン帯ホールド・目力・集中線・文字ポップ
-    SlashExit,     // 1.70s ~ 2.10s: 切断エフェクト・リザルト移行
-    Finished       // 完了
+    BannerHold, // 0.25s ~ 1.70s: カットイン帯ホールド・目力・集中線・文字ポップ
+    SlashExit,  // 1.70s ~ 2.10s: 切断エフェクト・リザルト移行
+    Finished    // 完了
+  };
+
+  enum class CutinType {
+    Score,    // スコア1位更新
+    Distance, // 走行距離1位更新
+    Double    // スコア＆走行距離ダブル1位（究極記録）
   };
 
   struct ShardParticle {
@@ -25,6 +31,7 @@ public:
     Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
     float life = 1.0f;
     float maxLife = 1.0f;
+    float floatPhase = 0.0f;
   };
 
 private:
@@ -36,13 +43,19 @@ private:
   static constexpr float kEyeGlintDuration = 0.45f;
 
   State state_ = State::Inactive;
+  CutinType currentType_ = CutinType::Score;
   float timer_ = 0.0f;
   float totalDuration_ = kDefaultTotalDuration;
 
-  // カットイン本体スプライト
-  std::unique_ptr<Sprite> cutinSprite_;
+  // カットイン本体スプライト（タイプ別）
+  std::unique_ptr<Sprite> scoreCutinSprite_;
+  std::unique_ptr<Sprite> distanceCutinSprite_;
+  std::unique_ptr<Sprite> doubleCutinSprite_;
   SpriteData cutinSpriteData_;
-  int cutinTextureHandle_ = -1;
+
+  int scoreTextureHandle_ = -1;
+  int distanceTextureHandle_ = -1;
+  int doubleTextureHandle_ = -1;
 
   // 上下スラッシュ帯スプライト（白テクスチャを色付け）
   std::unique_ptr<Sprite> topBarSprite_;
@@ -51,7 +64,7 @@ private:
   std::unique_ptr<Sprite> eyeGlintSprite_;
   int whiteTextureHandle_ = -1;
 
-  // シャードパーティクル
+  // シャード・紙吹雪パーティクル
   std::vector<ShardParticle> shards_;
 
   // トランスフォーム設定
@@ -69,14 +82,17 @@ public:
   ~RankingCutinEffect() = default;
 
   void Initialize(class Texture *texture);
-  void Trigger();
+  void Trigger(CutinType type = CutinType::Score);
   void Reset();
   void Update(float dt);
   void Render(class Draw &draw);
   void ImGui();
 
-  bool IsActive() const { return state_ != State::Inactive && state_ != State::Finished; }
+  bool IsActive() const {
+    return state_ != State::Inactive && state_ != State::Finished;
+  }
   bool IsFinished() const { return state_ == State::Finished; }
+  CutinType GetCurrentType() const { return currentType_; }
 
   /// @brief 入力によるスキップ判定（開始から一定時間経過後のみスキップ可）
   void RequestSkip();
@@ -84,4 +100,5 @@ public:
 private:
   void SpawnShards();
   void UpdateShards(float dt);
+  Sprite *GetCurrentCutinSprite();
 };

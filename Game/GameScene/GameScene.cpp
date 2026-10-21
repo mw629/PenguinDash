@@ -16,7 +16,6 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 
-
 GameScene::~GameScene() {
   EditorManager::SetGameViewDrawCallback(nullptr, nullptr);
   EditorManager::SetSaveCallback(nullptr);
@@ -173,7 +172,8 @@ void GameScene::Initialize() {
   }
 
   // 保存された設定ファイルが存在する場合は自動読み込み
-  std::filesystem::path defaultSettingsPath = "Resources/Json/GameScene/GameSceneSettings.json";
+  std::filesystem::path defaultSettingsPath =
+      "Resources/Json/GameScene/GameSceneSettings.json";
   if (std::filesystem::exists(defaultSettingsPath)) {
     LoadSettingsFromJson("GameSceneSettings");
   }
@@ -181,10 +181,14 @@ void GameScene::Initialize() {
   if (gameState_ == GameState::Title) {
     cameraController_->SetDebugCamera(false);
     if (player_) {
-      titleDirector_->UpdateCamera(player_.get(), cameraController_.get(), 0.0f);
+      titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
+                                   0.0f);
       cameraController_->Update();
     }
   }
+
+  // 実績システムの初期化
+  achievementManager_->Initialize();
 }
 
 void GameScene::ResetGame() {
@@ -194,9 +198,20 @@ void GameScene::ResetGame() {
   bossBattleController_->Reset();
   effectManager_->ClearBarrier();
   scoreManager_->Reset();
+  achievementManager_->Reset();
   crashEffect_->Reset();
   rankingCutinEffect_->Reset();
   wasBossBattle_ = false;
+
+  playTime_ = 0.0f;
+  jumpCount_ = 0;
+  rollCount_ = 0;
+  laneChangeCount_ = 0;
+  wasJumping_ = false;
+  wasRolling_ = false;
+  if (player_) {
+    lastPlayerLane_ = player_->GetLaneIndex();
+  }
 
   cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
 
@@ -216,8 +231,10 @@ void GameScene::StartGame() {
   // タイトルの障害物を一瞬で消さず、新規スポーンのみ停止して手前の障害物がGOまでに自然に捌けるようにする
   stageSettings_->SetSpawningPaused(true);
 
-  // 遠すぎる障害物（Z > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
-  // 3.4秒のカウントダウン（3, 2, 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
+  // 遠すぎる障害物（Z
+  // > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
+  // 3.4秒のカウントダウン（3, 2,
+  // 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
   for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
     Obstacle *obs = stageSettings_->GetObstacle(i);
     if (obs && obs->GetIsActive()) {
@@ -291,7 +308,8 @@ void GameScene::StartResultTransition(ResultTransition target) {
           ResetGame();
           gameState_ = GameState::Playing;
           cameraController_->SetDebugCamera(false);
-          cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
+          cameraController_->Reset(
+              GameCameraController::kDefaultCameraTransform);
           player_->SetAutoPilot(false);
           player_->SetInvertedControls(false);
           player_->SetInputEnabled(false);
@@ -373,7 +391,8 @@ void GameScene::Update() {
     }
   });
 
-  // カメラの更新 (タイトルオービット or プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
+  // カメラの更新 (タイトルオービット or
+  // プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
   float timeScale = EditorManager::GetPlaySpeed();
   if (!cameraController_->IsFirstPerson()) {
     if (gameState_ == GameState::Title) {
@@ -463,7 +482,8 @@ void GameScene::UpdateWorldEntities(float timeScale, float speedMultiplier) {
 void GameScene::PlayingUpdate() {
   // リスタート等のカウントダウン演出中の制御（走っている感を出してGOで加速・操作解禁）
   if (titleDirector_->IsCountdownActive() &&
-      titleDirector_->GetCountdownMode() == TitleDirector::CountdownMode::Restart) {
+      titleDirector_->GetCountdownMode() ==
+          TitleDirector::CountdownMode::Restart) {
     if (titleDirector_->IsInputAllowed()) {
       // GO! に達したら加速・スポーン・操作解禁・BGM開始
       if (stageSettings_->GetScrollAcceleration() == 0.0f) {
@@ -474,7 +494,8 @@ void GameScene::PlayingUpdate() {
         SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
       }
     } else {
-      // 3, 2, 1 の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
+      // 3, 2, 1
+      // の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
       stageSettings_->SetSpawningPaused(true);
       player_->SetInputEnabled(false);
       player_->ClearInputBuffer();
@@ -492,7 +513,8 @@ void GameScene::PlayingUpdate() {
   }
 
   float scoreScrollSpeed = stageSettings_->GetScrollSpeed();
-  if (titleDirector_->IsCountdownActive() && !titleDirector_->IsInputAllowed()) {
+  if (titleDirector_->IsCountdownActive() &&
+      !titleDirector_->IsInputAllowed()) {
     scoreScrollSpeed = 0.0f; // GO! まではスコア・走行距離の加算を保留
   }
 
@@ -530,6 +552,45 @@ void GameScene::PlayingUpdate() {
 
   UpdateWorldEntities(timeScale, speedMultiplier);
   CheckCollisions();
+
+  // 実績トラッキング（ジャンプ、スライディング、レーン移動）
+  if (player_) {
+    bool isJumping = player_->GetIsJumping();
+    if (isJumping && !wasJumping_) {
+      jumpCount_++;
+    }
+    wasJumping_ = isJumping;
+
+    bool isRolling = player_->GetIsRolling();
+    if (isRolling && !wasRolling_) {
+      rollCount_++;
+    }
+    wasRolling_ = isRolling;
+
+    int currentLane = player_->GetLaneIndex();
+    if (currentLane != lastPlayerLane_) {
+      laneChangeCount_++;
+      lastPlayerLane_ = currentLane;
+    }
+  }
+
+  // 実績判定・更新（達成時にスコア加点）
+  float dt = (1.0f / 60.0f) * timeScale;
+  playTime_ += dt;
+
+  AchievementContext achCtx;
+  achCtx.distance = scoreManager_->GetCurrentDistance();
+  achCtx.score = scoreManager_->GetCurrentScore();
+  achCtx.bonusEnemyHitCount = scoreManager_->GetBonusEnemyHitCount();
+  achCtx.playTime = playTime_;
+  achCtx.isBossBattle = (playingState_ == PlayingState::Boss);
+  achCtx.isBossDefeated = (boss_ && boss_->GetState() == BossState::Defeat);
+  achCtx.isOneLaneMode = isRightSideMode_;
+  achCtx.jumpCount = jumpCount_;
+  achCtx.rollCount = rollCount_;
+  achCtx.laneChangeCount = laneChangeCount_;
+
+  achievementManager_->Update(dt, achCtx, scoreManager_.get());
 }
 
 void GameScene::UpdateTitleTextInput() {
@@ -540,27 +601,27 @@ void GameScene::UpdateTitleTextInput() {
     uint32_t key;
     char lower;
     char upper;
-  } kAlphabetKeys[] = {
-    {DIK_A, 'a', 'A'}, {DIK_B, 'b', 'B'}, {DIK_C, 'c', 'C'}, {DIK_D, 'd', 'D'},
-    {DIK_E, 'e', 'E'}, {DIK_F, 'f', 'F'}, {DIK_G, 'g', 'G'}, {DIK_H, 'h', 'H'},
-    {DIK_I, 'i', 'I'}, {DIK_J, 'j', 'J'}, {DIK_K, 'k', 'K'}, {DIK_L, 'l', 'L'},
-    {DIK_M, 'm', 'M'}, {DIK_N, 'n', 'N'}, {DIK_O, 'o', 'O'}, {DIK_P, 'p', 'P'},
-    {DIK_Q, 'q', 'Q'}, {DIK_R, 'r', 'R'}, {DIK_S, 's', 'S'}, {DIK_T, 't', 'T'},
-    {DIK_U, 'u', 'U'}, {DIK_V, 'v', 'V'}, {DIK_W, 'w', 'W'}, {DIK_X, 'x', 'X'},
-    {DIK_Y, 'y', 'Y'}, {DIK_Z, 'z', 'Z'}
-  };
+  } kAlphabetKeys[] = {{DIK_A, 'a', 'A'}, {DIK_B, 'b', 'B'}, {DIK_C, 'c', 'C'},
+                       {DIK_D, 'd', 'D'}, {DIK_E, 'e', 'E'}, {DIK_F, 'f', 'F'},
+                       {DIK_G, 'g', 'G'}, {DIK_H, 'h', 'H'}, {DIK_I, 'i', 'I'},
+                       {DIK_J, 'j', 'J'}, {DIK_K, 'k', 'K'}, {DIK_L, 'l', 'L'},
+                       {DIK_M, 'm', 'M'}, {DIK_N, 'n', 'N'}, {DIK_O, 'o', 'O'},
+                       {DIK_P, 'p', 'P'}, {DIK_Q, 'q', 'Q'}, {DIK_R, 'r', 'R'},
+                       {DIK_S, 's', 'S'}, {DIK_T, 't', 'T'}, {DIK_U, 'u', 'U'},
+                       {DIK_V, 'v', 'V'}, {DIK_W, 'w', 'W'}, {DIK_X, 'x', 'X'},
+                       {DIK_Y, 'y', 'Y'}, {DIK_Z, 'z', 'Z'}};
 
   // 0 - 9
   static const struct {
     uint32_t key;
     char num;
-  } kNumberKeys[] = {
-    {DIK_0, '0'}, {DIK_1, '1'}, {DIK_2, '2'}, {DIK_3, '3'}, {DIK_4, '4'},
-    {DIK_5, '5'}, {DIK_6, '6'}, {DIK_7, '7'}, {DIK_8, '8'}, {DIK_9, '9'},
-    {DIK_NUMPAD0, '0'}, {DIK_NUMPAD1, '1'}, {DIK_NUMPAD2, '2'}, {DIK_NUMPAD3, '3'},
-    {DIK_NUMPAD4, '4'}, {DIK_NUMPAD5, '5'}, {DIK_NUMPAD6, '6'}, {DIK_NUMPAD7, '7'},
-    {DIK_NUMPAD8, '8'}, {DIK_NUMPAD9, '9'}
-  };
+  } kNumberKeys[] = {{DIK_0, '0'},       {DIK_1, '1'},       {DIK_2, '2'},
+                     {DIK_3, '3'},       {DIK_4, '4'},       {DIK_5, '5'},
+                     {DIK_6, '6'},       {DIK_7, '7'},       {DIK_8, '8'},
+                     {DIK_9, '9'},       {DIK_NUMPAD0, '0'}, {DIK_NUMPAD1, '1'},
+                     {DIK_NUMPAD2, '2'}, {DIK_NUMPAD3, '3'}, {DIK_NUMPAD4, '4'},
+                     {DIK_NUMPAD5, '5'}, {DIK_NUMPAD6, '6'}, {DIK_NUMPAD7, '7'},
+                     {DIK_NUMPAD8, '8'}, {DIK_NUMPAD9, '9'}};
 
   constexpr size_t kMaxNameLength = 14;
 
@@ -675,7 +736,8 @@ void GameScene::TitleUpdate() {
 
   // ----------------------------------------------------------
   // メニュー選択中（未編集中）の処理
-  // 1. 上下カーソル移動（名前登録バーを含め全項目で W/S・矢印キー・パッドが利用可能）
+  // 1. 上下カーソル移動（名前登録バーを含め全項目で
+  // W/S・矢印キー・パッドが利用可能）
   // ----------------------------------------------------------
   bool moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
                 GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
@@ -708,10 +770,11 @@ void GameScene::TitleUpdate() {
     }
   } else {
     // 通常メニュー項目上では SPACE, ENTER, ゲームパッドA, START で実行
-    bool selectTriggered = Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
-                          Input::PushKey(DIK_NUMPADENTER) ||
-                          GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
-                          GamePadInput::PushButton(XINPUT_GAMEPAD_START);
+    bool selectTriggered = Input::PushKey(DIK_SPACE) ||
+                           Input::PushKey(DIK_RETURN) ||
+                           Input::PushKey(DIK_NUMPADENTER) ||
+                           GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+                           GamePadInput::PushButton(XINPUT_GAMEPAD_START);
 
     if (selectTriggered) {
       if (titlePlayerName_.empty()) {
@@ -768,9 +831,31 @@ void GameScene::PlayerHitUpdate() {
   player_->Update(cameraController_->GetViewMatrix(), 1.0f);
 
   if (player_->IsHitAnimationFinished()) {
-    if (forceFirstPlaceCutInTest_ || scoreManager_->IsFirstPlace()) {
+    bool isScoreFirst = scoreManager_->IsScoreFirstPlace();
+    bool isDistFirst = scoreManager_->IsDistanceFirstPlace();
+
+    if (forceFirstPlaceCutInTest_ || isScoreFirst || isDistFirst) {
       gameState_ = GameState::FirstPlaceCutIn;
-      rankingCutinEffect_->Trigger();
+
+      RankingCutinEffect::CutinType type = RankingCutinEffect::CutinType::Score;
+      if (isScoreFirst && isDistFirst) {
+        type = RankingCutinEffect::CutinType::Double;
+      } else if (isDistFirst) {
+        type = RankingCutinEffect::CutinType::Distance;
+      } else if (isScoreFirst) {
+        type = RankingCutinEffect::CutinType::Score;
+      } else {
+        // テスト時
+        if (testCutinType_ == 1) {
+          type = RankingCutinEffect::CutinType::Distance;
+        } else if (testCutinType_ == 2) {
+          type = RankingCutinEffect::CutinType::Double;
+        } else {
+          type = RankingCutinEffect::CutinType::Score;
+        }
+      }
+
+      rankingCutinEffect_->Trigger(type);
     } else {
       gameState_ = GameState::GameOver;
     }
@@ -783,7 +868,8 @@ void GameScene::FirstPlaceCutInUpdate() {
 
   // スキップ入力 (Space, Enter, GamePad A, B)
   if (Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
-      GamePadInput::PushButton(XINPUT_GAMEPAD_A) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
+      GamePadInput::PushButton(XINPUT_GAMEPAD_A) ||
+      GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
     rankingCutinEffect_->RequestSkip();
   }
 
@@ -801,7 +887,8 @@ void GameScene::EditorUpdate() {
 }
 
 void GameScene::CheckCollisions() {
-  if (titleDirector_->IsCountdownActive() && !titleDirector_->IsInputAllowed()) {
+  if (titleDirector_->IsCountdownActive() &&
+      !titleDirector_->IsInputAllowed()) {
     return; // カウントダウン中（GO前）は衝突判定を行わない安全ガード
   }
 
@@ -980,12 +1067,18 @@ void GameScene::DrawUI(class Draw &draw) {
   gameHUD_->DrawHUD(draw, ctx);
 
   // ペンギン1位カットイン演出の描画
-  if (gameState_ == GameState::FirstPlaceCutIn || rankingCutinEffect_->IsActive()) {
+  if (gameState_ == GameState::FirstPlaceCutIn ||
+      rankingCutinEffect_->IsActive()) {
     rankingCutinEffect_->Render(draw);
   }
 
   // タイトル演出ペンギン疾走の描画
   titleDirector_->DrawPenguins(draw);
+
+  // 実績解除通知ポップアップの描画
+  if (achievementManager_) {
+    achievementManager_->DrawUI(draw);
+  }
 
   // 最前面に氷結・破片トランジションを描画（GameView & メイン画面共通）
   FreezeTransition::GetInstance()->Draw(draw);
@@ -998,7 +1091,8 @@ void GameScene::ImGui() {
     // 設定プリセット (JSON 保存 / 読み込み)
     if (ImGui::CollapsingHeader("設定プリセット (JSON 保存 / 読み込み)",
                                 ImGuiTreeNodeFlags_DefaultOpen)) {
-      ImGui::InputText("設定ファイル名", settingsFileName_, sizeof(settingsFileName_));
+      ImGui::InputText("設定ファイル名", settingsFileName_,
+                       sizeof(settingsFileName_));
 
       std::filesystem::path dir = "Resources/Json/GameScene";
       std::vector<std::string> jsonFiles;
@@ -1058,8 +1152,7 @@ void GameScene::ImGui() {
       ImGui::PopStyleColor(2);
 
       if (open) {
-        ImGui::Text("走行距離: %.2f m",
-                    scoreManager_->GetCurrentDistance());
+        ImGui::Text("走行距離: %.2f m", scoreManager_->GetCurrentDistance());
         ImGui::Text("スコア: %.0f", scoreManager_->GetCurrentScore());
         ImGui::Separator();
 
@@ -1078,12 +1171,33 @@ void GameScene::ImGui() {
     }
 
     // ペンギン1位カットイン演出
-    if (ImGui::CollapsingHeader("ペンギン1位カットイン演出", ImGuiTreeNodeFlags_DefaultOpen)) {
-      if (ImGui::Button("カットイン演出を今すぐテスト再生", ImVec2(240, 32))) {
+    if (ImGui::CollapsingHeader("ペンギン1位カットイン演出",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (ImGui::Button("スコア1位カットインをテスト再生", ImVec2(220, 32))) {
         gameState_ = GameState::FirstPlaceCutIn;
-        rankingCutinEffect_->Trigger();
+        rankingCutinEffect_->Trigger(RankingCutinEffect::CutinType::Score);
       }
-      ImGui::Checkbox("ゲームオーバー時に常時カットインを再生 (テスト用)", &forceFirstPlaceCutInTest_);
+      ImGui::SameLine();
+      if (ImGui::Button("走行距離1位カットインをテスト再生", ImVec2(220, 32))) {
+        gameState_ = GameState::FirstPlaceCutIn;
+        rankingCutinEffect_->Trigger(RankingCutinEffect::CutinType::Distance);
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("ダブル1位カットインをテスト再生", ImVec2(200, 32))) {
+        gameState_ = GameState::FirstPlaceCutIn;
+        rankingCutinEffect_->Trigger(RankingCutinEffect::CutinType::Double);
+      }
+
+      ImGui::Checkbox("ゲームオーバー時に常時カットインを再生 (テスト用)",
+                      &forceFirstPlaceCutInTest_);
+      if (forceFirstPlaceCutInTest_) {
+        ImGui::RadioButton("スコア1位演出", &testCutinType_, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("走行距離1位演出", &testCutinType_, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("ダブル1位演出", &testCutinType_, 2);
+      }
+
       rankingCutinEffect_->ImGui();
       ImGui::Separator();
     }
@@ -1113,11 +1227,12 @@ void GameScene::ImGui() {
           scoreManager_->SetPlayerName(titlePlayerName_);
         }
       }
-      ImGui::Checkbox("名前入力中 (Space入力/Enter決定)", &isEditingTitlePlayerName_);
+      ImGui::Checkbox("名前入力中 (Space入力/Enter決定)",
+                      &isEditingTitlePlayerName_);
 
-      const char *menuNames[] = {
-          "0: 名前登録バー", "1: ゲームスタート", "2: ランキング確認",
-          "3: 操作説明", "4: ゲーム終了"};
+      const char *menuNames[] = {"0: 名前登録バー", "1: ゲームスタート",
+                                 "2: ランキング確認", "3: 操作説明",
+                                 "4: ゲーム終了"};
       int curMenuIdx = static_cast<int>(titleMenuIndex_);
       if (ImGui::Combo("選択中メニュー項目", &curMenuIdx, menuNames,
                        IM_ARRAYSIZE(menuNames))) {
@@ -1198,9 +1313,10 @@ void GameScene::ImGui() {
     }
 
     // ゲームステート
-    if (ImGui::CollapsingHeader("ゲームステート", ImGuiTreeNodeFlags_DefaultOpen)) {
-      const char *stateNames[] = {"タイトル",     "プレイ中",   "一時停止",
-                                  "被弾", "ゲームクリア", "ゲームオーバー",
+    if (ImGui::CollapsingHeader("ゲームステート",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+      const char *stateNames[] = {"タイトル",  "プレイ中",     "一時停止",
+                                  "被弾",      "ゲームクリア", "ゲームオーバー",
                                   "エディター"};
       ImGui::Text("現在のゲーム状態: %s", stateNames[gameState_]);
 
@@ -1219,7 +1335,8 @@ void GameScene::ImGui() {
         const Transform &playerTransform = player_->GetTransform();
         ImGui::Text("位置: (%.2f, %.2f, %.2f)", playerTransform.translate.x,
                     playerTransform.translate.y, playerTransform.translate.z);
-        ImGui::Text("ローリング状態: %s", player_->GetIsRolling() ? "YES" : "NO");
+        ImGui::Text("ローリング状態: %s",
+                    player_->GetIsRolling() ? "YES" : "NO");
         ImGui::Text("ジャンプ状態: %s", player_->GetIsJumping() ? "YES" : "NO");
 
         float jumpPower = player_->GetJumpPower();
@@ -1228,7 +1345,8 @@ void GameScene::ImGui() {
           player_->SetJumpPower(jumpPower);
         }
         float gravity = player_->GetGravity();
-        if (ImGui::SliderFloat("重力加速度", &gravity, 0.005f, 0.040f, "%.4f")) {
+        if (ImGui::SliderFloat("重力加速度", &gravity, 0.005f, 0.040f,
+                               "%.4f")) {
           player_->SetGravity(gravity);
         }
         float laneSpeed = player_->GetLaneChangeSpeed();
@@ -1285,15 +1403,19 @@ void GameScene::ImGui() {
 
         ImGui::Separator();
         float spawnZ = stageSettings_->GetSpawnObstacleZ();
-        if (ImGui::SliderFloat("障害物スポーンZ距離", &spawnZ, 20.0f, 160.0f, "%.1f m")) {
+        if (ImGui::SliderFloat("障害物スポーンZ距離", &spawnZ, 20.0f, 160.0f,
+                               "%.1f m")) {
           stageSettings_->SetSpawnObstacleZ(spawnZ);
         }
         float curSpd = stageSettings_->GetScrollSpeed();
         float etaSec = curSpd > 0.0f ? (spawnZ / curSpd / 60.0f) : 0.0f;
         ImGui::Text("到達予測時間: 約 %.1f 秒 (@ 速度 %.3f)", etaSec, curSpd);
-        float remSpawnDist = (std::max)(0.0f, stageSettings_->GetObstacleInterval() - stageSettings_->GetDistanceSinceLastSpawn());
+        float remSpawnDist =
+            (std::max)(0.0f, stageSettings_->GetObstacleInterval() -
+                                 stageSettings_->GetDistanceSinceLastSpawn());
         ImGui::Text("次回スポーンまで: %.1f m (%s)", remSpawnDist,
-                    stageSettings_->GetIsSpawningPaused() ? "一時停止中" : "進行中");
+                    stageSettings_->GetIsSpawningPaused() ? "一時停止中"
+                                                          : "進行中");
         ImGui::TreePop();
       }
 
@@ -1301,6 +1423,24 @@ void GameScene::ImGui() {
 
       // スコア表示
       scoreManager_->ImGui();
+
+      // 実績システム表示
+      if (achievementManager_) {
+        AchievementContext debugAchCtx;
+        debugAchCtx.distance = scoreManager_->GetCurrentDistance();
+        debugAchCtx.score = scoreManager_->GetCurrentScore();
+        debugAchCtx.bonusEnemyHitCount = scoreManager_->GetBonusEnemyHitCount();
+        debugAchCtx.playTime = playTime_;
+        debugAchCtx.isBossBattle = (playingState_ == PlayingState::Boss);
+        debugAchCtx.isBossDefeated =
+            (boss_ && boss_->GetState() == BossState::Defeat);
+        debugAchCtx.isOneLaneMode = isRightSideMode_;
+        debugAchCtx.jumpCount = jumpCount_;
+        debugAchCtx.rollCount = rollCount_;
+        debugAchCtx.laneChangeCount = laneChangeCount_;
+
+        achievementManager_->ImGui(debugAchCtx, scoreManager_.get());
+      }
 
       ImGui::Separator();
 
@@ -1438,7 +1578,6 @@ void GameScene::ImGui() {
   }
 #endif
 
-
 #endif
 }
 
@@ -1468,21 +1607,27 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
 
     // 2. カメラ設定
     const Transform &camT = cameraController_->GetTransform();
-    root["camera"]["transform"]["translate"] = {camT.translate.x, camT.translate.y, camT.translate.z};
-    root["camera"]["transform"]["rotate"] = {camT.rotate.x, camT.rotate.y, camT.rotate.z};
-    root["camera"]["transform"]["scale"] = {camT.scale.x, camT.scale.y, camT.scale.z};
+    root["camera"]["transform"]["translate"] = {
+        camT.translate.x, camT.translate.y, camT.translate.z};
+    root["camera"]["transform"]["rotate"] = {camT.rotate.x, camT.rotate.y,
+                                             camT.rotate.z};
+    root["camera"]["transform"]["scale"] = {camT.scale.x, camT.scale.y,
+                                            camT.scale.z};
     root["camera"]["isFollowPlayer"] = cameraController_->IsFollowPlayer();
-    root["camera"]["followSmoothSpeed"] = cameraController_->GetFollowSmoothSpeed();
+    root["camera"]["followSmoothSpeed"] =
+        cameraController_->GetFollowSmoothSpeed();
     root["camera"]["followWeightX"] = cameraController_->GetFollowWeightX();
     root["camera"]["followWeightY"] = cameraController_->GetFollowWeightY();
-    root["camera"]["bankRollMultiplier"] = cameraController_->GetBankRollMultiplier();
+    root["camera"]["bankRollMultiplier"] =
+        cameraController_->GetBankRollMultiplier();
 
     // 3. タイトル設定
     root["title"]["isTitleOrbitCamera"] = titleDirector_->GetTitleOrbitCamera();
     root["title"]["titleCameraSpeed"] = titleDirector_->GetTitleCameraSpeed();
     root["title"]["titleCameraRadius"] = titleDirector_->GetTitleCameraRadius();
     root["title"]["titleCameraHeight"] = titleDirector_->GetTitleCameraHeight();
-    root["title"]["titleTargetOffsetY"] = titleDirector_->GetTitleTargetOffsetY();
+    root["title"]["titleTargetOffsetY"] =
+        titleDirector_->GetTitleTargetOffsetY();
 
     // 4. プレイヤー設定
     root["player"]["jumpPower"] = player_->GetJumpPower();
@@ -1493,12 +1638,16 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     // 5. ステージ設定
     root["stage"]["laneCount"] = stageSettings_->GetTargetLaneCount();
     root["stage"]["laneWidth"] = stageSettings_->GetLaneWidth();
-    root["stage"]["oneLaneWidthMultiplier"] = stageSettings_->GetOneLaneWidthMultiplier();
+    root["stage"]["oneLaneWidthMultiplier"] =
+        stageSettings_->GetOneLaneWidthMultiplier();
     root["stage"]["baseScrollSpeed"] = stageSettings_->GetBaseScrollSpeed();
     root["stage"]["maxScrollSpeed"] = stageSettings_->GetMaxScrollSpeed();
-    root["stage"]["scrollAcceleration"] = stageSettings_->GetScrollAcceleration();
-    root["stage"]["minObstacleDistance"] = stageSettings_->GetMinObstacleDistance();
-    root["stage"]["maxObstacleDistance"] = stageSettings_->GetMaxObstacleDistance();
+    root["stage"]["scrollAcceleration"] =
+        stageSettings_->GetScrollAcceleration();
+    root["stage"]["minObstacleDistance"] =
+        stageSettings_->GetMinObstacleDistance();
+    root["stage"]["maxObstacleDistance"] =
+        stageSettings_->GetMaxObstacleDistance();
     root["stage"]["baseActionFrames"] = stageSettings_->GetBaseActionFrames();
     root["stage"]["minGraceFrames"] = stageSettings_->GetMinGraceFrames();
     root["stage"]["maxGraceFrames"] = stageSettings_->GetMaxGraceFrames();
@@ -1510,34 +1659,56 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
 
     root["stage"]["driftIce"]["enabled"] = stageSettings_->GetDriftIceEnabled();
     Vector4 iceCol = stageSettings_->GetDriftIceColor();
-    root["stage"]["driftIce"]["color"] = {iceCol.x, iceCol.y, iceCol.z, iceCol.w};
-    root["stage"]["driftIce"]["bobbingScale"] = stageSettings_->GetDriftIceBobbingScale();
-    root["stage"]["driftIce"]["bobbingSpeedScale"] = stageSettings_->GetDriftIceBobbingSpeedScale();
-    root["stage"]["driftIce"]["sizeScale"] = stageSettings_->GetDriftIceSizeScale();
-    root["stage"]["driftIce"]["thicknessScale"] = stageSettings_->GetDriftIceThicknessScale();
-    root["stage"]["driftIce"]["heightOffset"] = stageSettings_->GetDriftIceHeightOffset();
-    root["stage"]["driftIce"]["distanceOffset"] = stageSettings_->GetDriftIceDistanceOffset();
-    root["stage"]["driftIce"]["lighting"] = stageSettings_->GetDriftIceLighting();
-    root["stage"]["driftIce"]["babySealSpinSpeed"] = stageSettings_->GetBabySealSpinSpeed();
+    root["stage"]["driftIce"]["color"] = {iceCol.x, iceCol.y, iceCol.z,
+                                          iceCol.w};
+    root["stage"]["driftIce"]["bobbingScale"] =
+        stageSettings_->GetDriftIceBobbingScale();
+    root["stage"]["driftIce"]["bobbingSpeedScale"] =
+        stageSettings_->GetDriftIceBobbingSpeedScale();
+    root["stage"]["driftIce"]["sizeScale"] =
+        stageSettings_->GetDriftIceSizeScale();
+    root["stage"]["driftIce"]["thicknessScale"] =
+        stageSettings_->GetDriftIceThicknessScale();
+    root["stage"]["driftIce"]["heightOffset"] =
+        stageSettings_->GetDriftIceHeightOffset();
+    root["stage"]["driftIce"]["distanceOffset"] =
+        stageSettings_->GetDriftIceDistanceOffset();
+    root["stage"]["driftIce"]["lighting"] =
+        stageSettings_->GetDriftIceLighting();
+    root["stage"]["driftIce"]["babySealSpinSpeed"] =
+        stageSettings_->GetBabySealSpinSpeed();
 
-    root["stage"]["water"]["forwardExtension"] = stageSettings_->GetWaterForwardExtension();
-    root["stage"]["water"]["backwardExtension"] = stageSettings_->GetWaterBackwardExtension();
+    root["stage"]["water"]["forwardExtension"] =
+        stageSettings_->GetWaterForwardExtension();
+    root["stage"]["water"]["backwardExtension"] =
+        stageSettings_->GetWaterBackwardExtension();
     root["stage"]["water"]["widthScale"] = stageSettings_->GetWaterWidthScale();
 
-    root["stage"]["items"]["spawnChance"] = stageSettings_->GetItemSpawnChance();
-    root["stage"]["items"]["cooldowns"]["bonus"] = stageSettings_->GetItemCoolDownDuration(Obstacle::Type::Bonus);
-    root["stage"]["items"]["cooldowns"]["barrier"] = stageSettings_->GetItemCoolDownDuration(Obstacle::Type::BarrierItem);
-    root["stage"]["items"]["cooldowns"]["clear"] = stageSettings_->GetItemCoolDownDuration(Obstacle::Type::ClearItem);
-    root["stage"]["items"]["cooldowns"]["camera"] = stageSettings_->GetItemCoolDownDuration(Obstacle::Type::CameraItem);
-    root["stage"]["items"]["cooldowns"]["boss"] = stageSettings_->GetItemCoolDownDuration(Obstacle::Type::BossItem);
+    root["stage"]["items"]["spawnChance"] =
+        stageSettings_->GetItemSpawnChance();
+    root["stage"]["items"]["cooldowns"]["bonus"] =
+        stageSettings_->GetItemCoolDownDuration(Obstacle::Type::Bonus);
+    root["stage"]["items"]["cooldowns"]["barrier"] =
+        stageSettings_->GetItemCoolDownDuration(Obstacle::Type::BarrierItem);
+    root["stage"]["items"]["cooldowns"]["clear"] =
+        stageSettings_->GetItemCoolDownDuration(Obstacle::Type::ClearItem);
+    root["stage"]["items"]["cooldowns"]["camera"] =
+        stageSettings_->GetItemCoolDownDuration(Obstacle::Type::CameraItem);
+    root["stage"]["items"]["cooldowns"]["boss"] =
+        stageSettings_->GetItemCoolDownDuration(Obstacle::Type::BossItem);
 
     // 6. ボス設定
     root["boss"]["attackSpawnZ"] = bossBattleController_->GetAttackSpawnZ();
-    root["boss"]["attackDropHeight"] = bossBattleController_->GetAttackDropHeight();
-    root["boss"]["attackFallDuration"] = bossBattleController_->GetAttackFallDuration();
-    root["boss"]["attackReflectMinZ"] = bossBattleController_->GetAttackReflectMinZ();
-    root["boss"]["reflectArcHeight"] = bossBattleController_->GetReflectArcHeight();
-    root["boss"]["reflectDuration"] = bossBattleController_->GetReflectDuration();
+    root["boss"]["attackDropHeight"] =
+        bossBattleController_->GetAttackDropHeight();
+    root["boss"]["attackFallDuration"] =
+        bossBattleController_->GetAttackFallDuration();
+    root["boss"]["attackReflectMinZ"] =
+        bossBattleController_->GetAttackReflectMinZ();
+    root["boss"]["reflectArcHeight"] =
+        bossBattleController_->GetReflectArcHeight();
+    root["boss"]["reflectDuration"] =
+        bossBattleController_->GetReflectDuration();
     const Vector3 &bossCamTr = bossBattleController_->GetBossCameraTranslate();
     root["boss"]["cameraTranslate"] = {bossCamTr.x, bossCamTr.y, bossCamTr.z};
     const Vector3 &bossCamRot = bossBattleController_->GetBossCameraRotate();
@@ -1546,7 +1717,8 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     // 7. クラッシュ演出設定
     const Vector2 &crashPos = crashEffect_->GetCrashPosition();
     root["crashEffect"]["position"] = {crashPos.x, crashPos.y};
-    root["crashEffect"]["scaleDuration"] = crashEffect_->GetCrashScaleDuration();
+    root["crashEffect"]["scaleDuration"] =
+        crashEffect_->GetCrashScaleDuration();
     const Vector2 &crashBaseSize = crashEffect_->GetCrashBaseSize();
     root["crashEffect"]["baseSize"] = {crashBaseSize.x, crashBaseSize.y};
 
@@ -1554,13 +1726,17 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     const Vector3 &barrOff = effectManager_->GetBarrierOffset();
     root["barrierEffect"]["offset"] = {barrOff.x, barrOff.y, barrOff.z};
     const Vector3 &barrScale = effectManager_->GetBarrierBaseScale();
-    root["barrierEffect"]["baseScale"] = {barrScale.x, barrScale.y, barrScale.z};
+    root["barrierEffect"]["baseScale"] = {barrScale.x, barrScale.y,
+                                          barrScale.z};
     const Vector4 &barrCol = effectManager_->GetBarrierBaseColor();
-    root["barrierEffect"]["baseColor"] = {barrCol.x, barrCol.y, barrCol.z, barrCol.w};
+    root["barrierEffect"]["baseColor"] = {barrCol.x, barrCol.y, barrCol.z,
+                                          barrCol.w};
     const Vector4 &flashCol = effectManager_->GetBarrierFlashColor();
-    root["barrierEffect"]["flashColor"] = {flashCol.x, flashCol.y, flashCol.z, flashCol.w};
+    root["barrierEffect"]["flashColor"] = {flashCol.x, flashCol.y, flashCol.z,
+                                           flashCol.w};
     root["barrierEffect"]["radius"] = effectManager_->GetBarrierRadius();
-    root["barrierEffect"]["pointyTopped"] = effectManager_->GetBarrierPointyTopped();
+    root["barrierEffect"]["pointyTopped"] =
+        effectManager_->GetBarrierPointyTopped();
     root["barrierEffect"]["shape"] = effectManager_->GetBarrierShape();
 
     // 9. フォント設定
@@ -1570,7 +1746,8 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
 
     std::ofstream ofs(filePath);
     if (!ofs.is_open()) {
-      settingsStatusMessage_ = "保存失敗: ファイルを開けませんでした (" + filePath + ")";
+      settingsStatusMessage_ =
+          "保存失敗: ファイルを開けませんでした (" + filePath + ")";
       settingsStatusTimer_ = 3.0f;
       return false;
     }
@@ -1602,7 +1779,8 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
 
     std::ifstream ifs(filePath);
     if (!ifs.is_open()) {
-      settingsStatusMessage_ = "読み込み失敗: ファイルが見つかりません (" + filePath + ")";
+      settingsStatusMessage_ =
+          "読み込み失敗: ファイルが見つかりません (" + filePath + ")";
       settingsStatusTimer_ = 3.0f;
       return false;
     }
@@ -1615,9 +1793,12 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
     if (root.contains("sound")) {
       const auto &s = root["sound"];
       auto *gsm = GameSceneManager::GetInstance();
-      if (s.contains("masterVolume")) gsm->SetMasterVolume(s["masterVolume"].get<float>());
-      if (s.contains("bgmVolume")) gsm->SetBGMVolume(s["bgmVolume"].get<float>());
-      if (s.contains("seVolume")) gsm->SetSEVolume(s["seVolume"].get<float>());
+      if (s.contains("masterVolume"))
+        gsm->SetMasterVolume(s["masterVolume"].get<float>());
+      if (s.contains("bgmVolume"))
+        gsm->SetBGMVolume(s["bgmVolume"].get<float>());
+      if (s.contains("seVolume"))
+        gsm->SetSEVolume(s["seVolume"].get<float>());
     }
 
     // 2. カメラ設定
@@ -1625,98 +1806,187 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
       const auto &c = root["camera"];
       if (c.contains("transform")) {
         Transform camT = cameraController_->GetTransform();
-        if (c["transform"].contains("translate") && c["transform"]["translate"].is_array() && c["transform"]["translate"].size() >= 3) {
-          camT.translate = {c["transform"]["translate"][0].get<float>(), c["transform"]["translate"][1].get<float>(), c["transform"]["translate"][2].get<float>()};
+        if (c["transform"].contains("translate") &&
+            c["transform"]["translate"].is_array() &&
+            c["transform"]["translate"].size() >= 3) {
+          camT.translate = {c["transform"]["translate"][0].get<float>(),
+                            c["transform"]["translate"][1].get<float>(),
+                            c["transform"]["translate"][2].get<float>()};
         }
-        if (c["transform"].contains("rotate") && c["transform"]["rotate"].is_array() && c["transform"]["rotate"].size() >= 3) {
-          camT.rotate = {c["transform"]["rotate"][0].get<float>(), c["transform"]["rotate"][1].get<float>(), c["transform"]["rotate"][2].get<float>()};
+        if (c["transform"].contains("rotate") &&
+            c["transform"]["rotate"].is_array() &&
+            c["transform"]["rotate"].size() >= 3) {
+          camT.rotate = {c["transform"]["rotate"][0].get<float>(),
+                         c["transform"]["rotate"][1].get<float>(),
+                         c["transform"]["rotate"][2].get<float>()};
         }
-        if (c["transform"].contains("scale") && c["transform"]["scale"].is_array() && c["transform"]["scale"].size() >= 3) {
-          camT.scale = {c["transform"]["scale"][0].get<float>(), c["transform"]["scale"][1].get<float>(), c["transform"]["scale"][2].get<float>()};
+        if (c["transform"].contains("scale") &&
+            c["transform"]["scale"].is_array() &&
+            c["transform"]["scale"].size() >= 3) {
+          camT.scale = {c["transform"]["scale"][0].get<float>(),
+                        c["transform"]["scale"][1].get<float>(),
+                        c["transform"]["scale"][2].get<float>()};
         }
         cameraController_->SetTransform(camT);
-        if (cameraController_->GetCamera()) cameraController_->GetCamera()->SetTransform(camT);
-        if (cameraController_->GetGameCamera()) cameraController_->GetGameCamera()->SetTransform(camT);
+        if (cameraController_->GetCamera())
+          cameraController_->GetCamera()->SetTransform(camT);
+        if (cameraController_->GetGameCamera())
+          cameraController_->GetGameCamera()->SetTransform(camT);
       }
-      if (c.contains("isFollowPlayer")) cameraController_->SetFollowPlayer(c["isFollowPlayer"].get<bool>());
-      if (c.contains("followSmoothSpeed")) cameraController_->SetFollowSmoothSpeed(c["followSmoothSpeed"].get<float>());
-      if (c.contains("followWeightX")) cameraController_->SetFollowWeightX(c["followWeightX"].get<float>());
-      if (c.contains("followWeightY")) cameraController_->SetFollowWeightY(c["followWeightY"].get<float>());
-      if (c.contains("bankRollMultiplier")) cameraController_->SetBankRollMultiplier(c["bankRollMultiplier"].get<float>());
+      if (c.contains("isFollowPlayer"))
+        cameraController_->SetFollowPlayer(c["isFollowPlayer"].get<bool>());
+      if (c.contains("followSmoothSpeed"))
+        cameraController_->SetFollowSmoothSpeed(
+            c["followSmoothSpeed"].get<float>());
+      if (c.contains("followWeightX"))
+        cameraController_->SetFollowWeightX(c["followWeightX"].get<float>());
+      if (c.contains("followWeightY"))
+        cameraController_->SetFollowWeightY(c["followWeightY"].get<float>());
+      if (c.contains("bankRollMultiplier"))
+        cameraController_->SetBankRollMultiplier(
+            c["bankRollMultiplier"].get<float>());
     }
 
     // 3. タイトル設定
     if (root.contains("title")) {
       const auto &t = root["title"];
-      if (t.contains("isTitleOrbitCamera")) titleDirector_->SetTitleOrbitCamera(t["isTitleOrbitCamera"].get<bool>());
-      if (t.contains("titleCameraSpeed")) titleDirector_->SetTitleCameraSpeed(t["titleCameraSpeed"].get<float>());
-      if (t.contains("titleCameraRadius")) titleDirector_->SetTitleCameraRadius(t["titleCameraRadius"].get<float>());
-      if (t.contains("titleCameraHeight")) titleDirector_->SetTitleCameraHeight(t["titleCameraHeight"].get<float>());
-      if (t.contains("titleTargetOffsetY")) titleDirector_->SetTitleTargetOffsetY(t["titleTargetOffsetY"].get<float>());
+      if (t.contains("isTitleOrbitCamera"))
+        titleDirector_->SetTitleOrbitCamera(
+            t["isTitleOrbitCamera"].get<bool>());
+      if (t.contains("titleCameraSpeed"))
+        titleDirector_->SetTitleCameraSpeed(t["titleCameraSpeed"].get<float>());
+      if (t.contains("titleCameraRadius"))
+        titleDirector_->SetTitleCameraRadius(
+            t["titleCameraRadius"].get<float>());
+      if (t.contains("titleCameraHeight"))
+        titleDirector_->SetTitleCameraHeight(
+            t["titleCameraHeight"].get<float>());
+      if (t.contains("titleTargetOffsetY"))
+        titleDirector_->SetTitleTargetOffsetY(
+            t["titleTargetOffsetY"].get<float>());
     }
 
     // 4. プレイヤー設定
     if (root.contains("player")) {
       const auto &p = root["player"];
-      if (p.contains("jumpPower")) player_->SetJumpPower(p["jumpPower"].get<float>());
-      if (p.contains("gravity")) player_->SetGravity(p["gravity"].get<float>());
-      if (p.contains("laneChangeSpeed")) player_->SetLaneChangeSpeed(p["laneChangeSpeed"].get<float>());
-      if (p.contains("rollDuration")) player_->SetRollDuration(p["rollDuration"].get<float>());
+      if (p.contains("jumpPower"))
+        player_->SetJumpPower(p["jumpPower"].get<float>());
+      if (p.contains("gravity"))
+        player_->SetGravity(p["gravity"].get<float>());
+      if (p.contains("laneChangeSpeed"))
+        player_->SetLaneChangeSpeed(p["laneChangeSpeed"].get<float>());
+      if (p.contains("rollDuration"))
+        player_->SetRollDuration(p["rollDuration"].get<float>());
     }
 
     // 5. ステージ設定
     if (root.contains("stage")) {
       const auto &st = root["stage"];
-      if (st.contains("laneCount")) stageSettings_->SetLaneCount(st["laneCount"].get<int>());
-      if (st.contains("laneWidth")) stageSettings_->SetLaneWidth(st["laneWidth"].get<float>());
-      if (st.contains("oneLaneWidthMultiplier")) stageSettings_->SetOneLaneWidthMultiplier(st["oneLaneWidthMultiplier"].get<float>());
-      if (st.contains("baseScrollSpeed")) stageSettings_->SetBaseScrollSpeed(st["baseScrollSpeed"].get<float>());
-      if (st.contains("maxScrollSpeed")) stageSettings_->SetMaxScrollSpeed(st["maxScrollSpeed"].get<float>());
-      if (st.contains("scrollAcceleration")) stageSettings_->SetScrollAcceleration(st["scrollAcceleration"].get<float>());
-      if (st.contains("minObstacleDistance")) stageSettings_->SetMinObstacleDistance(st["minObstacleDistance"].get<float>());
-      if (st.contains("maxObstacleDistance")) stageSettings_->SetMaxObstacleDistance(st["maxObstacleDistance"].get<float>());
-      if (st.contains("baseActionFrames")) stageSettings_->SetBaseActionFrames(st["baseActionFrames"].get<float>());
-      if (st.contains("minGraceFrames")) stageSettings_->SetMinGraceFrames(st["minGraceFrames"].get<float>());
-      if (st.contains("maxGraceFrames")) stageSettings_->SetMaxGraceFrames(st["maxGraceFrames"].get<float>());
-      if (st.contains("noSpawnChance")) stageSettings_->SetNoSpawnChance(st["noSpawnChance"].get<float>());
-      if (st.contains("spawnObstacleZ")) stageSettings_->SetSpawnObstacleZ(st["spawnObstacleZ"].get<float>());
-      if (st.contains("roadColor") && st["roadColor"].is_array() && st["roadColor"].size() >= 4) {
-        stageSettings_->SetRoadColor({st["roadColor"][0].get<float>(), st["roadColor"][1].get<float>(), st["roadColor"][2].get<float>(), st["roadColor"][3].get<float>()});
+      if (st.contains("laneCount"))
+        stageSettings_->SetLaneCount(st["laneCount"].get<int>());
+      if (st.contains("laneWidth"))
+        stageSettings_->SetLaneWidth(st["laneWidth"].get<float>());
+      if (st.contains("oneLaneWidthMultiplier"))
+        stageSettings_->SetOneLaneWidthMultiplier(
+            st["oneLaneWidthMultiplier"].get<float>());
+      if (st.contains("baseScrollSpeed"))
+        stageSettings_->SetBaseScrollSpeed(st["baseScrollSpeed"].get<float>());
+      if (st.contains("maxScrollSpeed"))
+        stageSettings_->SetMaxScrollSpeed(st["maxScrollSpeed"].get<float>());
+      if (st.contains("scrollAcceleration"))
+        stageSettings_->SetScrollAcceleration(
+            st["scrollAcceleration"].get<float>());
+      if (st.contains("minObstacleDistance"))
+        stageSettings_->SetMinObstacleDistance(
+            st["minObstacleDistance"].get<float>());
+      if (st.contains("maxObstacleDistance"))
+        stageSettings_->SetMaxObstacleDistance(
+            st["maxObstacleDistance"].get<float>());
+      if (st.contains("baseActionFrames"))
+        stageSettings_->SetBaseActionFrames(
+            st["baseActionFrames"].get<float>());
+      if (st.contains("minGraceFrames"))
+        stageSettings_->SetMinGraceFrames(st["minGraceFrames"].get<float>());
+      if (st.contains("maxGraceFrames"))
+        stageSettings_->SetMaxGraceFrames(st["maxGraceFrames"].get<float>());
+      if (st.contains("noSpawnChance"))
+        stageSettings_->SetNoSpawnChance(st["noSpawnChance"].get<float>());
+      if (st.contains("spawnObstacleZ"))
+        stageSettings_->SetSpawnObstacleZ(st["spawnObstacleZ"].get<float>());
+      if (st.contains("roadColor") && st["roadColor"].is_array() &&
+          st["roadColor"].size() >= 4) {
+        stageSettings_->SetRoadColor(
+            {st["roadColor"][0].get<float>(), st["roadColor"][1].get<float>(),
+             st["roadColor"][2].get<float>(), st["roadColor"][3].get<float>()});
       }
 
       if (st.contains("driftIce")) {
         const auto &di = st["driftIce"];
-        if (di.contains("enabled")) stageSettings_->SetDriftIceEnabled(di["enabled"].get<bool>());
-        if (di.contains("color") && di["color"].is_array() && di["color"].size() >= 4) {
-          stageSettings_->SetDriftIceColor({di["color"][0].get<float>(), di["color"][1].get<float>(), di["color"][2].get<float>(), di["color"][3].get<float>()});
+        if (di.contains("enabled"))
+          stageSettings_->SetDriftIceEnabled(di["enabled"].get<bool>());
+        if (di.contains("color") && di["color"].is_array() &&
+            di["color"].size() >= 4) {
+          stageSettings_->SetDriftIceColor(
+              {di["color"][0].get<float>(), di["color"][1].get<float>(),
+               di["color"][2].get<float>(), di["color"][3].get<float>()});
         }
-        if (di.contains("bobbingScale")) stageSettings_->SetDriftIceBobbingScale(di["bobbingScale"].get<float>());
-        if (di.contains("bobbingSpeedScale")) stageSettings_->SetDriftIceBobbingSpeedScale(di["bobbingSpeedScale"].get<float>());
-        if (di.contains("sizeScale")) stageSettings_->SetDriftIceSizeScale(di["sizeScale"].get<float>());
-        if (di.contains("thicknessScale")) stageSettings_->SetDriftIceThicknessScale(di["thicknessScale"].get<float>());
-        if (di.contains("heightOffset")) stageSettings_->SetDriftIceHeightOffset(di["heightOffset"].get<float>());
-        if (di.contains("distanceOffset")) stageSettings_->SetDriftIceDistanceOffset(di["distanceOffset"].get<float>());
-        if (di.contains("lighting")) stageSettings_->SetDriftIceLighting(di["lighting"].get<bool>());
-        if (di.contains("babySealSpinSpeed")) stageSettings_->SetBabySealSpinSpeed(di["babySealSpinSpeed"].get<float>());
+        if (di.contains("bobbingScale"))
+          stageSettings_->SetDriftIceBobbingScale(
+              di["bobbingScale"].get<float>());
+        if (di.contains("bobbingSpeedScale"))
+          stageSettings_->SetDriftIceBobbingSpeedScale(
+              di["bobbingSpeedScale"].get<float>());
+        if (di.contains("sizeScale"))
+          stageSettings_->SetDriftIceSizeScale(di["sizeScale"].get<float>());
+        if (di.contains("thicknessScale"))
+          stageSettings_->SetDriftIceThicknessScale(
+              di["thicknessScale"].get<float>());
+        if (di.contains("heightOffset"))
+          stageSettings_->SetDriftIceHeightOffset(
+              di["heightOffset"].get<float>());
+        if (di.contains("distanceOffset"))
+          stageSettings_->SetDriftIceDistanceOffset(
+              di["distanceOffset"].get<float>());
+        if (di.contains("lighting"))
+          stageSettings_->SetDriftIceLighting(di["lighting"].get<bool>());
+        if (di.contains("babySealSpinSpeed"))
+          stageSettings_->SetBabySealSpinSpeed(
+              di["babySealSpinSpeed"].get<float>());
       }
 
       if (st.contains("water")) {
         const auto &w = st["water"];
-        if (w.contains("forwardExtension")) stageSettings_->SetWaterForwardExtension(w["forwardExtension"].get<float>());
-        if (w.contains("backwardExtension")) stageSettings_->SetWaterBackwardExtension(w["backwardExtension"].get<float>());
-        if (w.contains("widthScale")) stageSettings_->SetWaterWidthScale(w["widthScale"].get<float>());
+        if (w.contains("forwardExtension"))
+          stageSettings_->SetWaterForwardExtension(
+              w["forwardExtension"].get<float>());
+        if (w.contains("backwardExtension"))
+          stageSettings_->SetWaterBackwardExtension(
+              w["backwardExtension"].get<float>());
+        if (w.contains("widthScale"))
+          stageSettings_->SetWaterWidthScale(w["widthScale"].get<float>());
       }
 
       if (st.contains("items")) {
         const auto &it = st["items"];
-        if (it.contains("spawnChance")) stageSettings_->SetItemSpawnChance(it["spawnChance"].get<float>());
+        if (it.contains("spawnChance"))
+          stageSettings_->SetItemSpawnChance(it["spawnChance"].get<float>());
         if (it.contains("cooldowns")) {
           const auto &cd = it["cooldowns"];
-          if (cd.contains("bonus")) stageSettings_->SetItemCoolDownDuration(Obstacle::Type::Bonus, cd["bonus"].get<float>());
-          if (cd.contains("barrier")) stageSettings_->SetItemCoolDownDuration(Obstacle::Type::BarrierItem, cd["barrier"].get<float>());
-          if (cd.contains("clear")) stageSettings_->SetItemCoolDownDuration(Obstacle::Type::ClearItem, cd["clear"].get<float>());
-          if (cd.contains("camera")) stageSettings_->SetItemCoolDownDuration(Obstacle::Type::CameraItem, cd["camera"].get<float>());
-          if (cd.contains("boss")) stageSettings_->SetItemCoolDownDuration(Obstacle::Type::BossItem, cd["boss"].get<float>());
+          if (cd.contains("bonus"))
+            stageSettings_->SetItemCoolDownDuration(Obstacle::Type::Bonus,
+                                                    cd["bonus"].get<float>());
+          if (cd.contains("barrier"))
+            stageSettings_->SetItemCoolDownDuration(Obstacle::Type::BarrierItem,
+                                                    cd["barrier"].get<float>());
+          if (cd.contains("clear"))
+            stageSettings_->SetItemCoolDownDuration(Obstacle::Type::ClearItem,
+                                                    cd["clear"].get<float>());
+          if (cd.contains("camera"))
+            stageSettings_->SetItemCoolDownDuration(Obstacle::Type::CameraItem,
+                                                    cd["camera"].get<float>());
+          if (cd.contains("boss"))
+            stageSettings_->SetItemCoolDownDuration(Obstacle::Type::BossItem,
+                                                    cd["boss"].get<float>());
         }
       }
     }
@@ -1724,56 +1994,97 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
     // 6. ボス設定
     if (root.contains("boss")) {
       const auto &b = root["boss"];
-      if (b.contains("attackSpawnZ")) bossBattleController_->SetAttackSpawnZ(b["attackSpawnZ"].get<float>());
-      if (b.contains("attackDropHeight")) bossBattleController_->SetAttackDropHeight(b["attackDropHeight"].get<float>());
-      if (b.contains("attackFallDuration")) bossBattleController_->SetAttackFallDuration(b["attackFallDuration"].get<float>());
-      if (b.contains("attackReflectMinZ")) bossBattleController_->SetAttackReflectMinZ(b["attackReflectMinZ"].get<float>());
-      if (b.contains("reflectArcHeight")) bossBattleController_->SetReflectArcHeight(b["reflectArcHeight"].get<float>());
-      if (b.contains("reflectDuration")) bossBattleController_->SetReflectDuration(b["reflectDuration"].get<float>());
-      if (b.contains("cameraTranslate") && b["cameraTranslate"].is_array() && b["cameraTranslate"].size() >= 3) {
-        bossBattleController_->SetBossCameraTranslate({b["cameraTranslate"][0].get<float>(), b["cameraTranslate"][1].get<float>(), b["cameraTranslate"][2].get<float>()});
+      if (b.contains("attackSpawnZ"))
+        bossBattleController_->SetAttackSpawnZ(b["attackSpawnZ"].get<float>());
+      if (b.contains("attackDropHeight"))
+        bossBattleController_->SetAttackDropHeight(
+            b["attackDropHeight"].get<float>());
+      if (b.contains("attackFallDuration"))
+        bossBattleController_->SetAttackFallDuration(
+            b["attackFallDuration"].get<float>());
+      if (b.contains("attackReflectMinZ"))
+        bossBattleController_->SetAttackReflectMinZ(
+            b["attackReflectMinZ"].get<float>());
+      if (b.contains("reflectArcHeight"))
+        bossBattleController_->SetReflectArcHeight(
+            b["reflectArcHeight"].get<float>());
+      if (b.contains("reflectDuration"))
+        bossBattleController_->SetReflectDuration(
+            b["reflectDuration"].get<float>());
+      if (b.contains("cameraTranslate") && b["cameraTranslate"].is_array() &&
+          b["cameraTranslate"].size() >= 3) {
+        bossBattleController_->SetBossCameraTranslate(
+            {b["cameraTranslate"][0].get<float>(),
+             b["cameraTranslate"][1].get<float>(),
+             b["cameraTranslate"][2].get<float>()});
       }
-      if (b.contains("cameraRotate") && b["cameraRotate"].is_array() && b["cameraRotate"].size() >= 3) {
-        bossBattleController_->SetBossCameraRotate({b["cameraRotate"][0].get<float>(), b["cameraRotate"][1].get<float>(), b["cameraRotate"][2].get<float>()});
+      if (b.contains("cameraRotate") && b["cameraRotate"].is_array() &&
+          b["cameraRotate"].size() >= 3) {
+        bossBattleController_->SetBossCameraRotate(
+            {b["cameraRotate"][0].get<float>(),
+             b["cameraRotate"][1].get<float>(),
+             b["cameraRotate"][2].get<float>()});
       }
     }
 
     // 7. クラッシュ演出設定
     if (root.contains("crashEffect")) {
       const auto &ce = root["crashEffect"];
-      if (ce.contains("position") && ce["position"].is_array() && ce["position"].size() >= 2) {
-        crashEffect_->SetCrashPosition({ce["position"][0].get<float>(), ce["position"][1].get<float>()});
+      if (ce.contains("position") && ce["position"].is_array() &&
+          ce["position"].size() >= 2) {
+        crashEffect_->SetCrashPosition(
+            {ce["position"][0].get<float>(), ce["position"][1].get<float>()});
       }
-      if (ce.contains("scaleDuration")) crashEffect_->SetCrashScaleDuration(ce["scaleDuration"].get<float>());
-      if (ce.contains("baseSize") && ce["baseSize"].is_array() && ce["baseSize"].size() >= 2) {
-        crashEffect_->SetCrashBaseSize({ce["baseSize"][0].get<float>(), ce["baseSize"][1].get<float>()});
+      if (ce.contains("scaleDuration"))
+        crashEffect_->SetCrashScaleDuration(ce["scaleDuration"].get<float>());
+      if (ce.contains("baseSize") && ce["baseSize"].is_array() &&
+          ce["baseSize"].size() >= 2) {
+        crashEffect_->SetCrashBaseSize(
+            {ce["baseSize"][0].get<float>(), ce["baseSize"][1].get<float>()});
       }
     }
 
     // 8. バリア演出設定
     if (root.contains("barrierEffect")) {
       const auto &be = root["barrierEffect"];
-      if (be.contains("offset") && be["offset"].is_array() && be["offset"].size() >= 3) {
-        effectManager_->SetBarrierOffset({be["offset"][0].get<float>(), be["offset"][1].get<float>(), be["offset"][2].get<float>()});
+      if (be.contains("offset") && be["offset"].is_array() &&
+          be["offset"].size() >= 3) {
+        effectManager_->SetBarrierOffset({be["offset"][0].get<float>(),
+                                          be["offset"][1].get<float>(),
+                                          be["offset"][2].get<float>()});
       }
-      if (be.contains("baseScale") && be["baseScale"].is_array() && be["baseScale"].size() >= 3) {
-        effectManager_->SetBarrierBaseScale({be["baseScale"][0].get<float>(), be["baseScale"][1].get<float>(), be["baseScale"][2].get<float>()});
+      if (be.contains("baseScale") && be["baseScale"].is_array() &&
+          be["baseScale"].size() >= 3) {
+        effectManager_->SetBarrierBaseScale({be["baseScale"][0].get<float>(),
+                                             be["baseScale"][1].get<float>(),
+                                             be["baseScale"][2].get<float>()});
       }
-      if (be.contains("baseColor") && be["baseColor"].is_array() && be["baseColor"].size() >= 4) {
-        effectManager_->SetBarrierBaseColor({be["baseColor"][0].get<float>(), be["baseColor"][1].get<float>(), be["baseColor"][2].get<float>(), be["baseColor"][3].get<float>()});
+      if (be.contains("baseColor") && be["baseColor"].is_array() &&
+          be["baseColor"].size() >= 4) {
+        effectManager_->SetBarrierBaseColor(
+            {be["baseColor"][0].get<float>(), be["baseColor"][1].get<float>(),
+             be["baseColor"][2].get<float>(), be["baseColor"][3].get<float>()});
       }
-      if (be.contains("flashColor") && be["flashColor"].is_array() && be["flashColor"].size() >= 4) {
-        effectManager_->SetBarrierFlashColor({be["flashColor"][0].get<float>(), be["flashColor"][1].get<float>(), be["flashColor"][2].get<float>(), be["flashColor"][3].get<float>()});
+      if (be.contains("flashColor") && be["flashColor"].is_array() &&
+          be["flashColor"].size() >= 4) {
+        effectManager_->SetBarrierFlashColor(
+            {be["flashColor"][0].get<float>(), be["flashColor"][1].get<float>(),
+             be["flashColor"][2].get<float>(),
+             be["flashColor"][3].get<float>()});
       }
-      if (be.contains("radius")) effectManager_->SetBarrierRadius(be["radius"].get<float>());
-      if (be.contains("pointyTopped")) effectManager_->SetBarrierPointyTopped(be["pointyTopped"].get<bool>());
-      if (be.contains("shape")) effectManager_->SetBarrierShape(be["shape"].get<int>());
+      if (be.contains("radius"))
+        effectManager_->SetBarrierRadius(be["radius"].get<float>());
+      if (be.contains("pointyTopped"))
+        effectManager_->SetBarrierPointyTopped(be["pointyTopped"].get<bool>());
+      if (be.contains("shape"))
+        effectManager_->SetBarrierShape(be["shape"].get<int>());
     }
 
     // 9. フォント設定
     if (root.contains("font") && draw_) {
       const auto &f = root["font"];
-      if (f.contains("boldness")) draw_->SetTextBaseBoldness(f["boldness"].get<float>());
+      if (f.contains("boldness"))
+        draw_->SetTextBaseBoldness(f["boldness"].get<float>());
     }
 
     stageSettings_->UpdateSidePlanesTransform();
@@ -1888,4 +2199,3 @@ void GameScene::ResetSettingsToDefault() {
   settingsStatusMessage_ = "初期設定に戻しました";
   settingsStatusTimer_ = 3.0f;
 }
-

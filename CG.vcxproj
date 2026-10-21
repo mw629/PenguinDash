@@ -277,6 +277,8 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp" />
     <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp" />
     <ClCompile Include="Game\GameScene\Effect\RankingCutinEffect.cpp" />
+    <ClCompile Include="Game\GameScene\System\Achievement.cpp" />
+    <ClCompile Include="Game\GameScene\System\AchievementManager.cpp" />
     <ClCompile Include="Game\GameScene\System\BossBattleController.cpp" />
     <ClCompile Include="Game\GameScene\System\ScoreManager.cpp" />
     <ClCompile Include="Game\GameScene\System\TitleDirector.cpp" />
@@ -453,6 +455,8 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="Game\GameScene\Camera\GameCameraController.h" />
     <ClInclude Include="Game\GameScene\Effect\CrashEffect.h" />
     <ClInclude Include="Game\GameScene\Effect\RankingCutinEffect.h" />
+    <ClInclude Include="Game\GameScene\System\Achievement.h" />
+    <ClInclude Include="Game\GameScene\System\AchievementManager.h" />
     <ClInclude Include="Game\GameScene\System\BossBattleController.h" />
     <ClInclude Include="Game\GameScene\System\ScoreManager.h" />
     <ClInclude Include="Game\GameScene\System\TitleDirector.h" />

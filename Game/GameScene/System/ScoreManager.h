@@ -9,6 +9,7 @@ private:
   float currentDistance_ = 0.0f;
   float currentScore_ = 0.0f;
   int bonusEnemyHitCount_ = 0;
+  float achievementBonusScore_ = 0.0f;
 
   float topRankings_[kRankingCount] = {0.0f, 0.0f, 0.0f};
   float topScoreRankings_[kRankingCount] = {0.0f, 0.0f, 0.0f};
@@ -20,11 +21,13 @@ public:
   void Reset();
   void Update(float scrollSpeed, float timeScale);
   void AddBonusEnemyHit();
+  void AddAchievementScore(float score);
   void RecordCurrentScores();
 
   float GetCurrentDistance() const { return currentDistance_; }
   float GetCurrentScore() const { return currentScore_; }
   int GetBonusEnemyHitCount() const { return bonusEnemyHitCount_; }
+  float GetAchievementBonusScore() const { return achievementBonusScore_; }
 
   const float *GetTopRankings() const { return topRankings_; }
   const float *GetTopScoreRankings() const { return topScoreRankings_; }
@@ -38,6 +41,12 @@ public:
 
   int GetLastDistanceRank() const { return lastDistanceRank_; }
   int GetLastScoreRank() const { return lastScoreRank_; }
+
+  /// @brief 今回のプレイがスコアランキング1位であるか
+  bool IsScoreFirstPlace() const;
+
+  /// @brief 今回のプレイが走行距離ランキング1位であるか
+  bool IsDistanceFirstPlace() const;
 
   /// @brief 今回のプレイがランキング1位（スコアまたは走行距離）であるか
   bool IsFirstPlace() const;

@@ -6,6 +6,7 @@ void ScoreManager::Reset() {
   currentDistance_ = 0.0f;
   currentScore_ = 0.0f;
   bonusEnemyHitCount_ = 0;
+  achievementBonusScore_ = 0.0f;
   isOnlineScoreSent_ = false;
   lastDistanceRank_ = -1;
   lastScoreRank_ = -1;
@@ -13,11 +14,17 @@ void ScoreManager::Reset() {
 
 void ScoreManager::Update(float scrollSpeed, float timeScale) {
   currentDistance_ += scrollSpeed * timeScale;
-  currentScore_ = currentDistance_ + (bonusEnemyHitCount_ * kBonusScoreMultiplier * scrollSpeed);
+  currentScore_ = currentDistance_ +
+                  (bonusEnemyHitCount_ * kBonusScoreMultiplier * scrollSpeed) +
+                  achievementBonusScore_;
 }
 
 void ScoreManager::AddBonusEnemyHit() {
   bonusEnemyHitCount_++;
+}
+
+void ScoreManager::AddAchievementScore(float score) {
+  achievementBonusScore_ += score;
 }
 
 void ScoreManager::RecordCurrentScores() {
@@ -101,38 +108,36 @@ void ScoreManager::UpdateScoreRanking() {
   }
 }
 
-bool ScoreManager::IsFirstPlace() const {
-  // まったく移動/スコア獲得していない場合は対象外
-  if (currentDistance_ <= 1.0f && currentScore_ <= 1.0f) {
+bool ScoreManager::IsScoreFirstPlace() const {
+  if (currentScore_ <= 1.0f) {
     return false;
   }
-
-  // オンラインランキングが設定されており、かつ取得データがある場合
   auto rankingMgr = FirebaseRankingManager::GetInstance();
   if (rankingMgr && rankingMgr->IsConfigured()) {
     const auto& scoreRanks = rankingMgr->GetCachedScoreRankings();
     if (!scoreRanks.empty()) {
-      if (currentScore_ >= scoreRanks[0].score) {
-        return true;
-      }
-    } else if (lastScoreRank_ == 1) {
-      return true;
+      return (currentScore_ >= scoreRanks[0].score);
     }
+  }
+  return (lastScoreRank_ == 1);
+}
 
-    const auto& distRanks = rankingMgr->GetCachedDistanceRankings();
-    if (!distRanks.empty()) {
-      if (currentDistance_ >= distRanks[0].distance) {
-        return true;
-      }
-    } else if (lastDistanceRank_ == 1) {
-      return true;
-    }
-
+bool ScoreManager::IsDistanceFirstPlace() const {
+  if (currentDistance_ <= 1.0f) {
     return false;
   }
+  auto rankingMgr = FirebaseRankingManager::GetInstance();
+  if (rankingMgr && rankingMgr->IsConfigured()) {
+    const auto& distRanks = rankingMgr->GetCachedDistanceRankings();
+    if (!distRanks.empty()) {
+      return (currentDistance_ >= distRanks[0].distance);
+    }
+  }
+  return (lastDistanceRank_ == 1);
+}
 
-  // ローカルランキングでの1位判定
-  return (lastScoreRank_ == 1 || lastDistanceRank_ == 1);
+bool ScoreManager::IsFirstPlace() const {
+  return IsScoreFirstPlace() || IsDistanceFirstPlace();
 }
 
 void ScoreManager::ImGui() {
@@ -149,7 +154,7 @@ void ScoreManager::ImGui() {
     ImGui::TreePop();
   }
 
-  ImGui::Text("現在のスコア: %.0f", currentScore_);
+  ImGui::Text("現在のスコア: %.0f (実績ボーナス: +%.0f pt)", currentScore_, achievementBonusScore_);
   if (ImGui::TreeNode("スコア TOP 3 ランキング (ローカル)")) {
     for (int i = 0; i < kRankingCount; i++) {
       if (topScoreRankings_[i] > 0.0f) {
