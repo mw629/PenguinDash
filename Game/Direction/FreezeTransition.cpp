@@ -6,14 +6,17 @@
 #include <cmath>
 #include <random>
 
+// シングルトンインスタンスの取得
 FreezeTransition* FreezeTransition::GetInstance() {
     static FreezeTransition instance;
     return &instance;
 }
 
+// コンストラクタ
 FreezeTransition::FreezeTransition() {
 }
 
+// 初期化 (PostEffect・シェーダーパラメータ設定)
 void FreezeTransition::Initialize() {
     if (isInitialized_) return;
 
@@ -47,6 +50,7 @@ void FreezeTransition::Initialize() {
     isInitialized_ = true;
 }
 
+// 凍結・破砕画面遷移演出を開始
 void FreezeTransition::Start(float freezeDuration, float shatterDuration, std::function<void()> onMidpoint) {
     Initialize();
 
@@ -78,6 +82,7 @@ void FreezeTransition::Start(float freezeDuration, float shatterDuration, std::f
     EmitSparkles(kDefaultScreenCenter, 20, 100.0f, 400.0f);
 }
 
+// 毎フレームの更新処理
 void FreezeTransition::Update(float deltaTime) {
     if (phase_ == Phase::None || phase_ == Phase::Finished) {
         return;
@@ -188,6 +193,7 @@ void FreezeTransition::Update(float deltaTime) {
     }
 }
 
+// ポストエフェクトおよび破片パーティクルの描画処理
 void FreezeTransition::Draw(class Draw& draw) {
     if (phase_ == Phase::None || phase_ == Phase::Finished) {
         return;
@@ -221,6 +227,7 @@ void FreezeTransition::Draw(class Draw& draw) {
     }
 }
 
+// 氷晶スパークルパーティクルの発生
 void FreezeTransition::EmitSparkles(const Vector2& center, int count, float minSpeed, float maxSpeed) {
     std::mt19937 rng(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(this) ^ std::rand()));
     std::uniform_real_distribution<float> randAngle(0.0f, 6.2831853f);
@@ -256,6 +263,7 @@ void FreezeTransition::EmitSparkles(const Vector2& center, int count, float minS
     }
 }
 
+// カスケード破片パーティクルの発生
 void FreezeTransition::EmitGlassCascade(int count) {
     std::mt19937 rng(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(this) ^ std::rand()));
     std::uniform_real_distribution<float> randX(80.0f, 1200.0f);
@@ -289,6 +297,7 @@ void FreezeTransition::EmitGlassCascade(int count) {
     }
 }
 
+// 氷晶パーティクルの物理更新
 void FreezeTransition::UpdateSparkles(float deltaTime) {
     const float gravity = 1200.0f; // ガラガラと崩落するガラス片・ガラス屑の重力加速度
 
@@ -316,6 +325,7 @@ void FreezeTransition::UpdateSparkles(float deltaTime) {
     }
 }
 
+// 演出の強制リセット
 void FreezeTransition::Reset() {
     phase_ = Phase::None;
     timer_ = 0.0f;

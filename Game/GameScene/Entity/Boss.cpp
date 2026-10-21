@@ -1,16 +1,19 @@
-#include "Boss.h"
+﻿#include "Boss.h"
 #include "Graphics/Render/Draw.h"
 #include "Math/Calculation.h"
 #include <cmath>
 #include <imgui.h>
 
+// コンストラクタ
 Boss::Boss() {
   name_ = "Boss";
   isActive_ = false;
 }
 
+// デストラクタ
 Boss::~Boss() {}
 
+// ボスモデルの初期化
 void Boss::Initialize(ModelData modelData) {
   model_->Initialize(modelData);
   model_->SetShader("ObjectShader");
@@ -25,6 +28,7 @@ void BossAppearanceState::Enter(Boss &boss) {
   boss.GetTransformRef().rotate = {0.0f, 0.0f, 0.0f};
 }
 
+// 毎フレームの更新処理
 void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
   (void)speedMultiplier;
   float stateTimer = boss.GetStateTimer();
@@ -57,10 +61,12 @@ void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
   }
 }
 
+// Enter 処理
 void BossBattleState::Enter(Boss &boss) {
   boss.GetTransformRef().rotate.y = 0.0f;
 }
 
+// 毎フレームの更新処理
 void BossBattleState::Update(Boss &boss, float speedMultiplier) {
   boss.GetBattleAnimTimerRef() += Boss::kBattleAnimSpeed * speedMultiplier;
   const Vector3 &targetPos = boss.GetTargetPos();
@@ -70,10 +76,12 @@ void BossBattleState::Update(Boss &boss, float speedMultiplier) {
   transform.translate.y = targetPos.y + std::sin(boss.GetBattleAnimTimerRef()) * Boss::kBattleBobbingAmplitude;
 }
 
+// Enter 処理
 void BossDefeatState::Enter(Boss &boss) {
   (void)boss;
 }
 
+// 毎フレームの更新処理
 void BossDefeatState::Update(Boss &boss, float speedMultiplier) {
   boss.GetTransformRef().translate.y -= Boss::kSinkSpeed * speedMultiplier;
   if (boss.GetStateTimer() > Boss::kDefeatDuration) {
@@ -81,10 +89,12 @@ void BossDefeatState::Update(Boss &boss, float speedMultiplier) {
   }
 }
 
+// Enter 処理
 void BossVictoryState::Enter(Boss &boss) {
   (void)boss;
 }
 
+// 毎フレームの更新処理
 void BossVictoryState::Update(Boss &boss, float speedMultiplier) {
   boss.GetTransformRef().translate.y += Boss::kSinkSpeed * speedMultiplier;
 }
@@ -120,10 +130,12 @@ void Boss::Reset() {
   }
 }
 
+// ボスをデフォルト位置で出現
 void Boss::Spawn() {
   Spawn(kDefaultTargetPos.x, kDefaultTargetPos.y, kDefaultTargetPos.z);
 }
 
+// ボスをデフォルト位置で出現
 void Boss::Spawn(float x, float y, float z) {
   Reset();
   targetPos_ = {x, y, z};
@@ -131,10 +143,12 @@ void Boss::Spawn(float x, float y, float z) {
   ChangeState(BossState::Appearance);
 }
 
+// 現在のボスステートを取得
 BossState Boss::GetState() const {
   return currentState_ ? currentState_->GetType() : BossState::Appearance;
 }
 
+// ボスステートの切り替え
 void Boss::ChangeState(BossState nextState) {
   switch (nextState) {
   case BossState::Appearance:
@@ -152,6 +166,7 @@ void Boss::ChangeState(BossState nextState) {
   }
 }
 
+// ボスステートの切り替え
 void Boss::ChangeState(std::unique_ptr<IBossState> nextState) {
   if (currentState_) {
     currentState_->Exit(*this);
@@ -163,6 +178,7 @@ void Boss::ChangeState(std::unique_ptr<IBossState> nextState) {
   }
 }
 
+// ボスの毎フレーム更新処理
 void Boss::Update(Matrix4x4 view, float speedMultiplier) {
   if (!isActive_)
     return;
@@ -189,6 +205,7 @@ void Boss::Update(Matrix4x4 view, float speedMultiplier) {
   GameObject::Update(view, speedMultiplier);
 }
 
+// ボスモデルの描画処理
 void Boss::Draw(class Draw &draw) {
   if (!isActive_)
     return;
@@ -196,6 +213,7 @@ void Boss::Draw(class Draw &draw) {
   GameObject::Draw(draw);
 }
 
+// ImGuiインスペクター描画
 void Boss::ImGuiInnerComponents() {
 #ifdef _USE_IMGUI
   if (model_) {
@@ -220,6 +238,7 @@ void Boss::ImGuiInnerComponents() {
 #endif
 }
 
+// プレイヤー攻撃反射ヒット時のダメージ処理
 void Boss::OnDamage() {
   if (GetState() == BossState::Defeat)
     return; // 撃破後はダメージを受けない

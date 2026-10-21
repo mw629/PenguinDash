@@ -1,4 +1,4 @@
-#include "GameHUD.h"
+﻿#include "GameHUD.h"
 #include "Graphics/Font/TextRenderer.h"
 #include "Graphics/Render/Draw.h"
 #include "Input/GamePadInput.h"
@@ -13,6 +13,7 @@
 #include <string>
 #include "Network/Firebase/FirebaseRankingManager.h"
 
+// HUDで使用する各種スプライト・テクスチャリソースの初期化
 void GameHUD::Initialize(Texture *texture) {
   if (!texture) return;
 
@@ -43,6 +44,7 @@ enum PlayingStateEnum {
   PlayState_Boss = 2
 };
 
+// フォントアトラスの事前キャッシュ処理
 void GameHUD::PreloadFontStrings(Draw &draw) {
   static bool s_preloaded = false;
   if (!s_preloaded && draw.GetTextRenderer() &&
@@ -68,6 +70,7 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
   }
 }
 
+// ゲーム状態に応じたHUD（タイトル/プレイ/ボス/ポーズ/ゲームオーバー等）の描画
 void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
   PreloadFontStrings(draw);
 
@@ -103,6 +106,7 @@ void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
 
 }
 
+// 通常プレイ中HUDの描画（距離、スコア、速度メーター等）
 void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
   // ボス戦中は走行ステータス（距離、スコア、速度、ベスト）や1レーン表示を出さない
   if (ctx.playingState == PlayState_Boss) {
@@ -203,6 +207,7 @@ void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
+// ボス戦中HUDの描画（ボス氷HPバー、警告表示等）
 void GameHUD::DrawBossHUD(Draw &draw, const GameHUDContext &ctx) {
   if (!ctx.boss) return;
 
@@ -443,6 +448,7 @@ void GameHUD::DrawBossHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
+// 操作ガイドUIの描画（フェードイン/アウト対応）
 void GameHUD::DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alpha) {
   if (alpha <= 0.01f) return;
 
@@ -504,6 +510,7 @@ void GameHUD::DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alp
                       Vector4(0.0f, 0.0f, 0.0f, alpha), 0.06f);
 }
 
+// 通常ポーズ画面HUDの描画
 void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   const Vector2 fullScreenSize(static_cast<float>(WindowConfig::kDefaultClientWidth),
                                static_cast<float>(WindowConfig::kDefaultClientHeight));
@@ -573,6 +580,7 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
+// ボス戦ポーズ画面HUDの描画
 void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   auto *tr = draw.GetTextRenderer();
   bool isPad = GamePadInput::IsConnected();
@@ -725,6 +733,7 @@ void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
+// ゲームオーバー画面HUDの描画（スコア・ランキング結果）
 void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   const Vector2 fullScreenSize(static_cast<float>(WindowConfig::kDefaultClientWidth),
                                static_cast<float>(WindowConfig::kDefaultClientHeight));
@@ -1083,6 +1092,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
+// タイトル画面HUDの描画（タイトルロゴ、メニュー、名前入力）
 void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   const std::string titleText = "ペンギンダッシュ";
   const std::string subTitleText = "― PENGUIN DASH ―";
@@ -1309,6 +1319,7 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
+// タイトル画面ランキングモーダルの描画
 void GameHUD::DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx) {
   const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
   const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
@@ -1411,6 +1422,7 @@ void GameHUD::DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx) {
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 }
 
+// タイトル画面操作説明モーダルの描画
 void GameHUD::DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx) {
   (void)ctx;
   const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
@@ -1490,6 +1502,7 @@ void GameHUD::DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx) {
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 }
 
+// エディターモード中HUDの描画
 void GameHUD::DrawEditorHUD(Draw &draw, const GameHUDContext &ctx) {
   draw.DrawFillRect(kEditorPanelPos, kEditorPanelSize,
                     Vector4(0.04f, 0.06f, 0.1f, 0.8f));
@@ -1505,6 +1518,7 @@ void GameHUD::DrawEditorHUD(Draw &draw, const GameHUDContext &ctx) {
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 }
 
+// 一人称視点（FPV）表示バッジの描画
 void GameHUD::DrawBadgeFPV(Draw &draw) {
   draw.DrawFillRect(kFpvBadgePos, kFpvBadgeSize,
                     Vector4(0.04f, 0.10f, 0.18f, 0.85f));

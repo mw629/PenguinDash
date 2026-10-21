@@ -1,10 +1,11 @@
-#include "GameCameraController.h"
+﻿#include "GameCameraController.h"
 #include "../../../Editer/EditorManager.h"
 #include <Entity/Player.h>
 #include <Stage/StageSettings.h>
 #include <cmath>
 #include <imgui.h>
 
+// カメラの初期化
 void GameCameraController::Initialize() {
   camera_->SetDebugName("GameScene MainCamera");
   camera_->SetTransform(cameraTransform_);
@@ -20,6 +21,7 @@ void GameCameraController::Initialize() {
   viewMatrix_ = camera_->GetViewMatrix();
 }
 
+// カメラトランスフォームおよび演出パラメータのリセット
 void GameCameraController::Reset(const Transform &defaultTransform) {
   isCameraTransitionPending_ = false;
   isCameraTransitioning_ = false;
@@ -35,22 +37,26 @@ void GameCameraController::Reset(const Transform &defaultTransform) {
   gameCamera_->Update();
 }
 
+// カメラ行列の毎フレーム更新
 void GameCameraController::Update() {
   camera_->Update();
   gameCamera_->Update();
   viewMatrix_ = camera_->GetViewMatrix();
 }
 
+// カメラトランスフォームの直接設定
 void GameCameraController::SetTransform(const Transform &transform) {
   cameraTransform_ = transform;
   camera_->SetTransform(cameraTransform_);
   gameCamera_->SetTransform(cameraTransform_);
 }
 
+// DebugCamera を設定
 void GameCameraController::SetDebugCamera(bool debug) {
   camera_->SetDebugCamera(debug);
 }
 
+// カメラ視点トランジションの開始（三人称・側面・ボス視点等）
 void GameCameraController::StartTransition(const Transform &targetTransform,
                                            int laneCount,
                                            StageSettings *stageSettings) {
@@ -63,6 +69,7 @@ void GameCameraController::StartTransition(const Transform &targetTransform,
   pendingLaneCount_ = laneCount;
 }
 
+// カメラ視点トランジションの更新処理
 void GameCameraController::UpdateTransition(
     StageSettings *stageSettings, std::function<void()> onFinished) {
   if (isCameraTransitionPending_ && stageSettings) {
@@ -114,6 +121,7 @@ void GameCameraController::UpdateTransition(
   gameCamera_->SetTransform(cameraTransform_);
 }
 
+// 一人称視点（FPV）時のカメラ位置同期
 void GameCameraController::UpdateFirstPersonCamera(Player *player) {
   if (!player) return;
 
@@ -139,6 +147,7 @@ void GameCameraController::UpdateFirstPersonCamera(Player *player) {
   player->SetVisible(drawPlayerInFirstPerson_);
 }
 
+// 一人称視点と三人称視点の切り替えトグル
 void GameCameraController::ToggleFirstPerson(Player *player) {
   isFirstPersonView_ = !isFirstPersonView_;
   if (!isFirstPersonView_) {
@@ -150,6 +159,7 @@ void GameCameraController::ToggleFirstPerson(Player *player) {
   }
 }
 
+// ゲームプレイ時のプレイヤー追従カメラ更新（滑らかな追従・バンク回転）
 void GameCameraController::UpdateGameplayCamera(Player *player, float dt) {
   if (!player || isFirstPersonView_ || isCameraTransitioning_ || isCameraTransitionPending_) {
     return;
@@ -187,76 +197,92 @@ void GameCameraController::Shake(float intensity, float duration, float frequenc
   if (gameCamera_) gameCamera_->Shake(intensity, duration, frequency);
 }
 
+// 方向指定カメラシェイクを発動
 void GameCameraController::ShakeDirectional(const Vector3 &direction, float intensity, float duration, float frequency) {
   if (camera_) camera_->ShakeDirectional(direction, intensity, duration, frequency);
   if (gameCamera_) gameCamera_->ShakeDirectional(direction, intensity, duration, frequency);
 }
 
+// 現在実行中のカメラシェイクを停止
 void GameCameraController::StopShake() {
   if (camera_) camera_->StopShake();
   if (gameCamera_) gameCamera_->StopShake();
 }
 
+// 激突・被弾時の衝撃シェイク演出
 void GameCameraController::ShakeImpact() {
   Shake(0.85f, 0.4f, 25.0f);
 }
 
+// 敵撃破時のシェイク演出
 void GameCameraController::ShakeDefeat() {
   Shake(0.42f, 0.22f, 30.0f);
 }
 
+// ボス撃破時の大シェイク演出
 void GameCameraController::ShakeBossDefeat() {
   Shake(1.2f, 0.6f, 20.0f);
 }
 
+// 着地時の軽いシェイク演出
 void GameCameraController::ShakeLand() {
   ShakeDirectional({0.0f, 1.0f, 0.0f}, 0.22f, 0.18f, 30.0f);
 }
 
+// カウンター反射時のシェイク演出
 void GameCameraController::ShakeReflect() {
   Shake(0.35f, 0.15f, 32.0f);
 }
 
+// 視野角（FOV）のアニメーション変更
 void GameCameraController::AnimateFov(float targetFov, float duration) {
   if (camera_) camera_->AnimateFov(targetFov, duration);
   if (gameCamera_) gameCamera_->AnimateFov(targetFov, duration);
 }
 
+// 視野角にインパルス衝撃を付与
 void GameCameraController::AddFovImpulse(float deltaFov, float duration) {
   if (camera_) camera_->AddFovImpulse(deltaFov, duration);
   if (gameCamera_) gameCamera_->AddFovImpulse(deltaFov, duration);
 }
 
+// 視野角をデフォルト値へリセット
 void GameCameraController::ResetFov(float duration) {
   if (camera_) camera_->ResetFov(duration);
   if (gameCamera_) gameCamera_->ResetFov(duration);
 }
 
+// PositionOffset を設定
 void GameCameraController::SetPositionOffset(const Vector3 &offset) {
   if (camera_) camera_->SetPositionOffset(offset);
   if (gameCamera_) gameCamera_->SetPositionOffset(offset);
 }
 
+// RotationOffset を設定
 void GameCameraController::SetRotationOffset(const Vector3 &rotOffset) {
   if (camera_) camera_->SetRotationOffset(rotOffset);
   if (gameCamera_) gameCamera_->SetRotationOffset(rotOffset);
 }
 
+// ClearOffsets 処理
 void GameCameraController::ClearOffsets() {
   if (camera_) camera_->ClearOffsets();
   if (gameCamera_) gameCamera_->ClearOffsets();
 }
 
+// ドリーズーム（めまい効果）演出を開始
 void GameCameraController::StartDollyZoom(const Vector3 &focusPoint, float targetDistance, float duration) {
   if (camera_) camera_->StartDollyZoom(focusPoint, targetDistance, duration);
   if (gameCamera_) gameCamera_->StartDollyZoom(focusPoint, targetDistance, duration);
 }
 
+// ドリーズーム演出を停止
 void GameCameraController::StopDollyZoom() {
   if (camera_) camera_->StopDollyZoom();
   if (gameCamera_) gameCamera_->StopDollyZoom();
 }
 
+// ImGuiによるカメラパラメータ設定UI
 void GameCameraController::ImGui(Player *player,
                                  std::function<void(int)> onPresetSelected) {
 #ifdef _USE_IMGUI

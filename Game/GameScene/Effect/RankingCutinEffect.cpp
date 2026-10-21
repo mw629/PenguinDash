@@ -1,4 +1,4 @@
-#ifndef NOMINMAX
+﻿#ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include "RankingCutinEffect.h"
@@ -35,6 +35,7 @@ Sprite *RankingCutinEffect::GetCurrentCutinSprite() {
   }
 }
 
+// カットイン演出スプライト・テクスチャの読み込み
 void RankingCutinEffect::Initialize(Texture *texture) {
   if (!texture)
     return;
@@ -118,6 +119,7 @@ void RankingCutinEffect::Initialize(Texture *texture) {
                                    {1.0f, 1.0f, 0.85f, 1.0f});
 }
 
+// 指定タイプのカットイン演出を開始
 void RankingCutinEffect::Trigger(CutinType type) {
   state_ = State::FlashAndSlash;
   currentType_ = type;
@@ -157,6 +159,7 @@ void RankingCutinEffect::Trigger(CutinType type) {
   }
 }
 
+// カットイン状態のリセット
 void RankingCutinEffect::Reset() {
   state_ = State::Inactive;
   timer_ = 0.0f;
@@ -164,6 +167,7 @@ void RankingCutinEffect::Reset() {
   shards_.clear();
 }
 
+// 入力によるスキップ判定（開始から一定時間経過後のみスキップ可）
 void RankingCutinEffect::RequestSkip() {
   // 最低0.4秒以上経過していればユーザー操作（決定・ジャンプ等）でリザルトへスキップ可能
   if (IsActive() && timer_ >= 0.40f) {
@@ -171,6 +175,7 @@ void RankingCutinEffect::RequestSkip() {
   }
 }
 
+// SpawnShards 処理
 void RankingCutinEffect::SpawnShards() {
   shards_.clear();
   shards_.reserve(32);
@@ -225,6 +230,7 @@ void RankingCutinEffect::SpawnShards() {
   }
 }
 
+// UpdateShards 処理
 void RankingCutinEffect::UpdateShards(float dt) {
   for (auto &s : shards_) {
     s.life += dt;
@@ -236,6 +242,7 @@ void RankingCutinEffect::UpdateShards(float dt) {
   }
 }
 
+// アニメーション・パーティクルの毎フレーム更新
 void RankingCutinEffect::Update(float dt) {
   if (!IsActive())
     return;
@@ -360,6 +367,7 @@ void RankingCutinEffect::Update(float dt) {
   }
 }
 
+// カットイン演出の描画処理
 void RankingCutinEffect::Render(Draw &draw) {
   if (!IsActive())
     return;
@@ -550,6 +558,7 @@ void RankingCutinEffect::Render(Draw &draw) {
   }
 }
 
+// ImGuiによるカットイン演出パラメータ調整UI
 void RankingCutinEffect::ImGui() {
 #ifdef _USE_IMGUI
   if (ImGui::TreeNode("ペンギン1位カットイン演出設定")) {

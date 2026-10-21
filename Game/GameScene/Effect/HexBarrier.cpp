@@ -1,11 +1,13 @@
-#include "HexBarrier.h"
+﻿#include "HexBarrier.h"
 #include "Graphics/GraphicsDevice.h"
 #include <cmath>
 
+// コンストラクタ
 HexBarrier::HexBarrier()
 {
 }
 
+// バリアの初期化
 void HexBarrier::Initialize(const std::string& texturePath)
 {
 	if (!texturePath.empty()) {
@@ -27,6 +29,7 @@ void HexBarrier::Initialize(const std::string& texturePath)
 	CreateObject();
 }
 
+// 六角形メッシュの頂点・インデックス生成ヘルパー
 void HexBarrier::GenerateHexBarrierMesh(
 	float radius, bool pointyTopped,
 	std::vector<VertexData>& outVertices,
@@ -85,6 +88,7 @@ void HexBarrier::GenerateHexBarrierMesh(
 	}
 }
 
+// 頂点リソースの生成
 void HexBarrier::CreateVertexData()
 {
 	std::vector<VertexData> vertices;
@@ -132,6 +136,7 @@ void HexBarrier::CreateVertexData()
 	std::memcpy(vertexData_, vertices.data(), sizeof(VertexData) * vertexSize_);
 }
 
+// インデックスリソースの生成
 void HexBarrier::CreateIndexResource()
 {
 	std::vector<VertexData> dummyVertices;
@@ -164,12 +169,14 @@ void HexBarrier::CreateIndexResource()
 	std::memcpy(indexData_, indices.data(), sizeof(uint32_t) * indexSize_);
 }
 
+// メッシュの再構築（半径や形状に応じた頂点バッファの再生成）
 void HexBarrier::RebuildMesh()
 {
 	CreateVertexData();
 	CreateIndexResource();
 }
 
+// 六角形の外接円半径を設定
 void HexBarrier::SetRadius(float radius)
 {
 	if (std::abs(radius_ - radius) > 0.001f) {
@@ -178,6 +185,7 @@ void HexBarrier::SetRadius(float radius)
 	}
 }
 
+// 頂点の向き（尖り頭/平ら頭）を設定
 void HexBarrier::SetPointyTopped(bool pointyTopped)
 {
 	if (pointyTopped_ != pointyTopped) {
@@ -186,6 +194,7 @@ void HexBarrier::SetPointyTopped(bool pointyTopped)
 	}
 }
 
+// バリア形状（単一/ハニカム）を設定
 void HexBarrier::SetShape(HexBarrierShape shape)
 {
 	if (shape_ != shape) {

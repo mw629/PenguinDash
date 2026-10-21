@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../../Editer/EditorUI.h"
 #include "../Direction/FreezeTransition.h"
 #include "../IScene.h"
@@ -280,16 +280,59 @@ private:
   TitleSubView titleSubView_ = TitleSubView::None;
   std::string titlePlayerName_ = "Player";
   bool isEditingTitlePlayerName_ = false;
+
+  /// <summary>
+  /// タイトル画面でのプレイヤー名入力処理
+  /// </summary>
   void UpdateTitleTextInput();
 
 public:
+  /// <summary>
+  /// スコアマネージャーを取得
+  /// </summary>
+  /// <returns>ScoreManagerへのポインタ</returns>
   class ScoreManager* GetScoreManager() { return scoreManager_.get(); }
+
+  /// <summary>
+  /// 実績マネージャーを取得
+  /// </summary>
+  /// <returns>AchievementManagerへのポインタ</returns>
   class AchievementManager* GetAchievementManager() { return achievementManager_.get(); }
+
+  /// <summary>
+  /// エフェクトマネージャーを取得
+  /// </summary>
+  /// <returns>GameSceneEffectへのポインタ</returns>
   class GameSceneEffect* GetEffectManager() { return effectManager_.get(); }
+
+  /// <summary>
+  /// ステージ設定・ギミック管理を取得
+  /// </summary>
+  /// <returns>StageSettingsへのポインタ</returns>
   class StageSettings* GetStageSettings() { return stageSettings_.get(); }
+
+  /// <summary>
+  /// プレイヤーインスタンスを取得
+  /// </summary>
+  /// <returns>Playerへのポインタ</returns>
   class Player* GetPlayer() { return player_.get(); }
+
+  /// <summary>
+  /// ボスインスタンスを取得
+  /// </summary>
+  /// <returns>Bossへのポインタ</returns>
   class Boss* GetBoss() { return boss_.get(); }
+
+  /// <summary>
+  /// ゲームカメラコントローラーを取得
+  /// </summary>
+  /// <returns>GameCameraControllerへのポインタ</returns>
   class GameCameraController* GetCameraController() { return cameraController_.get(); }
+
+  /// <summary>
+  /// 現在のゲームプレイ状態（3レーン/1レーン/ボス戦）を取得
+  /// </summary>
+  /// <returns>PlayingState</returns>
   PlayingState GetPlayingState() const { return playingState_; }
   /// <summary>
   /// プレイヤー被弾処理（クラッシュ演出、カメラ振動、SE、ランキング送信等）

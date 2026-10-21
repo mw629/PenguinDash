@@ -19,36 +19,91 @@ public:
         Finished    // 遷移完了
     };
 
+    /// <summary>
+    /// シングルトンインスタンスを取得
+    /// </summary>
+    /// <returns>FreezeTransitionインスタンスへのポインタ</returns>
     static FreezeTransition* GetInstance();
 
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
     FreezeTransition();
+
+    /// <summary>
+    /// デストラクタ
+    /// </summary>
     ~FreezeTransition() = default;
 
-    // 初期化 (PostEffect・シェーダーパラメータ設定)
+    /// <summary>
+    /// 初期化 (PostEffect・シェーダーパラメータ設定)
+    /// </summary>
     void Initialize();
 
-    // トランジション開始
-    // freezeDuration: 凍結にかかる時間 (秒)
-    // shatterDuration: 破片が飛び散る時間 (秒)
-    // onMidpoint: 凍結完了・割れる瞬間に呼ばれるコールバック (シーン初期化やステート切り替え等)
+    /// <summary>
+    /// 凍結・破砕画面遷移演出を開始
+    /// </summary>
+    /// <param name="freezeDuration">凍結にかかる時間 (秒)</param>
+    /// <param name="shatterDuration">破片が飛び散る時間 (秒)</param>
+    /// <param name="onMidpoint">凍結完了・割れる瞬間に呼ばれるコールバック</param>
     void Start(float freezeDuration, float shatterDuration, std::function<void()> onMidpoint = nullptr);
+
+    /// <summary>
+    /// デフォルト時間で凍結・破砕画面遷移演出を開始
+    /// </summary>
+    /// <param name="onMidpoint">凍結完了・割れる瞬間に呼ばれるコールバック</param>
     void Start(std::function<void()> onMidpoint = nullptr) { Start(kDefaultFreezeDuration, kDefaultShatterDuration, onMidpoint); }
 
-    // 毎フレームの更新処理
+    /// <summary>
+    /// デルタ時間を指定して毎フレームの更新処理
+    /// </summary>
+    /// <param name="deltaTime">フレーム経過時間</param>
     void Update(float deltaTime);
+
+    /// <summary>
+    /// 毎フレームの更新処理 (デフォルト60fps想定)
+    /// </summary>
     void Update() { Update(kDefaultDeltaTime); }
 
-    // 描画処理 (DrawUIから呼び出し: PostEffect Shaderによる描画)
+    /// <summary>
+    /// ポストエフェクトおよび破片パーティクルの描画処理
+    /// </summary>
+    /// <param name="draw">描画マネージャ</param>
     void Draw(class Draw& draw);
 
-    // 状態取得
+    /// <summary>
+    /// 現在の遷移フェーズを取得
+    /// </summary>
+    /// <returns>Phase列挙値</returns>
     Phase GetPhase() const { return phase_; }
+
+    /// <summary>
+    /// 演出が実行中かどうかを取得
+    /// </summary>
+    /// <returns>実行中の場合true</returns>
     bool IsActive() const { return phase_ != Phase::None && phase_ != Phase::Finished; }
+
+    /// <summary>
+    /// 演出が完全に終了したかどうかを取得
+    /// </summary>
+    /// <returns>終了した場合true</returns>
     bool IsFinished() const { return phase_ == Phase::Finished; }
+
+    /// <summary>
+    /// 凍結侵食中かどうかを取得
+    /// </summary>
+    /// <returns>凍結中の場合true</returns>
     bool IsFreezing() const { return phase_ == Phase::Freezing; }
+
+    /// <summary>
+    /// 氷が破砕した後の状態かどうかを取得
+    /// </summary>
+    /// <returns>破砕後または終了時の場合true</returns>
     bool IsShattered() const { return phase_ == Phase::Shattering || phase_ == Phase::Finished; }
 
-    // 強制リセット
+    /// <summary>
+    /// 演出の強制リセット
+    /// </summary>
     void Reset();
 
 private:

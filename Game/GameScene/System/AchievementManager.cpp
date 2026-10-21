@@ -1,4 +1,4 @@
-#include "AchievementManager.h"
+﻿#include "AchievementManager.h"
 #include "ScoreManager.h"
 #include "SoundManager.h"
 #include <Draw.h>
@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <cmath>
 
+// コンストラクタ
 AchievementManager::AchievementManager() = default;
 
+// 初期化（初期実績セットを登録）
 void AchievementManager::Initialize() {
     achievements_.clear();
     notifications_.clear();
@@ -16,6 +18,7 @@ void AchievementManager::Initialize() {
     RegisterDefaultAchievements();
 }
 
+// 実績の追加（独自派生クラスを直接渡す場合）
 Achievement* AchievementManager::AddAchievement(std::unique_ptr<Achievement> achievement) {
     if (!achievement) return nullptr;
     Achievement* ptr = achievement.get();
@@ -23,6 +26,7 @@ Achievement* AchievementManager::AddAchievement(std::unique_ptr<Achievement> ach
     return ptr;
 }
 
+// 手軽な実績追加ヘルパー：目標値達成型（距離、撃破数、スコアなど）
 Achievement* AchievementManager::RegisterProgress(
     const std::string& id,
     const std::string& title,
@@ -36,6 +40,7 @@ Achievement* AchievementManager::RegisterProgress(
     return AddAchievement(std::move(ach));
 }
 
+// 手軽な実績追加ヘルパー：自由条件判定型（ラムダ式による条件チェック）
 Achievement* AchievementManager::RegisterCondition(
     const std::string& id,
     const std::string& title,
@@ -50,6 +55,7 @@ Achievement* AchievementManager::RegisterCondition(
     return AddAchievement(std::move(ach));
 }
 
+// 実績を定義・追加するメソッド（ここにどんどん実績を追加していきます）
 void AchievementManager::RegisterDefaultAchievements() {
     // ==========================================================================================
     // 【実績の追加ガイド】
@@ -118,6 +124,7 @@ void AchievementManager::RegisterDefaultAchievements() {
                       [](const AchievementContext& ctx) { return ctx.isBossDefeated; });
 }
 
+// 毎フレームの更新（未達成実績の条件チェック、スコア加点、通知タイマー更新）
 void AchievementManager::Update(float deltaTime, const AchievementContext& ctx, ScoreManager* scoreManager) {
     // 1. 未達成の実績を判定
     for (auto& ach : achievements_) {
@@ -139,6 +146,7 @@ void AchievementManager::Update(float deltaTime, const AchievementContext& ctx, 
     }
 }
 
+// 実績解除時の共通トリガー処理
 void AchievementManager::TriggerUnlock(Achievement* ach, ScoreManager* scoreManager) {
     if (!ach || ach->IsUnlocked()) return;
 
@@ -163,6 +171,7 @@ void AchievementManager::TriggerUnlock(Achievement* ach, ScoreManager* scoreMana
     notifications_.push_back(notif);
 }
 
+// 手動で実績を解除（イベント通知ドリブンやデバッグ用途）
 bool AchievementManager::Unlock(const std::string& id, ScoreManager* scoreManager) {
     Achievement* ach = FindAchievement(id);
     if (ach && !ach->IsUnlocked()) {
@@ -172,6 +181,7 @@ bool AchievementManager::Unlock(const std::string& id, ScoreManager* scoreManage
     return false;
 }
 
+// 実績IDから検索
 Achievement* AchievementManager::FindAchievement(const std::string& id) const {
     for (const auto& ach : achievements_) {
         if (ach->GetId() == id) {
@@ -181,6 +191,7 @@ Achievement* AchievementManager::FindAchievement(const std::string& id) const {
     return nullptr;
 }
 
+// UnlockedCount を取得
 int AchievementManager::GetUnlockedCount() const {
     int count = 0;
     for (const auto& ach : achievements_) {
@@ -191,6 +202,7 @@ int AchievementManager::GetUnlockedCount() const {
     return count;
 }
 
+// ゲーム開始時またはリトライ時のリセット
 void AchievementManager::Reset() {
     for (auto& ach : achievements_) {
         ach->Reset();
@@ -199,6 +211,7 @@ void AchievementManager::Reset() {
     totalScoreEarned_ = 0.0f;
 }
 
+// 実績解除のポップアップ通知を描画
 void AchievementManager::DrawUI(Draw& draw) {
     if (notifications_.empty()) return;
 
@@ -266,6 +279,7 @@ void AchievementManager::DrawUI(Draw& draw) {
         0.08f);
 }
 
+// ImGuiによる実績一覧・進捗表示・手動テスト用UI
 void AchievementManager::ImGui(const AchievementContext& ctx, ScoreManager* scoreManager) {
 #ifdef _USE_IMGUI
     if (ImGui::CollapsingHeader("実績システム (Achievement System)", ImGuiTreeNodeFlags_DefaultOpen)) {

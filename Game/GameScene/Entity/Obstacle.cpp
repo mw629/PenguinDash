@@ -1,16 +1,19 @@
-#include "Obstacle.h"
+﻿#include "Obstacle.h"
 #include "Graphics/Render/Draw.h"
 #include "Resource/AssetManager.h"
 #include "Math/Calculation.h"
 #include <cmath>
 
+// コンストラクタ
 Obstacle::Obstacle() {
   name_ = "Obstacle";
   isActive_ = false;
 }
 
+// デストラクタ
 Obstacle::~Obstacle() {}
 
+// 全障害物・攻撃・アイテムモデルデータの初期化
 void Obstacle::Initialize(ModelData lowData, ModelData highData,
                           ModelData wallData, ModelData bonusData,
                           ModelData iceBomData, ModelData reflectingAttackData,
@@ -104,17 +107,20 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
   SetType(type);
 }
 
+// 全障害物・攻撃・アイテムモデルデータの初期化
 void Obstacle::Initialize(ModelData lowData, ModelData highData,
                           ModelData wallData, ModelData bonusData,
                           Type type) {
   Initialize(lowData, highData, wallData, bonusData, wallData, wallData, type);
 }
 
+// 全障害物・攻撃・アイテムモデルデータの初期化
 void Obstacle::Initialize(ModelData normalData, ModelData bonusData,
                           Type type) {
   Initialize(normalData, normalData, normalData, bonusData, type);
 }
 
+// 障害物・アイテムのタイプを設定し、対応するモデル・当たり判定サイズを切り替え
 void Obstacle::SetType(Type type) {
   type_ = type;
 
@@ -255,6 +261,7 @@ void Obstacle::SetType(Type type) {
   }
 }
 
+// 障害物を指定位置に配置しアクティブ化
 void Obstacle::Spawn(float x, float y, float z) {
   targetY_ = y;
   if (IsBossAttackType()) {
@@ -288,6 +295,7 @@ void Obstacle::Spawn(float x, float y, float z) {
   }
 }
 
+// ステージスクロールに伴う毎フレーム移動・アニメーション更新
 void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
   if (!isActive_)
     return;
@@ -407,6 +415,7 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
   GameObject::Update(view, 1.0f);
 }
 
+// プレイヤー衝突時の吹き飛びアニメーション処理（ボーナスエネミー等）
 void Obstacle::OnBlowAway() {
   if (isHit_)
     return;
@@ -417,6 +426,7 @@ void Obstacle::OnBlowAway() {
   velocity_ = {randX, kBlowAwayInitialVelocityY, kBlowAwayInitialVelocityZ};
 }
 
+// 障害物被弾処理
 void Obstacle::OnHit() {
   if (isHit_)
     return;
@@ -430,6 +440,7 @@ void Obstacle::OnHit() {
   }
 }
 
+// 描画処理
 void Obstacle::Draw(class Draw &draw) {
   if (!isActive_ || !currentModel_)
     return;
@@ -437,6 +448,7 @@ void Obstacle::Draw(class Draw &draw) {
   GameObject::Draw(draw);
 }
 
+// ImGuiInnerComponents 処理
 void Obstacle::ImGuiInnerComponents() {
   if (currentModel_) {
     currentModel_->ImGui(false);
@@ -458,6 +470,7 @@ void Obstacle::ImGuiInnerComponents() {
 #include "../Effect/GameSceneEffect.h"
 #include "../System/SoundManager.h"
 
+// プレイヤーとの衝突処理
 bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 {
   if (!scene || !player) return false;
@@ -554,6 +567,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
   return true;
 }
 
+// IsTransparent の判定処理
 bool Obstacle::IsTransparent() const {
   if (currentModel_) {
     BlendMode blend = currentModel_->GetBlend();
@@ -569,6 +583,7 @@ bool Obstacle::IsTransparent() const {
   return GameObject::IsTransparent();
 }
 
+// 当たり判定用AABBの取得
 AABB Obstacle::GetColliderAABB() const {
   return Collision::MakeAABB(transform_, collisionWidth_, collisionHeight_,
                              collisionDepth_);

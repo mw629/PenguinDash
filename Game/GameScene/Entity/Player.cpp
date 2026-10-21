@@ -1,4 +1,4 @@
-#include "Player.h"
+﻿#include "Player.h"
 #include "Collision.h"
 #include "../GameSceneManager.h"
 #include "../System/SoundManager.h"
@@ -9,10 +9,13 @@
 #include <imgui.h>
 #endif
 
+// コンストラクタ
 Player::Player() {}
 
+// デストラクタ
 Player::~Player() {}
 
+// UpdateDrawTransform 処理
 void Player::UpdateDrawTransform(float speedMultiplier) {
   (void)speedMultiplier;
   Transform drawTransform = transform_;
@@ -35,6 +38,7 @@ void Player::UpdateDrawTransform(float speedMultiplier) {
   model_->SetTransform(drawTransform);
 }
 
+// プレイヤーモデルおよびアニメーションの初期化
 void Player::Initialize(ModelData modelData) {
   (void)modelData;
   transform_.translate.y = baseHeight_;
@@ -90,6 +94,7 @@ void PlayerRunState::Enter(Player &player) {
   }
 }
 
+// 毎フレームの更新処理
 void PlayerRunState::Update(Player &player, float speedMultiplier) {
   if (speedMultiplier <= 0.0f) {
     return;
@@ -127,6 +132,7 @@ void PlayerJumpState::Enter(Player &player) {
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
 }
 
+// 毎フレームの更新処理
 void PlayerJumpState::Update(Player &player, float speedMultiplier) {
   if (speedMultiplier <= 0.0f) {
     return;
@@ -185,6 +191,7 @@ void PlayerRollState::Enter(Player &player) {
   player.GetTransformRef().translate.y = player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
 }
 
+// 毎フレームの更新処理
 void PlayerRollState::Update(Player &player, float speedMultiplier) {
   if (speedMultiplier <= 0.0f) {
     return;
@@ -240,6 +247,7 @@ void PlayerRollState::Update(Player &player, float speedMultiplier) {
   }
 }
 
+// Exit 処理
 void PlayerRollState::Exit(Player &player) {
   player.GetTransformRef().scale.y = 1.0f;
   player.GetTransformRef().translate.y = player.GetBaseHeight();
@@ -265,6 +273,7 @@ void PlayerHitState::Enter(Player &player) {
   }
 }
 
+// 毎フレームの更新処理
 void PlayerHitState::Update(Player &player, float speedMultiplier) {
   if (speedMultiplier == 0.0f) {
     return;
@@ -293,6 +302,7 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
   }
 }
 
+// Exit 処理
 void PlayerHitState::Exit(Player &player) {
   player.GetTransformRef().rotate.x = 0.0f;
   player.GetKnockbackVelocityRef() = {0.0f, 0.0f, 0.0f};
@@ -304,6 +314,7 @@ void PlayerForcedCenterState::Enter(Player &player) {
   player.GetForcedCenterStartXRef() = player.GetTransformRef().translate.x;
 }
 
+// 毎フレームの更新処理
 void PlayerForcedCenterState::Update(Player &player, float speedMultiplier) {
   if (speedMultiplier <= 0.0f) {
     return;
@@ -370,6 +381,7 @@ void Player::Reset() {
   UpdateDrawTransform(0.0f);
 }
 
+// ChangeActionState 処理
 void Player::ChangeActionState(PlayerActionType nextType) {
   switch (nextType) {
   case PlayerActionType::Run:
@@ -390,6 +402,7 @@ void Player::ChangeActionState(PlayerActionType nextType) {
   }
 }
 
+// ChangeActionState 処理
 void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
   if (currentState_) {
     currentState_->Exit(*this);
@@ -400,6 +413,7 @@ void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
   }
 }
 
+// 先行入力バッファのタイマー更新
 void Player::UpdateInputBuffer(float speedMultiplier) {
   float decay = (speedMultiplier > 0.0f) ? speedMultiplier : 1.0f;
   if (bufferedJumpTimer_ > 0.0f) {
@@ -447,6 +461,7 @@ void Player::UpdateInputBuffer(float speedMultiplier) {
   }
 }
 
+// レーン移動の入力受付（キーボード/ゲームパッド）
 void Player::ProcessLaneInput() {
   if (!CanAct() || isAutoPilot_) {
     return;
@@ -513,6 +528,7 @@ void Player::ProcessLaneInput() {
   }
 }
 
+// レーン間の滑らかな補間移動更新
 void Player::UpdateLaneMovement(float speedMultiplier) {
   if (laneIndex_ == targetLaneIndex_) {
     return;
@@ -543,6 +559,7 @@ void Player::UpdateLaneMovement(float speedMultiplier) {
   }
 }
 
+// プレイヤーの毎フレーム更新
 void Player::Update(Matrix4x4 view, float speedMultiplier) {
   currentSpeedMultiplier_ = speedMultiplier;
 
@@ -601,6 +618,7 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
   GameObject::Update(view, speedMultiplier);
 }
 
+// プレイヤーの描画処理
 void Player::Draw(class Draw &draw) {
   if (!isVisible_) {
     return;
@@ -612,6 +630,7 @@ void Player::Draw(class Draw &draw) {
   GameObject::Draw(draw);
 }
 
+// ImGuiによるパラメータ編集インスペクター
 void Player::ImGuiInnerComponents() {
 #ifdef _USE_IMGUI
   if (model_) {
@@ -660,15 +679,18 @@ void Player::ImGuiInnerComponents() {
 #endif
 }
 
+// 障害物被弾・衝突時の処理開始
 void Player::OnHit(bool isTrip) {
   isTrip_ = isTrip;
   ChangeActionState(PlayerActionType::Hit);
 }
 
+// 被弾・ノックバックアニメーションが完了したか判定
 bool Player::IsHitAnimationFinished() const {
   return GetIsHit() && hitTimer_ >= hitDuration_;
 }
 
+// 1レーン区間等への移行時に中央レーンへ強制移動開始
 void Player::StartForceToCenter(float duration) {
   if (GetIsForcedCentering() || targetLaneIndex_ == 0) {
     return;
@@ -677,6 +699,7 @@ void Player::StartForceToCenter(float duration) {
   ChangeActionState(PlayerActionType::ForcedCenter);
 }
 
+// HasBarrier を設定
 void Player::SetHasBarrier(bool hasBarrier) {
   hasBarrier_ = hasBarrier;
   if (model_ && model_->GetMaterial()) {
@@ -688,6 +711,7 @@ void Player::SetHasBarrier(bool hasBarrier) {
   }
 }
 
+// 外部からのジャンプ発動（オートパイロット等用）
 bool Player::TriggerJump() {
   if (CanAct() && !(GetIsRolling() && keepRolling_)) {
     ChangeActionState(PlayerActionType::Jump);
@@ -699,6 +723,7 @@ bool Player::TriggerJump() {
   return false;
 }
 
+// 外部からのスライディング（ロール）発動
 bool Player::TriggerRoll() {
   if (CanAct() && !GetIsRolling() && !GetIsJumping()) {
     ChangeActionState(PlayerActionType::Roll);
@@ -710,6 +735,7 @@ bool Player::TriggerRoll() {
   return false;
 }
 
+// 外部からの左レーン移動発動
 bool Player::TriggerMoveLeft() {
   if (!CanAct() || GetIsForcedCentering()) {
     return false;
@@ -749,6 +775,7 @@ bool Player::TriggerMoveLeft() {
   return false;
 }
 
+// 外部からの右レーン移動発動
 bool Player::TriggerMoveRight() {
   if (!CanAct() || GetIsForcedCentering()) {
     return false;
@@ -788,11 +815,13 @@ bool Player::TriggerMoveRight() {
   return false;
 }
 
+// 現在の姿勢に応じたコライダーAABBを取得
 AABB Player::GetColliderAABB() const {
   float height = GetIsRolling() ? kDefaultColliderHeightRoll : kDefaultColliderHeightStand;
   return Collision::MakeAABB(transform_, kDefaultColliderWidth, height, kDefaultColliderDepth);
 }
 
+// 通常立ちポーズ時のコライダーAABBを取得（スライディング継続判定用）
 AABB Player::GetStandingColliderAABB() const {
   return Collision::MakeAABB(transform_, kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth);
 }

@@ -1,4 +1,4 @@
-#include "BossBattleController.h"
+﻿#include "BossBattleController.h"
 #include "../Camera/GameCameraController.h"
 #include "../Effect/GameSceneEffect.h"
 #include "SoundManager.h"
@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <imgui.h>
 
+// ボス戦攻撃キューやタイマー状態のリセット
 void BossBattleController::Reset() {
   bossAttackTimer_ = 0.0f;
   currentReflectLane_ = kNoReflectLane;
@@ -20,6 +21,7 @@ void BossBattleController::Reset() {
   currentPattern_ = PatternType::Standard;
 }
 
+// SpawnAttack 処理
 void BossBattleController::SpawnAttack(StageSettings *stageSettings, int lane,
                                        Obstacle::Type type) {
   if (!stageSettings)
@@ -52,6 +54,7 @@ void BossBattleController::SpawnAttack(StageSettings *stageSettings, int lane,
   }
 }
 
+// EnqueuePattern 処理
 void BossBattleController::EnqueuePattern(PatternType pattern) {
   currentPattern_ = pattern;
 
@@ -130,6 +133,7 @@ void BossBattleController::EnqueuePattern(PatternType pattern) {
 }
 
 BossBattleController::PatternType
+// SelectNextPattern 処理
 BossBattleController::SelectNextPattern(int bossHP) {
   std::vector<PatternType> pool;
   if (bossHP >= 4) {
@@ -156,6 +160,7 @@ BossBattleController::SelectNextPattern(int bossHP) {
   return selected;
 }
 
+// ボス戦攻撃パターンの生成、落下更新、カウンター反射判定の更新
 void BossBattleController::Update(float timeScale, Boss *boss,
                                   StageSettings *stageSettings,
                                   GameSceneEffect *effectManager,
@@ -291,6 +296,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
   }
 }
 
+// ImGuiデバッグUIの描画処理
 void BossBattleController::ImGui(Boss *boss,
                                  GameCameraController *cameraController,
                                  bool isPlayingBoss,
