@@ -189,6 +189,9 @@
     <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp">
       <Filter>Game</Filter>
     </ClCompile>
+    <ClCompile Include="Game\GameScene\Effect\RankingCutinEffect.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
     <ClCompile Include="Game\GameScene\System\BossBattleController.cpp">
       <Filter>Game</Filter>
     </ClCompile>
@@ -537,6 +540,9 @@
       <Filter>Game</Filter>
     </ClInclude>
     <ClInclude Include="Game\GameScene\Effect\CrashEffect.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\RankingCutinEffect.h">
       <Filter>Game</Filter>
     </ClInclude>
     <ClInclude Include="Game\GameScene\System\BossBattleController.h">

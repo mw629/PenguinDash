@@ -39,6 +39,9 @@ public:
   int GetLastDistanceRank() const { return lastDistanceRank_; }
   int GetLastScoreRank() const { return lastScoreRank_; }
 
+  /// @brief 今回のプレイがランキング1位（スコアまたは走行距離）であるか
+  bool IsFirstPlace() const;
+
   /// @brief 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
   void SendCurrentScoreToOnlineRanking(const std::string& playerName);
 

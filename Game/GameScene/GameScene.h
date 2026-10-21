@@ -5,6 +5,7 @@
 #include "Camera/GameCameraController.h"
 #include "Effect/CrashEffect.h"
 #include "Effect/GameSceneEffect.h"
+#include "Effect/RankingCutinEffect.h"
 #include "GameObjectManager.h"
 #include "RenderObject.h"
 #include "System/BossBattleController.h"
@@ -26,6 +27,7 @@ public:
     Playing,
     Paused,
     PlayerHit,
+    FirstPlaceCutIn,
     GameClear,
     GameOver,
     Editor
@@ -48,6 +50,9 @@ private:
       std::make_unique<ScoreManager>();
   std::unique_ptr<CrashEffect> crashEffect_ =
       std::make_unique<CrashEffect>();
+  std::unique_ptr<RankingCutinEffect> rankingCutinEffect_ =
+      std::make_unique<RankingCutinEffect>();
+  bool forceFirstPlaceCutInTest_ = false;
   std::unique_ptr<BossBattleController> bossBattleController_ =
       std::make_unique<BossBattleController>();
   std::unique_ptr<TitleDirector> titleDirector_ =
@@ -127,6 +132,7 @@ public:
   void PlayingUpdate();
   void PausedUpdate();
   void PlayerHitUpdate();
+  void FirstPlaceCutInUpdate();
   void EditorUpdate();
 
   // 設定のJSON保存・読み込み

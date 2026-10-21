@@ -101,6 +101,40 @@ void ScoreManager::UpdateScoreRanking() {
   }
 }
 
+bool ScoreManager::IsFirstPlace() const {
+  // まったく移動/スコア獲得していない場合は対象外
+  if (currentDistance_ <= 1.0f && currentScore_ <= 1.0f) {
+    return false;
+  }
+
+  // オンラインランキングが設定されており、かつ取得データがある場合
+  auto rankingMgr = FirebaseRankingManager::GetInstance();
+  if (rankingMgr && rankingMgr->IsConfigured()) {
+    const auto& scoreRanks = rankingMgr->GetCachedScoreRankings();
+    if (!scoreRanks.empty()) {
+      if (currentScore_ >= scoreRanks[0].score) {
+        return true;
+      }
+    } else if (lastScoreRank_ == 1) {
+      return true;
+    }
+
+    const auto& distRanks = rankingMgr->GetCachedDistanceRankings();
+    if (!distRanks.empty()) {
+      if (currentDistance_ >= distRanks[0].distance) {
+        return true;
+      }
+    } else if (lastDistanceRank_ == 1) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // ローカルランキングでの1位判定
+  return (lastScoreRank_ == 1 || lastDistanceRank_ == 1);
+}
+
 void ScoreManager::ImGui() {
 #ifdef _USE_IMGUI
   ImGui::Text("現在の走行距離: %.2f m", currentDistance_);

@@ -32,6 +32,7 @@ void GameScene::Initialize() {
 
   titleDirector_->Initialize(texture_.get());
   crashEffect_->Initialize(texture_.get());
+  rankingCutinEffect_->Initialize(texture_.get());
   gameHUD_->Initialize(texture_.get());
 
   if (!EditorManager::IsPlaying()) {
@@ -194,6 +195,7 @@ void GameScene::ResetGame() {
   effectManager_->ClearBarrier();
   scoreManager_->Reset();
   crashEffect_->Reset();
+  rankingCutinEffect_->Reset();
   wasBossBattle_ = false;
 
   cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
@@ -412,6 +414,8 @@ void GameScene::Update() {
     }
   } else if (gameState_ == GameState::PlayerHit) {
     PlayerHitUpdate();
+  } else if (gameState_ == GameState::FirstPlaceCutIn) {
+    FirstPlaceCutInUpdate();
   } else if (gameState_ == GameState::GameOver) {
     effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
     if (resultTransition_ == ResultTransition::None &&
@@ -764,6 +768,26 @@ void GameScene::PlayerHitUpdate() {
   player_->Update(cameraController_->GetViewMatrix(), 1.0f);
 
   if (player_->IsHitAnimationFinished()) {
+    if (forceFirstPlaceCutInTest_ || scoreManager_->IsFirstPlace()) {
+      gameState_ = GameState::FirstPlaceCutIn;
+      rankingCutinEffect_->Trigger();
+    } else {
+      gameState_ = GameState::GameOver;
+    }
+  }
+}
+
+void GameScene::FirstPlaceCutInUpdate() {
+  effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
+  rankingCutinEffect_->Update(Engine::kDefaultDeltaTime);
+
+  // スキップ入力 (Space, Enter, GamePad A, B)
+  if (Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_RETURN) ||
+      GamePadInput::PushButton(XINPUT_GAMEPAD_A) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
+    rankingCutinEffect_->RequestSkip();
+  }
+
+  if (rankingCutinEffect_->IsFinished()) {
     gameState_ = GameState::GameOver;
   }
 }
@@ -955,6 +979,11 @@ void GameScene::DrawUI(class Draw &draw) {
 
   gameHUD_->DrawHUD(draw, ctx);
 
+  // ペンギン1位カットイン演出の描画
+  if (gameState_ == GameState::FirstPlaceCutIn || rankingCutinEffect_->IsActive()) {
+    rankingCutinEffect_->Render(draw);
+  }
+
   // タイトル演出ペンギン疾走の描画
   titleDirector_->DrawPenguins(draw);
 
@@ -1046,6 +1075,17 @@ void GameScene::ImGui() {
         }
         ImGui::Separator();
       }
+    }
+
+    // ペンギン1位カットイン演出
+    if (ImGui::CollapsingHeader("ペンギン1位カットイン演出", ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (ImGui::Button("カットイン演出を今すぐテスト再生", ImVec2(240, 32))) {
+        gameState_ = GameState::FirstPlaceCutIn;
+        rankingCutinEffect_->Trigger();
+      }
+      ImGui::Checkbox("ゲームオーバー時に常時カットインを再生 (テスト用)", &forceFirstPlaceCutInTest_);
+      rankingCutinEffect_->ImGui();
+      ImGui::Separator();
     }
 
     // カメラ設定

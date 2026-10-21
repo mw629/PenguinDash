@@ -30,9 +30,10 @@ enum GameStateEnum {
   State_Playing = 1,
   State_Paused = 2,
   State_PlayerHit = 3,
-  State_GameClear = 4,
-  State_GameOver = 5,
-  State_Editor = 6
+  State_FirstPlaceCutIn = 4,
+  State_GameClear = 5,
+  State_GameOver = 6,
+  State_Editor = 7
 };
 
 // PlayingState values matching GameScene
@@ -96,7 +97,7 @@ void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 
   // 一人称視点バッジ
-  if (ctx.isFirstPersonView && ctx.gameState != State_Editor) {
+  if (ctx.isFirstPersonView && ctx.gameState != State_Editor && ctx.gameState != State_FirstPlaceCutIn) {
     DrawBadgeFPV(draw);
   }
 
