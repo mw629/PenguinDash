@@ -1,26 +1,53 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ソース ファイル">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include=".github">
+      <UniqueIdentifier>{48b2980e-607a-4d2f-8d2d-35b1353b25ff}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="Editer">
+      <UniqueIdentifier>{02d31aca-b87d-4f6a-9fc0-34451f13ffca}</UniqueIdentifier>
     </Filter>
-    <Filter Include="リソース ファイル">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Game">
-      <UniqueIdentifier>{23e92193-486f-4257-97c0-8cd7f43e15e4}</UniqueIdentifier>
+    <Filter Include="Editer\Command">
+      <UniqueIdentifier>{280aafb0-9d11-4616-9c1c-34993f9405ed}</UniqueIdentifier>
     </Filter>
     <Filter Include="externals">
       <UniqueIdentifier>{df5ec99a-a13d-474d-b363-5965fc736853}</UniqueIdentifier>
     </Filter>
     <Filter Include="externals\imgui">
       <UniqueIdentifier>{4601c333-aa04-41fc-afe5-32f6d158f906}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game">
+      <UniqueIdentifier>{23e92193-486f-4257-97c0-8cd7f43e15e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\Direction">
+      <UniqueIdentifier>{1e4d82bb-8a66-4937-800d-c1db2b8e39ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene">
+      <UniqueIdentifier>{ff8a27e8-d73b-467f-8488-e805088df1bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\Camera">
+      <UniqueIdentifier>{82950c64-6428-4fcc-99d0-b9ab03eef250}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\Effect">
+      <UniqueIdentifier>{baf6b9e6-2f5d-4e28-9984-704c46c82cd1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\Entity">
+      <UniqueIdentifier>{9f7e3a49-f6a9-46ca-9848-661fce43ffc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\Stage">
+      <UniqueIdentifier>{09c74c3a-5a1b-4288-aa6f-db3f528626f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\System">
+      <UniqueIdentifier>{02a69032-834f-439c-8785-9ed8328f0949}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\UI">
+      <UniqueIdentifier>{8052ac9d-fd0e-4112-a8a0-4e3febf6c47b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\JsonScene">
+      <UniqueIdentifier>{82d1c5cd-eb8d-4bf9-b3f1-87f850eb9b08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\TestScene">
+      <UniqueIdentifier>{e290b9d6-e4e8-4e76-a060-307906ea3826}</UniqueIdentifier>
     </Filter>
     <Filter Include="MatchaEngine">
       <UniqueIdentifier>{9c6ae038-8a6b-4e18-b45c-db77cacfb213}</UniqueIdentifier>
@@ -37,11 +64,41 @@
     <Filter Include="MatchaEngine\GameObjects">
       <UniqueIdentifier>{c2cbbca1-eabb-499d-a616-b6ed9f11a0b3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Camera">
+      <UniqueIdentifier>{ad346073-62d9-48e9-a58a-04f5de6e3e86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Component">
+      <UniqueIdentifier>{6ba89b90-9661-4577-a059-145223b0c151}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Effect">
+      <UniqueIdentifier>{4876962f-d4ee-4a0b-bcfc-7ccc5e2790ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Light">
+      <UniqueIdentifier>{b207d546-1f84-4877-9b33-7a53b6adf2c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Line">
+      <UniqueIdentifier>{12160b2a-0b54-47f3-ab08-8d91274d1f8e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Object">
+      <UniqueIdentifier>{16638683-da1c-4ce0-a8b6-164782a135ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Object\2d">
+      <UniqueIdentifier>{bb0f2dd0-e3ca-4f3a-920e-bf691be62131}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Object\3d">
+      <UniqueIdentifier>{4f06f638-c786-4b19-844c-793994169696}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\GameObjects\Object\Animation">
+      <UniqueIdentifier>{a063f6bf-c099-46bf-9936-f122c3594148}</UniqueIdentifier>
+    </Filter>
     <Filter Include="MatchaEngine\Graphics">
       <UniqueIdentifier>{5a99851d-6c1b-40f9-9560-3a2f33c33af4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="MatchaEngine\Graphics\PSO">
-      <UniqueIdentifier>{3276363f-251f-4b75-ad98-f09f0b484152}</UniqueIdentifier>
+    <Filter Include="MatchaEngine\Graphics\Font">
+      <UniqueIdentifier>{c53d35f1-e54b-499d-b48b-20a6df27ccab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\Graphics\Render">
+      <UniqueIdentifier>{c1a1e6b1-0907-4244-bd2d-b0c232fb5417}</UniqueIdentifier>
     </Filter>
     <Filter Include="MatchaEngine\Input">
       <UniqueIdentifier>{cf5f1de6-511b-442f-8c48-3e9de93e3117}</UniqueIdentifier>
@@ -49,14 +106,77 @@
     <Filter Include="MatchaEngine\Math">
       <UniqueIdentifier>{68929b1b-c3b7-4854-9166-5211761885ba}</UniqueIdentifier>
     </Filter>
+    <Filter Include="MatchaEngine\Network">
+      <UniqueIdentifier>{3403a235-035f-4b8d-b0cd-acda099728a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\Network\Firebase">
+      <UniqueIdentifier>{e499e0e9-d9ef-4332-8a28-fdd4e34f6d43}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\Network\TCPTcpNetwork">
+      <UniqueIdentifier>{54ec663c-adda-4f4f-aa24-202ba8eea84f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MatchaEngine\PSO">
+      <UniqueIdentifier>{ea34307e-ffe3-46d4-9243-6d8ad65ca5e9}</UniqueIdentifier>
+    </Filter>
     <Filter Include="MatchaEngine\Resource">
       <UniqueIdentifier>{72e362f4-0f67-4bd7-81ca-287e3a9b5602}</UniqueIdentifier>
     </Filter>
-    <Filter Include="MatchaEngine\Shader">
-      <UniqueIdentifier>{6ca9b9b3-e1ed-4e54-8cc9-5d5cd2b11281}</UniqueIdentifier>
+    <Filter Include="MatchaEngine\System">
+      <UniqueIdentifier>{da7659b1-b414-48bf-beaf-ae736369bbb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{29ae0f6d-a31f-432e-b793-631d3d71098c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader">
+      <UniqueIdentifier>{0c38a975-2c08-4f69-a7b1-9e846b62c59b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\LineShader">
+      <UniqueIdentifier>{d054a627-dc01-47e2-b3fe-047642ced358}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\MSDFShader">
+      <UniqueIdentifier>{083caaa6-ed03-4f21-8a4d-2cb512dfb4ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\ObjectShader">
+      <UniqueIdentifier>{f34ee709-b2e4-475b-82a6-8d6e51bc7cc3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\ParticleShader">
+      <UniqueIdentifier>{bea741fc-ee10-4681-a8e2-d7455838e230}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\PostEffect">
+      <UniqueIdentifier>{578f4f5b-241f-44f7-a81d-0fc18e9ed33c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\SkinningShader">
+      <UniqueIdentifier>{e8b08a26-ec1d-4f30-841c-8e9a150d7970}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Shader\SkyBoxShader">
+      <UniqueIdentifier>{c0732cb5-b738-4531-8038-7e9b566f631e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Editer\Command\CommandManager.cpp">
+      <Filter>Editer\Command</Filter>
+    </ClCompile>
+    <ClCompile Include="Editer\EditorManager.cpp">
+      <Filter>Editer</Filter>
+    </ClCompile>
+    <ClCompile Include="Editer\EditorUI.cpp">
+      <Filter>Editer</Filter>
+    </ClCompile>
+    <ClCompile Include="Editer\LanguageManager.cpp">
+      <Filter>Editer</Filter>
+    </ClCompile>
     <ClCompile Include="externals\imgui\imgui.cpp">
       <Filter>externals\imgui</Filter>
     </ClCompile>
@@ -78,14 +198,92 @@
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
       <Filter>externals\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\PSO\GraphicsPipelineState.cpp">
-      <Filter>MatchaEngine\Graphics\PSO</Filter>
+    <ClCompile Include="externals\imgui\ImGuizmo.cpp">
+      <Filter>externals\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\PSO\RootSignature.cpp">
-      <Filter>MatchaEngine\Graphics\PSO</Filter>
+    <ClCompile Include="Game\Direction\FreezeTransition.cpp">
+      <Filter>Game\Direction</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameApplication.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp">
+      <Filter>Game\GameScene\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Effect\GameSceneEffect.cpp">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Effect\HexBarrier.cpp">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Effect\RankingCutinEffect.cpp">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Entity\Boss.cpp">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Entity\Collision.cpp">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Entity\Obstacle.cpp">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Entity\Player.cpp">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\GameScene.cpp">
+      <Filter>Game\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\GameSceneManager.cpp">
+      <Filter>Game\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\Stage\StageSettings.cpp">
+      <Filter>Game\GameScene\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\Achievement.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\AchievementManager.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\BossBattleController.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\PauseSystem.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\ScoreManager.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\SoundManager.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\System\TitleDirector.cpp">
+      <Filter>Game\GameScene\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GameScene\UI\GameHUD.cpp">
+      <Filter>Game\GameScene\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\JsonScene\JsonScene.cpp">
+      <Filter>Game\JsonScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\SceneManager.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\TestScene\TestScene.cpp">
+      <Filter>Game\TestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\Common\CommandContext.cpp">
       <Filter>MatchaEngine\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Core\ImGuiManager.cpp">
+      <Filter>MatchaEngine\Core</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\Core\LogHandler.cpp">
       <Filter>MatchaEngine\Core</Filter>
@@ -93,26 +291,125 @@
     <ClCompile Include="MatchaEngine\Core\WindowConfig.cpp">
       <Filter>MatchaEngine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\Core\ImGuiManager.cpp">
-      <Filter>MatchaEngine\Core</Filter>
+    <ClCompile Include="MatchaEngine\Engine.cpp">
+      <Filter>MatchaEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Camera\Camera.cpp">
+      <Filter>MatchaEngine\GameObjects\Camera</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\Camera\DebugCamera.cpp">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Component\ColliderComponent.cpp">
+      <Filter>MatchaEngine\GameObjects\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Component\MaterialComponent.cpp">
+      <Filter>MatchaEngine\GameObjects\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Effect\EffectDefinition.cpp">
+      <Filter>MatchaEngine\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Effect\Emitter.cpp">
+      <Filter>MatchaEngine\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Light\DirectionalLight.cpp">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Light\LightManager.cpp">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Light\PointLight.cpp">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Light\SpotLight.cpp">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\Line\Grid.cpp">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Line</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\Line\Line.cpp">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Line</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\MaterialFactory.cpp">
       <Filter>MatchaEngine\GameObjects</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Model.cpp">
-      <Filter>MatchaEngine\GameObjects</Filter>
-    </ClCompile>
     <ClCompile Include="MatchaEngine\GameObjects\Object\2d\Sprite.cpp">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Object\2d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Cube.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Cylinder.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Model.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Ring.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Sphere.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Triangle.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\Animation\TransformAnimation.cpp">
+      <Filter>MatchaEngine\GameObjects\Object\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\GameObjects\Object\ObjectBase.cpp">
+      <Filter>MatchaEngine\GameObjects\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\DepthStencil.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\DescriptorHeap.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp">
+      <Filter>MatchaEngine\Graphics\Font</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Font\MsdfGenerator.cpp">
+      <Filter>MatchaEngine\Graphics\Font</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp">
+      <Filter>MatchaEngine\Graphics\Font</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\GpuProfiler.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\GpuSyncManager.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\GraphicsDevice.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Render\Draw.cpp">
+      <Filter>MatchaEngine\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Render\LineRenderer.cpp">
+      <Filter>MatchaEngine\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\Render\PostEffect.cpp">
+      <Filter>MatchaEngine\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\RenderTargetView.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\RenderTexture.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\ResourceBarrierHelper.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\SwapChain.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\ViewportScissor.cpp">
+      <Filter>MatchaEngine\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\Input\GamePadInput.cpp">
       <Filter>MatchaEngine\Input</Filter>
@@ -123,10 +420,49 @@
     <ClCompile Include="MatchaEngine\Math\Calculation.cpp">
       <Filter>MatchaEngine\Math</Filter>
     </ClCompile>
+    <ClCompile Include="MatchaEngine\Network\Firebase\EnvLoader.cpp">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.cpp">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Network\Firebase\HttpClient.cpp">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.cpp">
+      <Filter>MatchaEngine\Network\TCPTcpNetwork</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.cpp">
+      <Filter>MatchaEngine\Network\TCPTcpNetwork</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\ComputePipeline.cpp">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\GraphicsPipelineState.cpp">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\PipelineState.cpp">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\RootSignature.cpp">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\Sampler.cpp">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\ShaderCompiler.cpp">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Resource\AssetManager.cpp">
+      <Filter>MatchaEngine\Resource</Filter>
+    </ClCompile>
     <ClCompile Include="MatchaEngine\Resource\Audio.cpp">
       <Filter>MatchaEngine\Resource</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\Resource\Load.cpp">
+      <Filter>MatchaEngine\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Resource\ModelManager.cpp">
       <Filter>MatchaEngine\Resource</Filter>
     </ClCompile>
     <ClCompile Include="MatchaEngine\Resource\Texture.cpp">
@@ -135,269 +471,32 @@
     <ClCompile Include="MatchaEngine\Resource\TextureLoader.cpp">
       <Filter>MatchaEngine\Resource</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\DepthStencil.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\Font\MsdfGenerator.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\DescriptorHeap.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Light\DirectionalLight.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\Render\Draw.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\GpuSyncManager.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\GraphicsDevice.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\RenderTargetView.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\ResourceBarrierHelper.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\PSO\Sampler.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\SwapChain.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\ViewportScissor.cpp">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Engine.cpp">
-      <Filter>MatchaEngine</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\GameScene.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Effect\RankingCutinEffect.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\Achievement.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\AchievementManager.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\BossBattleController.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\ScoreManager.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\TitleDirector.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\UI\GameHUD.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Effect\GameSceneEffect.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Effect\HexBarrier.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\SceneManager.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Camera\Camera.cpp">
-      <Filter>MatchaEngine\GameObjects</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Resource\ModelManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Effect\EffectDefinition.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\Direction\FreezeTransition.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Effect\Emitter.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Light\PointLight.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Light\SpotLight.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\ObjectBase.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Light\LightManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\Animation\TransformAnimation.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameApplication.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Sphere.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Triangle.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Cube.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\TestScene\TestScene.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\RenderTexture.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Ring.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Cylinder.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\PSO\PipelineState.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\PSO\ShaderCompiler.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Editer\EditorUI.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Editer\EditorManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\System\GameObjectManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Component\MaterialComponent.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Resource\AssetManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Entity\Player.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Stage\StageSettings.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Entity\Collision.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Entity\Obstacle.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\PauseSystem.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\System\SoundManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\Render\PostEffect.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\PSO\ComputePipeline.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\ImGuizmo.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\JsonScene\JsonScene.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\System\GameObjectManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="MatchaEngine\System\CollisionManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>MatchaEngine\System</Filter>
     </ClCompile>
-    <ClCompile Include="MatchaEngine\GameObjects\Component\ColliderComponent.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Editer\LanguageManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\Render\LineRenderer.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Graphics\GpuProfiler.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\GameSceneManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\GameScene\Entity\Boss.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Editer\Command\CommandManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Network\Firebase\EnvLoader.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Network\Firebase\HttpClient.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="MatchaEngine\System\GameObjectManager.cpp">
+      <Filter>MatchaEngine\System</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="resources\Shader\Object3d.VS.hlsl">
-      <Filter>MatchaEngine\Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Line.PS.hlsl">
-      <Filter>MatchaEngine\Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Line.VS.hlsl">
-      <Filter>MatchaEngine\Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Object3d.PS.hlsl">
-      <Filter>MatchaEngine\Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Particle.PS.hlsl" />
-    <FxCompile Include="resources\Shader\Particle.VS.hlsl" />
-    <FxCompile Include="resources\Shader\SkinningObject3d.PS.hlsl" />
-    <FxCompile Include="resources\Shader\SkinningObject3d.VS.hlsl" />
-    <FxCompile Include="resources\Shader\SkyBox.VS.hlsl" />
-    <FxCompile Include="resources\Shader\SkinningObject3d.CS.hlsl" />
-    <FxCompile Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl" />
-    <FxCompile Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl" />
-    <FxCompile Include="Resources\Shader\ComputeShader\Particle.CS.hlsl" />
-    <FxCompile Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
+    <ClInclude Include="Editer\Command\CommandManager.h">
+      <Filter>Editer\Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Editer\Command\EditorCommands.h">
+      <Filter>Editer\Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Editer\Command\ICommand.h">
+      <Filter>Editer\Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Editer\EditorManager.h">
+      <Filter>Editer</Filter>
+    </ClInclude>
+    <ClInclude Include="Editer\EditorUI.h">
+      <Filter>Editer</Filter>
+    </ClInclude>
+    <ClInclude Include="Editer\LanguageManager.h">
+      <Filter>Editer</Filter>
+    </ClInclude>
     <ClInclude Include="externals\imgui\imconfig.h">
       <Filter>externals\imgui</Filter>
     </ClInclude>
@@ -413,6 +512,9 @@
     <ClInclude Include="externals\imgui\imgui_internal.h">
       <Filter>externals\imgui</Filter>
     </ClInclude>
+    <ClInclude Include="externals\imgui\ImGuizmo.h">
+      <Filter>externals\imgui</Filter>
+    </ClInclude>
     <ClInclude Include="externals\imgui\imstb_rectpack.h">
       <Filter>externals\imgui</Filter>
     </ClInclude>
@@ -422,14 +524,104 @@
     <ClInclude Include="externals\imgui\imstb_truetype.h">
       <Filter>externals\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\PSO\GraphicsPipelineState.h">
-      <Filter>MatchaEngine\Graphics\PSO</Filter>
+    <ClInclude Include="Game\Direction\FreezeTransition.h">
+      <Filter>Game\Direction</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\PSO\RootSignature.h">
-      <Filter>MatchaEngine\Graphics\PSO</Filter>
+    <ClInclude Include="Game\GameApplication.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Camera\GameCameraController.h">
+      <Filter>Game\GameScene\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\CrashEffect.h">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\GameSceneEffect.h">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\HexBarrier.h">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Effect\RankingCutinEffect.h">
+      <Filter>Game\GameScene\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Entity\Boss.h">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Entity\Collision.h">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Entity\Obstacle.h">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Entity\Player.h">
+      <Filter>Game\GameScene\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\GameScene.h">
+      <Filter>Game\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\GameSceneManager.h">
+      <Filter>Game\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\Stage\StageSettings.h">
+      <Filter>Game\GameScene\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\Achievement.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\AchievementManager.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\BossBattleController.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\PauseSystem.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\ScoreManager.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\SoundManager.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\System\TitleDirector.h">
+      <Filter>Game\GameScene\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameScene\UI\GameHUD.h">
+      <Filter>Game\GameScene\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\IScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\JsonScene\JsonScene.h">
+      <Filter>Game\JsonScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\SceneManager.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\TestScene\TestScene.h">
+      <Filter>Game\TestScene</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Common\CommandContext.h">
       <Filter>MatchaEngine\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Common\ObjectPool.h">
+      <Filter>MatchaEngine\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Core\Color.h">
+      <Filter>MatchaEngine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Core\ImGuiManager.h">
+      <Filter>MatchaEngine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Core\LogHandler.h">
+      <Filter>MatchaEngine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Core\VariableTypes.h">
+      <Filter>MatchaEngine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Matrix4x4.h">
+      <Filter>MatchaEngine\Core\VariableTypes</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector2.h">
       <Filter>MatchaEngine\Core\VariableTypes</Filter>
@@ -443,38 +635,143 @@
     <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector3Int.h">
       <Filter>MatchaEngine\Core\VariableTypes</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\Core\VariableTypes\Matrix4x4.h">
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector4.h">
       <Filter>MatchaEngine\Core\VariableTypes</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Core\VariableTypes.h">
-      <Filter>MatchaEngine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Core\LogHandler.h">
-      <Filter>MatchaEngine\Core</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Core\WindowConfig.h">
       <Filter>MatchaEngine\Core</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\Core\ImGuiManager.h">
-      <Filter>MatchaEngine\Core</Filter>
+    <ClInclude Include="MatchaEngine\Engine.h">
+      <Filter>MatchaEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h">
+      <Filter>MatchaEngine\GameObjects\Camera</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Camera\DebugCamera.h">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Component\ColliderComponent.h">
+      <Filter>MatchaEngine\GameObjects\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Component\Component.h">
+      <Filter>MatchaEngine\GameObjects\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Component\MaterialComponent.h">
+      <Filter>MatchaEngine\GameObjects\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Effect\EffectDefinition.h">
+      <Filter>MatchaEngine\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Effect\Emitter.h">
+      <Filter>MatchaEngine\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\BaseLight.h">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\DirectionalLight.h">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\LightManager.h">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\PointLight.h">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Light\SpotLight.h">
+      <Filter>MatchaEngine\GameObjects\Light</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Line\Grid.h">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Line</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Line\Line.h">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Line</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\MaterialFactory.h">
       <Filter>MatchaEngine\GameObjects</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Model.h">
-      <Filter>MatchaEngine\GameObjects</Filter>
-    </ClInclude>
     <ClInclude Include="MatchaEngine\GameObjects\Object\2d\Sprite.h">
-      <Filter>MatchaEngine\GameObjects</Filter>
+      <Filter>MatchaEngine\GameObjects\Object\2d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Cube.h">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Cylinder.h">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Model.h">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Ring.h">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Sphere.h">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Triangle.h">
+      <Filter>MatchaEngine\GameObjects\Object\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.h">
+      <Filter>MatchaEngine\GameObjects\Object\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\Animation\TransformAnimation.h">
+      <Filter>MatchaEngine\GameObjects\Object\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\GameObject.h">
+      <Filter>MatchaEngine\GameObjects\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\ObjectBase.h">
+      <Filter>MatchaEngine\GameObjects\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\GameObjects\Object\RenderObject.h">
+      <Filter>MatchaEngine\GameObjects\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\DepthStencil.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\DescriptorHeap.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.h">
+      <Filter>MatchaEngine\Graphics\Font</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Font\MsdfGenerator.h">
+      <Filter>MatchaEngine\Graphics\Font</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Font\TextRenderer.h">
+      <Filter>MatchaEngine\Graphics\Font</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\GpuProfiler.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\GpuSyncManager.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\GraphicsDevice.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Render\Draw.h">
+      <Filter>MatchaEngine\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Render\LineRenderer.h">
+      <Filter>MatchaEngine\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\Render\PostEffect.h">
+      <Filter>MatchaEngine\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\RenderTargetView.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\RenderTexture.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\ResourceBarrierHelper.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\SwapChain.h">
+      <Filter>MatchaEngine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Graphics\ViewportScissor.h">
+      <Filter>MatchaEngine\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Input\GamePadInput.h">
       <Filter>MatchaEngine\Input</Filter>
@@ -485,10 +782,55 @@
     <ClInclude Include="MatchaEngine\Math\Calculation.h">
       <Filter>MatchaEngine\Math</Filter>
     </ClInclude>
+    <ClInclude Include="MatchaEngine\Math\Ray.h">
+      <Filter>MatchaEngine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Network\Firebase\EmbeddedEnv.h">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Network\Firebase\EnvLoader.h">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.h">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Network\Firebase\HttpClient.h">
+      <Filter>MatchaEngine\Network\Firebase</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.h">
+      <Filter>MatchaEngine\Network\TCPTcpNetwork</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.h">
+      <Filter>MatchaEngine\Network\TCPTcpNetwork</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\PSO\ComputePipeline.h">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\PSO\GraphicsPipelineState.h">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\PSO\PipelineState.h">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\PSO\RootSignature.h">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\PSO\Sampler.h">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\PSO\ShaderCompiler.h">
+      <Filter>MatchaEngine\PSO</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Resource\AssetManager.h">
+      <Filter>MatchaEngine\Resource</Filter>
+    </ClInclude>
     <ClInclude Include="MatchaEngine\Resource\Audio.h">
       <Filter>MatchaEngine\Resource</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Resource\Load.h">
+      <Filter>MatchaEngine\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="MatchaEngine\Resource\ModelManager.h">
       <Filter>MatchaEngine\Resource</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\Resource\Texture.h">
@@ -497,288 +839,180 @@
     <ClInclude Include="MatchaEngine\Resource\TextureLoader.h">
       <Filter>MatchaEngine\Resource</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\DepthStencil.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\DescriptorHeap.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Light\BaseLight.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Light\DirectionalLight.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\Render\Draw.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\GpuSyncManager.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\GraphicsDevice.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\RenderTargetView.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\ResourceBarrierHelper.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\PSO\Sampler.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\SwapChain.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\ViewportScissor.h">
-      <Filter>MatchaEngine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Engine.h">
-      <Filter>MatchaEngine</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\GameScene.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Camera\GameCameraController.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Effect\CrashEffect.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Effect\RankingCutinEffect.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\Achievement.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\AchievementManager.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\BossBattleController.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\ScoreManager.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\TitleDirector.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\UI\GameHUD.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Effect\GameSceneEffect.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\SceneManager.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h">
-      <Filter>MatchaEngine\GameObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Resource\ModelManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Effect\EffectDefinition.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\IScene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\Direction\FreezeTransition.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Effect\Emitter.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Light\PointLight.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Light\SpotLight.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\ObjectBase.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Light\LightManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\Animation\TransformAnimation.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameApplication.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Triangle.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Sphere.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Cube.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\TestScene\TestScene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\RenderTexture.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Ring.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Cylinder.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\PSO\PipelineState.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\PSO\ShaderCompiler.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Editer\EditorUI.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Editer\EditorManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\System\GameObjectManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="MatchaEngine\System\CollisionManager.h">
+      <Filter>MatchaEngine\System</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\System\GameObjectFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Resource\AssetManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\GameObject.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Component\Component.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Component\MaterialComponent.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Object\RenderObject.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Effect\HexBarrier.h">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Entity\Player.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Stage\StageSettings.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Entity\Collision.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Entity\Obstacle.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\PauseSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\System\SoundManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\Render\PostEffect.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\PSO\ComputePipeline.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\ImGuizmo.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\JsonScene\JsonScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>MatchaEngine\System</Filter>
     </ClInclude>
     <ClInclude Include="MatchaEngine\System\GameObjectManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>MatchaEngine\System</Filter>
     </ClInclude>
-    <ClInclude Include="MatchaEngine\System\CollisionManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\GameObjects\Component\ColliderComponent.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Editer\LanguageManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\Render\LineRenderer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\GpuProfiler.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\GameSceneManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\GameScene\Entity\Boss.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\Font\MsdfGenerator.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Graphics\Font\TextRenderer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Editer\Command\ICommand.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Editer\Command\CommandManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Editer\Command\EditorCommands.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Common\ObjectPool.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Network\Firebase\EnvLoader.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Network\Firebase\EmbeddedEnv.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Network\Firebase\HttpClient.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".github\copilot-instructions.md">
+      <Filter>.github</Filter>
+    </None>
+    <None Include="Resources\Shader\LineShader\Line.hlsli">
+      <Filter>Resources\Shader\LineShader</Filter>
+    </None>
+    <None Include="Resources\Shader\LineShader\Line.PS.hlsl">
+      <Filter>Resources\Shader\LineShader</Filter>
+    </None>
+    <None Include="Resources\Shader\LineShader\Line.VS.hlsl">
+      <Filter>Resources\Shader\LineShader</Filter>
+    </None>
+    <None Include="Resources\Shader\MSDFShader\MSDF.hlsli">
+      <Filter>Resources\Shader\MSDFShader</Filter>
+    </None>
+    <None Include="Resources\Shader\MSDFShader\MSDF.PS.hlsl">
+      <Filter>Resources\Shader\MSDFShader</Filter>
+    </None>
+    <None Include="Resources\Shader\MSDFShader\MSDF.VS.hlsl">
+      <Filter>Resources\Shader\MSDFShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ObjectShader\IceShader.PS.hlsl">
+      <Filter>Resources\Shader\ObjectShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ObjectShader\Object3d.hlsli">
+      <Filter>Resources\Shader\ObjectShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ObjectShader\Object3d.PS.hlsl">
+      <Filter>Resources\Shader\ObjectShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ObjectShader\Object3d.VS.hlsl">
+      <Filter>Resources\Shader\ObjectShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ObjectShader\Water.PS.hlsl">
+      <Filter>Resources\Shader\ObjectShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ObjectShader\Water.VS.hlsl">
+      <Filter>Resources\Shader\ObjectShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\BoxEmitterParticle.CS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\InitializeParticle.CS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\Particle.hlsli">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\Particle.PS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\Particle.VS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\Smoke.PS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\ParticleShader\UpdateParticle.CS.hlsl">
+      <Filter>Resources\Shader\ParticleShader</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Bloom.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\CopyImage.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Dissolve.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Fog.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Freeze.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\GaussianFilter.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\GrayScale.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\GrayScaleSepiaTone.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\HalftoneDot.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\LuminanceOutLine.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\NormalVectorOutLine.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\OutLine.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Pixelate.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\PostEffect.hlsli">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\PostEffect.VS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Posterization.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\RadialBlur.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\RadialZoom.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Random.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Shatter.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Smoothing.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\PostEffect\Vignetting.PS.hlsl">
+      <Filter>Resources\Shader\PostEffect</Filter>
+    </None>
+    <None Include="Resources\Shader\SkinningShader\Skinning.CS.hlsl">
+      <Filter>Resources\Shader\SkinningShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.CS.hlsl">
+      <Filter>Resources\Shader\SkinningShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.hlsli">
+      <Filter>Resources\Shader\SkinningShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.PS.hlsl">
+      <Filter>Resources\Shader\SkinningShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.VS.hlsl">
+      <Filter>Resources\Shader\SkinningShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkyBoxShader\SkyBox.hlsli">
+      <Filter>Resources\Shader\SkyBoxShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkyBoxShader\SkyBox.PS.hlsl">
+      <Filter>Resources\Shader\SkyBoxShader</Filter>
+    </None>
+    <None Include="Resources\Shader\SkyBoxShader\SkyBox.VS.hlsl">
+      <Filter>Resources\Shader\SkyBoxShader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt">
       <Filter>externals\imgui</Filter>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="resources\Shader\Line.hlsli">
-      <Filter>MatchaEngine\Shader</Filter>
-    </None>
-    <None Include="resources\Shader\Object3d.hlsli">
-      <Filter>MatchaEngine\Shader</Filter>
-    </None>
-    <None Include="resources\Shader\Particle.hlsli" />
-    <None Include="resources\Shader\SkinningObject3d.hlsli" />
-    <None Include="resources\Shader\SkyBox.PS.hlsl" />
-    <None Include="resources\Shader\SkyBox.hlsli" />
-    <None Include=".github\copilot-instructions.md" />
-    <None Include="resources\Shader\PostEffect\PostEffect.hlsli" />
   </ItemGroup>
 </Project>
