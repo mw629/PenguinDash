@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <string>
 #include <vector>
 #include <functional>
@@ -6,7 +6,9 @@
 #include <queue>
 #include "EnvLoader.h"
 
-/// @brief ランキングエントリ構造体
+/// <summary>
+/// ランキングエントリ構造体
+/// </summary>
 struct RankingEntry {
   int rank = 0;              ///< 順位（1〜）
   std::string playerName;    ///< プレイヤーネーム
@@ -16,96 +18,142 @@ struct RankingEntry {
   std::string documentId;    ///< Firestore ドキュメントID
 };
 
-/// @brief スコア送信コールバック型 (success, message)
+/// <summary>
+/// スコア送信コールバック型 (success, message)
+/// </summary>
 using SendScoreCallback = std::function<void(bool success, const std::string& message)>;
 
-/// @brief ランキング取得コールバック型 (success, rankings, message)
+/// <summary>
+/// ランキング取得コールバック型 (success, rankings, message)
+/// </summary>
 using FetchRankingCallback = std::function<void(bool success, const std::vector<RankingEntry>& rankings, const std::string& message)>;
 
-/// @brief ソート対象フィールド
+/// <summary>
+/// ソート対象フィールド
+/// </summary>
 enum class RankingSortField {
   Score,
   Distance
 };
 
-/// @brief Firebase (Cloud Firestore REST API) を使用したオンラインランキング管理クラス
+/// <summary>
+/// Firebase (Cloud Firestore REST API) を使用したオンラインランキング管理クラス
+/// </summary>
 class FirebaseRankingManager {
 public:
   static FirebaseRankingManager* GetInstance();
 
-  /// @brief 初期化（My.env を読み込み接続設定を構築）
-  /// @param envPath My.env のファイルパス（デフォルト: "My.env"）
+  /// <summary>
+  /// 初期化（My.env を読み込み接続設定を構築）
+  /// </summary>
+  /// <param name="envPath">My.env のファイルパス（デフォルト: "My.env"）</param>
   bool Initialize(const std::string& envPath = "My.env");
 
-  /// @brief 毎フレーム呼び出す更新処理（非同期コールバックをメインスレッドで安全に実行）
+  /// <summary>
+  /// 毎フレーム呼び出す更新処理（非同期コールバックをメインスレッドで安全に実行）
+  /// </summary>
   void Update();
 
-  /// @brief スコアを Firebase に非同期送信
-  /// @param playerName プレイヤーネーム
-  /// @param distance 走行距離
-  /// @param score スコア
-  /// @param callback 完了時のコールバック（メインスレッドで呼ばれます）
+  /// <summary>
+  /// スコアを Firebase に非同期送信
+  /// </summary>
+  /// <param name="playerName">プレイヤーネーム</param>
+  /// <param name="distance">走行距離</param>
+  /// <param name="score">スコア</param>
+  /// <param name="callback">完了時のコールバック（メインスレッドで呼ばれます）</param>
   void SendScoreAsync(
       const std::string& playerName,
       float distance,
       float score,
       SendScoreCallback callback = nullptr);
 
-  /// @brief オンラインランキングを Firebase から非同期取得（スコア順）
-  /// @param limit 取得件数（0以下の場合は My.env の設定値を使用）
-  /// @param callback 完了時のコールバック（メインスレッドで呼ばれます）
+  /// <summary>
+  /// オンラインランキングを Firebase から非同期取得（スコア順）
+  /// </summary>
+  /// <param name="limit">取得件数（0以下の場合は My.env の設定値を使用）</param>
+  /// <param name="callback">完了時のコールバック（メインスレッドで呼ばれます）</param>
   void FetchRankingAsync(
       int limit = 0,
       FetchRankingCallback callback = nullptr);
 
-  /// @brief 指定したソートフィールドでオンラインランキングを非同期取得
+  /// <summary>
+  /// 指定したソートフィールドでオンラインランキングを非同期取得
+  /// </summary>
   void FetchRankingAsync(
       RankingSortField sortField,
       int limit = 0,
       FetchRankingCallback callback = nullptr);
 
-  /// @brief 走行距離・スコアの両方のランキングを非同期一括取得
+  /// <summary>
+  /// 走行距離・スコアの両方のランキングを非同期一括取得
+  /// </summary>
   void FetchBothRankingsAsync(
       int limit = 0,
       std::function<void(bool success)> callback = nullptr);
 
-  /// @brief キャッシュされているスコアランキングエントリ一覧を取得（互換用）
+  /// <summary>
+  /// キャッシュされているスコアランキングエントリ一覧を取得（互換用）
+  /// </summary>
   const std::vector<RankingEntry>& GetCachedRankings() const { return cachedScoreRankings_; }
 
-  /// @brief キャッシュされているスコアランキングエントリ一覧を取得
+  /// <summary>
+  /// キャッシュされているスコアランキングエントリ一覧を取得
+  /// </summary>
   const std::vector<RankingEntry>& GetCachedScoreRankings() const { return cachedScoreRankings_; }
 
-  /// @brief キャッシュされている走行距離ランキングエントリ一覧を取得
+  /// <summary>
+  /// キャッシュされている走行距離ランキングエントリ一覧を取得
+  /// </summary>
   const std::vector<RankingEntry>& GetCachedDistanceRankings() const { return cachedDistanceRankings_; }
 
-  /// @brief 直前に送信されたドキュメントのIDを取得
+  /// <summary>
+  /// 直前に送信されたドキュメントのIDを取得
+  /// </summary>
   const std::string& GetLastSubmittedDocId() const { return lastSubmittedDocId_; }
 
-  /// @brief 直前に送信された走行距離を取得
+  /// <summary>
+  /// 直前に送信された走行距離を取得
+  /// </summary>
   float GetLastSubmittedDistance() const { return lastSubmittedDistance_; }
 
-  /// @brief 直前に送信されたスコアを取得
+  /// <summary>
+  /// 直前に送信されたスコアを取得
+  /// </summary>
   float GetLastSubmittedScore() const { return lastSubmittedScore_; }
 
-  /// @brief Firebase のキー情報が設定されているか
+  /// <summary>
+  /// Firebase のキー情報が設定されているか
+  /// </summary>
   bool IsConfigured() const;
 
-  /// @brief 現在送信中か
+  /// <summary>
+  /// 現在送信中か
+  /// </summary>
   bool IsSending() const { return isSending_; }
 
-  /// @brief 現在ランキング取得中か
+  /// <summary>
+  /// 現在ランキング取得中か
+  /// </summary>
   bool IsFetching() const { return isFetching_; }
 
-  /// @brief 直近のエラーまたはステータスメッセージ
+  /// <summary>
+  /// 直近のエラーまたはステータスメッセージ
+  /// </summary>
   const std::string& GetLastStatusMessage() const { return lastStatusMessage_; }
 
-  /// @brief 直前の送信が成功したか
+  /// <summary>
+  /// 直前の送信が成功したか
+  /// </summary>
   bool WasLastSendSuccess() const { return lastSendSuccess_; }
 
-  /// @brief EnvLoader の取得
+  /// <summary>
+  /// EnvLoader の取得
+  /// </summary>
   const EnvLoader& GetEnvLoader() const { return envLoader_; }
 
-  /// @brief ImGui デバッグUI（設定確認・テスト送信・ランキング表示）
+  /// <summary>
+  /// ImGui デバッグUI（設定確認・テスト送信・ランキング表示）
+  /// </summary>
   void ImGui();
 
 private:

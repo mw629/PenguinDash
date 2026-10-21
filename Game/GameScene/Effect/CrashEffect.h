@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Engine.h>
 #include <GameObjects/Object/2d/Sprite.h>
 #include <Math/Calculation.h>
@@ -25,12 +25,41 @@ public:
   CrashEffect() = default;
   ~CrashEffect() = default;
 
+  /// <summary>
+  /// クラッシュスプライトリソースの初期化
+  /// </summary>
   void Initialize(class Texture *texture);
+
+  /// <summary>
+  /// 激突・クラッシュ演出を発動
+  /// </summary>
   void Trigger();
+
+  /// <summary>
+  /// クラッシュ演出タイマー等のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// クラッシュ演出アニメーションの毎フレーム更新
+  /// </summary>
+  /// <param name="dt">デルタタイム</param>
   void Update(float dt);
+
+  /// <summary>
+  /// クラッシュ演出アニメーションの毎フレーム更新（デフォルト時間）
+  /// </summary>
   void Update() { Update(Engine::kDefaultDeltaTime); }
+
+  /// <summary>
+  /// クラッシュスプライトの描画
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Render(class Draw &draw);
+
+  /// <summary>
+  /// ImGuiによるクラッシュ演出パラメータ調整UI
+  /// </summary>
   void ImGui();
 
   Sprite *GetSprite() const { return crashSprite_.get(); }

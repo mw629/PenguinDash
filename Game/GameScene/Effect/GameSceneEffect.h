@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "HexBarrier.h"
 #include <Emitter.h>
 #include <Engine.h>
@@ -11,23 +11,69 @@ public:
   GameSceneEffect();
   ~GameSceneEffect() = default;
 
+  /// <summary>
+  /// エフェクト（雪、砂埃、六角形バリア等）の初期化
+  /// </summary>
   void Initialize();
 
+  /// <summary>
+  /// ゲームプレイ中のエフェクト更新（パーティクル放出・バリア追従）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="playerPos">プレイヤー座標</param>
   void PlayingUpdate(const Matrix4x4 &view, const Vector3 &playerPos);
+
+  /// <summary>
+  /// プレイヤー被弾時のエフェクト更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void PlayerHitUpdate(const Matrix4x4 &view);
+
+  /// <summary>
+  /// エディターモード時のエフェクト更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void EditorUpdate(const Matrix4x4 &view);
 
+  /// <summary>
+  /// 走行時の雪煙・砂埃パーティクルの発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
   void EmitDust(const Vector3 &playerPos);
 
   Emitter* GetSnowEffect() const { return snowEffect_.get(); }
 
-  // バリア演出
+  /// <summary>
+  /// 氷バリアの展開演出を開始
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
   void EmitBarrier(const Vector3 &playerPos);
+
+  /// <summary>
+  /// 氷バリアの破壊・破散演出を開始
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
   void BreakBarrier(const Vector3 &playerPos);
+
+  /// <summary>
+  /// 氷バリアを即時消去
+  /// </summary>
   void ClearBarrier();
+
+  /// <summary>
+  /// バリアが展開中または有効状態かどうかを取得
+  /// </summary>
   bool IsBarrierActive() const;
 
+  /// <summary>
+  /// 各種エフェクト（バリア、パーティクル）の描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw);
+
+  /// <summary>
+  /// ImGuiによるエフェクトパラメータ調整UI
+  /// </summary>
   void ImGui();
 
   // バリアパラメータ設定・取得

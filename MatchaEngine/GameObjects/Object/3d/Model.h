@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include"ObjectBase.h"
 
 
@@ -22,16 +22,39 @@ private:
 	bool isBillboard_ = false;
 
 public:
-	
-	~Model()override;
+	/// <summary>
+	/// デストラクタ
+	/// </summary>
+	~Model() override;
 
-
+	/// <summary>
+	/// モデルデータの初期化
+	/// </summary>
+	/// <param name="modelData">読み込んだ3Dモデルデータ</param>
 	void Initialize(ModelData modelData);
 
+	/// <summary>
+	/// WVP定数バッファの更新
+	/// </summary>
+	/// <param name="viewMatrix">ビュー行列</param>
 	void SettingWvp(Matrix4x4 viewMatrix) override;
+
+	/// <summary>
+	/// カスタムプロジェクション行列を用いたWVP更新
+	/// </summary>
+	/// <param name="viewMatrix">ビュー行列</param>
+	/// <param name="customProjection">プロジェクション行列</param>
 	void SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection);
 	
-	void CreateObject()override;
+	/// <summary>
+	/// モデルのメッシュ・マテリアルリソース生成
+	/// </summary>
+	void CreateObject() override;
+
+	/// <summary>
+	/// モデルの描画実行
+	/// </summary>
+	/// <param name="draw">描画マネージャ</param>
 	void Render(class Draw& draw) override;
 
 	void SetBillboard(bool isBillboard) { isBillboard_ = isBillboard; }

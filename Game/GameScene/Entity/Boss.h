@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "GameObject.h"
 #include <Engine.h>
 #include <memory>
@@ -88,17 +88,62 @@ private:
   Vector3 targetPos_;
 
 public:
+  /// <summary>
+  /// コンストラクタ
+  /// </summary>
   Boss();
+
+  /// <summary>
+  /// デストラクタ
+  /// </summary>
   ~Boss();
 
+  /// <summary>
+  /// ボスモデルの初期化
+  /// </summary>
+  /// <param name="modelData">ボス用3Dモデルデータ</param>
   void Initialize(ModelData modelData);
+
+  /// <summary>
+  /// ボス状態（HP、位置、ステート）のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// ボスをデフォルト位置で出現
+  /// </summary>
   void Spawn();
+
+  /// <summary>
+  /// ボスを指定座標に出現
+  /// </summary>
+  /// <param name="x">X座標</param>
+  /// <param name="y">Y座標</param>
+  /// <param name="z">Z座標</param>
   void Spawn(float x, float y, float z);
 
+  /// <summary>
+  /// ボスの毎フレーム更新処理
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="speedMultiplier">速度乗数</param>
   void Update(Matrix4x4 view, float speedMultiplier) override;
+
+  /// <summary>
+  /// ボスの毎フレーム更新処理（デフォルト速度）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void Update(Matrix4x4 view) { Update(view, kDefaultSpeedMultiplier); }
+
+  /// <summary>
+  /// ボスモデルの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw) override;
+
+  /// <summary>
+  /// ImGuiインスペクター描画
+  /// </summary>
   void ImGuiInnerComponents() override;
 
   bool HasMaterial() const override {
@@ -106,13 +151,41 @@ public:
            GameObject::HasMaterial();
   }
 
+  /// <summary>
+  /// プレイヤー攻撃反射ヒット時のダメージ処理
+  /// </summary>
   void OnDamage();
+
+  /// <summary>
+  /// 現在のHPを取得
+  /// </summary>
   int GetHP() const { return hp_; }
+
+  /// <summary>
+  /// 最大HPを取得
+  /// </summary>
   int GetMaxHP() const { return kMaxHP; }
 
+  /// <summary>
+  /// 現在のボスステートを取得
+  /// </summary>
   BossState GetState() const;
+
+  /// <summary>
+  /// 現在のステート滞在時間を取得
+  /// </summary>
   float GetStateTimer() const { return stateTimer_; }
+
+  /// <summary>
+  /// ボスステートの切り替え
+  /// </summary>
+  /// <param name="nextState">切り替え先ステート</param>
   void ChangeState(BossState nextState);
+
+  /// <summary>
+  /// ボスステートの切り替え（カスタムステートインスタンス）
+  /// </summary>
+  /// <param name="nextState">ステートポインタ</param>
   void ChangeState(std::unique_ptr<IBossState> nextState);
 
   Transform &GetTransformRef() { return transform_; }

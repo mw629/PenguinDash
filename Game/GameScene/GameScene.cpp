@@ -16,6 +16,7 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 
+// デストラクタ: 各種エディターコールバックやオーバーレイ描画の登録を解除
 GameScene::~GameScene() {
   EditorManager::SetGameViewDrawCallback(nullptr, nullptr);
   EditorManager::SetSaveCallback(nullptr);
@@ -24,6 +25,8 @@ GameScene::~GameScene() {
   EditorManager::ClearSceneOverlayCallback();
 }
 
+// ゲームシーンの初期化
+// 各種マネージャー、カメラ、プレイヤー、ボス、スカイボックス等を生成・初期化
 void GameScene::Initialize() {
   sceneID_ = SceneID::Game;
   FreezeTransition::GetInstance()->Initialize();
@@ -191,6 +194,8 @@ void GameScene::Initialize() {
   achievementManager_->Initialize();
 }
 
+// ゲームプレイ状態のリセット
+// ステージ、プレイヤー、ボス、スコア、実績、カメラ等を初期状態にリセット
 void GameScene::ResetGame() {
   stageSettings_->Reset();
   player_->Reset();
@@ -224,6 +229,8 @@ void GameScene::ResetGame() {
   GameSceneManager::GetInstance()->SetInBossBattle(false);
 }
 
+// タイトルからゲーム開始演出（カウントダウン）への移行
+// 新規障害物のスポーンを停止し、遠方の障害物を消去してスタートカウントダウン演出を開始
 void GameScene::StartGame() {
   if (titleDirector_->IsExiting())
     return;
@@ -231,10 +238,8 @@ void GameScene::StartGame() {
   // タイトルの障害物を一瞬で消さず、新規スポーンのみ停止して手前の障害物がGOまでに自然に捌けるようにする
   stageSettings_->SetSpawningPaused(true);
 
-  // 遠すぎる障害物（Z
-  // > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
-  // 3.4秒のカウントダウン（3, 2,
-  // 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
+  // 遠すぎる障害物（Z > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
+  // 3.4秒のカウントダウン（3, 2, 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
   for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
     Obstacle *obs = stageSettings_->GetObstacle(i);
     if (obs && obs->GetIsActive()) {
@@ -247,6 +252,8 @@ void GameScene::StartGame() {
   titleDirector_->StartExit(cameraController_->GetTransform());
 }
 
+// ゲームプレイ本番の開始
+// カウントダウン演出終了後に呼び出され、操作を解禁して走行・障害物スポーン・BGMを開始
 void GameScene::StartPlaying() {
   gameState_ = GameState::Playing;
 
@@ -271,6 +278,8 @@ void GameScene::StartPlaying() {
   SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
 }
 
+// タイトル画面への復帰
+// ゲーム状態をリセットし、プレイヤーの自動走行（オートパイロット）やタイトルBGMを開始
 void GameScene::ReturnToTitle() {
   cameraController_->SetDebugCamera(false);
   ResetGame();
@@ -296,6 +305,7 @@ void GameScene::ReturnToTitle() {
   SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Title);
 }
 
+// 画面遷移（氷結・破砕トランジション）の開始 (Restart: リスタート, Title: タイトル画面へ)
 void GameScene::StartResultTransition(ResultTransition target) {
   if (FreezeTransition::GetInstance()->IsActive() ||
       resultTransition_ != ResultTransition::None) {
@@ -325,6 +335,8 @@ void GameScene::StartResultTransition(ResultTransition target) {
       });
 }
 
+// シーン全体の毎フレーム更新処理
+// 入力判定、カメラ制御、各ステート（タイトル/プレイ/被弾/ポーズ等）に応じた更新を統括
 void GameScene::Update() {
   ObjectBase::SetWvpIndex(0);
   EffectDefinition::SetWvpIndex(0);
@@ -357,7 +369,6 @@ void GameScene::Update() {
     cameraController_->ToggleFirstPerson(player_.get());
   }
 
-  // F3キーで氷結・破砕トランジションテスト
   if (Input::PushKey(DIK_F3)) {
     if (!FreezeTransition::GetInstance()->IsActive()) {
       FreezeTransition::GetInstance()->Start();
@@ -391,8 +402,7 @@ void GameScene::Update() {
     }
   });
 
-  // カメラの更新 (タイトルオービット or
-  // プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
+  // カメラの更新 (タイトルオービット or プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
   float timeScale = EditorManager::GetPlaySpeed();
   if (!cameraController_->IsFirstPerson()) {
     if (gameState_ == GameState::Title) {
@@ -461,6 +471,7 @@ void GameScene::Update() {
   }
 }
 
+// ゲームワールド内エンティティ（オブジェクト、ステージ、エフェクト等）の一括更新
 void GameScene::UpdateWorldEntities(float timeScale, float speedMultiplier) {
   const Matrix4x4 &view = cameraController_->GetViewMatrix();
   gameObjectManager_->UpdateAll(view, speedMultiplier * timeScale);
@@ -479,6 +490,8 @@ void GameScene::UpdateWorldEntities(float timeScale, float speedMultiplier) {
   }
 }
 
+// ゲームプレイ中（GameState::Playing）の更新処理
+// 入力受付、衝突判定、走行距離・スコア加算、ボス戦制御、実績トラッキングを処理
 void GameScene::PlayingUpdate() {
   // リスタート等のカウントダウン演出中の制御（走っている感を出してGOで加速・操作解禁）
   if (titleDirector_->IsCountdownActive() &&
@@ -494,8 +507,7 @@ void GameScene::PlayingUpdate() {
         SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
       }
     } else {
-      // 3, 2, 1
-      // の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
+      // 3, 2, 1 の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
       stageSettings_->SetSpawningPaused(true);
       player_->SetInputEnabled(false);
       player_->ClearInputBuffer();
@@ -593,6 +605,7 @@ void GameScene::PlayingUpdate() {
   achievementManager_->Update(dt, achCtx, scoreManager_.get());
 }
 
+// タイトル画面でのプレイヤー名入力処理（キーボード入力による文字列編集）
 void GameScene::UpdateTitleTextInput() {
   bool isShift = Input::PressKey(DIK_LSHIFT) || Input::PressKey(DIK_RSHIFT);
 
@@ -660,6 +673,8 @@ void GameScene::UpdateTitleTextInput() {
   }
 }
 
+// タイトル画面中（GameState::Title）の更新処理
+// メニュー項目のカーソル移動・選択、モーダル（ランキング/操作説明）表示、プレイヤー名入力を処理
 void GameScene::TitleUpdate() {
   float timeScale = EditorManager::GetPlaySpeed();
   float speedMultiplier = 1.0f;
@@ -736,8 +751,7 @@ void GameScene::TitleUpdate() {
 
   // ----------------------------------------------------------
   // メニュー選択中（未編集中）の処理
-  // 1. 上下カーソル移動（名前登録バーを含め全項目で
-  // W/S・矢印キー・パッドが利用可能）
+  // 1. 上下カーソル移動（名前登録バーを含め全項目で W/S・矢印キー・パッドが利用可能）
   // ----------------------------------------------------------
   bool moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
                 GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
@@ -813,6 +827,8 @@ void GameScene::TitleUpdate() {
   }
 }
 
+// ポーズ中（GameState::Paused）の更新処理
+// リスタート（1キー/Aボタン）またはタイトル復帰（2キー/Bボタン）の入力を受け付け
 void GameScene::PausedUpdate() {
   if (resultTransition_ == ResultTransition::None &&
       !FreezeTransition::GetInstance()->IsActive()) {
@@ -825,6 +841,8 @@ void GameScene::PausedUpdate() {
   }
 }
 
+// プレイヤー被弾中（GameState::PlayerHit）の更新処理
+// クラッシュ演出や被弾アニメーションを更新し、完了時にランキング判定（カットイン演出またはゲームオーバー）へ移行
 void GameScene::PlayerHitUpdate() {
   crashEffect_->Update(Engine::kDefaultDeltaTime);
   effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
@@ -845,7 +863,6 @@ void GameScene::PlayerHitUpdate() {
       } else if (isScoreFirst) {
         type = RankingCutinEffect::CutinType::Score;
       } else {
-        // テスト時
         if (testCutinType_ == 1) {
           type = RankingCutinEffect::CutinType::Distance;
         } else if (testCutinType_ == 2) {
@@ -862,6 +879,8 @@ void GameScene::PlayerHitUpdate() {
   }
 }
 
+// 1位更新時のペンギンカットイン演出中（GameState::FirstPlaceCutIn）の更新処理
+// カットインアニメーション・スキップ入力の処理を行い、終了時にゲームオーバーへ移行
 void GameScene::FirstPlaceCutInUpdate() {
   effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
   rankingCutinEffect_->Update(Engine::kDefaultDeltaTime);
@@ -878,6 +897,8 @@ void GameScene::FirstPlaceCutInUpdate() {
   }
 }
 
+// エディターモード中（GameState::Editor）の更新処理
+// ワールドオブジェクトやステージ設定の停止状態での更新
 void GameScene::EditorUpdate() {
   const Matrix4x4 &view = cameraController_->GetViewMatrix();
   gameObjectManager_->UpdateAll(view, 0.0f);
@@ -886,6 +907,7 @@ void GameScene::EditorUpdate() {
   effectManager_->EditorUpdate(view);
 }
 
+// プレイヤーと障害物・アイテムの当たり判定（衝突判定）処理
 void GameScene::CheckCollisions() {
   if (titleDirector_->IsCountdownActive() &&
       !titleDirector_->IsInputAllowed()) {
@@ -910,6 +932,8 @@ void GameScene::CheckCollisions() {
   }
 }
 
+// プレイヤーの被弾・衝突時処理
+// クラッシュ演出、カメラ振動、SE・振動の発動、スコアの確定とオンラインランキング送信
 void GameScene::TriggerPlayerHit(bool isTrip) {
   gameState_ = GameState::PlayerHit;
   crashEffect_->Trigger();
@@ -929,6 +953,7 @@ void GameScene::TriggerPlayerHit(bool isTrip) {
   scoreManager_->SendOnlineScoreAndFetchRanking();
 }
 
+// スライディング状態の継続判定（頭上に障害物がある間は立ち上がらずスライディングを維持）
 void GameScene::CheckKeepRolling() {
   bool keepRolling = false;
   if (player_->GetIsRolling()) {
@@ -956,6 +981,8 @@ void GameScene::CheckKeepRolling() {
   player_->SetKeepRolling(keepRolling);
 }
 
+// プレイ状態（3レーン / 1レーン / ボス戦）の切り替え処理
+// カメラ視点トランジション、ステージのレーン数変更、BGMの切り替え
 void GameScene::ChangePlayingState(PlayingState newState, bool force) {
   if (!force && playingState_ == newState)
     return;
@@ -1011,6 +1038,7 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
   cameraController_->StartTransition(target, laneCount, stageSettings_.get());
 }
 
+// 3Dオブジェクト（スカイボックス、プレイヤー、ボス、障害物、ステージ、エフェクト等）の描画処理
 void GameScene::Draw(class Draw &draw) {
   draw_ = &draw;
   draw.SetCamera(cameraController_->GetCamera());
@@ -1021,6 +1049,8 @@ void GameScene::Draw(class Draw &draw) {
   effectManager_->Draw(draw);
 }
 
+// 2D UI・HUD・演出オーバーレイの描画処理
+// HUD、タイトルメニュー、モーダル、カットイン、実績通知、画面遷移エフェクトを描画
 void GameScene::DrawUI(class Draw &draw) {
   draw_ = &draw;
 
@@ -1084,6 +1114,8 @@ void GameScene::DrawUI(class Draw &draw) {
   FreezeTransition::GetInstance()->Draw(draw);
 }
 
+// デバッグ・パラメータ調整用ImGuiウィンドウの描画
+// ゲーム内各パラメータ（カメラ、プレイヤー、ボス、ステージ、エフェクト、サウンド等）のインスペクターを表示
 void GameScene::ImGui() {
 #ifdef _USE_IMGUI
   if (ImGui::Begin("ゲームシーン###GameScene")) {
@@ -1581,6 +1613,7 @@ void GameScene::ImGui() {
 #endif
 }
 
+// ゲームシーンの各種パラメータをJSONファイルへ保存
 bool GameScene::SaveSettingsToJson(const std::string &fileName) {
   try {
     std::filesystem::path dir = "Resources/Json/GameScene";
@@ -1765,6 +1798,7 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
   }
 }
 
+// JSONファイルからゲームシーンの各種パラメータを読み込み・適用
 bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
   try {
     std::filesystem::path dir = "Resources/Json/GameScene";
@@ -2099,6 +2133,7 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
   }
 }
 
+// ゲームシーンの全パラメータを初期値（デフォルト設定）へリセット
 void GameScene::ResetSettingsToDefault() {
   // 1. サウンド設定
   auto *gsm = GameSceneManager::GetInstance();

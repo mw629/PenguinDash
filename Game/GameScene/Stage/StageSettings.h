@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "GameObjectManager.h"
 #include "RenderObject.h"
 #include <Engine.h>
@@ -302,18 +302,47 @@ private:
   void CalculateNextObstacleInterval();
 
 public:
+  /// <summary>
+  /// ステージおよび全障害物・アイテムモデルの初期化
+  /// </summary>
   void Initialize(ModelData roadModelData, ModelData fallenTreeModelData,
                   ModelData iceArchwayModelData, ModelData iceWallModelData,
                   ModelData bonusModelData, ModelData iceBomModelData,
                   ModelData reflectingAttackModelData,
                   class GameObjectManager *manager);
+
+  /// <summary>
+  /// ステージモデル・障害物モデルの初期化（簡易版）
+  /// </summary>
   void Initialize(ModelData roadModelData, ModelData fallenTreeModelData,
                   ModelData iceArchwayModelData, ModelData iceWallModelData,
                   ModelData bonusModelData, class GameObjectManager *manager);
+
+  /// <summary>
+  /// ステージモデル・障害物モデルの初期化（最小版）
+  /// </summary>
   void Initialize(ModelData roadModelData, ModelData obstacleModelData,
                   ModelData bonusModelData, class GameObjectManager *manager);
+
+  /// <summary>
+  /// ステージの毎フレーム更新（道路スクロール、障害物スポーン、流氷アニメーション等）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="timeScale">時間スケール</param>
+  /// <param name="waterTime">海面アニメーション時間</param>
   void Update(Matrix4x4 view, float timeScale = kDefaultTimeScale, float waterTime = kAutoWaterTime);
+
+  /// <summary>
+  /// エディターモード時のステージ更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="waterTime">海面アニメーション時間</param>
   void EditorUpdate(Matrix4x4 view, float waterTime = kAutoWaterTime);
+
+  /// <summary>
+  /// ステージ内オブジェクト（道路、流氷、海面）の描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw);
 
   // ゲッター
@@ -339,10 +368,17 @@ public:
   const Vector4 &GetRoadColor() const { return roadColor_; }
   void SetRoadColor(const Vector4 &color);
 
-  // セッター
-  // レーン数変更（奥から新しく出現する床から変化させる）
+  /// <summary>
+  /// レーン数の変更（奥から新しく出現する床から徐々に切り替え）
+  /// </summary>
+  /// <param name="count">目標レーン数</param>
   void SetLaneCount(int count);
-  // 全チャンク即時変更用（リセット等）
+
+  /// <summary>
+  /// 全チャンクのレーン数を即時変更（リセット・初期化等）
+  /// </summary>
+  /// <param name="count">目標レーン数</param>
+  /// <param name="view">ビュー行列</param>
   void SetLaneCountImmediate(int count, Matrix4x4 view = IdentityMatrix());
 
   void SetLaneWidth(float width) {
@@ -454,7 +490,10 @@ public:
   float GetItemSpawnChance() const { return itemSpawnChance_; }
   void SetItemSpawnChance(float chance) { itemSpawnChance_ = chance; }
 
-  // 障害物を一掃する（ゲーム開始時用）
+  /// <summary>
+  /// 画面内の障害物を一掃消去（ゲーム開始・リスタート時用）
+  /// </summary>
+  /// <param name="safeDistance">プレイヤー手前で安全に残す距離</param>
   void ClearObstacles(float safeDistance = kDefaultClearObstacleSafeDistance);
 
   // 流氷（Drift Ice）の設定・取得
@@ -493,8 +532,13 @@ public:
   void SetWaterWidthScale(float scale);
   void UpdateSidePlanesTransform(Matrix4x4 view = IdentityMatrix());
 
-  // リセット
+  /// <summary>
+  /// ステージ状態（速度、スクロール、流氷、障害物）のリセット
+  /// </summary>
   void Reset();
 
+  /// <summary>
+  /// ImGuiによるステージパラメータ調整UI
+  /// </summary>
   void ImGui();
 };

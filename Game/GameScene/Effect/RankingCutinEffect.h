@@ -1,11 +1,13 @@
-#pragma once
+﻿#pragma once
 #include <Engine.h>
 #include <GameObjects/Object/2d/Sprite.h>
 #include <Math/Calculation.h>
 #include <memory>
 #include <vector>
 
-/// @brief ランキング1位獲得時にリザルト画面前へ挿入されるペンギンカットイン演出
+/// <summary>
+/// ランキング1位獲得時にリザルト画面前へ挿入されるペンギンカットイン演出
+/// </summary>
 class RankingCutinEffect {
 public:
   enum class State {
@@ -81,11 +83,37 @@ public:
   RankingCutinEffect() = default;
   ~RankingCutinEffect() = default;
 
+  /// <summary>
+  /// カットイン演出スプライト・テクスチャの読み込み
+  /// </summary>
   void Initialize(class Texture *texture);
+
+  /// <summary>
+  /// 指定タイプのカットイン演出を開始
+  /// </summary>
+  /// <param name="type">カットイン種別（Score / Distance / Double）</param>
   void Trigger(CutinType type = CutinType::Score);
+
+  /// <summary>
+  /// カットイン状態のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// アニメーション・パーティクルの毎フレーム更新
+  /// </summary>
+  /// <param name="dt">デルタタイム</param>
   void Update(float dt);
+
+  /// <summary>
+  /// カットイン演出の描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Render(class Draw &draw);
+
+  /// <summary>
+  /// ImGuiによるカットイン演出パラメータ調整UI
+  /// </summary>
   void ImGui();
 
   bool IsActive() const {
@@ -94,7 +122,9 @@ public:
   bool IsFinished() const { return state_ == State::Finished; }
   CutinType GetCurrentType() const { return currentType_; }
 
-  /// @brief 入力によるスキップ判定（開始から一定時間経過後のみスキップ可）
+  /// <summary>
+  /// 入力によるスキップ判定（開始から一定時間経過後のみスキップ可）
+  /// </summary>
   void RequestSkip();
 
 private:

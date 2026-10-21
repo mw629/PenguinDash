@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../../Editer/EditorUI.h"
 #include "../Direction/FreezeTransition.h"
 #include "../IScene.h"
@@ -120,37 +120,139 @@ private:
   float uiTimer_ = 0.0f;
   class Draw *draw_ = nullptr;
 
+  /// <summary>
+  /// ワールド内オブジェクトの一括更新
+  /// </summary>
   void UpdateWorldEntities(float timeScale, float speedMultiplier);
+
+  /// <summary>
+  /// プレイヤーと障害物の当たり判定処理
+  /// </summary>
   void CheckCollisions();
+
+  /// <summary>
+  /// スライディング継続判定処理
+  /// </summary>
   void CheckKeepRolling();
+
+  /// <summary>
+  /// 画面遷移演出（氷結・破砕）の開始
+  /// </summary>
+  /// <param name="target">遷移先（リスタート / タイトル復帰）</param>
   void StartResultTransition(ResultTransition target);
 
 public:
+  /// <summary>
+  /// デフォルトコンストラクタ
+  /// </summary>
   GameScene() = default;
+
+  /// <summary>
+  /// デストラクタ。コールバック登録の解除を行います。
+  /// </summary>
   ~GameScene() override;
 
+  /// <summary>
+  /// ゲームシーンの初期化
+  /// </summary>
   void Initialize() override;
+
+  /// <summary>
+  /// 毎フレーム更新処理
+  /// </summary>
   void Update() override;
+
+  /// <summary>
+  /// 3Dオブジェクトの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw) override;
+
+  /// <summary>
+  /// 2D UIおよび演出オーバーレイの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void DrawUI(class Draw &draw) override;
+
+  /// <summary>
+  /// ImGuiによるパラメータ調整ウィンドウの描画
+  /// </summary>
   void ImGui() override;
 
+  /// <summary>
+  /// プレイ状態（3レーン/1レーン/ボス戦）の切り替え
+  /// </summary>
+  /// <param name="newState">変更先の状態</param>
+  /// <param name="force">強制切り替えフラグ</param>
   void ChangePlayingState(PlayingState newState, bool force = false);
+
+  /// <summary>
+  /// ゲームプレイ状態のリセット
+  /// </summary>
   void ResetGame();
+
+  /// <summary>
+  /// タイトルからゲーム開始カウントダウンへの移行
+  /// </summary>
   void StartGame();
+
+  /// <summary>
+  /// カウントダウン終了後のプレイ開始
+  /// </summary>
   void StartPlaying();
+
+  /// <summary>
+  /// タイトル画面への復帰
+  /// </summary>
   void ReturnToTitle();
 
+  /// <summary>
+  /// タイトル画面中の更新処理
+  /// </summary>
   void TitleUpdate();
+
+  /// <summary>
+  /// ゲームプレイ中の更新処理
+  /// </summary>
   void PlayingUpdate();
+
+  /// <summary>
+  /// ポーズ中の更新処理
+  /// </summary>
   void PausedUpdate();
+
+  /// <summary>
+  /// プレイヤー被弾中の更新処理
+  /// </summary>
   void PlayerHitUpdate();
+
+  /// <summary>
+  /// 1位更新カットイン演出中の更新処理
+  /// </summary>
   void FirstPlaceCutInUpdate();
+
+  /// <summary>
+  /// エディターモード中の更新処理
+  /// </summary>
   void EditorUpdate();
 
-  // 設定のJSON保存・読み込み
+  /// <summary>
+  /// ゲームシーン設定をJSONファイルへ保存
+  /// </summary>
+  /// <param name="fileName">保存ファイル名</param>
+  /// <returns>保存成功時true</returns>
   bool SaveSettingsToJson(const std::string &fileName = "GameSceneSettings");
+
+  /// <summary>
+  /// JSONファイルからゲームシーン設定を読み込み
+  /// </summary>
+  /// <param name="fileName">読み込みファイル名</param>
+  /// <returns>読み込み成功時true</returns>
   bool LoadSettingsFromJson(const std::string &fileName = "GameSceneSettings");
+
+  /// <summary>
+  /// ゲームシーンの全パラメータをデフォルト値へリセット
+  /// </summary>
   void ResetSettingsToDefault();
 
   char settingsFileName_[128] = "GameSceneSettings";
@@ -189,5 +291,9 @@ public:
   class Boss* GetBoss() { return boss_.get(); }
   class GameCameraController* GetCameraController() { return cameraController_.get(); }
   PlayingState GetPlayingState() const { return playingState_; }
+  /// <summary>
+  /// プレイヤー被弾処理（クラッシュ演出、カメラ振動、SE、ランキング送信等）
+  /// </summary>
+  /// <param name="isTrip">つまずき転倒かどうか</param>
   void TriggerPlayerHit(bool isTrip);
 };

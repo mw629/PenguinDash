@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <Engine.h>
 #include <memory>
@@ -220,26 +220,72 @@ private:
   void UpdateDrawTransform() { UpdateDrawTransform(kDefaultSpeedMultiplier); }
 
 public:
+  /// <summary>
+  /// コンストラクタ
+  /// </summary>
   Player();
+
+  /// <summary>
+  /// デストラクタ
+  /// </summary>
   ~Player();
 
+  /// <summary>
+  /// プレイヤーモデルおよびアニメーションの初期化
+  /// </summary>
+  /// <param name="modelData">読み込み用モデルデータ</param>
   void Initialize(ModelData modelData);
+
+  /// <summary>
+  /// プレイヤー状態（位置、レーン、速度、ステート等）のリセット
+  /// </summary>
   void Reset();
 
+  /// <summary>
+  /// プレイヤーの毎フレーム更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="speedMultiplier">ゲーム速度乗数</param>
   void Update(Matrix4x4 view, float speedMultiplier) override;
+
+  /// <summary>
+  /// プレイヤーの毎フレーム更新（デフォルト速度）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void Update(Matrix4x4 view) { Update(view, kDefaultSpeedMultiplier); }
 
-  // レーン移動ロジック
+  /// <summary>
+  /// レーン移動の入力受付（キーボード/ゲームパッド）
+  /// </summary>
   void ProcessLaneInput();
+
+  /// <summary>
+  /// レーン間の滑らかな補間移動更新
+  /// </summary>
+  /// <param name="speedMultiplier">速度乗数</param>
   void UpdateLaneMovement(float speedMultiplier);
 
+  /// <summary>
+  /// レーン範囲と幅の設定
+  /// </summary>
+  /// <param name="minLane">最小レーンインデックス</param>
+  /// <param name="maxLane">最大レーンインデックス</param>
+  /// <param name="laneWidth">レーン1本あたりの幅</param>
   void SetLaneLimits(int minLane, int maxLane, float laneWidth) {
     minLane_ = minLane;
     maxLane_ = maxLane;
     laneWidth_ = laneWidth;
   }
 
+  /// <summary>
+  /// プレイヤーの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw) override;
+
+  /// <summary>
+  /// ImGuiによるパラメータ編集インスペクター
+  /// </summary>
   void ImGuiInnerComponents() override;
 
   bool HasMaterial() const override {
@@ -291,10 +337,28 @@ public:
   void SetVisible(bool visible) { isVisible_ = visible; }
   bool GetVisible() const { return isVisible_; }
 
-  // 外部からのアクション発動（オートパイロット用）
+  /// <summary>
+  /// 外部からのジャンプ発動（オートパイロット等用）
+  /// </summary>
+  /// <returns>発動に成功した場合true</returns>
   bool TriggerJump();
+
+  /// <summary>
+  /// 外部からのスライディング（ロール）発動
+  /// </summary>
+  /// <returns>発動に成功した場合true</returns>
   bool TriggerRoll();
+
+  /// <summary>
+  /// 外部からの左レーン移動発動
+  /// </summary>
+  /// <returns>発動に成功した場合true</returns>
   bool TriggerMoveLeft();
+
+  /// <summary>
+  /// 外部からの右レーン移動発動
+  /// </summary>
+  /// <returns>発動に成功した場合true</returns>
   bool TriggerMoveRight();
 
   int GetLaneIndex() const { return laneIndex_; }
@@ -304,7 +368,9 @@ public:
     return isInputEnabled_ && (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
   }
 
-  // 先行入力バッファ (操作感向上用)
+  /// <summary>
+  /// 先行入力バッファのタイマー更新
+  /// </summary>
   void UpdateInputBuffer(float speedMultiplier);
   bool HasBufferedJump() const { return bufferedJumpTimer_ > 0.0f; }
   bool HasBufferedRoll() const { return bufferedRollTimer_ > 0.0f; }
@@ -348,15 +414,31 @@ public:
   void SetOnLandCallback(std::function<void()> callback) { onLandCallback_ = callback; }
   const std::function<void()>& GetOnLandCallback() const { return onLandCallback_; }
 
-  // ヒット演出用
+  /// <summary>
+  /// 障害物被弾・衝突時の処理開始
+  /// </summary>
+  /// <param name="isTrip">つまずき転倒かどうか</param>
   void OnHit(bool isTrip = false);
+
+  /// <summary>
+  /// 被弾・ノックバックアニメーションが完了したか判定
+  /// </summary>
   bool IsHitAnimationFinished() const;
 
-  // コライダー取得
+  /// <summary>
+  /// 現在の姿勢に応じたコライダーAABBを取得
+  /// </summary>
   AABB GetColliderAABB() const;
+
+  /// <summary>
+  /// 通常立ちポーズ時のコライダーAABBを取得（スライディング継続判定用）
+  /// </summary>
   AABB GetStandingColliderAABB() const;
 
-  // 狭まる区間で強制的に中央へ寄せる
+  /// <summary>
+  /// 1レーン区間等への移行時に中央レーンへ強制移動開始
+  /// </summary>
+  /// <param name="duration">移動完了までのフレーム数</param>
   void StartForceToCenter(float duration);
 
   // ステートクラス向けのアクセサ

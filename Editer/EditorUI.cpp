@@ -1,4 +1,4 @@
-#include "EditorUI.h"
+﻿#include "EditorUI.h"
 #include "../MatchaEngine/Input/Input.h"
 
 #ifdef _USE_IMGUI
@@ -17,6 +17,7 @@
 #include "../MatchaEngine/GameObjects/Light/PointLight.h"
 #include "../MatchaEngine/GameObjects/Light/SpotLight.h"
 
+// マウスレイキャストによるオブジェクト選択（ピッキング）処理
 void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const Matrix4x4& view, const Matrix4x4& projection) {
 #ifdef _USE_IMGUI
     if (!gameObjectManager) return;
@@ -115,6 +116,7 @@ void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const M
 #endif
 }
 
+// 選択オブジェクトのトランスフォームギズモ描画と操作受付
 void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
 #ifdef _USE_IMGUI
     if (!selectedObject_ || selectedObject_->GetIsLocked()) return;
@@ -135,7 +137,7 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
     ImGuizmo::SetGizmoSizeClipSpace(0.15f);
 
     Transform t = selectedObject_->GetTransform();
-    // ギズモ操作時にスケールが小さいとバグるため、スケールは1にする
+    // ギズモ操作時の数値安定性確保のためスケールを1.0に正規化
     Matrix4x4 world = MakeAffineMatrix(t.translate, {1.0f, 1.0f, 1.0f}, t.rotate);
 
     ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
@@ -194,6 +196,7 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
 #endif
 }
 
+// エディタUI全体の描画と更新
 void EditorUI::Draw(GameObjectManager* gameObjectManager, const Matrix4x4& view, const Matrix4x4& projection)
 {
 #ifdef _USE_IMGUI

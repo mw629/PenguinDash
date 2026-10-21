@@ -3,6 +3,4 @@
 
 void PauseSystem::Update() {}
 
-void PauseSystem::Draw(class Draw &draw) {
-  // PostEffect::SetActivePostEffect(PostEffect::Type::Smoothing);
-}
+void PauseSystem::Draw(class Draw &/*draw*/) {}

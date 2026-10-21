@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Engine.h>
 #include <GameObjects/Object/2d/Sprite.h>
 #include <Math/Calculation.h>
@@ -83,21 +83,52 @@ public:
   TitleDirector() = default;
   ~TitleDirector() = default;
 
+  /// <summary>
+  /// カウントダウンスプライト等のリソース初期化
+  /// </summary>
+  /// <param name="texture">テクスチャマネージャ</param>
   void Initialize(Texture *texture);
+
+  /// <summary>
+  /// タイトル演出状態のリセット
+  /// </summary>
   void Reset();
 
+  /// <summary>
+  /// タイトル画面からゲーム開始演出（カウントダウン）を開始
+  /// </summary>
+  /// <param name="currentCamTransform">現在のカメラトランスフォーム</param>
   void StartExit(const Transform &currentCamTransform);
+
+  /// <summary>
+  /// リスタート時のカウントダウン演出を開始
+  /// </summary>
   void StartRestartCountdown();
 
+  /// <summary>
+  /// タイトル脱出演出中かどうかを取得
+  /// </summary>
   bool IsExiting() const { return countdownMode_ == CountdownMode::TitleExit; }
+
+  /// <summary>
+  /// カウントダウン演出が稼働中かどうかを取得
+  /// </summary>
   bool IsCountdownActive() const {
     return countdownMode_ != CountdownMode::None && countdownTimer_ < totalDuration_;
   }
+
+  /// <summary>
+  /// GO!演出に突入したか（操作解禁タイミング）を取得
+  /// </summary>
   bool IsGoStarted() const {
     if (countdownMode_ == CountdownMode::None)
       return true;
     return countdownTimer_ >= (prepDuration_ + 3.0f * kCountdownStepDuration);
   }
+
+  /// <summary>
+  /// プレイヤー入力が許可されているかを取得
+  /// </summary>
   bool IsInputAllowed() const {
     return IsGoStarted();
   }
@@ -106,18 +137,62 @@ public:
   float GetExitTimer() const { return countdownTimer_; }
   float GetExitDuration() const { return kTitleExitDuration; }
 
+  /// <summary>
+  /// カウントダウンタイマーおよびスプライトアニメーションの更新
+  /// </summary>
+  /// <param name="dt">デルタタイム</param>
   void UpdateCountdown(float dt);
+
+  /// <summary>
+  /// タイトル脱出演出の更新
+  /// </summary>
+  /// <param name="dt">デルタタイム</param>
   void UpdateExit(float dt) { UpdateCountdown(dt); }
+
+  /// <summary>
+  /// タイトル演出が完全に終了したかを判定
+  /// </summary>
+  /// <param name="stageSettings">ステージ設定ポインタ</param>
+  /// <returns>演出終了かつ開始準備完了時true</returns>
   bool IsExitComplete(StageSettings *stageSettings) const;
 
+  /// <summary>
+  /// タイトル画面でのペンギン自動操縦（オートパイロットAI）の更新
+  /// </summary>
+  /// <param name="player">プレイヤーポインタ</param>
+  /// <param name="stageSettings">ステージ設定ポインタ</param>
   void UpdateAutoPilot(Player *player, StageSettings *stageSettings);
+
+  /// <summary>
+  /// タイトル画面での衝突判定（ボーナス等）
+  /// </summary>
   void CheckCollisions(Player *player, StageSettings *stageSettings,
                        ScoreManager *scoreManager);
+
+  /// <summary>
+  /// タイトル画面のカメラ更新（オービット回転またはゲーム開始トランジション）
+  /// </summary>
+  /// <param name="player">プレイヤーポインタ</param>
+  /// <param name="cameraController">カメラコントローラポインタ</param>
+  /// <param name="dt">デルタタイム</param>
   void UpdateCamera(Player *player, GameCameraController *cameraController,
                     float dt);
 
+  /// <summary>
+  /// ペンギンカウントダウンスプライトの描画
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void DrawPenguins(Draw &draw) { DrawCountdown(draw); }
+
+  /// <summary>
+  /// カウントダウン演出（3, 2, 1, GO!）の描画
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void DrawCountdown(Draw &draw);
+
+  /// <summary>
+  /// ImGuiデバッグ設定の描画
+  /// </summary>
   void ImGui();
 
   // オービットカメラ設定

@@ -1,6 +1,7 @@
-#include "GameApplication.h"
+﻿#include "GameApplication.h"
 #include "Network/Firebase/FirebaseRankingManager.h"
 
+// ゲームアプリケーションの初期化
 GameApplication::GameApplication(int32_t kClientWidth, int32_t kClientHeight) {
   // Firebase オンラインランキングの初期化 (My.env から設定読み込み)
   FirebaseRankingManager::GetInstance()->Initialize("My.env");
@@ -15,6 +16,7 @@ GameApplication::GameApplication(int32_t kClientWidth, int32_t kClientHeight) {
   engine->FlushGpu();
 }
 
+// メインループの実行（メッセージループ、フレーム更新、描画、ImGuiの統括）
 void GameApplication::Run() {
 
   // ウィンドウのxが押されるまでループ

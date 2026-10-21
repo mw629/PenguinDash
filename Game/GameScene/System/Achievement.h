@@ -1,9 +1,11 @@
-#pragma once
+﻿#pragma once
 #include <string>
 #include <functional>
 #include <memory>
 
-/// @brief 実績の判定に必要なゲーム情報コンテキスト
+/// <summary>
+/// 実績の判定に必要なゲーム情報コンテキスト
+/// </summary>
 struct AchievementContext {
     float distance = 0.0f;           // 走行距離 (m)
     float score = 0.0f;              // 現在のスコア
@@ -17,8 +19,10 @@ struct AchievementContext {
     int laneChangeCount = 0;        // レーン移動回数
 };
 
-/// @brief 実績基底クラス
+/// <summary>
+/// 実績基底クラス
 /// 新しい実績をクラス継承で定義したい場合は、このクラスを継承して CheckCondition などを実装します。
+/// </summary>
 class Achievement {
 public:
     Achievement(const std::string& id,
@@ -27,15 +31,21 @@ public:
                 float scoreReward);
     virtual ~Achievement() = default;
 
-    /// @brief 条件チェック（毎フレーム呼ばれ、条件達成で true を返す）
+    /// <summary>
+    /// 条件チェック（毎フレーム呼ばれ、条件達成で true を返す）
+    /// </summary>
     virtual bool CheckCondition(const AchievementContext& ctx) = 0;
 
-    /// @brief 進捗率 (0.0f ～ 1.0f)
+    /// <summary>
+    /// 進捗率 (0.0f ～ 1.0f)
+    /// </summary>
     virtual float GetProgress(const AchievementContext& /*ctx*/) const {
         return isUnlocked_ ? 1.0f : 0.0f;
     }
 
-    /// @brief 進捗テキスト (例: "50 / 100 m", "達成済み" など)
+    /// <summary>
+    /// 進捗テキスト (例: "50 / 100 m", "達成済み" など)
+    /// </summary>
     virtual std::string GetProgressText(const AchievementContext& /*ctx*/) const {
         return isUnlocked_ ? "達成" : "未達成";
     }

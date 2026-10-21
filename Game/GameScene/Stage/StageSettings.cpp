@@ -884,11 +884,6 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   } else {
     scrollSpeed_ = 0.0f;
   }
-  if (scrollSpeed_ > maxScrollSpeed_ / 2) {
-    // PostEffect::SetActivePostEffect(PostEffect::Type::Vignetting);
-  } else {
-    // PostEffect::SetActivePostEffect(PostEffect::Type::Normal);
-  }
 
   float currentScroll = scrollSpeed_ * timeScale;
 
@@ -1173,7 +1168,7 @@ void StageSettings::SpawnObstacles(float z) {
       // 1レーンしかなく全てWallの場合は、必ず通れる障害物にする
       laneSpawns[changeIndex] = 1 + (std::rand() % 2); // 1:Low または 2:High
     } else {
-      laneSpawns[changeIndex] = 0; // Noneに変更
+      laneSpawns[changeIndex] = 0;
     }
   }
 
@@ -1221,7 +1216,7 @@ void StageSettings::SpawnObstacles(float z) {
         y = kObstacleSpawnYWall;
       }
 
-      // 障害物のタイプを変更して配置
+      // 障害物のタイプを設定して配置
       obstacles_[nextObstacleIndex_]->SetType(type);
       obstacles_[nextObstacleIndex_]->Spawn(x, y, z);
 

@@ -1,5 +1,4 @@
 #include "Calculation.h"
-//#include <math.h>
 #include <cmath>
 #include "assert.h"
 #include <algorithm>

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <fstream>
 #include <chrono>
 #include <functional>
@@ -92,26 +92,69 @@ public:
 	static constexpr float kCheckFPS = 65.0f;
 	static constexpr float kDefaultDeltaTime = 1.0f / kTargetFPS;
 
+	/// <summary>
+	/// デストラクタ。DirectXリソースの解放を行います。
+	/// </summary>
 	~Engine();
+
+	/// <summary>
+	/// エンジン本体の構築
+	/// </summary>
+	/// <param name="kClientWidth">ウィンドウ幅</param>
+	/// <param name="kClientHeight">ウィンドウ高さ</param>
 	Engine(int32_t kClientWidth, int32_t kClientHeight);
 
+	/// <summary>
+	/// エンジンの初期設定（グラフィックス、パイプライン等の初期化）
+	/// </summary>
 	void Setting();
 
+	/// <summary>
+	/// ポストプロセス描画とUI描画処理
+	/// </summary>
+	/// <param name="drawUI">UI描画コールバック関数</param>
 	void PostDraw(const std::function<void()>& drawUI = nullptr);
 
+	/// <summary>
+	/// 新規フレームの開始処理（コマンドリストのリセット、レンダーターゲットのクリア等）
+	/// </summary>
 	void NewFrame();
 
+	/// <summary>
+	/// フレーム終了処理（描画実行、画面フリップ）
+	/// </summary>
+	/// <param name="drawUI">UI描画コールバック関数</param>
 	void EndFrame(const std::function<void()>& drawUI = nullptr);
 
+	/// <summary>
+	/// GPUコマンドの完了を待機（同期）
+	/// </summary>
 	void FlushGpu();
 
+	/// <summary>
+	/// エンジンの終了処理
+	/// </summary>
 	void End();
 
+	/// <summary>
+	/// FPS固定化の更新処理（60FPS維持）
+	/// </summary>
 	void UpdateFixFPS();
 
+	/// <summary>
+	/// 現在のプロセスメモリ使用量（WorkingSetSize）を取得（バイト単位）
+	/// </summary>
+	/// <returns>メモリ使用量</returns>
 	size_t GetProcessMemoryUsage();
 
-	void Debug(); // Editor分離後は非推奨・不要になりますが一旦空で残すか削除します
+	/// <summary>
+	/// エンジンデバッグ処理
+	/// </summary>
+	void Debug();
+
+	/// <summary>
+	/// エンジン内部情報のImGuiデバッグUI表示
+	/// </summary>
 	void ImGui();
 
 	GraphicsDevice* GetGraphics() const { return graphics.get(); }

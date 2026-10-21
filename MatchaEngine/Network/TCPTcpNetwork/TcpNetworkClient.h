@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -25,14 +25,36 @@ private:
 	
 
 public:
-
+	/// <summary>
+	/// コンストラクタ。Winsockの初期化を行います。
+	/// </summary>
 	TcpNetworkClient();
+
+	/// <summary>
+	/// デストラクタ。ソケット破棄とWinsock終了処理を行います。
+	/// </summary>
 	~TcpNetworkClient();
 
-	void ImGuiConnectWindow(bool* p_open = nullptr); // ImGuiで接続ウィンドウを表示する
+	/// <summary>
+	/// ImGui接続ウィンドウの表示
+	/// </summary>
+	/// <param name="p_open">ウィンドウの開閉フラグポインタ</param>
+	void ImGuiConnectWindow(bool* p_open = nullptr);
 
+	/// <summary>
+	/// サーバーへのTCP接続
+	/// </summary>
 	void Connect();
+
+	/// <summary>
+	/// サーバーからの切断
+	/// </summary>
 	void Disconnect();
+
+	/// <summary>
+	/// 接続中かどうかを取得
+	/// </summary>
+	/// <returns>接続中の場合true</returns>
 	bool IsConnected() const { return connected; }
 
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../Core/VariableTypes.h"
 #include "DebugCamera.h"
 #include <d3d12.h>
@@ -100,33 +100,108 @@ public:
 	Camera();
 	~Camera();
 
+	/// <summary>
+	/// 画面解像度（スクリーンサイズ）を設定します。
+	/// </summary>
+	/// <param name="screenSize">幅と高さ (Vector2)</param>
 	static void SetScreenSize(Vector2 screenSize);
+
+	/// <summary>
+	/// 画面解像度（スクリーンサイズ）を取得します。
+	/// </summary>
+	/// <returns>画面幅と高さ (Vector2)</returns>
 	static Vector2 GetScreenSize();
+
+	/// <summary>
+	/// 生成されている全カメラインスタンスのリストを取得します。
+	/// </summary>
 	static const std::vector<Camera*>& GetInstances() { return s_instances_; }
 
+	/// <summary>
+	/// エディタ表示用のデバッグ名を設定します。
+	/// </summary>
 	void SetDebugName(const std::string& name) { debugName_ = name; }
+
+	/// <summary>
+	/// エディタ表示用のデバッグ名を取得します。
+	/// </summary>
 	const std::string& GetDebugName() const { return debugName_; }
 
+	/// <summary>
+	/// カメラ調整用のImGuiデバッグUIを描画します。
+	/// </summary>
 	void ImGui();
+
+	/// <summary>
+	/// カメラの詳細デバッグ情報をImGuiに描画します。
+	/// </summary>
 	void DrawDebugDetails();
 
+	/// <summary>
+	/// カメラリソース（定数バッファ等）を初期化します。
+	/// </summary>
 	void Initialize();
+
+	/// <summary>
+	/// カメラのシェイク・FOVアニメーション・ビュープロジェクション行列を毎フレーム更新します。
+	/// </summary>
 	void Update();
+
+	/// <summary>
+	/// ビュー行列を取得します。
+	/// </summary>
 	Matrix4x4 GetViewMatrix() const { return viewMatrix_; }
+
+	/// <summary>
+	/// プロジェクション行列を取得します。
+	/// </summary>
 	Matrix4x4 GetProjectionMatrix() const { return projectionMatrix_; }
+
+	/// <summary>
+	/// ビュー×プロジェクション合成行列を取得します。
+	/// </summary>
 	Matrix4x4 GetViewProjectionMatrix() const { return MultiplyMatrix4x4(viewMatrix_, projectionMatrix_); }
 
-	// 基準 Transform（ゲームロジックが設定・取得する本来の位置）
+	/// <summary>
+	/// 基準Transform（ゲームロジックが設定・取得する本来の姿勢）を取得します。
+	/// </summary>
 	const Transform& GetTransform() const { return transform_; }
+
+	/// <summary>
+	/// 基準Transformへの参照を取得します。
+	/// </summary>
 	Transform& GetTransformRef() { return transform_; }
+
+	/// <summary>
+	/// ゲーム本来のTransformを取得します。
+	/// </summary>
 	const Transform& GetGameTransform() const { return gameTransform_; }
+
+	/// <summary>
+	/// カメラの基準Transformを設定します。
+	/// </summary>
+	/// <param name="transform">カメラの姿勢</param>
 	void SetTransform(Transform transform);
 
-	// 演出（シェイク・オフセット）がすべて合成された最終描画 Transform
+	/// <summary>
+	/// 演出（シェイク・オフセット）がすべて合成された最終描画Transformを取得します。
+	/// </summary>
 	const Transform& GetFinalTransform() const { return finalTransform_; }
+
+	/// <summary>
+	/// 最終描画位置を取得します。
+	/// </summary>
 	Vector3 GetFinalPosition() const { return finalTransform_.translate; }
+
+	/// <summary>
+	/// 最終描画回転を取得します。
+	/// </summary>
 	Vector3 GetFinalRotation() const { return finalTransform_.rotate; }
 
+	/// <summary>
+	/// デバッグカメラモードの有効/無効を切り替えます。
+	/// </summary>
+	/// <param name="isDebug">trueならデバッグカメラ有効</param>
 	void SetDebugCamera(bool isDebug) {
 		if (isDebug && !isDebugCamera_) {
 			ResetDebugCameraToGameCamera();
@@ -136,31 +211,91 @@ public:
 		}
 		isDebugCamera_ = isDebug;
 	}
+
+	/// <summary>
+	/// デバッグカメラモード中かどうかを取得します。
+	/// </summary>
 	bool GetDebugCamera() const { return isDebugCamera_; }
+
+	/// <summary>
+	/// デバッグカメラの姿勢を現在のゲームカメラの位置・注視点へリセットします。
+	/// </summary>
 	void ResetDebugCameraToGameCamera();
+
+	/// <summary>
+	/// 指定したTransformに基づいてデバッグカメラの姿勢をリセットします。
+	/// </summary>
+	/// <param name="transform">リセット基準となるTransform</param>
 	void ResetDebugCamera(const Transform& transform);
+
+	/// <summary>
+	/// デバッグカメラインスタンスへの参照を取得します。
+	/// </summary>
 	DebugCamera& GetDebugCameraRef() { return debugCamera_; }
 
+	/// <summary>
+	/// デバッグカメラの注視点ターゲットを設定します。
+	/// </summary>
 	void SetTarget(const Vector3& target) { debugCamera_.SetTarget(target); }
+
+	/// <summary>
+	/// デバッグカメラの注視点ターゲットを取得します。
+	/// </summary>
 	Vector3 GetTarget() const { return debugCamera_.GetTarget(); }
+
+	/// <summary>
+	/// 指定ターゲット位置にカメラをフォーカス（注視）させます。
+	/// </summary>
+	/// <param name="target">注視点座標</param>
+	/// <param name="distance">カメラと注視点の距離</param>
 	void Focus(const Vector3& target, float distance) {
 		debugCamera_.Focus(target, distance);
 		transform_.translate = debugCamera_.GetEye();
 		viewMatrix_ = debugCamera_.GetViewMatrix();
 	}
+
+	/// <summary>
+	/// デフォルト距離で指定ターゲット位置にカメラをフォーカスさせます。
+	/// </summary>
+	/// <param name="target">注視点座標</param>
 	void Focus(const Vector3& target) {
 		Focus(target, kDefaultFocusDistance);
 	}
 
+	/// <summary>
+	/// アスペクト比を手動設定します。
+	/// </summary>
+	/// <param name="aspectRatio">設定するアスペクト比（幅/高さ）</param>
 	void SetAspectRatio(float aspectRatio) { aspectRatio_ = aspectRatio; autoAspectRatio_ = false; }
+
+	/// <summary>
+	/// アスペクト比を取得します。
+	/// </summary>
 	float GetAspectRatio() const { return aspectRatio_; }
+
+	/// <summary>
+	/// スクリーンサイズに応じた自動アスペクト比計算の有効/無効を設定します。
+	/// </summary>
 	void SetAutoAspectRatio(bool autoAspect) { autoAspectRatio_ = autoAspect; }
+
+	/// <summary>
+	/// 自動アスペクト比計算が有効かどうかを取得します。
+	/// </summary>
 	bool GetAutoAspectRatio() const { return autoAspectRatio_; }
 	
+	/// <summary>
+	/// GPU転送用のカメラ定数バッファリソースを取得します。
+	/// </summary>
 	ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
 
+	/// <summary>
+	/// 累積動作時間を取得します。
+	/// </summary>
 	float GetTotalTime() const { return totalTime_; }
 
+	/// <summary>
+	/// 視錐台（カリング用Frustum）を取得します。
+	/// </summary>
 	const Frustum& GetFrustum() const { return frustum_; }
 
 	// =================================================================

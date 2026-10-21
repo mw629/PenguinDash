@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Line.h"
 #include "ObjectBase.h"
 #include <memory>
@@ -200,8 +200,9 @@ public:
     return skinCluster_.paletteSrvHandle.second;
   }
 
-  // 追加: スキンパレット SRV の GPU ハンドル
-  // (インスタンス対応であればGPUのVADDRになるがDrawでGetPaletteResourceGPUを呼ぶように変更済)
+  /// <summary>
+  /// スキンパレットSRVのGPUリソースを取得
+  /// </summary>
   ID3D12Resource *GetPaletteResourceGPU() const {
     return skinCluster_.paletteResource.Get();
   }

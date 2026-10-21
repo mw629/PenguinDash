@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <string>
 
 class ScoreManager {
@@ -18,10 +18,32 @@ public:
   ScoreManager() = default;
   ~ScoreManager() = default;
 
+  /// <summary>
+  /// スコア、走行距離、ボーナス加算などの状態をリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// 走行距離とスコアの毎フレーム加算更新
+  /// </summary>
+  /// <param name="scrollSpeed">現在のスクロール速度</param>
+  /// <param name="timeScale">時間スケール</param>
   void Update(float scrollSpeed, float timeScale);
+
+  /// <summary>
+  /// ボーナスエネミー撃破時のスコア加算
+  /// </summary>
   void AddBonusEnemyHit();
+
+  /// <summary>
+  /// 実績解除に伴うボーナススコア加算
+  /// </summary>
+  /// <param name="score">加算するスコア</param>
   void AddAchievementScore(float score);
+
+  /// <summary>
+  /// ゲームオーバー時のスコア・距離をローカルランキングへ記録
+  /// </summary>
   void RecordCurrentScores();
 
   float GetCurrentDistance() const { return currentDistance_; }
@@ -42,19 +64,29 @@ public:
   int GetLastDistanceRank() const { return lastDistanceRank_; }
   int GetLastScoreRank() const { return lastScoreRank_; }
 
-  /// @brief 今回のプレイがスコアランキング1位であるか
+  /// <summary>
+  /// 今回のプレイがスコアランキング1位であるか
+  /// </summary>
   bool IsScoreFirstPlace() const;
 
-  /// @brief 今回のプレイが走行距離ランキング1位であるか
+  /// <summary>
+  /// 今回のプレイが走行距離ランキング1位であるか
+  /// </summary>
   bool IsDistanceFirstPlace() const;
 
-  /// @brief 今回のプレイがランキング1位（スコアまたは走行距離）であるか
+  /// <summary>
+  /// 今回のプレイがランキング1位（スコアまたは走行距離）であるか
+  /// </summary>
   bool IsFirstPlace() const;
 
-  /// @brief 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
+  /// <summary>
+  /// 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
+  /// </summary>
   void SendCurrentScoreToOnlineRanking(const std::string& playerName);
 
-  /// @brief ゲームオーバー時の自動送信＆ランキング取得（1ゲームにつき1回のみ実行）
+  /// <summary>
+  /// ゲームオーバー時の自動送信＆ランキング取得（1ゲームにつき1回のみ実行）
+  /// </summary>
   void SendOnlineScoreAndFetchRanking();
 
   const std::string& GetPlayerName() const { return playerName_; }

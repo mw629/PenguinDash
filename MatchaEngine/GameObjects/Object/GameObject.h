@@ -37,13 +37,26 @@ protected:
     std::vector<GameObject*> children_;
 
 public:
+    /// <summary>
+    /// エディタ等で現在選択されているGameObjectを取得します。
+    /// </summary>
     static GameObject* GetSelectedObject() { return selectedObject_; }
+
+    /// <summary>
+    /// エディタ等で選択中のGameObjectを設定します。
+    /// </summary>
     static void SetSelectedObject(GameObject* obj) { selectedObject_ = obj; }
 
 public:
     GameObject() {}
     virtual ~GameObject() = default;
 
+    /// <summary>
+    /// 新しいコンポーネントを生成してGameObjectに追加します。
+    /// </summary>
+    /// <typeparam name="T">追加するコンポーネントの型</typeparam>
+    /// <typeparam name="Args">コンポーネントのコンストラクタ引数</typeparam>
+    /// <returns>生成されたコンポーネントのshared_ptr</returns>
     template <class T, class... Args>
     std::shared_ptr<T> AddComponent(Args&&... args) {
         std::shared_ptr<T> component = std::make_shared<T>(std::forward<Args>(args)...);
@@ -53,6 +66,11 @@ public:
         return component;
     }
 
+    /// <summary>
+    /// アタッチされている指定型のコンポーネントを取得します。
+    /// </summary>
+    /// <typeparam name="T">取得対象のコンポーネント型</typeparam>
+    /// <returns>見つかったコンポーネントのshared_ptr（存在しない場合はnullptr）</returns>
     template <class T>
     std::shared_ptr<T> GetComponent() const {
         for (const auto& component : components_) {
@@ -64,6 +82,10 @@ public:
         return nullptr;
     }
 
+    /// <summary>
+    /// 指定型のコンポーネントを削除します。
+    /// </summary>
+    /// <typeparam name="T">削除対象のコンポーネント型</typeparam>
     template <class T>
     void RemoveComponent() {
         components_.erase(std::remove_if(components_.begin(), components_.end(),
@@ -72,22 +94,42 @@ public:
             }), components_.end());
     }
 
+    /// <summary>
+    /// GameObjectおよびアタッチされている全コンポーネントを初期化します。
+    /// </summary>
     virtual void Initialize() {
-        // コンポーネントはAddComponentで初期化されるためここでは呼ばないケースもあるが、
-        // GameObject全体の初期化時にコンポーネントも初期化する。
         for (auto& component : components_) {
             component->Initialize();
         }
     }
+
+    /// <summary>
+    /// GameObjectおよびアタッチされている全コンポーネントを更新します。
+    /// </summary>
+    /// <param name="view">ビュー行列</param>
+    /// <param name="speedMultiplier">更新速度倍率</param>
     virtual void Update(Matrix4x4 view, float speedMultiplier = 1.0f) {
         for (auto& component : components_) {
             component->Update(view, speedMultiplier);
         }
     }
+
+    /// <summary>
+    /// 衝突検知時のコールバック関数です。
+    /// </summary>
+    /// <param name="other">衝突した相手のGameObject</param>
     virtual void OnCollision(GameObject* /*other*/) {}
 
+    /// <summary>
+    /// オブジェクトの型名識別文字列を取得します。
+    /// </summary>
+    /// <returns>型名</returns>
     virtual std::string GetTypeName() const { return "GameObject"; }
 
+    /// <summary>
+    /// 自身の複製（クローン）をディープコピーして生成します。
+    /// </summary>
+    /// <returns>新しいGameObjectのshared_ptr</returns>
     virtual std::shared_ptr<GameObject> Clone() const {
         auto copy = std::make_shared<GameObject>();
         copy->SetName(name_);
@@ -97,6 +139,10 @@ public:
         return copy;
     }
 
+    /// <summary>
+    /// JSONオブジェクトへオブジェクトの基本情報（名前、Transform等）をシリアライズします。
+    /// </summary>
+    /// <param name="out">出力先JSON</param>
     virtual void Serialize(nlohmann::json& out) const {
         out["name"] = name_;
         out["type"] = GetTypeName();
@@ -107,6 +153,10 @@ public:
         out["transform"]["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
     }
 
+    /// <summary>
+    /// JSONオブジェクトからオブジェクトの基本情報を復元（デシリアライズ）します。
+    /// </summary>
+    /// <param name="in">入力元JSON</param>
     virtual void Deserialize(const nlohmann::json& in) {
         if (in.contains("name")) name_ = in["name"];
         if (in.contains("isActive")) isActive_ = in["isActive"];
@@ -126,11 +176,20 @@ public:
         }
     }
 
+    /// <summary>
+    /// アタッチされている全コンポーネントを描画します。
+    /// </summary>
+    /// <param name="draw">描画コマンド発行用のDrawインスタンス</param>
     virtual void Draw(class Draw& draw) {
         for (auto& component : components_) {
             component->Draw(draw);
         }
     }
+
+    /// <summary>
+    /// ImGuiを使用したインスペクターUIを描画します。
+    /// </summary>
+    /// <param name="drawTransform">Transformの編集UIを表示するかどうか</param>
     virtual void ImGui(bool drawTransform = true) {
 #ifdef _USE_IMGUI
         if (drawTransform && ImGui::CollapsingHeader(LanguageManager::Tr("Transform"), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -191,33 +250,61 @@ public:
 #endif
     }
 
+    /// <summary>
+    /// 派生クラス固有の内部コンポーネント用ImGuiを描画します。
+    /// </summary>
     virtual void ImGuiInnerComponents() {}
 
+    /// <summary>
+    /// オブジェクト名を取得します。
+    /// </summary>
     const std::string& GetName() const { return name_; }
+
+    /// <summary>
+    /// オブジェクト名を設定します。
+    /// </summary>
     void SetName(const std::string& name) { name_ = name; }
 
+    /// <summary>
+    /// ローカルTransformを取得します。
+    /// </summary>
     const Transform& GetTransform() const { return transform_; }
+
+    /// <summary>
+    /// ローカルTransformを設定し、Dirtyフラグを立てます。
+    /// </summary>
+    /// <param name="transform">設定するTransform</param>
     virtual void SetTransform(const Transform& transform) {
         transform_ = transform;
         MarkDirty();
     }
 
+    /// <summary>
+    /// 平行移動座標を設定します。
+    /// </summary>
     void SetPosition(const Vector3& pos) {
         transform_.translate = pos;
         MarkDirty();
     }
+
+    /// <summary>
+    /// 回転角（ラジアン）を設定します。
+    /// </summary>
     void SetRotation(const Vector3& rot) {
         transform_.rotate = rot;
         MarkDirty();
     }
+
+    /// <summary>
+    /// スケールを設定します。
+    /// </summary>
     void SetScale(const Vector3& scale) {
         transform_.scale = scale;
         MarkDirty();
     }
 
     /// <summary>
-    /// Dirty Flag: ワールド行列の再計算フラグを立てる。
-    /// 親オブジェクトのTransformが変更された場合、すべての子オブジェクトにも再帰的にフラグを伝播します。
+    /// ワールド行列の再計算フラグ（Dirty Flag）を立て、子オブジェクトにも再帰的に伝播します。
     /// </summary>
     virtual void MarkDirty() {
         isWorldMatrixDirty_ = true;
@@ -228,12 +315,15 @@ public:
         }
     }
 
+    /// <summary>
+    /// ワールド行列がDirty（再計算待ち）かどうかを取得します。
+    /// </summary>
     bool IsDirty() const { return isWorldMatrixDirty_; }
 
     /// <summary>
-    /// Dirty Flag: キャッシュされたワールド行列を取得。
-    /// isWorldMatrixDirty_ が true の場合のみ再計算を行い、静止時の無駄な行列再計算をスキップします。
+    /// キャッシュされたワールド行列を取得します（Dirtyな場合は自動で再計算）。
     /// </summary>
+    /// <returns>ワールド行列への参照</returns>
     virtual const Matrix4x4& GetWorldMatrix() const {
         if (isWorldMatrixDirty_) {
             UpdateWorldMatrix();
@@ -241,6 +331,9 @@ public:
         return worldMatrix_;
     }
 
+    /// <summary>
+    /// ローカル姿勢と親のワールド行列を合成してワールド行列を再計算します。
+    /// </summary>
     virtual void UpdateWorldMatrix() const {
         Matrix4x4 localMat = MakeAffineMatrix(transform_.translate, transform_.scale, transform_.rotate);
         if (parent_) {
@@ -251,7 +344,10 @@ public:
         isWorldMatrixDirty_ = false;
     }
 
-    // シーングラフ（親子関係）
+    /// <summary>
+    /// 親オブジェクトを設定します（シーングラフの親子関係）。
+    /// </summary>
+    /// <param name="parent">親となるGameObjectへのポインタ（親を解除する場合はnullptr）</param>
     void SetParent(GameObject* parent) {
         if (parent_ == parent) return;
         if (parent_) {
@@ -264,15 +360,26 @@ public:
         }
         MarkDirty();
     }
+
+    /// <summary>
+    /// 親オブジェクトを取得します。
+    /// </summary>
     GameObject* GetParent() const { return parent_; }
+
+    /// <summary>
+    /// 子オブジェクトのリストを取得します。
+    /// </summary>
     const std::vector<GameObject*>& GetChildren() const { return children_; }
 
+    /// <summary>
+    /// マテリアルコンポーネントがアタッチされているか判定します。
+    /// </summary>
     virtual bool HasMaterial() const {
         return GetComponent<MaterialComponent>() != nullptr;
     }
 
     /// <summary>
-    /// 半透明オブジェクトとして描画順を後回し（奥から手前へソート）にするかどうか
+    /// 半透明描画対象（アルファブレンドあり等）かどうかを判定します。
     /// </summary>
     virtual bool IsTransparent() const {
         if (auto mat = GetComponent<MaterialComponent>()) {
@@ -287,9 +394,23 @@ public:
         return false;
     }
 
+    /// <summary>
+    /// オブジェクトのアクティブ状態を取得します。
+    /// </summary>
     bool GetIsActive() const { return isActive_; }
+
+    /// <summary>
+    /// オブジェクトのアクティブ状態を設定します。
+    /// </summary>
     void SetIsActive(bool active) { isActive_ = active; }
 
+    /// <summary>
+    /// エディタでのロック状態を取得します。
+    /// </summary>
     bool GetIsLocked() const { return isLocked_; }
+
+    /// <summary>
+    /// エディタでのロック状態を設定します。
+    /// </summary>
     void SetIsLocked(bool locked) { isLocked_ = locked; }
 };

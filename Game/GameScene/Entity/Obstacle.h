@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Engine.h>
 #include <memory>
 
@@ -138,32 +138,63 @@ private:
   float collisionDepth_ = kDefaultCollisionSize;
 
 public:
+  /// <summary>
+  /// コンストラクタ
+  /// </summary>
   Obstacle();
+
+  /// <summary>
+  /// デストラクタ
+  /// </summary>
   ~Obstacle();
 
+  /// <summary>
+  /// 全障害物・攻撃・アイテムモデルデータの初期化
+  /// </summary>
   void Initialize(ModelData lowData, ModelData highData, ModelData wallData,
                   ModelData bonusData, ModelData iceBomData,
                   ModelData reflectingAttackData, Type type);
+
+  /// <summary>
+  /// 障害物モデルデータの初期化（基本セット）
+  /// </summary>
   void Initialize(ModelData lowData, ModelData highData, ModelData wallData,
                   ModelData bonusData, Type type);
+
+  /// <summary>
+  /// 障害物モデルデータの初期化（最小セット）
+  /// </summary>
   void Initialize(ModelData normalData, ModelData bonusData, Type type);
+
+  /// <summary>
+  /// 障害物・アイテムのタイプを設定し、対応するモデル・当たり判定サイズを切り替え
+  /// </summary>
+  /// <param name="type">障害物タイプ</param>
   void SetType(Type type);
 
   /// <summary>
-  /// 障害物を指定位置に配置しアクティブにする
+  /// 障害物を指定位置に配置しアクティブ化
   /// </summary>
+  /// <param name="x">X座標（レーン位置）</param>
+  /// <param name="y">Y座標</param>
+  /// <param name="z">Z座標（出現距離）</param>
   void Spawn(float x, float y, float z);
 
   /// <summary>
-  /// 毎フレームの更新（手前にスクロール）
+  /// ステージスクロールに伴う毎フレーム移動・アニメーション更新
   /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="scrollSpeed">スクロール速度</param>
   void StageUpdate(Matrix4x4 view, float scrollSpeed);
 
   /// <summary>
-  /// プレイヤーに当たった時のふっとび処理
+  /// プレイヤー衝突時の吹き飛びアニメーション処理（ボーナスエネミー等）
   /// </summary>
   void OnBlowAway();
 
+  /// <summary>
+  /// 障害物被弾処理
+  /// </summary>
   void OnHit();
   void SetReflected(bool reflected) {
     isReflected_ = reflected;
@@ -206,7 +237,7 @@ public:
   bool IsTransparent() const override;
 
   /// <summary>
-  /// 画面の手前を過ぎたら非アクティブにする
+  /// 障害物を非アクティブ化してリセット
   /// </summary>
   void Deactivate() {
     isActive_ = false;
@@ -246,5 +277,8 @@ public:
   /// <summary>
   /// プレイヤーとの衝突処理
   /// </summary>
+  /// <param name="scene">ゲームシーンポインタ</param>
+  /// <param name="player">プレイヤーポインタ</param>
+  /// <returns>衝突によりループ処理を中断する場合true</returns>
   virtual bool OnPlayerCollision(class GameScene* scene, class Player* player);
 };

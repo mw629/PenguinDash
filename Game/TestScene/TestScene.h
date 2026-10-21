@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Engine.h>
 #include "Camera.h"
 #include "../IScene.h"
@@ -57,15 +57,31 @@ private:
 	bool isSneaking_ = true;
 
 public:
-	~TestScene()override;
+	/// <summary>
+	/// デストラクタ
+	/// </summary>
+	~TestScene() override;
 
-	void ImGui()override;
+	/// <summary>
+	/// ImGuiデバッグウィンドウの描画
+	/// </summary>
+	void ImGui() override;
 
-	void Initialize()override;
+	/// <summary>
+	/// テストシーンの初期化
+	/// </summary>
+	void Initialize() override;
 
-	void Update()override;
+	/// <summary>
+	/// 毎フレーム更新処理
+	/// </summary>
+	void Update() override;
 
-	void Draw(class Draw& draw)override;
+	/// <summary>
+	/// シーン内オブジェクトの描画処理
+	/// </summary>
+	/// <param name="draw">描画マネージャ</param>
+	void Draw(class Draw& draw) override;
 
 };
 

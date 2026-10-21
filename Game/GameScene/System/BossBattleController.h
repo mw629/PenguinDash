@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Entity/Obstacle.h>
 #include <Math/Calculation.h>
 #include <functional>
@@ -74,11 +74,27 @@ public:
   BossBattleController() = default;
   ~BossBattleController() = default;
 
+  /// <summary>
+  /// ボス戦攻撃キューやタイマー状態のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// ボス戦攻撃パターンの生成、落下更新、カウンター反射判定の更新
+  /// </summary>
+  /// <param name="timeScale">時間スケール</param>
+  /// <param name="boss">ボスオブジェクト</param>
+  /// <param name="stageSettings">ステージ設定</param>
+  /// <param name="effectManager">エフェクトマネージャ</param>
+  /// <param name="cameraController">カメラコントローラ</param>
   void Update(float timeScale, Boss *boss, StageSettings *stageSettings,
               GameSceneEffect *effectManager,
               GameCameraController *cameraController = nullptr);
 
+  /// <summary>
+  /// 指定した攻撃パターンを即時発動（デバッグ用・テスト用）
+  /// </summary>
+  /// <param name="pattern">発動する攻撃パターン</param>
   void TriggerPattern(PatternType pattern) {
     attackQueue_.clear();
     EnqueuePattern(pattern);

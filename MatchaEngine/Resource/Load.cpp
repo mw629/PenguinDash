@@ -1,4 +1,4 @@
-#include "Load.h"
+﻿#include "Load.h"
 #include "Graphics/GraphicsDevice.h"
 #include "Math/Calculation.h"
 #include "Core/LogHandler.h"
@@ -18,8 +18,7 @@ constexpr float kFallbackBoundingExtent = 0.5f;
 constexpr float kFallbackBoundingSphereRadius = 0.866025f; // sqrt(3) / 2
 }
 
-/// オブジェクトの読み込み///
-
+// マテリアルテンプレートファイル（.mtl）の読み込み
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
 	MaterialData materialData;//構築するMaterialData
 	std::string line;//ファイルから読んだ一行を格納する
@@ -49,93 +48,8 @@ MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const st
 }
 
 
-//ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
-//{
-//	std::unique_ptr<ModelManager> objManager = std::make_unique<ModelManager>();
-//
-//	if (objManager.get()->DuplicateConfirmation(directoryPath, filename)) {
-//		return objManager.get()->DuplicateReturn(directoryPath, filename);
-//	}
-//
-//	ModelData modelData;
-//	std::vector<Vector4> positions;//位置
-//	std::vector<Vector3> normals;//法線
-//	std::vector<Vector2> texcoords;//テクスチャ座標
-//	std::string line;//1行分の文字列を入れる変数
-//	VertexData Triangle[3]{};
-//
-//	std::ifstream file(directoryPath + "/" + filename);//ファイルを開く
-//	assert(file.is_open());
-//
-//	while (std::getline(file, line))
-//	{
-//		std::string identifier;
-//		std::istringstream s(line);
-//		s >> identifier;
-//
-//		if (identifier == "v") {
-//			Vector4 position{};
-//			s >> position.x >> position.y >> position.z;
-//			position.w = 1.0f;
-//			position.x *= -1.0f;
-//			positions.push_back(position);
-//		}
-//		else if (identifier == "vt") {
-//			Vector2 texcoord{};
-//			s >> texcoord.x >> texcoord.y;
-//			texcoord.y = 1.0f - texcoord.y;
-//			texcoords.push_back(texcoord);
-//		}
-//		else if (identifier == "vn") {
-//			Vector3 normal{};
-//			s >> normal.x >> normal.y >> normal.z;
-//			normal.x *= -1.0f;
-//			normals.push_back(normal);
-//		}
-//		else if (identifier == "f") {
-//			//面は三角形限定。そのほか未対応
-//			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex) {
-//				std::string vertexDefinition;
-//				s >> vertexDefinition;
-//				//頂点の要素へのIndexは「位置/UV/法線」で格納されてるので、分解してIndexを取得する
-//				std::istringstream v(vertexDefinition);
-//				uint32_t elementIndices[3]{};
-//				for (int32_t element = 0; element < 3; ++element) {
-//					std::string index;
-//					std::getline(v, index, '/');//区切りでインデックスを読んでいく
-//					elementIndices[element] = std::stoi(index);
-//				}
-//
-//				Vector4 position = positions[elementIndices[0] - 1];
-//				Vector2 texcoord = texcoords[elementIndices[1] - 1];
-//				Vector3 normal = normals[elementIndices[2] - 1];
-//				Triangle[faceVertex] = { position ,texcoord ,normal };
-//
-//			}
-//			modelData.vertices.push_back(Triangle[2]);
-//			modelData.vertices.push_back(Triangle[1]);
-//			modelData.vertices.push_back(Triangle[0]);
-//		}
-//		else if (identifier == "mtllib") {
-//			//makterialTemplateLibraryファイルの名前を取得する
-//			std::string materiaFilename;
-//			s >> materiaFilename;
-//			//基本的にobjファイルと同一改装にmtlは存在させるので、ディレクトリ名とファイル名を渡す 
-//			modelData.material = LoadMaterialTemplateFile(directoryPath, materiaFilename);
-//		}
-//	}
-//
-//	std::unique_ptr<Texture> texture = std::make_unique<Texture>();
-//
-//	modelData.textureIndex = texture->CreateTexture(modelData.material.textureFilePath);
-//
-//	objManager.get()->SetModelList(modelData, directoryPath, filename);
-//
-//	return modelData;
-//
-//}
-
-ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)//NodeAnimationで使う
+// OBJファイルの読み込み
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
 	std::unique_ptr<ModelManager> objManager = std::make_unique<ModelManager>();
 
@@ -298,6 +212,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 
 }
 
+// Assimpを使用したOBJ/GLTFモデルデータの読み込み
 ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
 	std::unique_ptr<ModelManager> objManager = std::make_unique<ModelManager>();
@@ -459,16 +374,9 @@ ModelData AssimpLoadObjFile(const std::string& directoryPath, const std::string&
 
 }
 
+// AssimpのaiNodeからNodeデータへ再帰的に変換
 Node ReadNode(aiNode* node)
 {
-	//Node result;
-	//aiMatrix4x4 aiLocalMatrix = node->mTransformation;//nodeのLocalMatrixを取得
-	//aiLocalMatrix.Transpose();//列ベクトル形式を行ベクトル形式に転置
-	//for (int i = 0; i < 4; i++) {
-	//	for (int j = 0; j < 4; j++) {
-	//		result.localMatrix.m[i][j] = aiLocalMatrix[i][j];//ほかの要素も同様に
-	//	}
-	//}
 	Node result;
 
 	aiVector3D scale, translate;
@@ -488,6 +396,7 @@ Node ReadNode(aiNode* node)
 	return result;
 }
 
+// アニメーションファイルの読み込み
 Animation LoadAnimationFile(const std::string& directoryPath, const std::string& filename)
 {
 	Animation animation;
@@ -550,6 +459,7 @@ Animation LoadAnimationFile(const std::string& directoryPath, const std::string&
 ///テクスチャの読み込み///
 
 
+// テクスチャファイルの読み込み
 DirectX::ScratchImage LoadTexture(const std::string& filePath) {
 
 	//テクスチャファイルを読み込んでプログラムで扱えるようにする
@@ -590,6 +500,7 @@ DirectX::ScratchImage LoadTexture(const std::string& filePath) {
 	return mipImages;
 }
 
+// テクスチャ用D3D12リソースの生成
 Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata)
 {
 
@@ -627,6 +538,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(ID3D12Device* devic
 	return resource;
 }
 
+// テクスチャデータのGPUアップロード
 [[nodiscard]]
 Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
 {
@@ -663,6 +575,7 @@ namespace {
 	int GPUNum = 1;
 }
 
+// CPUディスクリプタハンドルの取得
 D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriprtorSize)
 {
 
@@ -672,6 +585,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	return handleCPU;
 }
 
+// GPUディスクリプタハンドルの取得
 D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriprtorSize)
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Engine.h>
 #include <Math/Calculation.h>
 #include <memory>
@@ -59,7 +59,17 @@ public:
   GameHUD() = default;
   ~GameHUD() = default;
 
+  /// <summary>
+  /// HUDで使用する各種スプライト・テクスチャリソースの初期化
+  /// </summary>
+  /// <param name="texture">テクスチャマネージャ</param>
   void Initialize(Texture *texture);
+
+  /// <summary>
+  /// ゲーム状態に応じたHUD（タイトル/プレイ/ボス/ポーズ/ゲームオーバー等）の描画
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
+  /// <param name="ctx">HUD描画用コンテキスト</param>
   void DrawHUD(Draw &draw, const GameHUDContext &ctx);
 
 private:
@@ -219,18 +229,69 @@ private:
   static constexpr Vector2 kFpvTextOffset = {10.0f, 6.0f};
   static constexpr float kFpvFontSize = 16.0f;
 
+  /// <summary>
+  /// フォントアトラスの事前キャッシュ処理
+  /// </summary>
   void PreloadFontStrings(Draw &draw);
+
+  /// <summary>
+  /// 通常プレイ中HUDの描画（距離、スコア、速度メーター等）
+  /// </summary>
   void DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// ボス戦中HUDの描画（ボス氷HPバー、警告表示等）
+  /// </summary>
   void DrawBossHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// 操作ガイドUIの描画（フェードイン/アウト対応）
+  /// </summary>
   void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alpha);
+
+  /// <summary>
+  /// 操作ガイドUIの描画（通常表示）
+  /// </summary>
   void DrawControlsGuide(Draw &draw, const GameHUDContext &ctx) { DrawControlsGuide(draw, ctx, kDefaultGuideAlpha); }
+
+  /// <summary>
+  /// 通常ポーズ画面HUDの描画
+  /// </summary>
   void DrawPauseHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// ボス戦ポーズ画面HUDの描画
+  /// </summary>
   void DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// ゲームオーバー画面HUDの描画（スコア・ランキング結果）
+  /// </summary>
   void DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// タイトル画面HUDの描画（タイトルロゴ、メニュー、名前入力）
+  /// </summary>
   void DrawTitleHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// タイトル画面ランキングモーダルの描画
+  /// </summary>
   void DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// タイトル画面操作説明モーダルの描画
+  /// </summary>
   void DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// エディターモード中HUDの描画
+  /// </summary>
   void DrawEditorHUD(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// 一人称視点（FPV）表示バッジの描画
+  /// </summary>
   void DrawBadgeFPV(Draw &draw);
 
   // 氷HPバー用スプライトリソース
