@@ -1,4 +1,4 @@
-﻿#ifndef NOMINMAX
+#ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include "RankingCutinEffect.h"
@@ -39,22 +39,22 @@ void RankingCutinEffect::Initialize(Texture *texture) {
   if (!texture)
     return;
 
-  // テクスチャの読み込み（JPG形式のみで軽量化）
+  // テクスチャの読み込み（PNG形式のみ）
   scoreTextureHandle_ =
-      texture->CreateTexture("Resources/Texture/RankingCutin_Score.jpg");
+      texture->CreateTexture("Resources/Texture/RankingCutin_Score.png");
   if (scoreTextureHandle_ < 0) {
     scoreTextureHandle_ =
-        texture->CreateTexture("Resources/Texture/RankingCutin.jpg");
+        texture->CreateTexture("Resources/Texture/RankingCutin.png");
   }
 
   distanceTextureHandle_ =
-      texture->CreateTexture("Resources/Texture/RankingCutin_Distance.jpg");
+      texture->CreateTexture("Resources/Texture/RankingCutin_Distance.png");
   if (distanceTextureHandle_ < 0) {
     distanceTextureHandle_ = scoreTextureHandle_;
   }
 
   doubleTextureHandle_ =
-      texture->CreateTexture("Resources/Texture/RankingCutin_Double.jpg");
+      texture->CreateTexture("Resources/Texture/RankingCutin_Double.png");
   if (doubleTextureHandle_ < 0) {
     doubleTextureHandle_ = scoreTextureHandle_;
   }
@@ -70,8 +70,8 @@ void RankingCutinEffect::Initialize(Texture *texture) {
   cutinSpriteData_.transform.rotate = {0.0f, 0.0f, bannerAngle_};
   cutinSpriteData_.size = bannerSize_;
   cutinSpriteData_.pivot = {0.5f, 0.5f};
-  cutinSpriteData_.textureArea[0] = {0.0f, 0.0f};
-  cutinSpriteData_.textureArea[1] = {1.0f, 1.0f};
+  cutinSpriteData_.textureArea[0] = {0.0f, 0.12f};
+  cutinSpriteData_.textureArea[1] = {1.0f, 0.88f};
   cutinSpriteData_.scaleMode = SpriteScaleMode::Fit;
   cutinSpriteData_.anchor = SpriteAnchor::None;
 
