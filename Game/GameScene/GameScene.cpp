@@ -207,6 +207,7 @@ void GameScene::ResetGame() {
   jumpCount_ = 0;
   rollCount_ = 0;
   laneChangeCount_ = 0;
+  unMovedTime_ = 0.0f;
   wasJumping_ = false;
   wasRolling_ = false;
   if (player_) {
@@ -231,8 +232,10 @@ void GameScene::StartGame() {
   // タイトルの障害物を一瞬で消さず、新規スポーンのみ停止して手前の障害物がGOまでに自然に捌けるようにする
   stageSettings_->SetSpawningPaused(true);
 
-  // 遠すぎる障害物（Z > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
-  // 3.4秒のカウントダウン（3, 2, 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
+  // 遠すぎる障害物（Z
+  // > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
+  // 3.4秒のカウントダウン（3, 2,
+  // 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
   for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
     Obstacle *obs = stageSettings_->GetObstacle(i);
     if (obs && obs->GetIsActive()) {
@@ -388,7 +391,8 @@ void GameScene::Update() {
     }
   });
 
-  // カメラの更新 (タイトルオービット or プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
+  // カメラの更新 (タイトルオービット or
+  // プレイ中追従。FPVはプレイヤー移動後に1回のみ更新)
   float timeScale = EditorManager::GetPlaySpeed();
   if (!cameraController_->IsFirstPerson()) {
     if (gameState_ == GameState::Title) {
@@ -490,7 +494,8 @@ void GameScene::PlayingUpdate() {
         SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
       }
     } else {
-      // 3, 2, 1 の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
+      // 3, 2, 1
+      // の間はスポーン停止＆プレイヤー入力無効（走るアニメーションと地面・流氷スクロールは維持）
       stageSettings_->SetSpawningPaused(true);
       player_->SetInputEnabled(false);
       player_->ClearInputBuffer();
@@ -548,6 +553,10 @@ void GameScene::PlayingUpdate() {
   UpdateWorldEntities(timeScale, speedMultiplier);
   CheckCollisions();
 
+  // 実績判定・更新（達成時にスコア加点）
+  float dt = (1.0f / 60.0f) * timeScale;
+  playTime_ += dt;
+
   // 実績トラッキング（ジャンプ、スライディング、レーン移動）
   if (player_) {
     bool isJumping = player_->GetIsJumping();
@@ -567,11 +576,14 @@ void GameScene::PlayingUpdate() {
       laneChangeCount_++;
       lastPlayerLane_ = currentLane;
     }
-  }
 
-  // 実績判定・更新（達成時にスコア加点）
-  float dt = (1.0f / 60.0f) * timeScale;
-  playTime_ += dt;
+    // ジャンプ中・ロール中・レーン移動中は「動いている」ため、未操作タイマーをリセット
+    if (isJumping || isRolling || player_->IsChangingLane()) {
+      unMovedTime_ = 0.0f;
+    } else {
+      unMovedTime_ += dt;
+    }
+  }
 
   AchievementContext achCtx;
   achCtx.distance = scoreManager_->GetCurrentDistance();
@@ -584,6 +596,7 @@ void GameScene::PlayingUpdate() {
   achCtx.jumpCount = jumpCount_;
   achCtx.rollCount = rollCount_;
   achCtx.laneChangeCount = laneChangeCount_;
+  achCtx.unMovedTime = unMovedTime_;
 
   achievementManager_->Update(dt, achCtx, scoreManager_.get());
 }
@@ -731,7 +744,8 @@ void GameScene::TitleUpdate() {
 
   // ----------------------------------------------------------
   // メニュー選択中（未編集中）の処理
-  // 1. 上下カーソル移動（名前登録バーを含め全項目で W/S・矢印キー・パッドが利用可能）
+  // 1. 上下カーソル移動（名前登録バーを含め全項目で
+  // W/S・矢印キー・パッドが利用可能）
   // ----------------------------------------------------------
   bool moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
                 GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
@@ -1308,9 +1322,9 @@ void GameScene::ImGui() {
     // ゲームステート
     if (ImGui::CollapsingHeader("ゲームステート",
                                 ImGuiTreeNodeFlags_DefaultOpen)) {
-      const char *stateNames[] = {"タイトル",  "プレイ中",     "一時停止",
-                                  "被弾",      "ゲームクリア", "ゲームオーバー",
-                                  "エディター"};
+      const char *stateNames[] = {"タイトル",       "プレイ中",     "一時停止",
+                                  "被弾",           "1位カットイン", "ゲームクリア",
+                                  "ゲームオーバー", "エディター"};
       ImGui::Text("現在のゲーム状態: %s", stateNames[gameState_]);
 
       const char *playingStateNames[] = {"3レーン", "1レーン", "ボス戦"};
@@ -1417,6 +1431,50 @@ void GameScene::ImGui() {
       // スコア表示
       scoreManager_->ImGui();
 
+      // 動かない実績 (不動) デバッグ
+      if (ImGui::TreeNode("動かない実績 (不動) デバッグ")) {
+        bool isMoving = false;
+        if (player_) {
+          isMoving = player_->GetIsJumping() || player_->GetIsRolling() ||
+                     player_->IsChangingLane();
+        }
+        if (isMoving) {
+          ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
+                             "状態: 移動・アクション中 (時間リセット)");
+        } else {
+          ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f),
+                             "状態: 留まり中 (静止時間カウント中)");
+        }
+
+        ImGui::Text("動かない時間 (未操作): %.2f 秒", unMovedTime_);
+        float progress3s = (std::min)(unMovedTime_ / 3.0f, 1.0f);
+        char overlay3s[64];
+        snprintf(overlay3s, sizeof(overlay3s), "目標3秒: %.2f / 3.00 秒 (%.0f%%)",
+                 unMovedTime_, progress3s * 100.0f);
+        ImGui::ProgressBar(progress3s, ImVec2(280.0f, 0.0f), overlay3s);
+
+        float progress5s = (std::min)(unMovedTime_ / 5.0f, 1.0f);
+        char overlay5s[64];
+        snprintf(overlay5s, sizeof(overlay5s), "目標5秒: %.2f / 5.00 秒 (%.0f%%)",
+                 unMovedTime_, progress5s * 100.0f);
+        ImGui::ProgressBar(progress5s, ImVec2(280.0f, 0.0f), overlay5s);
+
+        ImGui::SliderFloat("動かない時間を調整", &unMovedTime_, 0.0f, 10.0f,
+                           "%.2f 秒");
+        if (ImGui::Button("3秒にする (即時達成テスト)")) {
+          unMovedTime_ = 3.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("5秒にする")) {
+          unMovedTime_ = 5.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("リセット (0秒)")) {
+          unMovedTime_ = 0.0f;
+        }
+        ImGui::TreePop();
+      }
+
       // 実績システム表示
       if (achievementManager_) {
         AchievementContext debugAchCtx;
@@ -1431,6 +1489,7 @@ void GameScene::ImGui() {
         debugAchCtx.jumpCount = jumpCount_;
         debugAchCtx.rollCount = rollCount_;
         debugAchCtx.laneChangeCount = laneChangeCount_;
+        debugAchCtx.unMovedTime = unMovedTime_;
 
         achievementManager_->ImGui(debugAchCtx, scoreManager_.get());
       }
@@ -2192,4 +2251,3 @@ void GameScene::ResetSettingsToDefault() {
   settingsStatusMessage_ = "初期設定に戻しました";
   settingsStatusTimer_ = 3.0f;
 }
-

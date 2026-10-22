@@ -1,4 +1,4 @@
-﻿#include "Player.h"
+#include "Player.h"
 #include "Collision.h"
 #include "../GameSceneManager.h"
 #include "../System/SoundManager.h"
@@ -401,7 +401,11 @@ void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
 }
 
 void Player::UpdateInputBuffer(float speedMultiplier) {
-  float decay = (speedMultiplier > 0.0f) ? speedMultiplier : 1.0f;
+  if (speedMultiplier <= 0.0f) {
+    return;
+  }
+
+  float decay = speedMultiplier;
   if (bufferedJumpTimer_ > 0.0f) {
     bufferedJumpTimer_ -= decay;
     if (bufferedJumpTimer_ < 0.0f) {
@@ -426,24 +430,12 @@ void Player::UpdateInputBuffer(float speedMultiplier) {
     return;
   }
 
+  // アクション先行入力（ジャンプ・ロール）
   if (GameSceneManager::GetInstance()->IsPushJump()) {
     bufferedJumpTimer_ = kDefaultInputBufferFrames;
   }
   if (GameSceneManager::GetInstance()->IsPushRoll()) {
     bufferedRollTimer_ = kDefaultInputBufferFrames;
-  }
-
-  bool pushLeft = GameSceneManager::GetInstance()->IsPushLeft();
-  bool pushRight = GameSceneManager::GetInstance()->IsPushRight();
-  if (pushLeft || pushRight) {
-    int dir = 0;
-    if (isInvertedControls_) {
-      dir = pushLeft ? +1 : -1;
-    } else {
-      dir = pushLeft ? -1 : +1;
-    }
-    bufferedLaneDirection_ = dir;
-    bufferedLaneTimer_ = kDefaultInputBufferFrames;
   }
 }
 
@@ -462,54 +454,47 @@ void Player::ProcessLaneInput() {
     inputDir = isInvertedControls_ ? -1 : +1;
   }
 
-  // 1. レーン移動中 (クイック切り返し & 同方向先行入力)
-  if (laneIndex_ != targetLaneIndex_) {
-    if (inputDir != 0) {
-      int currentDir = (targetLaneIndex_ > laneIndex_) ? 1 : -1;
-      if (inputDir == -currentDir) {
-        // === クイック切り返し (Quick Reverse) ===
-        // 移動途中で逆方向の入力があった場合、即座に反転して元のレーンへ戻る
-        int oldTarget = targetLaneIndex_;
-        int oldOrigin = laneIndex_;
-        targetLaneIndex_ = oldOrigin;
-        laneIndex_ = oldTarget;
-
-        startX_ = static_cast<float>(laneIndex_) * laneWidth_;
-        lerpTime_ = 1.0f - lerpTime_;
-        if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
-        if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
-
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-
-        bufferedLaneTimer_ = 0.0f;
-        bufferedLaneDirection_ = 0;
-      } else {
-        // 同方向の入力は先行入力バッファに保持
-        bufferedLaneDirection_ = inputDir;
-        bufferedLaneTimer_ = kDefaultInputBufferFrames;
-      }
-    }
+  if (inputDir == 0) {
     return;
   }
 
-  // 2. 停止中 (即時入力またはバッファの消費)
-  if (inputDir == 0 && bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0) {
-    inputDir = ConsumeBufferedLane();
-  } else if (inputDir != 0) {
-    bufferedLaneTimer_ = 0.0f;
-    bufferedLaneDirection_ = 0;
+  // 1. レーン移動中 (逆方向入力時のクイック切り返しのみ受付)
+  if (laneIndex_ != targetLaneIndex_) {
+    int currentDir = (targetLaneIndex_ > laneIndex_) ? 1 : -1;
+    if (inputDir == -currentDir) {
+      // === クイック切り返し (Quick Reverse) ===
+      // 移動途中で逆方向の入力があった場合、即座に反転して元のレーンへ戻る
+      int oldTarget = targetLaneIndex_;
+      int oldOrigin = laneIndex_;
+      targetLaneIndex_ = oldOrigin;
+      laneIndex_ = oldTarget;
+
+      startX_ = static_cast<float>(laneIndex_) * laneWidth_;
+      lerpTime_ = 1.0f - lerpTime_;
+      if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
+      if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
+
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+
+      bufferedLaneTimer_ = 0.0f;
+      bufferedLaneDirection_ = 0;
+    }
+    // 移動中の同方向入力は先行入力せず無視（誤爆・連続移動を防止）
+    return;
   }
 
-  if (inputDir != 0) {
-    int nextTarget = laneIndex_ + inputDir;
-    nextTarget = std::clamp(nextTarget, minLane_, maxLane_);
+  // 2. 停止中 (通常入力によるレーン移動開始)
+  bufferedLaneTimer_ = 0.0f;
+  bufferedLaneDirection_ = 0;
 
-    if (nextTarget != laneIndex_) {
-      targetLaneIndex_ = nextTarget;
-      startX_ = transform_.translate.x;
-      lerpTime_ = 0.0f;
-      SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-    }
+  int nextTarget = laneIndex_ + inputDir;
+  nextTarget = std::clamp(nextTarget, minLane_, maxLane_);
+
+  if (nextTarget != laneIndex_) {
+    targetLaneIndex_ = nextTarget;
+    startX_ = transform_.translate.x;
+    lerpTime_ = 0.0f;
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
   }
 }
 
@@ -525,18 +510,9 @@ void Player::UpdateLaneMovement(float speedMultiplier) {
     transform_.translate.x = static_cast<float>(laneIndex_) * laneWidth_;
     currentRecoveryTimer_ = laneChangeRecovery_;
 
-    // 到着直後の先行入力バッファチェック (連打による連続移動)
-    if (bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0 && CanAct() && !isAutoPilot_) {
-      int nextTarget = std::clamp(laneIndex_ + bufferedLaneDirection_, minLane_, maxLane_);
-      if (nextTarget != laneIndex_) {
-        targetLaneIndex_ = nextTarget;
-        startX_ = transform_.translate.x;
-        lerpTime_ = 0.0f;
-        bufferedLaneTimer_ = 0.0f;
-        bufferedLaneDirection_ = 0;
-        SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-      }
-    }
+    // 到着時は確実にバッファをクリアして連続移動を防止
+    bufferedLaneTimer_ = 0.0f;
+    bufferedLaneDirection_ = 0;
   } else {
     float targetX = static_cast<float>(targetLaneIndex_) * laneWidth_;
     transform_.translate.x = Lerp(startX_, targetX, lerpTime_);
@@ -546,23 +522,26 @@ void Player::UpdateLaneMovement(float speedMultiplier) {
 void Player::Update(Matrix4x4 view, float speedMultiplier) {
   currentSpeedMultiplier_ = speedMultiplier;
 
-  // 先行入力バッファの更新
-  UpdateInputBuffer(speedMultiplier);
+  // ゲーム一時停止中または描画専用パス（speedMultiplier <= 0.0f）では論理更新を行わない
+  if (speedMultiplier > 0.0f) {
+    // 先行入力バッファの更新
+    UpdateInputBuffer(speedMultiplier);
 
-  // 硬直タイマーの更新
-  if (currentRecoveryTimer_ > 0.0f) {
-    currentRecoveryTimer_ -= (speedMultiplier > 0.0f ? speedMultiplier : 1.0f);
-    if (currentRecoveryTimer_ < 0.0f) {
-      currentRecoveryTimer_ = 0.0f;
+    // 硬直タイマーの更新
+    if (currentRecoveryTimer_ > 0.0f) {
+      currentRecoveryTimer_ -= speedMultiplier;
+      if (currentRecoveryTimer_ < 0.0f) {
+        currentRecoveryTimer_ = 0.0f;
+      }
     }
-  }
 
-  // ステート更新
-  if (currentState_) {
-    if (GetIsHit()) {
-      currentState_->Update(*this, speedMultiplier > 0.0f ? 1.0f : 0.0f);
-    } else {
-      currentState_->Update(*this, speedMultiplier);
+    // ステート更新
+    if (currentState_) {
+      if (GetIsHit()) {
+        currentState_->Update(*this, 1.0f);
+      } else {
+        currentState_->Update(*this, speedMultiplier);
+      }
     }
   }
 

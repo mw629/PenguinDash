@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <string>
 #include <functional>
 #include <memory>
@@ -17,6 +17,7 @@ struct AchievementContext {
     int jumpCount = 0;              // ジャンプ回数
     int rollCount = 0;              // スライディング（ロール）回数
     int laneChangeCount = 0;        // レーン移動回数
+    float unMovedTime = 0.0f;       // 移動・操作せずに留まった時間 (秒)
 };
 
 /// <summary>

@@ -51,8 +51,7 @@ private:
       std::make_unique<ScoreManager>();
   std::unique_ptr<AchievementManager> achievementManager_ =
       std::make_unique<AchievementManager>();
-  std::unique_ptr<CrashEffect> crashEffect_ =
-      std::make_unique<CrashEffect>();
+  std::unique_ptr<CrashEffect> crashEffect_ = std::make_unique<CrashEffect>();
   std::unique_ptr<RankingCutinEffect> rankingCutinEffect_ =
       std::make_unique<RankingCutinEffect>();
   bool forceFirstPlaceCutInTest_ = false;
@@ -61,14 +60,14 @@ private:
       std::make_unique<BossBattleController>();
   std::unique_ptr<TitleDirector> titleDirector_ =
       std::make_unique<TitleDirector>();
-  std::unique_ptr<GameHUD> gameHUD_ =
-      std::make_unique<GameHUD>();
+  std::unique_ptr<GameHUD> gameHUD_ = std::make_unique<GameHUD>();
 
   // 実績トラッキング用変数
   float playTime_ = 0.0f;
   int jumpCount_ = 0;
   int rollCount_ = 0;
   int laneChangeCount_ = 0;
+  float unMovedTime_ = 0.0f;
   bool wasJumping_ = false;
   bool wasRolling_ = false;
   int lastPlayerLane_ = 0;
@@ -269,11 +268,7 @@ public:
     Count
   };
 
-  enum class TitleSubView {
-    None = 0,
-    Ranking,
-    HowToPlay
-  };
+  enum class TitleSubView { None = 0, Ranking, HowToPlay };
 
 private:
   TitleMenuItem titleMenuIndex_ = TitleMenuItem::GameStart;
@@ -291,43 +286,47 @@ public:
   /// スコアマネージャーを取得
   /// </summary>
   /// <returns>ScoreManagerへのポインタ</returns>
-  class ScoreManager* GetScoreManager() { return scoreManager_.get(); }
+  class ScoreManager *GetScoreManager() { return scoreManager_.get(); }
 
   /// <summary>
   /// 実績マネージャーを取得
   /// </summary>
   /// <returns>AchievementManagerへのポインタ</returns>
-  class AchievementManager* GetAchievementManager() { return achievementManager_.get(); }
+  class AchievementManager *GetAchievementManager() {
+    return achievementManager_.get();
+  }
 
   /// <summary>
   /// エフェクトマネージャーを取得
   /// </summary>
   /// <returns>GameSceneEffectへのポインタ</returns>
-  class GameSceneEffect* GetEffectManager() { return effectManager_.get(); }
+  class GameSceneEffect *GetEffectManager() { return effectManager_.get(); }
 
   /// <summary>
   /// ステージ設定・ギミック管理を取得
   /// </summary>
   /// <returns>StageSettingsへのポインタ</returns>
-  class StageSettings* GetStageSettings() { return stageSettings_.get(); }
+  class StageSettings *GetStageSettings() { return stageSettings_.get(); }
 
   /// <summary>
   /// プレイヤーインスタンスを取得
   /// </summary>
   /// <returns>Playerへのポインタ</returns>
-  class Player* GetPlayer() { return player_.get(); }
+  class Player *GetPlayer() { return player_.get(); }
 
   /// <summary>
   /// ボスインスタンスを取得
   /// </summary>
   /// <returns>Bossへのポインタ</returns>
-  class Boss* GetBoss() { return boss_.get(); }
+  class Boss *GetBoss() { return boss_.get(); }
 
   /// <summary>
   /// ゲームカメラコントローラーを取得
   /// </summary>
   /// <returns>GameCameraControllerへのポインタ</returns>
-  class GameCameraController* GetCameraController() { return cameraController_.get(); }
+  class GameCameraController *GetCameraController() {
+    return cameraController_.get();
+  }
 
   /// <summary>
   /// 現在のゲームプレイ状態（3レーン/1レーン/ボス戦）を取得
