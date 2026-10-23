@@ -272,6 +272,7 @@ void GameScene::StartPlaying() {
   SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
 }
 
+#pragma region　タイトルへ
 void GameScene::ReturnToTitle() {
   cameraController_->SetDebugCamera(false);
   ResetGame();
