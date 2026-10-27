@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Engine.h>
 #include <GameObjects/Object/2d/Sprite.h>
 #include <Math/Calculation.h>
@@ -20,6 +20,8 @@ private:
   float crashScaleDuration_ = kDefaultScaleDuration;
   Vector2 crashBaseSize_ = kDefaultBaseSize;
   Vector2 crashPosition_ = kDefaultPosition;
+
+  bool isActive_ = false;
 
 public:
   CrashEffect() = default;
@@ -62,7 +64,8 @@ public:
   /// </summary>
   void ImGui();
 
-  Sprite *GetSprite() const { return crashSprite_.get(); }
+  bool IsActive() const { return isActive_; }
+  Sprite *GetSprite() const { return isActive_ ? crashSprite_.get() : nullptr; }
   const Vector2 &GetCrashPosition() const { return crashPosition_; }
   void SetCrashPosition(const Vector2 &pos) { crashPosition_ = pos; }
   float GetCrashScaleDuration() const { return crashScaleDuration_; }

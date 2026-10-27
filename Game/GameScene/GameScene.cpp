@@ -93,6 +93,13 @@ void GameScene::Initialize() {
   ModelData playerModelData =
       AssimpLoadObjFile("Resources/gltf/Penguin", "RunPenguin.gltf");
   player_->Initialize(playerModelData);
+  player_->SetOnCameraHitCallback([this]() {
+    if (cameraController_) {
+      cameraController_->Shake(1.5f, 0.45f, 35.0f);
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
+    GamePadInput::Rumble(0.4f, kHitRumbleMotorSpeed, kHitRumbleMotorSpeed);
+  });
 
   ModelData bossModelData = AssetManager::LoadModel(
       "Resources/Model/StylizedIceKing", "StylizedIceKing.obj");
@@ -586,51 +593,58 @@ void GameScene::PlayingUpdate() {
   CheckCollisions();
 
   // --- 実績用の数値計算・トラッキング ---
-  float dt = (1.0f / 60.0f) * timeScale;
-  playTime_ += dt;
+  bool isCountdownActive = titleDirector_->IsCountdownActive() &&
+                           !titleDirector_->IsInputAllowed();
+  if (!isCountdownActive) {
+    float dt = (1.0f / 60.0f) * timeScale;
+    playTime_ += dt;
 
-  if (player_) {
-    bool isJumping = player_->GetIsJumping();
-    if (isJumping && !wasJumping_) {
-      jumpCount_++;
-    }
-    wasJumping_ = isJumping;
+    if (player_) {
+      bool isJumping = player_->GetIsJumping();
+      if (isJumping && !wasJumping_) {
+        jumpCount_++;
+      }
+      wasJumping_ = isJumping;
 
-    bool isRolling = player_->GetIsRolling();
-    if (isRolling && !wasRolling_) {
-      rollCount_++;
-    }
-    wasRolling_ = isRolling;
+      bool isRolling = player_->GetIsRolling();
+      if (isRolling && !wasRolling_) {
+        rollCount_++;
+      }
+      wasRolling_ = isRolling;
 
-    int currentLane = player_->GetLaneIndex();
-    if (currentLane != lastPlayerLane_) {
-      laneChangeCount_++;
-      lastPlayerLane_ = currentLane;
+      int currentLane = player_->GetLaneIndex();
+      if (currentLane != lastPlayerLane_) {
+        laneChangeCount_++;
+        lastPlayerLane_ = currentLane;
+      }
+
+      // ジャンプ中・ロール中・レーン移動中は「動いている」ため、未操作タイマーをリセット
+      if (isJumping || isRolling || player_->IsChangingLane()) {
+        unMovedTime_ = 0.0f;
+      } else {
+        unMovedTime_ += dt;
+      }
     }
 
-    // ジャンプ中・ロール中・レーン移動中は「動いている」ため、未操作タイマーをリセット
-    if (isJumping || isRolling || player_->IsChangingLane()) {
-      unMovedTime_ = 0.0f;
-    } else {
-      unMovedTime_ += dt;
-    }
+    // --- 実績用の数値渡しと実績判定・更新 ---
+    AchievementContext achCtx;
+    achCtx.distance = scoreManager_->GetCurrentDistance();
+    achCtx.score = scoreManager_->GetCurrentScore();
+    achCtx.bonusEnemyHitCount = scoreManager_->GetBonusEnemyHitCount();
+    achCtx.playTime = playTime_;
+    achCtx.isBossBattle = (playingState_ == PlayingState::Boss);
+    achCtx.isBossDefeated = (boss_ && boss_->GetState() == BossState::Defeat);
+    achCtx.isOneLaneMode = isRightSideMode_;
+    achCtx.jumpCount = jumpCount_;
+    achCtx.rollCount = rollCount_;
+    achCtx.laneChangeCount = laneChangeCount_;
+    achCtx.unMovedTime = unMovedTime_;
+
+    achievementManager_->Update(dt, achCtx, scoreManager_.get());
+  } else {
+    // カウントダウン中（操作解禁前）は未操作タイマーをリセット維持
+    unMovedTime_ = 0.0f;
   }
-
-  // --- 実績用の数値渡しと実績判定・更新 ---
-  AchievementContext achCtx;
-  achCtx.distance = scoreManager_->GetCurrentDistance();
-  achCtx.score = scoreManager_->GetCurrentScore();
-  achCtx.bonusEnemyHitCount = scoreManager_->GetBonusEnemyHitCount();
-  achCtx.playTime = playTime_;
-  achCtx.isBossBattle = (playingState_ == PlayingState::Boss);
-  achCtx.isBossDefeated = (boss_ && boss_->GetState() == BossState::Defeat);
-  achCtx.isOneLaneMode = isRightSideMode_;
-  achCtx.jumpCount = jumpCount_;
-  achCtx.rollCount = rollCount_;
-  achCtx.laneChangeCount = laneChangeCount_;
-  achCtx.unMovedTime = unMovedTime_;
-
-  achievementManager_->Update(dt, achCtx, scoreManager_.get());
 }
 
 void GameScene::UpdateTitleTextInput() {
@@ -873,7 +887,72 @@ void GameScene::PlayerHitUpdate() {
   // --- 被弾演出（クラッシュ・エフェクト・被弾アニメーション）の更新 ---
   crashEffect_->Update(Engine::kDefaultDeltaTime);
   effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
+  if (player_->GetIsTrip() && effectManager_) {
+    effectManager_->EmitDust(player_->GetTransform().translate);
+  }
   player_->Update(cameraController_->GetViewMatrix(), 1.0f);
+
+  // === 雪玉状態時の障害物吹き飛ばし判定＆被弾中障害物の物理・描画更新 ===
+  if (stageSettings_) {
+    const Matrix4x4 &view = cameraController_->GetViewMatrix();
+    bool isSnowballRolling = player_->GetIsTrip() && player_->GetIsSnowballActive() &&
+                             (player_->GetSnowballScale() > 0.1f);
+
+    BoundingSphere snowballSphere{};
+    if (isSnowballRolling) {
+      snowballSphere.center = player_->GetSnowballTransform().translate;
+      snowballSphere.radius = (std::max)(player_->GetSnowballScale() * 1.15f, 1.2f);
+    }
+
+    for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
+      Obstacle *obs = stageSettings_->GetObstacle(i);
+      if (!obs || !obs->GetIsActive()) {
+        continue;
+      }
+
+      // 雪玉が転がっている場合、未被弾の障害物との当たり判定
+      if (isSnowballRolling && !obs->GetIsHit()) {
+        // 床トリガーは除外
+        if (obs->GetType() == Obstacle::Type::GuideFloor) {
+          continue;
+        }
+
+        AABB obsAABB = obs->GetColliderAABB();
+        if (Collision::CheckAABBSphere(obsAABB, snowballSphere)) {
+          // アイテムの場合は取得時演出
+          if (obs->IsItem()) {
+            obs->OnHit();
+            SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+            continue;
+          }
+
+          // 通常障害物・エネミー・攻撃：雪玉の衝撃で前方・斜め上へ豪快に吹き飛ばす！
+          Vector3 obsPos = obs->GetTransform().translate;
+          float diffX = obsPos.x - snowballSphere.center.x;
+          float blowDirX = (std::abs(diffX) > 0.1f)
+                               ? (diffX > 0.0f ? 0.35f : -0.35f)
+                               : ((rand() % 2 == 0) ? 0.3f : -0.3f);
+          float blowVelX = blowDirX + ((float)rand() / RAND_MAX - 0.5f) * 0.2f;
+          float blowVelY = 0.55f + ((float)rand() / RAND_MAX) * 0.25f;
+          float blowVelZ = 0.60f + ((float)rand() / RAND_MAX) * 0.30f;
+
+          obs->OnBlowAway({blowVelX, blowVelY, blowVelZ});
+          SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
+          GamePadInput::Rumble(0.2f, 32000, 32000);
+
+          if (effectManager_) {
+            effectManager_->EmitDust(obsPos);
+          }
+          if (cameraController_) {
+            cameraController_->ShakeImpact();
+          }
+        }
+      }
+
+      // 被弾して吹き飛び中の障害物（または画面内の障害物）の移動・回転・描画Transform更新
+      obs->StageUpdate(view, 0.0f);
+    }
+  }
 
   // --- 被弾アニメーション終了後のリザルト演出判定（1位カットイン or ゲームオーバー画面） ---
   if (player_->IsHitAnimationFinished()) {
@@ -960,10 +1039,10 @@ void GameScene::CheckCollisions() {
   }
 }
 
-void GameScene::TriggerPlayerHit(bool isTrip) {
+void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
   // --- 被弾時の演出・フィードバック発生（クラッシュ、画面揺れ、SE、コントローラー振動） ---
   gameState_ = GameState::PlayerHit;
-  crashEffect_->Trigger();
+  crashEffect_->Reset();
   cameraController_->ShakeImpact();
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
   GamePadInput::Rumble(kHitRumbleDuration, kHitRumbleMotorSpeed,
@@ -976,7 +1055,20 @@ void GameScene::TriggerPlayerHit(bool isTrip) {
 
   // --- ステージ・プレイヤーのゲームオーバー状態設定 ---
   stageSettings_->SetGameOver(true);
-  player_->OnHit(isTrip);
+
+  // カメラの位置を取得（画面中央の手前距離の位置）
+  Vector3 cameraHitTarget = {0.0f, 3.0f, -12.5f};
+  if (cameraController_ && cameraController_->GetGameCamera()) {
+    Vector2 screenSize = Camera::GetScreenSize();
+    if (screenSize.x <= 0.0f || screenSize.y <= 0.0f) {
+      screenSize = {Camera::kDefaultScreenWidth, Camera::kDefaultScreenHeight};
+    }
+    // カメラの画面中央・手前約2.2mのワールド座標を取得
+    cameraHitTarget = cameraController_->GetGameCamera()->GetScreenWorldPosition(
+        {screenSize.x * 0.5f, screenSize.y * 0.5f}, 2.2f);
+  }
+
+  player_->OnHit(isTrip, isLargeObstacle, cameraHitTarget);
 
   // --- スコア記録とオンラインランキングへのスコア送信・順位取得 ---
   scoreManager_->RecordCurrentScores();
@@ -1139,7 +1231,10 @@ void GameScene::DrawUI(class Draw &draw) {
 
   // --- 実績解除通知ポップアップの描画 ---
   if (achievementManager_) {
-    achievementManager_->DrawUI(draw);
+    // リスタートなどのカウントダウン演出中は実績通知ポップアップを描画しない
+    if (!titleDirector_->IsCountdownActive()) {
+      achievementManager_->DrawUI(draw);
+    }
   }
 
   // --- 最前面の画面凍結・破片トランジション演出の描画 ---

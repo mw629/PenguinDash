@@ -8,20 +8,21 @@
 #include <CharacterAnimator.h>
 
 /// <summary>
-/// プレイヤーのアクション（状態）タイプを表す列挙型
+/// プレイヤーのアクション・操作ステート種別
 /// </summary>
 enum class PlayerActionType {
-  Run,          //!< 通常走行
-  Jump,         //!< ジャンプ中
-  Roll,         //!< スライディング（しゃがみ・ロール）中
-  Hit,          //!< 障害物被弾・ノックバック・転倒中
-  ForcedCenter  //!< 1レーン区間等のステージギミックによる強制中央復帰中
+  Run,          // 走行（通常移動）
+  Jump,         // ジャンプ（跳躍・空中）
+  Roll,         // ロール（スライディング・低姿勢）
+  Hit,          // 被弾・ノックバック
+  ForcedCenter  // 中央レーンへの強制移動
 };
 
 class Player;
 
 /// <summary>
-/// プレイヤーのアクションステート基底インターフェース（Stateパターン）
+/// プレイヤーステート（操作・行動状態）基底インターフェースクラス
+/// Stateパターンにより、走行・ジャンプ・ロール等の状態ごとの挙動や入力処理を分離・管理します。
 /// </summary>
 class IPlayerState {
 public:
@@ -30,36 +31,39 @@ public:
   /// <summary>
   /// ステート種別の取得
   /// </summary>
+  /// <returns>対応するPlayerActionType</returns>
   virtual PlayerActionType GetType() const = 0;
 
   /// <summary>
-  /// ステート開始時の処理
+  /// ステート開始時の初期化処理
   /// </summary>
   /// <param name="player">プレイヤー参照</param>
   virtual void Enter(Player &/*player*/) {}
 
   /// <summary>
-  /// ステート更新処理
+  /// 毎フレームの更新処理（入力受付、移動物理、アニメーション制御等）
   /// </summary>
   /// <param name="player">プレイヤー参照</param>
-  /// <param name="speedMultiplier">ゲーム速度乗数</param>
+  /// <param name="speedMultiplier">ゲーム全体の速度倍率（タイムスケール・スクロール比率）</param>
   virtual void Update(Player &player, float speedMultiplier) = 0;
 
   /// <summary>
-  /// ステート終了時の処理
+  /// ステート終了時の後処理・リセット
   /// </summary>
   /// <param name="player">プレイヤー参照</param>
   virtual void Exit(Player &/*player*/) {}
 
   /// <summary>
-  /// このステート中にプレイヤーが通常アクション（レーン移動、ジャンプ等）を入力可能かどうか
+  /// プレイヤーが任意操作（ジャンプ・ロール・レーン移動等）を行えるかどうか
   /// </summary>
+  /// <returns>操作可能な場合 true、被弾中や強制移動中など操作不能な場合 false</returns>
   virtual bool CanAct() const { return true; }
 };
 
 /// <summary>
-/// 通常走行ステート
-/// 地上を走行し、レーン移動やジャンプ・スライディング等の各種アクション入力を受け付ける
+/// プレイヤーの走行（通常移動）ステートクラス
+/// 地上を走行中のアニメーション再生、左右レーン移動入力の処理、
+/// およびジャンプ／ロールへのアクション遷移（先行入力含む）を管理します。
 /// </summary>
 class PlayerRunState : public IPlayerState {
 public:
@@ -69,8 +73,9 @@ public:
 };
 
 /// <summary>
-/// ジャンプステート
-/// 重力と初速による放物線運動を行い、着地時に走行ステートへ遷移する
+/// プレイヤーのジャンプ（跳躍・滞空）ステートクラス
+/// 上方向への跳躍初速の適用、重力による落下物理計算、空中でのレーン移動制御、
+/// 着地判定・着地SE・画面揺れ、および着地時の先行入力バッファ判定を管理します。
 /// </summary>
 class PlayerJumpState : public IPlayerState {
 public:
@@ -80,8 +85,9 @@ public:
 };
 
 /// <summary>
-/// スライディング（ロール）ステート
-/// 姿勢を低くして低い障害物を回避する。頭上に障害物がある場合は自動でスライディングが継続される
+/// プレイヤーのロール（スライディング・低姿勢回避）ステートクラス
+/// 高空障害物をくぐるための低姿勢化（モデル高さ調整・アニメーション再生）、
+/// タイマーによる持続制御（長押し継続対応）、レーン移動やジャンプによるキャンセルを管理します。
 /// </summary>
 class PlayerRollState : public IPlayerState {
 public:
@@ -92,8 +98,9 @@ public:
 };
 
 /// <summary>
-/// 被弾・ノックバックステート
-/// 障害物に衝突した際のノックバック演出を行い、一定時間操作不能となる
+/// プレイヤーの被弾（ノックバック・被ダメージ）ステートクラス
+/// 障害物や敵攻撃衝突時の吹き飛び物理挙動・回転演出を制御し、
+/// 被弾演出中はプレイヤーの任意操作を無効化（CanAct = false）します。
 /// </summary>
 class PlayerHitState : public IPlayerState {
 public:
@@ -105,8 +112,9 @@ public:
 };
 
 /// <summary>
-/// 強制中央復帰ステート
-/// 1レーン区間等のステージギミック突入時に、プレイヤーを自動的に中央レーンへ補間移動させる
+/// プレイヤーの中央レーン強制移動ステートクラス
+/// ボス戦開始演出時などに、現在位置から滑らかなイージング補間によって
+/// プレイヤーを中央レーン（レーン0）へ強制的に移動させます（移動中は操作無効）。
 /// </summary>
 class PlayerForcedCenterState : public IPlayerState {
 public:
@@ -117,7 +125,23 @@ public:
 };
 
 /// <summary>
-/// ランゲームのプレイヤーキャラクター（ペンギン）を制御するクラス
+/// プレイヤークラス（主人公ペンギン）
+/// 3レーン（可変レーン）ランゲームにおけるプレイヤーの制御を担当します。
+/// 
+/// 【主な責務】
+/// 1. 移動・レーン制御:
+///    - 左右入力に応じたレーン間の滑らかなLerp補間移動
+///    - レーン境界（minLane〜maxLane）の制限
+///    - ギミックによる中央レーンへの強制復帰
+/// 2. アクション・ステートマシン（Stateパターン）:
+///    - 通常走行（Run）、ジャンプ（Jump）、スライディング（Roll）、被弾・転倒（Hit）、中央復帰（ForcedCenter）
+/// 3. 先行入力バッファ:
+///    - 着地直前や硬直中のジャンプ・ロール・レーン移動入力を保持し、操作感を向上
+/// 4. 演出・アニメーション:
+///    - CharacterAnimatorによるGLTFラン／スライドモデルのブレンドアニメーション
+///    - 着地時のシェイク演出コールバック、大型障害物被弾時の画面激突演出（Camera Slam）
+/// 5. アイテム・特殊状態:
+///    - バリア機能、操作反転（ボス戦演出等）、タイトル用オートパイロット
 /// </summary>
 class Player : public GameObject {
   friend class PlayerRunState;
@@ -159,10 +183,9 @@ private:
   static constexpr float kDefaultHitDuration = 90.0f;
   static constexpr float kDefaultForcedCenterDuration = 30.0f;
 
-  // モデル・アックスのスケール定数
+  // モデルのスケール定数
   static constexpr Vector3 kDefaultModelScale = {140.0f, 140.0f, 140.0f};
   static constexpr Vector3 kDefaultModelTranslate = {0.0f, -1.0f, 0.0f};
-  static constexpr Vector3 kDefaultAxeScale = {100.0f, 100.0f, 100.0f};
   static constexpr float kAnimationSpeedFactor = 0.01f;
 
   // 色定数
@@ -180,17 +203,22 @@ private:
   static constexpr float kHitLandingFriction = 0.8f;
   static constexpr float kDefaultSpeedMultiplier = 1.0f;
 
-private:
-  std::unique_ptr<Model> axe_ = std::make_unique<Model>();
-  Transform axeOffset_{kDefaultAxeScale,
-                       {
-                           0.0f,
-                           0.0f,
-                           0.0f,
-                       },
-                       {0.0f, 0.0f, 0.0f}};
-  bool isDrawAxe_ = false;
+  // カメラ激突（Camera Slam）演出定数
+  static constexpr float kCameraSlamDurationFrames = 20.0f; // カメラへ飛んでいくフレーム数
+  static constexpr float kCameraStickSlideSpeedY = -0.005f;  // 画面張り付き後の滑り落ち速度
+  static constexpr float kCameraSlamSpinSpeedX = 0.25f;    // 吹き飛び回転速度X
+  static constexpr float kCameraSlamSpinSpeedZ = 0.15f;    // 吹き飛び回転速度Z
 
+  // 腹滑り雪玉化（Snowball Hit）演出定数
+  static constexpr float kTripSnowballDuration = 110.0f;  // 演出全体のフレーム数（約1.8秒）
+  static constexpr float kSnowballFormDelay = 12.0f;      // 腹ばい滑走から雪玉が形成され始めるフレーム
+  static constexpr float kSnowballFullFormFrames = 42.0f; // 雪玉が最大サイズに到達するフレーム
+  static constexpr float kSnowballMaxScale = 2.0f;        // 雪玉の最大スケール
+  static constexpr float kSnowballInitialSpeedZ = 0.40f;  // 初期滑走速度
+  static constexpr float kSnowballMaxSpeedZ = 0.85f;      // 雪玉加速後の最高速度
+  static constexpr float kSnowballRollSpeed = 0.30f;      // 雪玉の回転速度
+
+private:
   // ペンギンモデルのスケール・オフセット（GLTFモデルの0.01スケールを等身大に補正）
   Transform modelOffset_{
       kDefaultModelScale, {0.0f, 0.0f, 0.0f}, kDefaultModelTranslate};
@@ -238,6 +266,20 @@ private:
   float hitTimer_ = 0.0f;
   float hitDuration_ = kDefaultHitDuration; // ノックバックにかかるフレーム数
   Vector3 knockbackVelocity_{0.0f, 0.0f, 0.0f}; // ノックバック速度
+
+  // カメラ激突（Camera Slam）演出用変数
+  bool isCameraSlam_ = false;       // 大型障害物に衝突してカメラに向かって吹き飛ぶフラグ
+  bool hasHitCamera_ = false;       // カメラ画面に到達・激突したフラグ
+  Vector3 cameraTargetPos_{0.0f, 0.0f, -12.5f}; // カメラ激突目標座標
+  std::function<void()> onCameraHitCallback_ = nullptr; // カメラ激突時のコールバック（シェイク等）
+
+  // 腹滑り雪玉化演出用変数
+  std::unique_ptr<Model> snowballModel_ = std::make_unique<Model>();
+  Transform snowballTransform_{};
+  bool isSnowballActive_ = false;
+  bool isSnowballHidingPenguin_ = false;
+  float snowballScale_ = 0.0f;
+  float snowballRotationX_ = 0.0f;
 
   // 強制中央移動用の変数
   float forcedCenterTimer_ = 0.0f;
@@ -346,67 +388,20 @@ public:
            GameObject::HasMaterial();
   }
 
-  // =========================================================
-  // ステート管理・状態確認
-  // =========================================================
-
-  /// <summary>
-  /// 現在のアクションタイプを取得
-  /// </summary>
+  // ステート関連
   PlayerActionType GetActionType() const {
     return currentState_ ? currentState_->GetType() : PlayerActionType::Run;
   }
-
-  /// <summary>
-  /// 現在のアクションステートインスタンスを取得
-  /// </summary>
   IPlayerState *GetCurrentActionState() const { return currentState_.get(); }
-
-  /// <summary>
-  /// 現在のゲーム速度乗数を取得
-  /// </summary>
   float GetCurrentSpeedMultiplier() const { return currentSpeedMultiplier_; }
-
-  /// <summary>
-  /// アクションステートを新しいステートインスタンスに遷移
-  /// </summary>
-  /// <param name="newState">遷移先ステート</param>
   void ChangeActionState(std::unique_ptr<IPlayerState> newState);
-
-  /// <summary>
-  /// アクションステートを種別指定で遷移
-  /// </summary>
-  /// <param name="nextType">遷移先のアクション種別</param>
   void ChangeActionState(PlayerActionType nextType);
 
-  /// <summary>
-  /// スライディング（ロール）中かどうか
-  /// </summary>
   bool GetIsRolling() const { return GetActionType() == PlayerActionType::Roll; }
-
-  /// <summary>
-  /// スライディング状態を強制維持するか設定（頭上に障害物がある場合など）
-  /// </summary>
   void SetKeepRolling(bool keep) { keepRolling_ = keep; }
-
-  /// <summary>
-  /// ジャンプ中かどうか
-  /// </summary>
   bool GetIsJumping() const { return GetActionType() == PlayerActionType::Jump; }
-
-  /// <summary>
-  /// 被弾中（ノックバック中）かどうか
-  /// </summary>
   bool GetIsHit() const { return GetActionType() == PlayerActionType::Hit; }
-
-  /// <summary>
-  /// 中央強制移動中かどうか
-  /// </summary>
   bool GetIsForcedCentering() const { return GetActionType() == PlayerActionType::ForcedCenter; }
-
-  // =========================================================
-  // パラメータ取得・設定
-  // =========================================================
 
   float GetJumpPower() const { return jumpPower_; }
   void SetJumpPower(float power) { jumpPower_ = power; }
@@ -419,43 +414,23 @@ public:
   float GetBaseHeight() const { return baseHeight_; }
   void SetBaseHeight(float height) { baseHeight_ = height; }
 
-  /// <summary>
-  /// バリア所持状態の取得
-  /// </summary>
   bool GetHasBarrier() const { return hasBarrier_; }
-
-  /// <summary>
-  /// バリア所持状態の設定（マテリアルカラーの切り替えも含む）
-  /// </summary>
   void SetHasBarrier(bool hasBarrier);
 
-  /// <summary>
-  /// 操作反転フラグの設定（ボス戦やカメラ反転演出用）
-  /// </summary>
   void SetInvertedControls(bool inv) { isInvertedControls_ = inv; }
   bool GetInvertedControls() const { return isInvertedControls_; }
 
-  /// <summary>
-  /// オートパイロット（自動運転）モードの設定
-  /// </summary>
+  // オートパイロット設定
   void SetAutoPilot(bool autoPilot) { isAutoPilot_ = autoPilot; }
   bool GetAutoPilot() const { return isAutoPilot_; }
 
-  /// <summary>
-  /// プレイヤー入力有効フラグ設定（カウントダウン等の操作ロック用）
-  /// </summary>
+  // プレイヤー入力有効フラグ設定
   void SetInputEnabled(bool enable) { isInputEnabled_ = enable; }
   bool GetInputEnabled() const { return isInputEnabled_; }
 
-  /// <summary>
-  /// プレイヤー描画表示・非表示の設定
-  /// </summary>
+  // 表示設定
   void SetVisible(bool visible) { isVisible_ = visible; }
   bool GetVisible() const { return isVisible_; }
-
-  // =========================================================
-  // アクション発動トリガー（入力・オートパイロット共用）
-  // =========================================================
 
   /// <summary>
   /// 外部からのジャンプ発動（オートパイロット等用）
@@ -481,24 +456,12 @@ public:
   /// <returns>発動に成功した場合true</returns>
   bool TriggerMoveRight();
 
-  // =========================================================
-  // レーン・アクション可否状態
-  // =========================================================
-
   int GetLaneIndex() const { return laneIndex_; }
   int GetTargetLaneIndex() const { return targetLaneIndex_; }
   bool IsChangingLane() const { return laneIndex_ != targetLaneIndex_; }
-
-  /// <summary>
-  /// 現在プレイヤーが入力やアクションを行える状態か判定
-  /// </summary>
   bool CanAct() const {
     return isInputEnabled_ && (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
   }
-
-  // =========================================================
-  // 先行入力バッファ
-  // =========================================================
 
   /// <summary>
   /// 先行入力バッファのタイマー更新
@@ -509,10 +472,6 @@ public:
   bool HasBufferedLane() const { return bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0; }
   int GetBufferedLaneDirection() const { return bufferedLaneDirection_; }
 
-  /// <summary>
-  /// バッファされたジャンプ入力を消費
-  /// </summary>
-  /// <returns>消費できた場合true</returns>
   bool ConsumeBufferedJump() {
     if (bufferedJumpTimer_ > 0.0f) {
       bufferedJumpTimer_ = 0.0f;
@@ -521,10 +480,6 @@ public:
     return false;
   }
 
-  /// <summary>
-  /// バッファされたスライディング入力を消費
-  /// </summary>
-  /// <returns>消費できた場合true</returns>
   bool ConsumeBufferedRoll() {
     if (bufferedRollTimer_ > 0.0f) {
       bufferedRollTimer_ = 0.0f;
@@ -533,10 +488,6 @@ public:
     return false;
   }
 
-  /// <summary>
-  /// バッファされたレーン移動入力を消費
-  /// </summary>
-  /// <returns>移動方向（-1: 左, +1: 右, 0: なし）</returns>
   int ConsumeBufferedLane() {
     if (bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0) {
       int dir = bufferedLaneDirection_;
@@ -547,9 +498,6 @@ public:
     return 0;
   }
 
-  /// <summary>
-  /// 先行入力バッファをクリア
-  /// </summary>
   void ClearInputBuffer() {
     bufferedJumpTimer_ = 0.0f;
     bufferedRollTimer_ = 0.0f;
@@ -557,21 +505,27 @@ public:
     bufferedLaneDirection_ = 0;
   }
 
-  // =========================================================
-  // コールバック・衝突判定・ギミック
-  // =========================================================
-
-  /// <summary>
-  /// ジャンプ着地時の演出コールバックを設定（カメラシェイク・土煙等用）
-  /// </summary>
+  // 着地演出コールバック
   void SetOnLandCallback(std::function<void()> callback) { onLandCallback_ = callback; }
   const std::function<void()>& GetOnLandCallback() const { return onLandCallback_; }
+
+  // カメラ激突（Camera Slam）アクセス
+  bool GetIsCameraSlam() const { return isCameraSlam_; }
+  void SetIsCameraSlam(bool slam) { isCameraSlam_ = slam; }
+  bool GetHasHitCamera() const { return hasHitCamera_; }
+  void SetHasHitCamera(bool hit) { hasHitCamera_ = hit; }
+  const Vector3& GetCameraTargetPos() const { return cameraTargetPos_; }
+  void SetCameraTargetPos(const Vector3& pos) { cameraTargetPos_ = pos; }
+  void SetOnCameraHitCallback(std::function<void()> callback) { onCameraHitCallback_ = callback; }
+  void ExecuteCameraHitCallback() { if (onCameraHitCallback_) onCameraHitCallback_(); }
 
   /// <summary>
   /// 障害物被弾・衝突時の処理開始
   /// </summary>
   /// <param name="isTrip">つまずき転倒かどうか</param>
-  void OnHit(bool isTrip = false);
+  /// <param name="isLargeObstacle">大型障害物（カメラ激突対象）かどうか</param>
+  /// <param name="cameraPos">カメラ（画面）の激突目標座標</param>
+  void OnHit(bool isTrip = false, bool isLargeObstacle = false, const Vector3& cameraPos = {0.0f, 3.0f, -12.5f});
 
   /// <summary>
   /// 被弾・ノックバックアニメーションが完了したか判定
@@ -594,9 +548,7 @@ public:
   /// <param name="duration">移動完了までのフレーム数</param>
   void StartForceToCenter(float duration);
 
-  // =========================================================
   // ステートクラス向けのアクセサ
-  // =========================================================
   Transform &GetTransformRef() { return transform_; }
   CharacterAnimator *GetModel() { return model_.get(); }
   float &GetVelocityYRef() { return velocityY_; }
@@ -613,6 +565,21 @@ public:
   Vector3 &GetKnockbackVelocityRef() { return knockbackVelocity_; }
   bool GetIsTrip() const { return isTrip_; }
   void SetIsTrip(bool trip) { isTrip_ = trip; }
+
+  // 腹滑り雪玉化用アクセサ
+  bool GetIsSnowballActive() const { return isSnowballActive_; }
+  void SetSnowballActive(bool active) { isSnowballActive_ = active; }
+  bool GetIsSnowballHidingPenguin() const { return isSnowballHidingPenguin_; }
+  void SetSnowballHidingPenguin(bool hide) { isSnowballHidingPenguin_ = hide; }
+  float GetSnowballScale() const { return snowballScale_; }
+  void SetSnowballScale(float scale) { snowballScale_ = scale; }
+  float GetSnowballRotationX() const { return snowballRotationX_; }
+  void SetSnowballRotationX(float rot) { snowballRotationX_ = rot; }
+  float &GetSnowballRotationXRef() { return snowballRotationX_; }
+  const Transform &GetSnowballTransform() const { return snowballTransform_; }
+  void SetSnowballTransform(const Transform &trans) { snowballTransform_ = trans; }
+  const Transform &GetModelOffset() const { return modelOffset_; }
+
   float &GetForcedCenterTimerRef() { return forcedCenterTimer_; }
   float GetForcedCenterDuration() const { return forcedCenterDuration_; }
   void SetForcedCenterDuration(float d) { forcedCenterDuration_ = d; }

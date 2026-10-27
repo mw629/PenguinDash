@@ -560,3 +560,15 @@ Ray ScreenToWorldRay(const Vector2& screenPos, const Matrix4x4& viewMatrix, cons
 /// <param name="screenHeight">画面高さ</param>
 Vector2 WorldToScreenPoint(const Vector3& worldPos, const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix, float screenWidth, float screenHeight);
 
+/// <summary>
+/// 2Dスクリーン座標(モニター位置)から、カメラ画面の手前(近クリップ面)の3Dワールド座標を取得します。
+/// </summary>
+/// <param name="screenPos">スクリーン上のピクセル座標(左上原点)</param>
+/// <param name="viewMatrix">ビュー行列</param>
+/// <param name="projMatrix">射影行列</param>
+/// <param name="screenWidth">画面幅</param>
+/// <param name="screenHeight">画面高さ</param>
+/// <returns>画面手前(近クリップ面)のワールド座標</returns>
+Vector3 ScreenToNearWorldPoint(const Vector2& screenPos, const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix, float screenWidth, float screenHeight);
+
+

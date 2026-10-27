@@ -148,10 +148,6 @@ void AchievementManager::RegisterDefaultAchievements() {
       "unmoved_5s", "石像の境地", "5秒間動かずに留まる", 1000.0f, 5.0f,
       [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒");
 
-  RegisterProgress(
-      "unmoved_10s", "南極の氷像", "10秒間動かずに留まる", 2000.0f, 10.0f,
-      [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒");
-
   // --- 5. ボス戦系実績 ---
   RegisterCondition(
       "boss_encounter", "氷雪の王と対峙", "ボス戦に突入する", 500.0f,

@@ -1,4 +1,4 @@
-﻿#include "Obstacle.h"
+#include "Obstacle.h"
 #include "Graphics/Render/Draw.h"
 #include "Resource/AssetManager.h"
 #include "Math/Calculation.h"
@@ -410,11 +410,17 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
 void Obstacle::OnBlowAway() {
   if (isHit_)
     return;
-  isHit_ = true;
-  isFalling_ = false;
   // 上と手前(画面方向)に勢いよく飛ぶ
   float randX = ((float)rand() / RAND_MAX - 0.5f) * kBlowAwayRandRangeX;
-  velocity_ = {randX, kBlowAwayInitialVelocityY, kBlowAwayInitialVelocityZ};
+  OnBlowAway({randX, kBlowAwayInitialVelocityY, kBlowAwayInitialVelocityZ});
+}
+
+void Obstacle::OnBlowAway(const Vector3 &velocity) {
+  if (isHit_)
+    return;
+  isHit_ = true;
+  isFalling_ = false;
+  velocity_ = velocity;
 }
 
 void Obstacle::OnHit() {
@@ -550,7 +556,8 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   // 被弾
   bool isTrip = (type_ == Type::Low || type_ == Type::BossAttackLow);
-  scene->TriggerPlayerHit(isTrip);
+  bool isLarge = IsLargeObstacle();
+  scene->TriggerPlayerHit(isTrip, isLarge);
   return true;
 }
 

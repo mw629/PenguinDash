@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Engine.h>
 #include <memory>
 
@@ -193,6 +193,12 @@ public:
   void OnBlowAway();
 
   /// <summary>
+  /// 指定初速度での吹き飛びアニメーション処理（雪玉衝突等）
+  /// </summary>
+  /// <param name="velocity">吹き飛び初速度ベクトル</param>
+  void OnBlowAway(const Vector3 &velocity);
+
+  /// <summary>
   /// 障害物被弾処理
   /// </summary>
   void OnHit();
@@ -272,6 +278,10 @@ public:
   }
   virtual bool RequiresLaneChangeToAvoid() const {
     return type_ == Type::Wall || type_ == Type::BossAttack || type_ == Type::BossAttackReflectable;
+  }
+  virtual bool IsLargeObstacle() const {
+    return type_ == Type::Wall || type_ == Type::High ||
+           type_ == Type::BossAttack || type_ == Type::BossAttackHigh;
   }
 
   /// <summary>

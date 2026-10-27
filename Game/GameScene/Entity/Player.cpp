@@ -24,7 +24,7 @@ void Player::UpdateDrawTransform(float speedMultiplier) {
   // 平行移動オフセットの適用
   drawTransform.translate.x += modelOffset_.translate.x;
   drawTransform.translate.y +=
-      modelOffset_.translate.y + (GetIsRolling() ? kDefaultRollingHeightOffset : 0.0f);
+      modelOffset_.translate.y + ((GetIsRolling() || (GetIsHit() && isTrip_)) ? kDefaultRollingHeightOffset : 0.0f);
   drawTransform.translate.z += modelOffset_.translate.z;
 
   // 回転オフセットの適用
@@ -58,21 +58,25 @@ void Player::Initialize(ModelData modelData) {
   model_->SetName("Player Penguin Animation Model");
   model_->SetVisibleBones(false);
 
-  // 手のボーンを登録
-  model_->SetBoneMapping(BoneType::RightHand, "mixamorig:RightHand");
-  model_->SetBoneMapping(BoneType::LeftHand, "mixamorig:LeftHand");
-
-  // Axeの初期化
-  ModelData axeData = AssimpLoadObjFile("Resources/Model/Axe", "Axe.obj");
-  axe_->Initialize(axeData);
-  axe_->SetName("Player Axe Model");
-  axeOffset_.scale = kDefaultAxeScale;
-  axeOffset_.rotate = {0.0f, 0.0f, 0.0f};
-  axeOffset_.translate = {0.0f, 0.0f, 0.0f};
-
   // コライダーの初期化
   auto collider = AddComponent<BoxColliderComponent>();
   collider->SetSize({kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth});
+
+  // 腹滑り雪玉化演出用球体モデルの初期化
+  ModelData sphereData =
+      AssetManager::LoadModel("Resources/Model/obj", "sphere.obj");
+  int whiteTex =
+      AssetManager::LoadTexture("Resources/Texture/white64x64.png");
+  sphereData.textureIndex = whiteTex;
+  for (auto &subMesh : sphereData.subMeshes) {
+    subMesh.textureIndex = whiteTex;
+  }
+  snowballModel_->Initialize(sphereData);
+  snowballModel_->SetShader("ObjectShader");
+  snowballModel_->SetName("Player Snowball Model");
+  if (snowballModel_->GetMaterial()) {
+    snowballModel_->GetMaterial()->SetColor({0.96f, 0.98f, 1.0f, 1.0f});
+  }
 
   UpdateDrawTransform(0.0f);
 }
@@ -251,16 +255,49 @@ void PlayerRollState::Exit(Player &player) {
 // --- PlayerHitState ---
 void PlayerHitState::Enter(Player &player) {
   player.GetTransformRef().scale = {1.0f, 1.0f, 1.0f};
-  if (player.GetModel()) {
-    player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
-  }
   player.GetCurrentRecoveryTimerRef() = 0.0f;
   player.GetHitTimerRef() = 0.0f;
 
-  float randX = ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) * Player::kKnockbackRandXScale;
-  if (player.GetIsTrip()) {
-    player.GetKnockbackVelocityRef() = {randX, Player::kTripKnockbackVelocity.y, Player::kTripKnockbackVelocity.z};
+  if (player.GetIsCameraSlam()) {
+    if (player.GetModel()) {
+      player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+    }
+    player.SetHasHitCamera(false);
+    Vector3 startPos = player.GetTransform().translate;
+    Vector3 targetPos = player.GetCameraTargetPos();
+    float frames = Player::kCameraSlamDurationFrames;
+    if (frames <= 0.0f) frames = 20.0f;
+
+    Vector3 vel;
+    vel.x = (targetPos.x - startPos.x) / frames;
+    vel.z = (targetPos.z - startPos.z) / frames;
+    // 重力を考慮して目標Yへ到達する放物線初速
+    vel.y = (targetPos.y - startPos.y) / frames + 0.5f * (player.GetGravity() * Player::kHitGravityMultiplier) * frames;
+    player.GetKnockbackVelocityRef() = vel;
+  } else if (player.GetIsTrip()) {
+    // === 腹滑り雪玉化（Belly Slide & Snowball Roll）演出の開始 ===
+    player.SetSnowballActive(true);
+    player.SetSnowballHidingPenguin(false);
+    player.SetSnowballScale(0.0f);
+    player.SetSnowballRotationX(0.0f);
+
+    // お腹ばいスライディング姿勢（sneakWalk）に素早く遷移
+    if (player.GetModel()) {
+      player.GetModel()->SetAnimation("sneakWalk", 0.04f);
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
+
+    // お腹が地面に接地する高さに設定し、前方に滑り出す初速を与える
+    player.GetTransformRef().translate.y = player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
+    player.GetTransformRef().rotate.x = 0.05f;
+    player.GetTransformRef().rotate.z = 0.08f;
+    player.GetKnockbackVelocityRef() = {0.0f, 0.0f, Player::kSnowballInitialSpeedZ};
   } else {
+    // 通常被弾
+    if (player.GetModel()) {
+      player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+    }
+    float randX = ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) * Player::kKnockbackRandXScale;
     player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y, Player::kHitKnockbackVelocity.z};
   }
 }
@@ -274,28 +311,126 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
   Transform &transform = player.GetTransformRef();
   Vector3 &knockback = player.GetKnockbackVelocityRef();
 
-  transform.translate.x += knockback.x;
-  transform.translate.y += knockback.y;
-  transform.translate.z += knockback.z;
+  if (player.GetIsCameraSlam()) {
+    if (!player.GetHasHitCamera()) {
+      // カメラに向かって吹き飛び中
+      transform.translate.x += knockback.x;
+      transform.translate.y += knockback.y;
+      transform.translate.z += knockback.z;
 
-  knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
-  if (player.GetIsTrip()) {
-    transform.rotate.x += Player::kTripRotationSpeed;
+      knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
+
+      // コミカルにきりもみ回転
+      transform.rotate.x += Player::kCameraSlamSpinSpeedX;
+      transform.rotate.z += Player::kCameraSlamSpinSpeedZ;
+
+      Vector3 targetPos = player.GetCameraTargetPos();
+      bool reachedZ = (knockback.z < 0.0f && transform.translate.z <= targetPos.z) ||
+                      (knockback.z > 0.0f && transform.translate.z >= targetPos.z);
+      if (reachedZ || player.GetHitTimerRef() >= Player::kCameraSlamDurationFrames) {
+        // カメラ画面にドカンと激突！
+        player.SetHasHitCamera(true);
+        transform.translate.z = targetPos.z;
+        transform.translate.x = targetPos.x;
+        knockback.x = 0.0f;
+        knockback.z = 0.0f;
+        knockback.y = Player::kCameraStickSlideSpeedY; // 画面をゆっくり滑り落ちる
+
+        // カメラ（正面）を向いて画面にペタッと張り付く姿勢
+        transform.rotate.x = 0.0f;
+        transform.rotate.y = 3.14159f;
+        transform.rotate.z = 0.12f;
+
+        // 激突コールバック実行（激突シェイク・SE・振動）
+        player.ExecuteCameraHitCallback();
+      }
+    } else {
+      // カメラ画面に張り付いて滑り落ち中（床判定を無視して画面下へ滑り落ちる）
+      transform.translate.y += knockback.y;
+      transform.rotate.z += 0.002f;
+    }
+  } else if (player.GetIsTrip()) {
+    // === 腹滑り雪玉化の毎フレーム更新 ===
+    float timer = player.GetHitTimerRef();
+
+    // 1. 前方（奥側+Z）への滑走速度：初期滑走から徐々に雪玉の勢いがついて加速
+    float speedT = std::clamp(timer / 60.0f, 0.0f, 1.0f);
+    float currentSpeedZ = Lerp(Player::kSnowballInitialSpeedZ, Player::kSnowballMaxSpeedZ, speedT);
+    transform.translate.z += currentSpeedZ;
+
+    // 2. 腹ばいスライディング時のコミカルなおっとっと揺れ（雪玉に完全に包まれる前）
+    if (timer < Player::kSnowballFullFormFrames) {
+      transform.rotate.z = std::sin(timer * 0.35f) * 0.12f;
+      transform.rotate.x = 0.05f;
+    }
+
+    // 3. 雪玉の生成・成長・転がり処理
+    if (timer >= Player::kSnowballFormDelay) {
+      float formProgress = (timer - Player::kSnowballFormDelay) /
+                           (Player::kSnowballFullFormFrames - Player::kSnowballFormDelay);
+      formProgress = std::clamp(formProgress, 0.0f, 1.0f);
+
+      // 雪玉がモコモコッと膨らむ
+      float scale = formProgress * Player::kSnowballMaxScale;
+      player.SetSnowballScale(scale);
+
+      // 雪玉の回転（前方にゴロゴロ転がる）
+      player.GetSnowballRotationXRef() += Player::kSnowballRollSpeed * (currentSpeedZ / Player::kSnowballInitialSpeedZ);
+
+      // 地面高さ（baseHeight_ + modelOffset_.translate.y = 約2.0m）
+      float groundY = player.GetBaseHeight() + player.GetModelOffset().translate.y;
+
+      // 雪玉Transform（底面が地面に接地するように設定）
+      Transform sbTrans;
+      sbTrans.scale = {scale, scale, scale};
+      sbTrans.rotate = {player.GetSnowballRotationX(), 0.0f, std::sin(timer * 0.25f) * 0.08f};
+      sbTrans.translate = {transform.translate.x, groundY + scale, transform.translate.z};
+      player.SetSnowballTransform(sbTrans);
+
+      // ペンギンを雪玉の中央に追従
+      transform.translate.y = groundY + scale * 0.5f;
+
+      // 雪玉が最大サイズに達したらペンギンを雪玉の中に包み込む（ペンギン描画を非表示にして雪玉だけにする）
+      if (timer >= Player::kSnowballFullFormFrames) {
+        player.SetSnowballHidingPenguin(true);
+      }
+    } else {
+      player.SetSnowballScale(0.0f);
+      Transform sbTrans = transform;
+      sbTrans.scale = {0.0f, 0.0f, 0.0f};
+      player.SetSnowballTransform(sbTrans);
+    }
   } else {
-    transform.rotate.x -= Player::kHitRotationSpeed;
-  }
+    // 通常被弾
+    transform.translate.x += knockback.x;
+    transform.translate.y += knockback.y;
+    transform.translate.z += knockback.z;
 
-  if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
-    transform.translate.y = player.GetBaseHeight();
-    knockback.y = 0.0f;
-    knockback.x *= Player::kHitLandingFriction;
-    knockback.z *= Player::kHitLandingFriction;
+    knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
+    transform.rotate.x -= Player::kHitRotationSpeed;
+
+    if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
+      transform.translate.y = player.GetBaseHeight();
+      knockback.y = 0.0f;
+      knockback.x *= Player::kHitLandingFriction;
+      knockback.z *= Player::kHitLandingFriction;
+    }
   }
 }
 
 void PlayerHitState::Exit(Player &player) {
   player.GetTransformRef().rotate.x = 0.0f;
+  player.GetTransformRef().rotate.y = 0.0f;
+  player.GetTransformRef().rotate.z = 0.0f;
   player.GetKnockbackVelocityRef() = {0.0f, 0.0f, 0.0f};
+  player.SetIsCameraSlam(false);
+  player.SetHasHitCamera(false);
+  player.SetSnowballActive(false);
+  player.SetSnowballHidingPenguin(false);
+  player.SetSnowballScale(0.0f);
+  Transform sbTrans{};
+  sbTrans.scale = {0.0f, 0.0f, 0.0f};
+  player.SetSnowballTransform(sbTrans);
 }
 
 // --- PlayerForcedCenterState ---
@@ -347,7 +482,14 @@ void Player::Reset() {
 
   isTrip_ = false;
   hitTimer_ = 0.0f;
+  hitDuration_ = kDefaultHitDuration;
   knockbackVelocity_ = {0.0f, 0.0f, 0.0f};
+
+  isSnowballActive_ = false;
+  isSnowballHidingPenguin_ = false;
+  snowballScale_ = 0.0f;
+  snowballRotationX_ = 0.0f;
+  snowballTransform_.scale = {0.0f, 0.0f, 0.0f};
 
   forcedCenterTimer_ = 0.0f;
   forcedCenterDuration_ = kDefaultForcedCenterDuration;
@@ -557,16 +699,10 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
 
   model_->SettingWvp(view);
 
-  // Axeのアタッチ処理
-  if (isDrawAxe_) {
-    Transform handTransform = model_->GetBoneTransform(BoneType::RightHand);
-    Matrix4x4 boneMatrix = MakeAffineMatrix(
-        handTransform.translate, handTransform.scale, handTransform.rotate);
-    Matrix4x4 offsetMatrix = MakeAffineMatrix(
-        axeOffset_.translate, axeOffset_.scale, axeOffset_.rotate);
-    Matrix4x4 finalMatrix = MultiplyMatrix4x4(offsetMatrix, boneMatrix);
-    axe_->SetTransform(DecomposeMatrix(finalMatrix));
-    axe_->SettingWvp(view);
+  // 雪玉モデルのTransform設定とWVP更新
+  if (snowballModel_) {
+    snowballModel_->SetTransform(snowballTransform_);
+    snowballModel_->SettingWvp(view);
   }
 
   // コライダーサイズ設定
@@ -584,9 +720,13 @@ void Player::Draw(class Draw &draw) {
   if (!isVisible_) {
     return;
   }
-  draw.DrawAnimation(model_.get());
-  if (isDrawAxe_) {
-    draw.DrawModel(axe_.get());
+  // 雪玉に完全に包まれる前はペンギンモデルを描画
+  if (!isSnowballHidingPenguin_) {
+    draw.DrawAnimation(model_.get());
+  }
+  // 雪玉がアクティブな場合は雪玉を描画
+  if (isTrip_ && isSnowballActive_ && snowballModel_ && snowballScale_ > 0.01f) {
+    draw.DrawModel(snowballModel_.get());
   }
   GameObject::Draw(draw);
 }
@@ -603,7 +743,6 @@ void Player::ImGuiInnerComponents() {
                     3.14f);
   ImGui::DragFloat3("Model Offset", &modelOffset_.translate.x, 0.02f, -5.0f,
                     5.0f);
-  ImGui::Checkbox("Draw Axe", &isDrawAxe_);
 
   ImGui::Separator();
   const char *stateNames[] = {"Run", "Jump", "Roll", "Hit", "ForcedCenter"};
@@ -636,11 +775,21 @@ void Player::ImGuiInnerComponents() {
               laneChangeSpeed_ > 0.0f ? (1.0f / laneChangeSpeed_) : 0.0f);
   ImGui::Text("Roll Duration: %.0f frames (%.2f s)", rollDuration_,
               rollDuration_ / 60.0f);
+  ImGui::Separator();
+  ImGui::Text("Snowball Hit Settings");
+  ImGui::Text("Snowball Active: %s", isSnowballActive_ ? "YES" : "NO");
+  ImGui::Text("Snowball Scale: %.2f", snowballScale_);
+  if (ImGui::Button("Test Trip Snowball Hit")) {
+    OnHit(true, false);
+  }
 #endif
 }
 
-void Player::OnHit(bool isTrip) {
+void Player::OnHit(bool isTrip, bool isLargeObstacle, const Vector3& cameraPos) {
   isTrip_ = isTrip;
+  isCameraSlam_ = (!isTrip && isLargeObstacle);
+  cameraTargetPos_ = cameraPos;
+  hitDuration_ = isTrip ? kTripSnowballDuration : kDefaultHitDuration;
   ChangeActionState(PlayerActionType::Hit);
 }
 
