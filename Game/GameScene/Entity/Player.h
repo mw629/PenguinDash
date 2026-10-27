@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <Engine.h>
 #include <memory>
@@ -7,26 +7,60 @@
 #include "GameObject.h"
 #include <CharacterAnimator.h>
 
+/// <summary>
+/// プレイヤーのアクション（状態）タイプを表す列挙型
+/// </summary>
 enum class PlayerActionType {
-  Run,
-  Jump,
-  Roll,
-  Hit,
-  ForcedCenter
+  Run,          //!< 通常走行
+  Jump,         //!< ジャンプ中
+  Roll,         //!< スライディング（しゃがみ・ロール）中
+  Hit,          //!< 障害物被弾・ノックバック・転倒中
+  ForcedCenter  //!< 1レーン区間等のステージギミックによる強制中央復帰中
 };
 
 class Player;
 
+/// <summary>
+/// プレイヤーのアクションステート基底インターフェース（Stateパターン）
+/// </summary>
 class IPlayerState {
 public:
   virtual ~IPlayerState() = default;
+
+  /// <summary>
+  /// ステート種別の取得
+  /// </summary>
   virtual PlayerActionType GetType() const = 0;
+
+  /// <summary>
+  /// ステート開始時の処理
+  /// </summary>
+  /// <param name="player">プレイヤー参照</param>
   virtual void Enter(Player &/*player*/) {}
+
+  /// <summary>
+  /// ステート更新処理
+  /// </summary>
+  /// <param name="player">プレイヤー参照</param>
+  /// <param name="speedMultiplier">ゲーム速度乗数</param>
   virtual void Update(Player &player, float speedMultiplier) = 0;
+
+  /// <summary>
+  /// ステート終了時の処理
+  /// </summary>
+  /// <param name="player">プレイヤー参照</param>
   virtual void Exit(Player &/*player*/) {}
+
+  /// <summary>
+  /// このステート中にプレイヤーが通常アクション（レーン移動、ジャンプ等）を入力可能かどうか
+  /// </summary>
   virtual bool CanAct() const { return true; }
 };
 
+/// <summary>
+/// 通常走行ステート
+/// 地上を走行し、レーン移動やジャンプ・スライディング等の各種アクション入力を受け付ける
+/// </summary>
 class PlayerRunState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Run; }
@@ -34,6 +68,10 @@ public:
   void Update(Player &player, float speedMultiplier) override;
 };
 
+/// <summary>
+/// ジャンプステート
+/// 重力と初速による放物線運動を行い、着地時に走行ステートへ遷移する
+/// </summary>
 class PlayerJumpState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Jump; }
@@ -41,6 +79,10 @@ public:
   void Update(Player &player, float speedMultiplier) override;
 };
 
+/// <summary>
+/// スライディング（ロール）ステート
+/// 姿勢を低くして低い障害物を回避する。頭上に障害物がある場合は自動でスライディングが継続される
+/// </summary>
 class PlayerRollState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Roll; }
@@ -49,6 +91,10 @@ public:
   void Exit(Player &player) override;
 };
 
+/// <summary>
+/// 被弾・ノックバックステート
+/// 障害物に衝突した際のノックバック演出を行い、一定時間操作不能となる
+/// </summary>
 class PlayerHitState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Hit; }
@@ -58,6 +104,10 @@ public:
   bool CanAct() const override { return false; }
 };
 
+/// <summary>
+/// 強制中央復帰ステート
+/// 1レーン区間等のステージギミック突入時に、プレイヤーを自動的に中央レーンへ補間移動させる
+/// </summary>
 class PlayerForcedCenterState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::ForcedCenter; }
@@ -66,6 +116,9 @@ public:
   bool CanAct() const override { return false; }
 };
 
+/// <summary>
+/// ランゲームのプレイヤーキャラクター（ペンギン）を制御するクラス
+/// </summary>
 class Player : public GameObject {
   friend class PlayerRunState;
   friend class PlayerJumpState;
@@ -293,20 +346,67 @@ public:
            GameObject::HasMaterial();
   }
 
-  // ステート関連
+  // =========================================================
+  // ステート管理・状態確認
+  // =========================================================
+
+  /// <summary>
+  /// 現在のアクションタイプを取得
+  /// </summary>
   PlayerActionType GetActionType() const {
     return currentState_ ? currentState_->GetType() : PlayerActionType::Run;
   }
+
+  /// <summary>
+  /// 現在のアクションステートインスタンスを取得
+  /// </summary>
   IPlayerState *GetCurrentActionState() const { return currentState_.get(); }
+
+  /// <summary>
+  /// 現在のゲーム速度乗数を取得
+  /// </summary>
   float GetCurrentSpeedMultiplier() const { return currentSpeedMultiplier_; }
+
+  /// <summary>
+  /// アクションステートを新しいステートインスタンスに遷移
+  /// </summary>
+  /// <param name="newState">遷移先ステート</param>
   void ChangeActionState(std::unique_ptr<IPlayerState> newState);
+
+  /// <summary>
+  /// アクションステートを種別指定で遷移
+  /// </summary>
+  /// <param name="nextType">遷移先のアクション種別</param>
   void ChangeActionState(PlayerActionType nextType);
 
+  /// <summary>
+  /// スライディング（ロール）中かどうか
+  /// </summary>
   bool GetIsRolling() const { return GetActionType() == PlayerActionType::Roll; }
+
+  /// <summary>
+  /// スライディング状態を強制維持するか設定（頭上に障害物がある場合など）
+  /// </summary>
   void SetKeepRolling(bool keep) { keepRolling_ = keep; }
+
+  /// <summary>
+  /// ジャンプ中かどうか
+  /// </summary>
   bool GetIsJumping() const { return GetActionType() == PlayerActionType::Jump; }
+
+  /// <summary>
+  /// 被弾中（ノックバック中）かどうか
+  /// </summary>
   bool GetIsHit() const { return GetActionType() == PlayerActionType::Hit; }
+
+  /// <summary>
+  /// 中央強制移動中かどうか
+  /// </summary>
   bool GetIsForcedCentering() const { return GetActionType() == PlayerActionType::ForcedCenter; }
+
+  // =========================================================
+  // パラメータ取得・設定
+  // =========================================================
 
   float GetJumpPower() const { return jumpPower_; }
   void SetJumpPower(float power) { jumpPower_ = power; }
@@ -319,23 +419,43 @@ public:
   float GetBaseHeight() const { return baseHeight_; }
   void SetBaseHeight(float height) { baseHeight_ = height; }
 
+  /// <summary>
+  /// バリア所持状態の取得
+  /// </summary>
   bool GetHasBarrier() const { return hasBarrier_; }
+
+  /// <summary>
+  /// バリア所持状態の設定（マテリアルカラーの切り替えも含む）
+  /// </summary>
   void SetHasBarrier(bool hasBarrier);
 
+  /// <summary>
+  /// 操作反転フラグの設定（ボス戦やカメラ反転演出用）
+  /// </summary>
   void SetInvertedControls(bool inv) { isInvertedControls_ = inv; }
   bool GetInvertedControls() const { return isInvertedControls_; }
 
-  // オートパイロット設定
+  /// <summary>
+  /// オートパイロット（自動運転）モードの設定
+  /// </summary>
   void SetAutoPilot(bool autoPilot) { isAutoPilot_ = autoPilot; }
   bool GetAutoPilot() const { return isAutoPilot_; }
 
-  // プレイヤー入力有効フラグ設定
+  /// <summary>
+  /// プレイヤー入力有効フラグ設定（カウントダウン等の操作ロック用）
+  /// </summary>
   void SetInputEnabled(bool enable) { isInputEnabled_ = enable; }
   bool GetInputEnabled() const { return isInputEnabled_; }
 
-  // 表示設定
+  /// <summary>
+  /// プレイヤー描画表示・非表示の設定
+  /// </summary>
   void SetVisible(bool visible) { isVisible_ = visible; }
   bool GetVisible() const { return isVisible_; }
+
+  // =========================================================
+  // アクション発動トリガー（入力・オートパイロット共用）
+  // =========================================================
 
   /// <summary>
   /// 外部からのジャンプ発動（オートパイロット等用）
@@ -361,12 +481,24 @@ public:
   /// <returns>発動に成功した場合true</returns>
   bool TriggerMoveRight();
 
+  // =========================================================
+  // レーン・アクション可否状態
+  // =========================================================
+
   int GetLaneIndex() const { return laneIndex_; }
   int GetTargetLaneIndex() const { return targetLaneIndex_; }
   bool IsChangingLane() const { return laneIndex_ != targetLaneIndex_; }
+
+  /// <summary>
+  /// 現在プレイヤーが入力やアクションを行える状態か判定
+  /// </summary>
   bool CanAct() const {
     return isInputEnabled_ && (currentRecoveryTimer_ <= 0.0f) && (!currentState_ || currentState_->CanAct());
   }
+
+  // =========================================================
+  // 先行入力バッファ
+  // =========================================================
 
   /// <summary>
   /// 先行入力バッファのタイマー更新
@@ -377,6 +509,10 @@ public:
   bool HasBufferedLane() const { return bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0; }
   int GetBufferedLaneDirection() const { return bufferedLaneDirection_; }
 
+  /// <summary>
+  /// バッファされたジャンプ入力を消費
+  /// </summary>
+  /// <returns>消費できた場合true</returns>
   bool ConsumeBufferedJump() {
     if (bufferedJumpTimer_ > 0.0f) {
       bufferedJumpTimer_ = 0.0f;
@@ -385,6 +521,10 @@ public:
     return false;
   }
 
+  /// <summary>
+  /// バッファされたスライディング入力を消費
+  /// </summary>
+  /// <returns>消費できた場合true</returns>
   bool ConsumeBufferedRoll() {
     if (bufferedRollTimer_ > 0.0f) {
       bufferedRollTimer_ = 0.0f;
@@ -393,6 +533,10 @@ public:
     return false;
   }
 
+  /// <summary>
+  /// バッファされたレーン移動入力を消費
+  /// </summary>
+  /// <returns>移動方向（-1: 左, +1: 右, 0: なし）</returns>
   int ConsumeBufferedLane() {
     if (bufferedLaneTimer_ > 0.0f && bufferedLaneDirection_ != 0) {
       int dir = bufferedLaneDirection_;
@@ -403,6 +547,9 @@ public:
     return 0;
   }
 
+  /// <summary>
+  /// 先行入力バッファをクリア
+  /// </summary>
   void ClearInputBuffer() {
     bufferedJumpTimer_ = 0.0f;
     bufferedRollTimer_ = 0.0f;
@@ -410,7 +557,13 @@ public:
     bufferedLaneDirection_ = 0;
   }
 
-  // 着地演出コールバック
+  // =========================================================
+  // コールバック・衝突判定・ギミック
+  // =========================================================
+
+  /// <summary>
+  /// ジャンプ着地時の演出コールバックを設定（カメラシェイク・土煙等用）
+  /// </summary>
   void SetOnLandCallback(std::function<void()> callback) { onLandCallback_ = callback; }
   const std::function<void()>& GetOnLandCallback() const { return onLandCallback_; }
 
@@ -441,7 +594,9 @@ public:
   /// <param name="duration">移動完了までのフレーム数</param>
   void StartForceToCenter(float duration);
 
+  // =========================================================
   // ステートクラス向けのアクセサ
+  // =========================================================
   Transform &GetTransformRef() { return transform_; }
   CharacterAnimator *GetModel() { return model_.get(); }
   float &GetVelocityYRef() { return velocityY_; }
