@@ -115,6 +115,7 @@ private:
   // 画面遷移
   enum class ResultTransition { None, Restart, Title };
   ResultTransition resultTransition_ = ResultTransition::None;
+  float resultTimer_ = 0.0f;
 
   float uiTimer_ = 0.0f;
   class Draw *draw_ = nullptr;

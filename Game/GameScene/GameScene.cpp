@@ -215,6 +215,7 @@ void GameScene::ResetGame() {
   crashEffect_->Reset();
   rankingCutinEffect_->Reset();
   wasBossBattle_ = false;
+  resultTimer_ = 0.0f;
 
   // --- 実績トラッキング用カウンター・タイマーのリセット ---
   playTime_ = 0.0f;
@@ -303,6 +304,7 @@ void GameScene::ReturnToTitle() {
   stageSettings_->SetScrollAcceleration(0.0f);
   stageSettings_->SetSpawningPaused(false);
   gameState_ = GameState::Title;
+  resultTimer_ = 0.0f;
 
   // --- タイトルメニューおよびプレイヤー名入力状態のリセット ---
   titleSubView_ = TitleSubView::None;
@@ -466,14 +468,18 @@ void GameScene::Update() {
   } else if (gameState_ == GameState::FirstPlaceCutIn) {
     FirstPlaceCutInUpdate();
   } else if (gameState_ == GameState::GameOver) {
+    resultTimer_ += Engine::kDefaultDeltaTime;
     effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
     if (resultTransition_ == ResultTransition::None &&
         !FreezeTransition::GetInstance()->IsActive()) {
-      if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
-        StartResultTransition(ResultTransition::Restart);
-      }
-      if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
-        StartResultTransition(ResultTransition::Title);
+      // リザルトパネル落下中の誤入力を防止するため、一定時間経過後に入力を受付
+      if (resultTimer_ >= 0.45f) {
+        if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+          StartResultTransition(ResultTransition::Restart);
+        }
+        if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
+          StartResultTransition(ResultTransition::Title);
+        }
       }
     }
   } else if (gameState_ == GameState::Editor) {
@@ -982,6 +988,7 @@ void GameScene::PlayerHitUpdate() {
       rankingCutinEffect_->Trigger(type);
     } else {
       gameState_ = GameState::GameOver;
+      resultTimer_ = 0.0f;
     }
   }
 }
@@ -998,9 +1005,10 @@ void GameScene::FirstPlaceCutInUpdate() {
     rankingCutinEffect_->RequestSkip();
   }
 
-  // --- 演出完了時のゲームオーバー画面移行 ---
+  // --- 演出完了時のリザルト画面移行 ---
   if (rankingCutinEffect_->IsFinished()) {
     gameState_ = GameState::GameOver;
+    resultTimer_ = 0.0f;
   }
 }
 
@@ -1194,6 +1202,7 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.stageSettings = stageSettings_.get();
   ctx.reflectLane = bossBattleController_->GetReflectLane();
   ctx.uiTimer = uiTimer_;
+  ctx.resultTimer = resultTimer_;
   ctx.isTitleExiting = titleDirector_->IsExiting();
   ctx.titleExitTimer = titleDirector_->GetExitTimer();
   ctx.titleExitDuration = titleDirector_->GetExitDuration();
@@ -1231,8 +1240,10 @@ void GameScene::DrawUI(class Draw &draw) {
 
   // --- 実績解除通知ポップアップの描画 ---
   if (achievementManager_) {
-    // リスタートなどのカウントダウン演出中は実績通知ポップアップを描画しない
-    if (!titleDirector_->IsCountdownActive()) {
+    // リザルト画面中・カットイン演出中・カウントダウン演出中は実績通知ポップアップを描画しない（リザルト表示との被りを防止）
+    if (gameState_ != GameState::GameOver &&
+        gameState_ != GameState::FirstPlaceCutIn &&
+        !titleDirector_->IsCountdownActive()) {
       achievementManager_->DrawUI(draw);
     }
   }
@@ -1301,11 +1312,11 @@ void GameScene::ImGui() {
       ImGui::Separator();
     }
 
-    // ゲームオーバー時の表示
+    // リザルト時の表示
     if (gameState_ == GameState::GameOver) {
-      ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.8f, 0.15f, 0.15f, 1.0f));
-      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-      bool open = ImGui::CollapsingHeader("=== ゲームオーバー ===",
+      ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.85f, 0.65f, 0.2f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.4f, 1.0f));
+      bool open = ImGui::CollapsingHeader("=== リザルト ===",
                                           ImGuiTreeNodeFlags_DefaultOpen);
       ImGui::PopStyleColor(2);
 

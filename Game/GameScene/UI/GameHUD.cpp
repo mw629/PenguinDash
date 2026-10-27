@@ -1,4 +1,4 @@
-﻿#include "GameHUD.h"
+#include "GameHUD.h"
 #include "Graphics/Font/TextRenderer.h"
 #include "Graphics/Render/Draw.h"
 #include "Input/GamePadInput.h"
@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <string>
 #include "Network/Firebase/FirebaseRankingManager.h"
+#include "../System/SoundManager.h"
 
 void GameHUD::Initialize(Texture *texture) {
   if (!texture) return;
@@ -71,10 +72,14 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
 void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
   PreloadFontStrings(draw);
 
+  if (ctx.gameState != State_GameOver) {
+    resultSePlayed_ = false;
+  }
+
   if (ctx.gameState == State_Title) {
     DrawTitleHUD(draw, ctx);
   } else if (ctx.gameState == State_GameOver) {
-    DrawGameOverHUD(draw, ctx);
+    DrawResultHUD(draw, ctx);
   } else if (ctx.gameState == State_Paused) {
     DrawPlayingHUD(draw, ctx);
     DrawPauseHUD(draw, ctx);
@@ -725,20 +730,54 @@ void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
-void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
+void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
   const Vector2 fullScreenSize(static_cast<float>(WindowConfig::kDefaultClientWidth),
                                static_cast<float>(WindowConfig::kDefaultClientHeight));
+
+  // --- 落下イン演出（EaseOutBack による軽快なバウンス着地） ---
+  float t = std::clamp(ctx.resultTimer / kResultDropDuration, 0.0f, 1.0f);
+  constexpr float c1 = 1.35f;
+  constexpr float c3 = c1 + 1.0f;
+  float p = t - 1.0f;
+  float ease = 1.0f + c3 * p * p * p + c1 * p * p;
+  float currentDropOffsetY = (1.0f - ease) * kResultDropStartY;
+  Vector2 dropOffset(0.0f, currentDropOffsetY);
+
+  // 暗幕（Dim）フェードイン（背景を徐々に暗く）
+  float dimProgress = std::clamp(ctx.resultTimer / 0.35f, 0.0f, 1.0f);
   draw.DrawFillRect(Vector2(0.0f, 0.0f), fullScreenSize,
-                    Vector4(0.0f, 0.0f, 0.0f, kGameOverDimAlpha));
+                    Vector4(0.0f, 0.0f, 0.0f, kGameOverDimAlpha * dimProgress));
 
-  draw.DrawFillRect(kGameOverPanelPos, kGameOverPanelSize,
-                    Vector4(0.06f, 0.08f, 0.12f, 0.95f));
-  draw.DrawFillRect(kGameOverPanelPos, Vector2(kGameOverPanelSize.x, kGameOverAccentHeight),
-                    Vector4(0.9f, 0.2f, 0.2f, 0.95f));
+  // 着地時のSE再生
+  if (ctx.resultTimer > 0.0f) {
+    if (!resultSePlayed_ && t >= 0.75f) {
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land, 1.1f);
+      resultSePlayed_ = true;
+    }
+  } else {
+    resultSePlayed_ = false;
+  }
 
-  draw.DrawMSDFString("GAME OVER", kGameOverTitlePos, kGameOverTitleFontSize,
-                      Vector4(1.0f, 0.25f, 0.25f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+  // --- リザルトパネル本体 ---
+  Vector2 panelPos = kGameOverPanelPos + dropOffset;
+  draw.DrawFillRect(panelPos, kGameOverPanelSize,
+                    Vector4(0.06f, 0.08f, 0.13f, 0.95f));
+
+  // 上部アクセントバー（ゴールド）
+  draw.DrawFillRect(panelPos, Vector2(kGameOverPanelSize.x, kGameOverAccentHeight),
+                    Vector4(1.0f, 0.78f, 0.25f, 0.95f));
+
+  // タイトル左右のアクセントライン
+  float lineY = kGameOverTitlePos.y + dropOffset.y + 26.0f;
+  draw.DrawFillRect(Vector2(260.0f, lineY), Vector2(250.0f, 2.0f),
+                    Vector4(1.0f, 0.82f, 0.3f, 0.65f));
+  draw.DrawFillRect(Vector2(770.0f, lineY), Vector2(250.0f, 2.0f),
+                    Vector4(1.0f, 0.82f, 0.3f, 0.65f));
+
+  // タイトル "RESULT"
+  draw.DrawMSDFString("RESULT", kGameOverTitlePos + dropOffset, kGameOverTitleFontSize,
+                      Vector4(1.0f, 0.88f, 0.32f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.12f, 0.08f);
 
   float topDist0 = ctx.topRankings ? ctx.topRankings[0] : 0.0f;
   float topScore0 = ctx.topScoreRankings ? ctx.topScoreRankings[0] : 0.0f;
@@ -748,7 +787,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   char distBuf[96];
   snprintf(distBuf, sizeof(distBuf), "到達距離: %.1f m  %s", ctx.currentDistance,
            isNewDistRecord ? "★ NEW RECORD! ★" : "");
-  draw.DrawMSDFString(distBuf, kGameOverDistPos, kGameOverDistFontSize,
+  draw.DrawMSDFString(distBuf, kGameOverDistPos + dropOffset, kGameOverDistFontSize,
                       isNewDistRecord ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
                                       : Vector4(1.0f, 1.0f, 1.0f, 1.0f),
                       true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
@@ -756,18 +795,18 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   char scoreBuf[96];
   snprintf(scoreBuf, sizeof(scoreBuf), "最終スコア: %.0f pt  %s", ctx.currentScore,
            isNewScoreRecord ? "★ NEW RECORD! ★" : "");
-  draw.DrawMSDFString(scoreBuf, kGameOverScorePos, kGameOverScoreFontSize,
+  draw.DrawMSDFString(scoreBuf, kGameOverScorePos + dropOffset, kGameOverScoreFontSize,
                       Vector4(1.0f, 0.9f, 0.2f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
   char bonusBuf[64];
   snprintf(bonusBuf, sizeof(bonusBuf), "ボーナス敵撃破: %d 体",
            ctx.bonusEnemyHitCount);
-  draw.DrawMSDFString(bonusBuf, kGameOverBonusPos, kGameOverBonusFontSize,
+  draw.DrawMSDFString(bonusBuf, kGameOverBonusPos + dropOffset, kGameOverBonusFontSize,
                       Vector4(0.6f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
 
-  draw.DrawFillRect(kGameOverDividerPos1, kGameOverDividerSize,
+  draw.DrawFillRect(kGameOverDividerPos1 + dropOffset, kGameOverDividerSize,
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
   // ==========================================
@@ -902,7 +941,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   } else {
     snprintf(distHeader, sizeof(distHeader), "【 走行距離ランキング TOP 3 】");
   }
-  draw.DrawMSDFString(distHeader, kGameOverRankHeaderDistPos,
+  draw.DrawMSDFString(distHeader, kGameOverRankHeaderDistPos + dropOffset,
                       kGameOverRankHeaderFontSize, Vector4(0.4f, 0.85f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
@@ -930,7 +969,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
       snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.1f m", item.rank, item.playerName.c_str(), item.value);
     }
 
-    Vector2 itemPos(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY);
+    Vector2 itemPos(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
     if (item.isCurrentPlay) {
       draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
                         Vector4(0.2f, 0.45f, 0.8f, 0.28f));
@@ -949,14 +988,14 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   for (int i = distDisplayCount; i < 3; i++) {
     char rBuf[64];
     snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
                         kGameOverRankItemFontSize,
                         Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
   }
 
   // 走行距離ランキング下の表示
   {
-    Vector2 boxPos(kGameOverRankItemDistX - 6.0f, kGameOverMyRankBoxY);
+    Vector2 boxPos(kGameOverRankItemDistX - 6.0f, kGameOverMyRankBoxY + dropOffset.y);
     draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
     draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(0.3f, 0.7f, 1.0f, 0.9f));
 
@@ -988,7 +1027,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   } else {
     snprintf(scoreHeader, sizeof(scoreHeader), "【 スコアランキング TOP 3 】");
   }
-  draw.DrawMSDFString(scoreHeader, kGameOverRankHeaderScorePos,
+  draw.DrawMSDFString(scoreHeader, kGameOverRankHeaderScorePos + dropOffset,
                       kGameOverRankHeaderFontSize, Vector4(1.0f, 0.85f, 0.3f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
@@ -1016,7 +1055,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
       snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.0f pt", item.rank, item.playerName.c_str(), item.value);
     }
 
-    Vector2 itemPos(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY);
+    Vector2 itemPos(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
     if (item.isCurrentPlay) {
       draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
                         Vector4(0.8f, 0.45f, 0.1f, 0.28f));
@@ -1035,14 +1074,14 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   for (int i = scoreDisplayCount; i < 3; i++) {
     char rBuf[64];
     snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
                         kGameOverRankItemFontSize,
                         Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
   }
 
   // スコアランキング下の表示
   {
-    Vector2 boxPos(kGameOverRankItemScoreX - 6.0f, kGameOverMyRankBoxY);
+    Vector2 boxPos(kGameOverRankItemScoreX - 6.0f, kGameOverMyRankBoxY + dropOffset.y);
     draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
     draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(1.0f, 0.75f, 0.2f, 0.9f));
 
@@ -1064,20 +1103,20 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
     }
   }
 
-  draw.DrawFillRect(kGameOverDividerPos2, kGameOverDividerSize,
+  draw.DrawFillRect(kGameOverDividerPos2 + dropOffset, kGameOverDividerSize,
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
   bool isOverPad = GamePadInput::IsConnected();
   if (isOverPad) {
     draw.DrawMSDFString("[ Aボタン ] もう一度プレイ (RESTART)   |   [ Bボタン ] "
                         "タイトルへ戻る (TITLE)",
-                        kGameOverBottomBtnPos, kGameOverBottomBtnFontSize,
+                        kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
                         Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
   } else {
     draw.DrawMSDFString("[ 1キー ] もう一度プレイ (RESTART)   |   [ 2キー ] "
                         "タイトルへ戻る (TITLE)",
-                        kGameOverBottomBtnPos, kGameOverBottomBtnFontSize,
+                        kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
                         Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
   }

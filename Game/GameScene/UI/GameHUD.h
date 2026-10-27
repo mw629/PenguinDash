@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Engine.h>
 #include <Math/Calculation.h>
 #include <memory>
@@ -30,6 +30,7 @@ struct GameHUDContext {
   StageSettings *stageSettings = nullptr;
   int reflectLane = -1;
   float uiTimer = 0.0f;
+  float resultTimer = 0.0f;
   bool isTitleExiting = false;
   float titleExitTimer = 0.0f;
   static constexpr float kDefaultTitleExitDuration = 3.0f;
@@ -160,13 +161,15 @@ private:
   static constexpr Vector2 kPauseBtnTitlePos = {410.0f, 505.0f};
   static constexpr float kPauseBtnFontSize = 24.0f;
 
-  // ゲームオーバー画面
+  // リザルト画面
   static constexpr float kGameOverDimAlpha = 0.72f;
   static constexpr Vector2 kGameOverPanelPos = {200.0f, 50.0f};
   static constexpr Vector2 kGameOverPanelSize = {880.0f, 600.0f};
   static constexpr float kGameOverAccentHeight = 4.0f;
-  static constexpr Vector2 kGameOverTitlePos = {480.0f, 75.0f};
+  static constexpr Vector2 kGameOverTitlePos = {540.0f, 75.0f};
   static constexpr float kGameOverTitleFontSize = 54.0f;
+  static constexpr float kResultDropDuration = 0.60f;
+  static constexpr float kResultDropStartY = -720.0f;
   static constexpr Vector2 kGameOverDistPos = {260.0f, 142.0f};
   static constexpr float kGameOverDistFontSize = 25.0f;
   static constexpr Vector2 kGameOverScorePos = {260.0f, 180.0f};
@@ -265,9 +268,10 @@ private:
   void DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx);
 
   /// <summary>
-  /// ゲームオーバー画面HUDの描画（スコア・ランキング結果）
+  /// リザルト画面HUDの描画（スコア・ランキング結果、落下イン演出対応）
   /// </summary>
-  void DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx);
+  void DrawResultHUD(Draw &draw, const GameHUDContext &ctx);
+  void DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) { DrawResultHUD(draw, ctx); }
 
   /// <summary>
   /// タイトル画面HUDの描画（タイトルロゴ、メニュー、名前入力）
@@ -307,4 +311,7 @@ private:
   float bossDamageFlashTimer_ = 0.0f;
   float bossDamageShakeTimer_ = 0.0f;
   float lastUiTimer_ = 0.0f;
+
+  // リザルト着地音再生フラグ
+  bool resultSePlayed_ = false;
 };
