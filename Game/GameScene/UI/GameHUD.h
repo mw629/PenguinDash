@@ -80,7 +80,7 @@ private:
   static constexpr float kDefaultGuideAlpha = 1.0f;
 
   // プレイ中ステータスパネル
-  static constexpr Vector2 kStatusPanelPos = {20.0f, 15.0f};
+  static constexpr Vector2 kStatusPanelPos = {20.0f, 54.0f};
   static constexpr Vector2 kStatusPanelSize = {265.0f, 145.0f};
   static constexpr float kPanelBorderHeight = 3.0f;
   static constexpr float kPanelTextOffsetX = 12.0f;
@@ -297,6 +297,11 @@ private:
   /// 一人称視点（FPV）表示バッジの描画
   /// </summary>
   void DrawBadgeFPV(Draw &draw);
+
+  /// <summary>
+  /// 左上デモ告知バッジ（「演出は二つあります」）の描画
+  /// </summary>
+  void DrawDemoNotice(Draw &draw);
 
   // 氷HPバー用スプライトリソース
   int hpBarFrameTexture_ = -1;

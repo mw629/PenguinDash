@@ -303,6 +303,7 @@ void GameScene::ReturnToTitle() {
   stageSettings_->SetBaseScrollSpeed(kTitleBaseScrollSpeed);
   stageSettings_->SetScrollAcceleration(0.0f);
   stageSettings_->SetSpawningPaused(false);
+  stageSettings_->SetCurrentPattern(StageSettings::DeathDemoPattern::AllWall);
   gameState_ = GameState::Title;
   resultTimer_ = 0.0f;
 
@@ -474,11 +475,8 @@ void GameScene::Update() {
         !FreezeTransition::GetInstance()->IsActive()) {
       // リザルトパネル落下中の誤入力を防止するため、一定時間経過後に入力を受付
       if (resultTimer_ >= 0.45f) {
-        if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+        if (Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
           StartResultTransition(ResultTransition::Restart);
-        }
-        if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
-          StartResultTransition(ResultTransition::Title);
         }
       }
     }
@@ -880,7 +878,7 @@ void GameScene::PausedUpdate() {
   // --- ポーズ中のリスタート / タイトル復帰の入力受付 ---
   if (resultTransition_ == ResultTransition::None &&
       !FreezeTransition::GetInstance()->IsActive()) {
-    if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+    if (Input::PushKey(DIK_SPACE) || Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
       StartResultTransition(ResultTransition::Restart);
     }
     if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
@@ -1063,6 +1061,7 @@ void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
 
   // --- ステージ・プレイヤーのゲームオーバー状態設定 ---
   stageSettings_->SetGameOver(true);
+  stageSettings_->OnPlayerDeath(); // 死亡時に次回パターンを切り替える（すべて壁 ⇔ ジャンプのみ）
 
   // カメラの位置を取得（画面中央の手前距離の位置）
   Vector3 cameraHitTarget = {0.0f, 3.0f, -12.5f};

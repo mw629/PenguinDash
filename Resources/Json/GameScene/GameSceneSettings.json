@@ -115,11 +115,11 @@
         },
         "items": {
             "cooldowns": {
-                "barrier": 15.0,
-                "bonus": 5.0,
-                "boss": 45.0,
-                "camera": 30.0,
-                "clear": 20.0
+                "barrier": 10000.0,
+                "bonus": 0.0,
+                "boss": 1000.0,
+                "camera": 1000.0,
+                "clear": 1000.0
             },
             "spawnChance": 0.15000000596046448
         },

@@ -1,4 +1,4 @@
-﻿#include "StageSettings.h"
+#include "StageSettings.h"
 #include "AssetManager.h"
 #include "Core/LogHandler.h"
 #include "PSO/PipelineState.h"
@@ -1065,165 +1065,56 @@ void StageSettings::SpawnObstacles(float z) {
   }
   // =============================
 
-  // === 時々障害物が出ない（空ウェーブ/安全区間）判定 ===
-  bool isEmptyWave = false; // 障害物を一切生成しない空ウェーブフラグ
-  if (consecutiveNoSpawnCount_ < maxConsecutiveNoSpawn_) {
-    int roll = std::rand() % 100; // 0〜99の乱数
-    int chancePercent =
-        static_cast<int>(noSpawnChance_ * 100.0f); // 確率をパーセンテージに変換
-    if (roll < chancePercent) {
-      isEmptyWave = true;
-      consecutiveNoSpawnCount_++; // 連続空ウェーブ回数をカウント
-    } else {
-      consecutiveNoSpawnCount_ = 0; // 障害物が出るためリセット
+  // レーンの状態を決定 (0: None, 1: Low, 2: High, 3: Wall, 4: Bonus)
+  std::vector<int> laneSpawns(currentLaneCount, 0);
+
+  if (currentPattern_ == DeathDemoPattern::AllWall) {
+    // ========================================================
+    // パターン1: すべて壁のパターン（全レーンWall）
+    // 逃げ場なし！必ず壁に激突して正面クラッシュのゲームオーバー演出へ
+    // ========================================================
+    for (int i = 0; i < currentLaneCount; i++) {
+      laneSpawns[i] = 3; // 全レーンWall
     }
   } else {
-    consecutiveNoSpawnCount_ = 0; // 連続上限に達したためリセット
-  }
-
-  // たまにボーナスまたはアイテムを配置する（各アイテムのクールタイムを考慮）
-  // ただし1レーンの場合は出さない
-  int bonusLane =
-      -1; // ボーナスまたはアイテムを配置するレーン番号（-1は配置なし）
-  Obstacle::Type itemType = Obstacle::Type::Bonus; // アイテムの種類
-  if (currentLaneCount > 1) {
-    int roll = std::rand() % 100;
-    int spawnPercent = static_cast<int>(itemSpawnChance_ * 100.0f);
-    if (roll < spawnPercent) {
-      // クールタイムが終了している（currentTimer <=
-      // 0.0f）アイテムを候補として収集
-      std::vector<Obstacle::Type> availableItems;
-      for (const auto &pair : itemCoolDowns_) {
-        // 1レーン時はCameraItemは除外
-        if (currentLaneCount == 1 && pair.first == Obstacle::Type::CameraItem) {
-          continue;
-        }
-        if (pair.second.currentTimer <= 0.0f) {
-          availableItems.push_back(pair.first);
-        }
-      }
-
-      // 候補が存在する場合のみアイテムを配置
-      if (!availableItems.empty()) {
-        bonusLane = std::rand() % currentLaneCount;
-        int selectedIndex = std::rand() % availableItems.size();
-        itemType = availableItems[selectedIndex];
-
-        // 選ばれたアイテムのクールタイムを再設定（カウントダウン開始）
-        itemCoolDowns_[itemType].currentTimer =
-            itemCoolDowns_[itemType].duration;
-      }
-    }
-  }
-
-  // 空ウェーブの場合は障害物を配置せず、アイテムのみ生成（または完全な安全区間）
-  if (isEmptyWave) {
-    if (bonusLane != -1) {
-      int lane = currentMinLane + bonusLane; // アイテム配置対象のレーン番号
-      float x =
-          static_cast<float>(lane) * currentLaneWidth; // レーンのワールドX座標
-      obstacles_[nextObstacleIndex_]->SetType(itemType);
-      obstacles_[nextObstacleIndex_]->Spawn(x, kItemSpawnY, z + kItemSpawnZOffset);
-      nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
-    }
-    return; // 障害物は出さずに終了
-  }
-
-  // レーンの状態を決定 (0: None, 1: Low, 2: High, 3: Wall, 4: Bonus)
-  std::vector<int> laneSpawns(currentLaneCount);
-  int wallCount = 0;
-  int noneCount = 0;
-
-  for (int i = 0; i < currentLaneCount; i++) {
-    laneSpawns[i] = std::rand() % 4; // 0~3
-    if (laneSpawns[i] == 3) {
-      wallCount++;
-    } else if (laneSpawns[i] == 0) {
-      noneCount++;
-    }
-  }
-
-  // すべて「何もない(None)」の場合は、最低1つの障害物を配置する
-  if (noneCount == currentLaneCount) {
-    int changeIndex = std::rand() % currentLaneCount;
-    if (currentLaneCount == 1) {
-      // レーンが1つの場合はWall(3)を生成しないようにする(1:Low, 2:High)
-      laneSpawns[changeIndex] = 1 + (std::rand() % 2);
-    } else {
-      laneSpawns[changeIndex] = 1 + (std::rand() % 3); // 1, 2, 3 のどれか
-    }
-  }
-
-  // noneCountの処理でWallが増えた可能性があるのでwallCountを再計算
-  wallCount = 0;
-  for (int i = 0; i < currentLaneCount; i++) {
-    if (laneSpawns[i] == 3) {
-      wallCount++;
-    }
-  }
-
-  // 全てWallの場合は1つを確実に通れるようにする
-  if (wallCount == currentLaneCount) {
-    int changeIndex = std::rand() % currentLaneCount;
-    if (currentLaneCount == 1) {
-      // 1レーンしかなく全てWallの場合は、必ず通れる障害物にする
-      laneSpawns[changeIndex] = 1 + (std::rand() % 2); // 1:Low または 2:High
-    } else {
-      laneSpawns[changeIndex] = 0;
-    }
-  }
-
-  // ボーナス配置時に障害物があるレーンを優先する処理（通常ウェーブ時）
-  if (bonusLane != -1) {
-    std::vector<int> obstacleLanes; // 障害物が存在するレーンのリスト
+    // ========================================================
+    // パターン2: ジャンプする障害物だけでるパターン（全レーンLow）
+    // 全レーンにLowが並ぶ！ジャンプで飛び越えるか、当たって雪玉転倒のゲームオーバー演出へ
+    // ========================================================
     for (int i = 0; i < currentLaneCount; i++) {
-      if (laneSpawns[i] != 0) {
-        obstacleLanes.push_back(i);
-      }
-    }
-    if (!obstacleLanes.empty()) {
-      bonusLane = obstacleLanes[std::rand() % obstacleLanes.size()];
+      laneSpawns[i] = 1; // 全レーンLow
     }
   }
 
   // 決定した内容で各レーンに生成
   for (int i = 0; i < currentLaneCount; i++) {
-    if (laneSpawns[i] == 0 && i != bonusLane)
-      continue; // None 且つ ボーナスも無いならスキップ
+    if (laneSpawns[i] == 0)
+      continue; // Noneならスキップ
 
     int lane = currentMinLane + i; // レーンインデックス（-1, 0, 1）
     float x = static_cast<float>(lane) * currentLaneWidth; // レーンのX座標
 
-    // ボーナスまたはアイテムの生成（障害物の手前に配置）
-    if (i == bonusLane) {
-      obstacles_[nextObstacleIndex_]->SetType(itemType);
-      obstacles_[nextObstacleIndex_]->Spawn(x, kItemSpawnY, z + kItemSpawnZOffset);
-      nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
-    }
-
     // 障害物の生成
-    if (laneSpawns[i] != 0) {
-      Obstacle::Type type = Obstacle::Type::Low; // 障害物タイプ
-      float y = kObstacleSpawnYLow;              // 障害物のY座標
+    Obstacle::Type type = Obstacle::Type::Low; // 障害物タイプ
+    float y = kObstacleSpawnYLow;              // 障害物のY座標
 
-      if (laneSpawns[i] == 1) {
-        type = Obstacle::Type::Low;
-        y = kObstacleSpawnYLow;
-      } else if (laneSpawns[i] == 2) {
-        type = Obstacle::Type::High;
-        y = kObstacleSpawnYHigh;
-      } else if (laneSpawns[i] == 3) {
-        type = Obstacle::Type::Wall;
-        y = kObstacleSpawnYWall;
-      }
-
-      // 障害物のタイプを設定して配置
-      obstacles_[nextObstacleIndex_]->SetType(type);
-      obstacles_[nextObstacleIndex_]->Spawn(x, y, z);
-
-      // 次のインデックスへ（リングバッファ的に使う）
-      nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
+    if (laneSpawns[i] == 1) {
+      type = Obstacle::Type::Low;
+      y = kObstacleSpawnYLow;
+    } else if (laneSpawns[i] == 2) {
+      type = Obstacle::Type::High;
+      y = kObstacleSpawnYHigh;
+    } else if (laneSpawns[i] == 3) {
+      type = Obstacle::Type::Wall;
+      y = kObstacleSpawnYWall;
     }
+
+    // 障害物のタイプを設定して配置
+    obstacles_[nextObstacleIndex_]->SetType(type);
+    obstacles_[nextObstacleIndex_]->Spawn(x, y, z);
+
+    // 次のインデックスへ（リングバッファ的に使う）
+    nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
   }
 }
 
@@ -1627,6 +1518,18 @@ void StageSettings::ImGui() {
     }
 
     // 4. スポーン操作・テスト
+    ImGui::Text("現在のスポーンパターン: %s",
+                currentPattern_ == DeathDemoPattern::AllWall
+                    ? "すべて壁 (全レーンWall)"
+                    : "ジャンプ障害物のみ (全レーンLow)");
+    if (ImGui::RadioButton("すべて壁 (AllWall)", currentPattern_ == DeathDemoPattern::AllWall)) {
+      currentPattern_ = DeathDemoPattern::AllWall;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("ジャンプのみ (AllJump)", currentPattern_ == DeathDemoPattern::AllJump)) {
+      currentPattern_ = DeathDemoPattern::AllJump;
+    }
+
     if (ImGui::Button("今すぐスポーン実行 (Spawn Now)")) {
       SpawnObstacles(spawnObstacleZ_);
     }

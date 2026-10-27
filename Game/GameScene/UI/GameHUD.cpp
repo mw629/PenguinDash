@@ -65,7 +65,8 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "ペンギンダッシュ―—"
         "操作方法十字説明攻略倒し方緑赤色迫る直撃減少命中削切回避手前当てろ避け"
         "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続生"
-        "行圏外以成通最新取得設定送信功失敗未判");
+        "行圏外以成通最新取得設定送信功失敗未判"
+        "演出は二つあります");
   }
 }
 
@@ -106,6 +107,10 @@ void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
     DrawBadgeFPV(draw);
   }
 
+  // 左上に「演出は二つあります」を常時表示
+  if (ctx.gameState != State_Editor) {
+    DrawDemoNotice(draw);
+  }
 }
 
 void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
@@ -1107,19 +1112,19 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
   bool isOverPad = GamePadInput::IsConnected();
-  if (isOverPad) {
-    draw.DrawMSDFString("[ Aボタン ] もう一度プレイ (RESTART)   |   [ Bボタン ] "
-                        "タイトルへ戻る (TITLE)",
-                        kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
-                        Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-  } else {
-    draw.DrawMSDFString("[ 1キー ] もう一度プレイ (RESTART)   |   [ 2キー ] "
-                        "タイトルへ戻る (TITLE)",
-                        kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
-                        Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  const char *btnPrompt = isOverPad
+                              ? "[ Aボタン ] もう一度プレイ (RESTART)"
+                              : "[ SPACEキー ] もう一度プレイ (RESTART)";
+  float btnW = 380.0f;
+  if (draw.GetTextRenderer()) {
+    btnW = draw.GetTextRenderer()->MeasureString(btnPrompt, kGameOverBottomBtnFontSize).x;
   }
+  float btnX = 640.0f - btnW * 0.5f;
+  draw.DrawMSDFString(btnPrompt,
+                      Vector2(btnX, kGameOverBottomBtnPos.y + dropOffset.y),
+                      kGameOverBottomBtnFontSize,
+                      Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 }
 
 void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
@@ -1552,5 +1557,34 @@ void GameHUD::DrawBadgeFPV(Draw &draw) {
   draw.DrawMSDFString("[F2] 1ST PERSON", Vector2(kFpvBadgePos.x + kFpvTextOffset.x, kFpvBadgePos.y + kFpvTextOffset.y), kFpvFontSize,
                       Vector4(0.4f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+}
+
+void GameHUD::DrawDemoNotice(Draw &draw) {
+  // 左上告知バッジ（「演出は二つあります」）
+  const Vector2 badgePos = {20.0f, 15.0f};
+  const Vector2 badgeSize = {265.0f, 32.0f};
+
+  // 背景（ダークスレートブルー半透明）
+  draw.DrawFillRect(badgePos, badgeSize, Vector4(0.04f, 0.08f, 0.14f, 0.90f));
+
+  // 上部アクセントバー（アイスブルー）
+  draw.DrawFillRect(badgePos, Vector2(badgeSize.x, 2.5f), Vector4(0.3f, 0.85f, 1.0f, 0.95f));
+
+  // 左端アクセントライン（ゴールド）
+  draw.DrawFillRect(badgePos, Vector2(3.0f, badgeSize.y), Vector4(1.0f, 0.8f, 0.25f, 0.95f));
+
+  // テキスト "演出は二つあります"
+  const char *noticeText = "演出は二つあります";
+  const float fontSize = 18.0f;
+  float textW = 160.0f;
+  if (draw.GetTextRenderer()) {
+    textW = draw.GetTextRenderer()->MeasureString(noticeText, fontSize).x;
+  }
+  float textX = badgePos.x + (badgeSize.x - textW) * 0.5f;
+  float textY = badgePos.y + 6.0f;
+
+  draw.DrawMSDFString(noticeText, Vector2(textX, textY), fontSize,
+                      Vector4(1.0f, 0.95f, 0.4f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
 }
 

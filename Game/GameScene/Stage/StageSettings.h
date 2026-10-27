@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "GameObjectManager.h"
 #include "RenderObject.h"
 #include <Engine.h>
@@ -295,6 +295,16 @@ private:
   bool isNarrowingSection_ = false;
   float narrowingTimer_ = 0.0f;
 
+  // 死亡時切り替えパターン（すべて壁 / ジャンプ障害物のみ）
+public:
+  enum class DeathDemoPattern {
+    AllWall, // すべて壁のパターン（全レーンWall）
+    AllJump  // ジャンプする障害物だけでるパターン（全レーンLow）
+  };
+
+private:
+  DeathDemoPattern currentPattern_ = DeathDemoPattern::AllWall;
+
   // 障害物をスポーンする
   void SpawnObstacles(float spawnZ);
 
@@ -474,6 +484,17 @@ public:
   // 狭まる区間の設定
   void SetNarrowingSection(bool isNarrowing) {
     isNarrowingSection_ = isNarrowing;
+  }
+
+  // 死亡時切り替えパターンの取得・設定・死亡時通知
+  DeathDemoPattern GetCurrentPattern() const { return currentPattern_; }
+  void SetCurrentPattern(DeathDemoPattern pattern) { currentPattern_ = pattern; }
+  void OnPlayerDeath() {
+    if (currentPattern_ == DeathDemoPattern::AllWall) {
+      currentPattern_ = DeathDemoPattern::AllJump;
+    } else {
+      currentPattern_ = DeathDemoPattern::AllWall;
+    }
   }
 
   // 障害物リストへのアクセス（当たり判定用）
