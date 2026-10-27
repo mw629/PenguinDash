@@ -286,7 +286,6 @@ void GameScene::StartPlaying() {
   SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
 }
 
-#pragma region　タイトルへ
 void GameScene::ReturnToTitle() {
   // --- ゲーム状態のリセットとタイトル用パラメータ設定 ---
   cameraController_->SetDebugCamera(false);
@@ -587,51 +586,58 @@ void GameScene::PlayingUpdate() {
   CheckCollisions();
 
   // --- 実績用の数値計算・トラッキング ---
-  float dt = (1.0f / 60.0f) * timeScale;
-  playTime_ += dt;
+  bool isCountdownActive = titleDirector_->IsCountdownActive() &&
+                           !titleDirector_->IsInputAllowed();
+  if (!isCountdownActive) {
+    float dt = (1.0f / 60.0f) * timeScale;
+    playTime_ += dt;
 
-  if (player_) {
-    bool isJumping = player_->GetIsJumping();
-    if (isJumping && !wasJumping_) {
-      jumpCount_++;
-    }
-    wasJumping_ = isJumping;
+    if (player_) {
+      bool isJumping = player_->GetIsJumping();
+      if (isJumping && !wasJumping_) {
+        jumpCount_++;
+      }
+      wasJumping_ = isJumping;
 
-    bool isRolling = player_->GetIsRolling();
-    if (isRolling && !wasRolling_) {
-      rollCount_++;
-    }
-    wasRolling_ = isRolling;
+      bool isRolling = player_->GetIsRolling();
+      if (isRolling && !wasRolling_) {
+        rollCount_++;
+      }
+      wasRolling_ = isRolling;
 
-    int currentLane = player_->GetLaneIndex();
-    if (currentLane != lastPlayerLane_) {
-      laneChangeCount_++;
-      lastPlayerLane_ = currentLane;
+      int currentLane = player_->GetLaneIndex();
+      if (currentLane != lastPlayerLane_) {
+        laneChangeCount_++;
+        lastPlayerLane_ = currentLane;
+      }
+
+      // ジャンプ中・ロール中・レーン移動中は「動いている」ため、未操作タイマーをリセット
+      if (isJumping || isRolling || player_->IsChangingLane()) {
+        unMovedTime_ = 0.0f;
+      } else {
+        unMovedTime_ += dt;
+      }
     }
 
-    // ジャンプ中・ロール中・レーン移動中は「動いている」ため、未操作タイマーをリセット
-    if (isJumping || isRolling || player_->IsChangingLane()) {
-      unMovedTime_ = 0.0f;
-    } else {
-      unMovedTime_ += dt;
-    }
+    // --- 実績用の数値渡しと実績判定・更新 ---
+    AchievementContext achCtx;
+    achCtx.distance = scoreManager_->GetCurrentDistance();
+    achCtx.score = scoreManager_->GetCurrentScore();
+    achCtx.bonusEnemyHitCount = scoreManager_->GetBonusEnemyHitCount();
+    achCtx.playTime = playTime_;
+    achCtx.isBossBattle = (playingState_ == PlayingState::Boss);
+    achCtx.isBossDefeated = (boss_ && boss_->GetState() == BossState::Defeat);
+    achCtx.isOneLaneMode = isRightSideMode_;
+    achCtx.jumpCount = jumpCount_;
+    achCtx.rollCount = rollCount_;
+    achCtx.laneChangeCount = laneChangeCount_;
+    achCtx.unMovedTime = unMovedTime_;
+
+    achievementManager_->Update(dt, achCtx, scoreManager_.get());
+  } else {
+    // カウントダウン中（操作解禁前）は未操作タイマーをリセット維持
+    unMovedTime_ = 0.0f;
   }
-
-  // --- 実績用の数値渡しと実績判定・更新 ---
-  AchievementContext achCtx;
-  achCtx.distance = scoreManager_->GetCurrentDistance();
-  achCtx.score = scoreManager_->GetCurrentScore();
-  achCtx.bonusEnemyHitCount = scoreManager_->GetBonusEnemyHitCount();
-  achCtx.playTime = playTime_;
-  achCtx.isBossBattle = (playingState_ == PlayingState::Boss);
-  achCtx.isBossDefeated = (boss_ && boss_->GetState() == BossState::Defeat);
-  achCtx.isOneLaneMode = isRightSideMode_;
-  achCtx.jumpCount = jumpCount_;
-  achCtx.rollCount = rollCount_;
-  achCtx.laneChangeCount = laneChangeCount_;
-  achCtx.unMovedTime = unMovedTime_;
-
-  achievementManager_->Update(dt, achCtx, scoreManager_.get());
 }
 
 void GameScene::UpdateTitleTextInput() {
@@ -1140,7 +1146,10 @@ void GameScene::DrawUI(class Draw &draw) {
 
   // --- 実績解除通知ポップアップの描画 ---
   if (achievementManager_) {
-    achievementManager_->DrawUI(draw);
+    // リスタートなどのカウントダウン演出中は実績通知ポップアップを描画しない
+    if (!titleDirector_->IsCountdownActive()) {
+      achievementManager_->DrawUI(draw);
+    }
   }
 
   // --- 最前面の画面凍結・破片トランジション演出の描画 ---
