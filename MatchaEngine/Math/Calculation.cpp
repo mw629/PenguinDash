@@ -1300,3 +1300,16 @@ Vector2 WorldToScreenPoint(const Vector3& worldPos, const Matrix4x4& viewMatrix,
 
 	return { screenX, screenY };
 }
+
+Vector3 ScreenToNearWorldPoint(const Vector2& screenPos, const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix, float screenWidth, float screenHeight) {
+	// 画面座標 (0..width, 0..height) を NDC (-1..1, 1..-1) に変換
+	float ndcX = (screenPos.x / screenWidth) * 2.0f - 1.0f;
+	float ndcY = 1.0f - (screenPos.y / screenHeight) * 2.0f;
+
+	// View-Projection 行列の逆行列
+	Matrix4x4 vp = MultiplyMatrix4x4(viewMatrix, projMatrix);
+	Matrix4x4 invVP = Inverse(vp);
+
+	// 近クリップ面 (z=0) 上のワールド座標へ逆変換
+	return TransformMatrix({ ndcX, ndcY, 0.0f }, invVP);
+}

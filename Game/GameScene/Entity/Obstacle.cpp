@@ -1,4 +1,4 @@
-﻿#include "Obstacle.h"
+#include "Obstacle.h"
 #include "Graphics/Render/Draw.h"
 #include "Resource/AssetManager.h"
 #include "Math/Calculation.h"
@@ -550,7 +550,8 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   // 被弾
   bool isTrip = (type_ == Type::Low || type_ == Type::BossAttackLow);
-  scene->TriggerPlayerHit(isTrip);
+  bool isLarge = IsLargeObstacle();
+  scene->TriggerPlayerHit(isTrip, isLarge);
   return true;
 }
 

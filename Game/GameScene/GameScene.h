@@ -337,5 +337,6 @@ public:
   /// プレイヤー被弾処理（クラッシュ演出、カメラ振動、SE、ランキング送信等）
   /// </summary>
   /// <param name="isTrip">つまずき転倒かどうか</param>
-  void TriggerPlayerHit(bool isTrip);
+  /// <param name="isLargeObstacle">大型障害物（カメラ激突対象）かどうか</param>
+  void TriggerPlayerHit(bool isTrip, bool isLargeObstacle = false);
 };

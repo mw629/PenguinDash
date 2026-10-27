@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Engine.h>
 #include <memory>
 
@@ -272,6 +272,10 @@ public:
   }
   virtual bool RequiresLaneChangeToAvoid() const {
     return type_ == Type::Wall || type_ == Type::BossAttack || type_ == Type::BossAttackReflectable;
+  }
+  virtual bool IsLargeObstacle() const {
+    return type_ == Type::Wall || type_ == Type::High ||
+           type_ == Type::BossAttack || type_ == Type::BossAttackHigh;
   }
 
   /// <summary>

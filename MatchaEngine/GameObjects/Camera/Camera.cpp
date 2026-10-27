@@ -495,3 +495,16 @@ void Camera::UpdateDollyZoom(float dt) {
     fovY_ = std::clamp(fovY_, 0.05f, 3.0f);
   }
 }
+
+Vector3 Camera::GetScreenNearPosition(const Vector2& screenPos) const {
+  Vector2 size = GetScreenSize();
+  return ScreenToNearWorldPoint(screenPos, viewMatrix_, projectionMatrix_, size.x, size.y);
+}
+
+Vector3 Camera::GetScreenWorldPosition(const Vector2& screenPos, float distance) const {
+  Vector2 size = GetScreenSize();
+  Ray ray = ScreenToWorldRay(screenPos, viewMatrix_, projectionMatrix_, size.x, size.y);
+  return ray.origin + ray.direction * distance;
+}
+
+

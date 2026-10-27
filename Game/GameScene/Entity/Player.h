@@ -185,6 +185,12 @@ private:
   static constexpr float kHitLandingFriction = 0.8f;
   static constexpr float kDefaultSpeedMultiplier = 1.0f;
 
+  // カメラ激突（Camera Slam）演出定数
+  static constexpr float kCameraSlamDurationFrames = 20.0f; // カメラへ飛んでいくフレーム数
+  static constexpr float kCameraStickSlideSpeedY = -0.05f;  // 画面張り付き後の滑り落ち速度
+  static constexpr float kCameraSlamSpinSpeedX = 0.25f;    // 吹き飛び回転速度X
+  static constexpr float kCameraSlamSpinSpeedZ = 0.15f;    // 吹き飛び回転速度Z
+
 private:
   std::unique_ptr<Model> axe_ = std::make_unique<Model>();
   Transform axeOffset_{kDefaultAxeScale,
@@ -243,6 +249,12 @@ private:
   float hitTimer_ = 0.0f;
   float hitDuration_ = kDefaultHitDuration; // ノックバックにかかるフレーム数
   Vector3 knockbackVelocity_{0.0f, 0.0f, 0.0f}; // ノックバック速度
+
+  // カメラ激突（Camera Slam）演出用変数
+  bool isCameraSlam_ = false;       // 大型障害物に衝突してカメラに向かって吹き飛ぶフラグ
+  bool hasHitCamera_ = false;       // カメラ画面に到達・激突したフラグ
+  Vector3 cameraTargetPos_{0.0f, 0.0f, -12.5f}; // カメラ激突目標座標
+  std::function<void()> onCameraHitCallback_ = nullptr; // カメラ激突時のコールバック（シェイク等）
 
   // 強制中央移動用の変数
   float forcedCenterTimer_ = 0.0f;
@@ -472,11 +484,23 @@ public:
   void SetOnLandCallback(std::function<void()> callback) { onLandCallback_ = callback; }
   const std::function<void()>& GetOnLandCallback() const { return onLandCallback_; }
 
+  // カメラ激突（Camera Slam）アクセス
+  bool GetIsCameraSlam() const { return isCameraSlam_; }
+  void SetIsCameraSlam(bool slam) { isCameraSlam_ = slam; }
+  bool GetHasHitCamera() const { return hasHitCamera_; }
+  void SetHasHitCamera(bool hit) { hasHitCamera_ = hit; }
+  const Vector3& GetCameraTargetPos() const { return cameraTargetPos_; }
+  void SetCameraTargetPos(const Vector3& pos) { cameraTargetPos_ = pos; }
+  void SetOnCameraHitCallback(std::function<void()> callback) { onCameraHitCallback_ = callback; }
+  void ExecuteCameraHitCallback() { if (onCameraHitCallback_) onCameraHitCallback_(); }
+
   /// <summary>
   /// 障害物被弾・衝突時の処理開始
   /// </summary>
   /// <param name="isTrip">つまずき転倒かどうか</param>
-  void OnHit(bool isTrip = false);
+  /// <param name="isLargeObstacle">大型障害物（カメラ激突対象）かどうか</param>
+  /// <param name="cameraPos">カメラ（画面）の激突目標座標</param>
+  void OnHit(bool isTrip = false, bool isLargeObstacle = false, const Vector3& cameraPos = {0.0f, 3.0f, -12.5f});
 
   /// <summary>
   /// 被弾・ノックバックアニメーションが完了したか判定

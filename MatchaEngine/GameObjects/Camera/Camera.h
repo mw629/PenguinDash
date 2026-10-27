@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../Core/VariableTypes.h"
 #include "DebugCamera.h"
 #include <d3d12.h>
@@ -410,6 +410,24 @@ public:
 	void StartDollyZoom(const Vector3& focusPoint, float targetDistance, float duration);
 	void StopDollyZoom() { isDollyZooming_ = false; }
 	bool IsDollyZooming() const { return isDollyZooming_; }
+
+	// =================================================================
+	// 画面・ワールド座標変換 (Screen to World)
+	// =================================================================
+	/// <summary>
+	/// モニター上の画面座標（ピクセル座標）から、カメラ画面の手前（近クリップ面）のワールド座標を取得します。
+	/// </summary>
+	/// <param name="screenPos">モニター上のピクセル座標 (Vector2)</param>
+	/// <returns>画面手前（近クリップ面）のワールド座標 (Vector3)</returns>
+	Vector3 GetScreenNearPosition(const Vector2& screenPos) const;
+
+	/// <summary>
+	/// モニター上の画面座標（ピクセル座標）とカメラ前方への距離を指定して、ワールド座標を取得します。
+	/// </summary>
+	/// <param name="screenPos">モニター上のピクセル座標 (Vector2)</param>
+	/// <param name="distance">カメラからの距離（ワールド単位）</param>
+	/// <returns>指定距離にあるワールド座標 (Vector3)</returns>
+	Vector3 GetScreenWorldPosition(const Vector2& screenPos, float distance) const;
 
 private:
 	void UpdateShake(float dt);

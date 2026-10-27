@@ -93,6 +93,13 @@ void GameScene::Initialize() {
   ModelData playerModelData =
       AssimpLoadObjFile("Resources/gltf/Penguin", "RunPenguin.gltf");
   player_->Initialize(playerModelData);
+  player_->SetOnCameraHitCallback([this]() {
+    if (cameraController_) {
+      cameraController_->Shake(1.5f, 0.45f, 35.0f);
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
+    GamePadInput::Rumble(0.4f, kHitRumbleMotorSpeed, kHitRumbleMotorSpeed);
+  });
 
   ModelData bossModelData = AssetManager::LoadModel(
       "Resources/Model/StylizedIceKing", "StylizedIceKing.obj");
@@ -967,7 +974,7 @@ void GameScene::CheckCollisions() {
   }
 }
 
-void GameScene::TriggerPlayerHit(bool isTrip) {
+void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
   // --- 被弾時の演出・フィードバック発生（クラッシュ、画面揺れ、SE、コントローラー振動） ---
   gameState_ = GameState::PlayerHit;
   crashEffect_->Trigger();
@@ -983,7 +990,20 @@ void GameScene::TriggerPlayerHit(bool isTrip) {
 
   // --- ステージ・プレイヤーのゲームオーバー状態設定 ---
   stageSettings_->SetGameOver(true);
-  player_->OnHit(isTrip);
+
+  // カメラの位置を取得（画面中央の手前距離の位置）
+  Vector3 cameraHitTarget = {0.0f, 3.0f, -12.5f};
+  if (cameraController_ && cameraController_->GetGameCamera()) {
+    Vector2 screenSize = Camera::GetScreenSize();
+    if (screenSize.x <= 0.0f || screenSize.y <= 0.0f) {
+      screenSize = {Camera::kDefaultScreenWidth, Camera::kDefaultScreenHeight};
+    }
+    // カメラの画面中央・手前約2.2mのワールド座標を取得
+    cameraHitTarget = cameraController_->GetGameCamera()->GetScreenWorldPosition(
+        {screenSize.x * 0.5f, screenSize.y * 0.5f}, 2.2f);
+  }
+
+  player_->OnHit(isTrip, isLargeObstacle, cameraHitTarget);
 
   // --- スコア記録とオンラインランキングへのスコア送信・順位取得 ---
   scoreManager_->RecordCurrentScores();

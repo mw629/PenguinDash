@@ -257,11 +257,26 @@ void PlayerHitState::Enter(Player &player) {
   player.GetCurrentRecoveryTimerRef() = 0.0f;
   player.GetHitTimerRef() = 0.0f;
 
-  float randX = ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) * Player::kKnockbackRandXScale;
-  if (player.GetIsTrip()) {
-    player.GetKnockbackVelocityRef() = {randX, Player::kTripKnockbackVelocity.y, Player::kTripKnockbackVelocity.z};
+  if (player.GetIsCameraSlam()) {
+    player.SetHasHitCamera(false);
+    Vector3 startPos = player.GetTransform().translate;
+    Vector3 targetPos = player.GetCameraTargetPos();
+    float frames = Player::kCameraSlamDurationFrames;
+    if (frames <= 0.0f) frames = 20.0f;
+
+    Vector3 vel;
+    vel.x = (targetPos.x - startPos.x) / frames;
+    vel.z = (targetPos.z - startPos.z) / frames;
+    // 重力を考慮して目標Yへ到達する放物線初速
+    vel.y = (targetPos.y - startPos.y) / frames + 0.5f * (player.GetGravity() * Player::kHitGravityMultiplier) * frames;
+    player.GetKnockbackVelocityRef() = vel;
   } else {
-    player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y, Player::kHitKnockbackVelocity.z};
+    float randX = ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) * Player::kKnockbackRandXScale;
+    if (player.GetIsTrip()) {
+      player.GetKnockbackVelocityRef() = {randX, Player::kTripKnockbackVelocity.y, Player::kTripKnockbackVelocity.z};
+    } else {
+      player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y, Player::kHitKnockbackVelocity.z};
+    }
   }
 }
 
@@ -274,28 +289,71 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
   Transform &transform = player.GetTransformRef();
   Vector3 &knockback = player.GetKnockbackVelocityRef();
 
-  transform.translate.x += knockback.x;
-  transform.translate.y += knockback.y;
-  transform.translate.z += knockback.z;
+  if (player.GetIsCameraSlam()) {
+    if (!player.GetHasHitCamera()) {
+      // カメラに向かって吹き飛び中
+      transform.translate.x += knockback.x;
+      transform.translate.y += knockback.y;
+      transform.translate.z += knockback.z;
 
-  knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
-  if (player.GetIsTrip()) {
-    transform.rotate.x += Player::kTripRotationSpeed;
+      knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
+
+      // コミカルにきりもみ回転
+      transform.rotate.x += Player::kCameraSlamSpinSpeedX;
+      transform.rotate.z += Player::kCameraSlamSpinSpeedZ;
+
+      Vector3 targetPos = player.GetCameraTargetPos();
+      bool reachedZ = (knockback.z < 0.0f && transform.translate.z <= targetPos.z) ||
+                      (knockback.z > 0.0f && transform.translate.z >= targetPos.z);
+      if (reachedZ || player.GetHitTimerRef() >= Player::kCameraSlamDurationFrames) {
+        // カメラ画面にドカンと激突！
+        player.SetHasHitCamera(true);
+        transform.translate.z = targetPos.z;
+        transform.translate.x = targetPos.x;
+        knockback.x = 0.0f;
+        knockback.z = 0.0f;
+        knockback.y = Player::kCameraStickSlideSpeedY; // 画面をゆっくり滑り落ちる
+
+        // カメラ（正面）を向いて画面にペタッと張り付く姿勢
+        transform.rotate.x = 0.0f;
+        transform.rotate.y = 3.14159f;
+        transform.rotate.z = 0.12f;
+
+        // 激突コールバック実行（激突シェイク・SE・振動）
+        player.ExecuteCameraHitCallback();
+      }
+    } else {
+      // カメラ画面に張り付いて滑り落ち中（床判定を無視して画面下へ滑り落ちる）
+      transform.translate.y += knockback.y;
+      transform.rotate.z += 0.002f;
+    }
   } else {
-    transform.rotate.x -= Player::kHitRotationSpeed;
-  }
+    // 通常被弾・つまずき転倒
+    transform.translate.x += knockback.x;
+    transform.translate.y += knockback.y;
+    transform.translate.z += knockback.z;
 
-  if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
-    transform.translate.y = player.GetBaseHeight();
-    knockback.y = 0.0f;
-    knockback.x *= Player::kHitLandingFriction;
-    knockback.z *= Player::kHitLandingFriction;
+    knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
+    if (player.GetIsTrip()) {
+      transform.rotate.x += Player::kTripRotationSpeed;
+    } else {
+      transform.rotate.x -= Player::kHitRotationSpeed;
+    }
+
+    if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
+      transform.translate.y = player.GetBaseHeight();
+      knockback.y = 0.0f;
+      knockback.x *= Player::kHitLandingFriction;
+      knockback.z *= Player::kHitLandingFriction;
+    }
   }
 }
 
 void PlayerHitState::Exit(Player &player) {
   player.GetTransformRef().rotate.x = 0.0f;
   player.GetKnockbackVelocityRef() = {0.0f, 0.0f, 0.0f};
+  player.SetIsCameraSlam(false);
+  player.SetHasHitCamera(false);
 }
 
 // --- PlayerForcedCenterState ---
@@ -639,8 +697,10 @@ void Player::ImGuiInnerComponents() {
 #endif
 }
 
-void Player::OnHit(bool isTrip) {
+void Player::OnHit(bool isTrip, bool isLargeObstacle, const Vector3& cameraPos) {
   isTrip_ = isTrip;
+  isCameraSlam_ = (!isTrip && isLargeObstacle);
+  cameraTargetPos_ = cameraPos;
   ChangeActionState(PlayerActionType::Hit);
 }
 
