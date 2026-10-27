@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <Engine.h>
 #include <memory>
@@ -7,26 +7,64 @@
 #include "GameObject.h"
 #include <CharacterAnimator.h>
 
+/// <summary>
+/// プレイヤーのアクション・操作ステート種別
+/// </summary>
 enum class PlayerActionType {
-  Run,
-  Jump,
-  Roll,
-  Hit,
-  ForcedCenter
+  Run,          // 走行（通常移動）
+  Jump,         // ジャンプ（跳躍・空中）
+  Roll,         // ロール（スライディング・低姿勢）
+  Hit,          // 被弾・ノックバック
+  ForcedCenter  // 中央レーンへの強制移動
 };
 
 class Player;
 
+/// <summary>
+/// プレイヤーステート（操作・行動状態）基底インターフェースクラス
+/// Stateパターンにより、走行・ジャンプ・ロール等の状態ごとの挙動や入力処理を分離・管理します。
+/// </summary>
 class IPlayerState {
 public:
   virtual ~IPlayerState() = default;
+
+  /// <summary>
+  /// ステート種別の取得
+  /// </summary>
+  /// <returns>対応するPlayerActionType</returns>
   virtual PlayerActionType GetType() const = 0;
+
+  /// <summary>
+  /// ステート開始時の初期化処理
+  /// </summary>
+  /// <param name="player">プレイヤー参照</param>
   virtual void Enter(Player &/*player*/) {}
+
+  /// <summary>
+  /// 毎フレームの更新処理（入力受付、移動物理、アニメーション制御等）
+  /// </summary>
+  /// <param name="player">プレイヤー参照</param>
+  /// <param name="speedMultiplier">ゲーム全体の速度倍率（タイムスケール・スクロール比率）</param>
   virtual void Update(Player &player, float speedMultiplier) = 0;
+
+  /// <summary>
+  /// ステート終了時の後処理・リセット
+  /// </summary>
+  /// <param name="player">プレイヤー参照</param>
   virtual void Exit(Player &/*player*/) {}
+
+  /// <summary>
+  /// プレイヤーが任意操作（ジャンプ・ロール・レーン移動等）を行えるかどうか
+  /// </summary>
+  /// <returns>操作可能な場合 true、被弾中や強制移動中など操作不能な場合 false</returns>
   virtual bool CanAct() const { return true; }
 };
 
+/// <summary>
+/// プレイヤーの走行（通常移動）ステートクラス
+/// 地上を走行中のアニメーション再生、左右レーン移動入力の処理、
+/// およびジャンプ／ロールへのアクション遷移（先行入力含む）を管理します。
+/// </summary>
 class PlayerRunState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Run; }
@@ -34,6 +72,11 @@ public:
   void Update(Player &player, float speedMultiplier) override;
 };
 
+/// <summary>
+/// プレイヤーのジャンプ（跳躍・滞空）ステートクラス
+/// 上方向への跳躍初速の適用、重力による落下物理計算、空中でのレーン移動制御、
+/// 着地判定・着地SE・画面揺れ、および着地時の先行入力バッファ判定を管理します。
+/// </summary>
 class PlayerJumpState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Jump; }
@@ -41,6 +84,11 @@ public:
   void Update(Player &player, float speedMultiplier) override;
 };
 
+/// <summary>
+/// プレイヤーのロール（スライディング・低姿勢回避）ステートクラス
+/// 高空障害物をくぐるための低姿勢化（モデル高さ調整・アニメーション再生）、
+/// タイマーによる持続制御（長押し継続対応）、レーン移動やジャンプによるキャンセルを管理します。
+/// </summary>
 class PlayerRollState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Roll; }
@@ -49,6 +97,11 @@ public:
   void Exit(Player &player) override;
 };
 
+/// <summary>
+/// プレイヤーの被弾（ノックバック・被ダメージ）ステートクラス
+/// 障害物や敵攻撃衝突時の吹き飛び物理挙動・回転演出を制御し、
+/// 被弾演出中はプレイヤーの任意操作を無効化（CanAct = false）します。
+/// </summary>
 class PlayerHitState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::Hit; }
@@ -58,6 +111,11 @@ public:
   bool CanAct() const override { return false; }
 };
 
+/// <summary>
+/// プレイヤーの中央レーン強制移動ステートクラス
+/// ボス戦開始演出時などに、現在位置から滑らかなイージング補間によって
+/// プレイヤーを中央レーン（レーン0）へ強制的に移動させます（移動中は操作無効）。
+/// </summary>
 class PlayerForcedCenterState : public IPlayerState {
 public:
   PlayerActionType GetType() const override { return PlayerActionType::ForcedCenter; }
