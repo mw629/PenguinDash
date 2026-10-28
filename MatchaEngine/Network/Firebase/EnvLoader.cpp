@@ -27,24 +27,36 @@ bool EnvLoader::Load(const std::string& filePath) {
   isEmbedded_ = false;
   loadedPath_.clear();
 
-  // 1. 外部探索候補パス
+  // 1. 外部探索候補パス（指定パスに加えて .env / My.env / Resources/ 等も網羅）
   std::vector<std::string> candidatePaths = {
     filePath,
     "./" + filePath,
+    "My.env",
+    ".env",
+    "Resources/My.env",
+    "Resources/.env",
     "../" + filePath,
+    "../My.env",
+    "../.env",
     "../../" + filePath,
-    "../../../" + filePath
+    "../../My.env",
+    "../../.env",
+    "../../../" + filePath,
+    "../../../My.env",
+    "../../../.env"
   };
 
   std::string targetPath;
   for (const auto& path : candidatePaths) {
-    if (fs::exists(path) && fs::is_regular_file(path)) {
+    if (path.empty()) continue;
+    std::error_code ec;
+    if (fs::exists(path, ec) && fs::is_regular_file(path, ec)) {
       targetPath = path;
       break;
     }
   }
 
-  // 外部ファイルが見つかった場合は優先して読み込み
+  // 外部ファイルが見つかった場合は読み込み
   if (!targetPath.empty()) {
     std::ifstream file(targetPath);
     if (file.is_open()) {
@@ -52,26 +64,54 @@ bool EnvLoader::Load(const std::string& filePath) {
         isLoaded_ = true;
         isEmbedded_ = false;
         loadedPath_ = targetPath;
-        return true;
       }
     }
   }
 
-  // 2. 外部ファイルが存在しない場合はexe埋め込み設定を使用
+  // 2. 外部ファイルが存在しない、または重要キーが空の場合は埋め込み設定を使用/補完
   if (EmbeddedEnv::HasEmbeddedData()) {
-    std::string embedded = EmbeddedEnv::GetEmbeddedEnvContent();
-    if (!embedded.empty()) {
-      std::istringstream iss(embedded);
-      if (ParseStream(iss)) {
-        isLoaded_ = true;
-        isEmbedded_ = true;
-        loadedPath_ = "(Embedded in exe)";
-        return true;
+    // 外部ファイルからキーが取れなかった場合、または外部ファイルがそもそも無かった場合
+    bool needEmbedded = !isLoaded_ || !Has("FIREBASE_PROJECT_ID") || !Has("FIREBASE_API_KEY");
+    if (needEmbedded) {
+      std::string embedded = EmbeddedEnv::GetEmbeddedEnvContent();
+      if (!embedded.empty()) {
+        std::istringstream iss(embedded);
+        // 外部ファイルの設定を上書きせずに空のキーのみ補完、または全体をロード
+        if (!isLoaded_) {
+          if (ParseStream(iss)) {
+            isLoaded_ = true;
+            isEmbedded_ = true;
+            loadedPath_ = "(Embedded in exe)";
+            return true;
+          }
+        } else {
+          // 外部ファイルに無い項目のみ埋め込み設定から補完
+          std::string line;
+          while (std::getline(iss, line)) {
+            std::string trimmed = Trim(line);
+            if (trimmed.empty() || trimmed[0] == '#') continue;
+            size_t eqPos = trimmed.find('=');
+            if (eqPos == std::string::npos) continue;
+            std::string key = Trim(trimmed.substr(0, eqPos));
+            std::string val = Trim(trimmed.substr(eqPos + 1));
+            if (!val.empty() && (val.front() == '"' || val.front() == '\'')) {
+              val = val.substr(1, val.size() - 2);
+            }
+            if (!key.empty() && !Has(key)) {
+              envMap_[key] = val;
+            }
+          }
+          isEmbedded_ = true;
+          loadedPath_ += " + (Embedded in exe)";
+          return true;
+        }
       }
+    } else {
+      return true;
     }
   }
 
-  return false;
+  return isLoaded_;
 }
 
 bool EnvLoader::LoadFromString(const std::string& content, const std::string& sourceName) {
