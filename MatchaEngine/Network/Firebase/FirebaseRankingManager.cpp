@@ -1,5 +1,6 @@
 #include "FirebaseRankingManager.h"
 #include "HttpClient.h"
+#include <windows.h>
 #include <nlohmann/json.hpp>
 #include <thread>
 #include <chrono>
@@ -29,11 +30,14 @@ bool FirebaseRankingManager::Initialize(const std::string& envPath) {
   }
 
   if (IsConfigured()) {
-    std::string sourceInfo = envLoader_.IsEmbedded() ? "内蔵設定" : envLoader_.GetLoadedPath();
+    std::string sourceInfo = envLoader_.IsEmbedded() ? "内蔵設定(Embedded in exe)" : envLoader_.GetLoadedPath();
     lastStatusMessage_ = "初期化完了。Firebase (プロジェクト: " + projectId_ + ", ソース: " + sourceInfo + ") への接続準備完了";
   } else {
     lastStatusMessage_ = "初期化完了。ただし FIREBASE_PROJECT_ID または FIREBASE_API_KEY が設定されていません";
   }
+
+  std::string debugLog = "[FirebaseRankingManager] " + lastStatusMessage_ + "\n";
+  OutputDebugStringA(debugLog.c_str());
 
   return loaded;
 }

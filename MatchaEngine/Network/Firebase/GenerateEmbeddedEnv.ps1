@@ -97,6 +97,11 @@ if (Test-Path $outputHeader) {
 if ($needWrite) {
     [System.IO.File]::WriteAllText($outputHeader, $newContent, [System.Text.Encoding]::UTF8)
     Write-Host "[GenerateEmbeddedEnv] Generated EmbeddedEnv.h (hasData = $hasData, bytes = $($byteList.Count))"
+    # EnvLoader.cpp の更新日時を更新し、コンパイラが確実に再コンパイルするようにする
+    $envLoaderCpp = Join-Path $PSScriptRoot "EnvLoader.cpp"
+    if (Test-Path $envLoaderCpp) {
+        (Get-Item $envLoaderCpp).LastWriteTime = Get-Date
+    }
 } else {
     Write-Host "[GenerateEmbeddedEnv] EmbeddedEnv.h is up to date."
 }
