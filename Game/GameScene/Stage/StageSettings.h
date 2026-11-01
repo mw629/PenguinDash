@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "GameObjectManager.h"
 #include "RenderObject.h"
 #include <Engine.h>
@@ -58,7 +58,7 @@ private:
   static constexpr int kDefaultMaxConsecutiveNoSpawn = 1;
   static constexpr float kDefaultItemSpawnChance = 0.15f;
   static constexpr float kDefaultCameraItemInterval = 500.0f;
-  static constexpr float kLaneChangeHorizonZ = 115.0f;
+  static constexpr float kLaneChangeHorizonZ = 45.0f;
   static constexpr float kResetSpawnLeadDistance = 3.0f;
   static constexpr float kMinEffectiveSpeed = 0.05f;
   static constexpr int kInitialObstacleTypeCount = 3;
@@ -380,6 +380,12 @@ public:
   /// <param name="count">目標レーン数</param>
   /// <param name="view">ビュー行列</param>
   void SetLaneCountImmediate(int count, Matrix4x4 view = IdentityMatrix());
+
+  /// <summary>
+  /// 1レーンモード突入時にプレイヤー前方へ障害物を初期配置する
+  /// （奥からの到達待ち時間を解消し、切り替え直後からテンポよく障害物を出現させる）
+  /// </summary>
+  void SetupOneLaneInitialObstacles();
 
   void SetLaneWidth(float width) {
     if (laneWidth_ == width)

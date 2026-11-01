@@ -1,4 +1,4 @@
-﻿#include "StageSettings.h"
+#include "StageSettings.h"
 #include "AssetManager.h"
 #include "Core/LogHandler.h"
 #include "PSO/PipelineState.h"
@@ -87,10 +87,19 @@ void StageSettings::Initialize(ModelData roadModelData,
 }
 
 void StageSettings::CalculateNextObstacleInterval() {
+  int currentLaneCount = GetLaneCountAtZ(spawnObstacleZ_);
+  bool isOneLane = (currentLaneCount == 1 || targetLaneCount_ == 1);
+
+  // 1レーン時は横移動がなく、ジャンプ/ローリングの連続回避アクションになるため、
+  // アクション所要フレームおよび猶予フレームを短縮してテンポよく障害物が流れるようにする
+  float minGrace = isOneLane ? (minGraceFrames_ * 0.4f) : minGraceFrames_;
+  float maxGrace = isOneLane ? (maxGraceFrames_ * 0.5f) : maxGraceFrames_;
+  float baseAction = isOneLane ? (baseActionFrames_ * 0.65f) : baseActionFrames_;
+
   // 猶予フレームを最小〜最大の間でランダムに選定（等間隔にならないようにバリエーションを持たせる）
-  float graceFrames = minGraceFrames_; // 決定された猶予フレーム数
+  float graceFrames = minGrace;
   int frameRange =
-      static_cast<int>(maxGraceFrames_ - minGraceFrames_); // 変動フレーム幅
+      static_cast<int>(maxGrace - minGrace); // 変動フレーム幅
   if (frameRange > 0) {
     graceFrames += static_cast<float>(std::rand() % (frameRange + 1));
   }
@@ -100,19 +109,21 @@ void StageSettings::CalculateNextObstacleInterval() {
       (std::max)(scrollSpeed_,
                  kMinEffectiveSpeed); // 停止時や低速時の0除算・0距離を防ぐ実効速度
   float totalFrames =
-      baseActionFrames_ + graceFrames; // 回避に必要な合計フレーム数
+      baseAction + graceFrames; // 回避に必要な合計フレーム数
   float calculatedDistance =
       effectiveSpeed * totalFrames; // 移動速度と猶予フレームから計算された距離
 
   // 確実に避けられる距離範囲（最小距離〜最大距離）に制限
-  // 速度が高速になってもアクション完了＋最小猶予フレーム（5f）を下回らないよう上限を動的ガード
+  // 速度が高速になってもアクション完了＋最小猶予フレームを下回らないよう上限を動的ガード
   float minRequiredDistance =
-      effectiveSpeed * (baseActionFrames_ + minGraceFrames_);
+      effectiveSpeed * (baseAction + minGrace);
+  float minDistance =
+      isOneLane ? (minObstacleDistance_ * 0.7f) : minObstacleDistance_;
   float dynamicMaxDistance =
       (std::max)(maxObstacleDistance_, minRequiredDistance);
 
   obstacleInterval_ =
-      (std::min)((std::max)(minObstacleDistance_, calculatedDistance),
+      (std::min)((std::max)(minDistance, calculatedDistance),
                  dynamicMaxDistance); // 次回生成までの距離
 }
 
@@ -190,6 +201,62 @@ void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
   minLaneIndex_ = -(laneCount_ / 2);
   maxLaneIndex_ = (laneCount_ - 1) / 2;
   isDirty_ = true;
+}
+
+void StageSettings::SetupOneLaneInitialObstacles() {
+  // プレイヤーは Z ≈ 0 にいる。
+  // 1レーン移行開始時、奥（kLaneChangeHorizonZ = 45m）から1レーンの床が出現して流れてくる。
+  // ユーザーの要望：「1レーンの最初の3ウェーブほど障害物をなくしてほしい」
+  // そのため、床の切り替わり開始地点から3ウェーブ分奥（startZ = kLaneChangeHorizonZ + 3 * spacing）から配置を開始する。
+  // これにより、床が1レーンになりカメラが切り替わった直後は3ウェーブ分の安全区間（準備時間）となり、
+  // 落ち着いて構えた後から障害物がテンポよく流れてくる。
+  float currentLaneWidth = GetEffectiveLaneWidthAtZ(0.0f);
+  int lane = 0;
+  float x = static_cast<float>(lane) * currentLaneWidth;
+
+  float currentSpeed = (std::max)(scrollSpeed_, kMinEffectiveSpeed);
+  // 約25〜30フレーム間隔（速度0.2なら 約5〜7m間隔）で連続配置
+  float spacing = (std::max)(minObstacleDistance_ * 0.8f, currentSpeed * 28.0f);
+  // 1レーン突入後の最初の3ウェーブ分を安全区間にするため、3ウェーブ分奥から配置開始
+  float startZ = kLaneChangeHorizonZ + 3.0f * spacing;
+
+  // 既存の障害物のうち、プレイヤー直近（Z <= 15.0f）の障害物は回避中の可能性があるため残し、
+  // それより奥にある古い3レーン障害物は非アクティブ化して、最初の3ウェーブの安全区間を確実に確保
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i] && obstacles_[i]->GetIsActive()) {
+      if (obstacles_[i]->GetTransform().translate.z > 15.0f) {
+        obstacles_[i]->Deactivate();
+      }
+    }
+  }
+
+  int pattern = 0;
+  for (float z = startZ; z <= spawnObstacleZ_; z += spacing) {
+    Obstacle::Type type = Obstacle::Type::Low;
+    float y = kObstacleSpawnYLow;
+
+    int roll = pattern % 5;
+    pattern++;
+
+    if (roll == 0 || roll == 3) {
+      type = Obstacle::Type::Low; // ジャンプで飛び越える
+      y = kObstacleSpawnYLow;
+    } else if (roll == 1 || roll == 4) {
+      type = Obstacle::Type::High; // ローリングで潜る
+      y = kObstacleSpawnYHigh;
+    } else {
+      type = Obstacle::Type::Bonus; // ボーナスアイテム（魚）
+      y = kItemSpawnY;
+    }
+
+    obstacles_[nextObstacleIndex_]->SetType(type);
+    obstacles_[nextObstacleIndex_]->Spawn(x, y, z);
+    nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
+  }
+
+  // 進行度をリセットし、スポーン間隔を再計算
+  distanceSinceLastSpawn_ = 0.0f;
+  CalculateNextObstacleInterval();
 }
 
 void StageSettings::SetRoadColor(const Vector4 &color) {
@@ -1067,7 +1134,8 @@ void StageSettings::SpawnObstacles(float z) {
 
   // === 時々障害物が出ない（空ウェーブ/安全区間）判定 ===
   bool isEmptyWave = false; // 障害物を一切生成しない空ウェーブフラグ
-  if (consecutiveNoSpawnCount_ < maxConsecutiveNoSpawn_) {
+  // 1レーン時は障害物が少なくなるのを防ぐため、空ウェーブを発生させない
+  if (currentLaneCount > 1 && consecutiveNoSpawnCount_ < maxConsecutiveNoSpawn_) {
     int roll = std::rand() % 100; // 0〜99の乱数
     int chancePercent =
         static_cast<int>(noSpawnChance_ * 100.0f); // 確率をパーセンテージに変換
@@ -1078,11 +1146,10 @@ void StageSettings::SpawnObstacles(float z) {
       consecutiveNoSpawnCount_ = 0; // 障害物が出るためリセット
     }
   } else {
-    consecutiveNoSpawnCount_ = 0; // 連続上限に達したためリセット
+    consecutiveNoSpawnCount_ = 0; // 連続上限または1レーンのためリセット
   }
 
   // たまにボーナスまたはアイテムを配置する（各アイテムのクールタイムを考慮）
-  // ただし1レーンの場合は出さない
   int bonusLane =
       -1; // ボーナスまたはアイテムを配置するレーン番号（-1は配置なし）
   Obstacle::Type itemType = Obstacle::Type::Bonus; // アイテムの種類
@@ -1114,6 +1181,14 @@ void StageSettings::SpawnObstacles(float z) {
             itemCoolDowns_[itemType].duration;
       }
     }
+  } else if (currentLaneCount == 1) {
+    // 1レーン時は定期的にボーナス（魚）を配置して密度と楽しさを向上させる
+    int roll = std::rand() % 100;
+    int bonusPercent = 25; // 25%の確率でボーナス配置
+    if (roll < bonusPercent) {
+      bonusLane = 0;
+      itemType = Obstacle::Type::Bonus;
+    }
   }
 
   // 空ウェーブの場合は障害物を配置せず、アイテムのみ生成（または完全な安全区間）
@@ -1134,41 +1209,36 @@ void StageSettings::SpawnObstacles(float z) {
   int wallCount = 0;
   int noneCount = 0;
 
-  for (int i = 0; i < currentLaneCount; i++) {
-    laneSpawns[i] = std::rand() % 4; // 0~3
-    if (laneSpawns[i] == 3) {
-      wallCount++;
-    } else if (laneSpawns[i] == 0) {
-      noneCount++;
+  if (currentLaneCount == 1) {
+    // 1レーン時は確実にジャンプ(1:Low)またはローリング(2:High)を生成
+    laneSpawns[0] = 1 + (std::rand() % 2);
+  } else {
+    for (int i = 0; i < currentLaneCount; i++) {
+      laneSpawns[i] = std::rand() % 4; // 0~3
+      if (laneSpawns[i] == 3) {
+        wallCount++;
+      } else if (laneSpawns[i] == 0) {
+        noneCount++;
+      }
     }
-  }
 
-  // すべて「何もない(None)」の場合は、最低1つの障害物を配置する
-  if (noneCount == currentLaneCount) {
-    int changeIndex = std::rand() % currentLaneCount;
-    if (currentLaneCount == 1) {
-      // レーンが1つの場合はWall(3)を生成しないようにする(1:Low, 2:High)
-      laneSpawns[changeIndex] = 1 + (std::rand() % 2);
-    } else {
+    // すべて「何もない(None)」の場合は、最低1つの障害物を配置する
+    if (noneCount == currentLaneCount) {
+      int changeIndex = std::rand() % currentLaneCount;
       laneSpawns[changeIndex] = 1 + (std::rand() % 3); // 1, 2, 3 のどれか
     }
-  }
 
-  // noneCountの処理でWallが増えた可能性があるのでwallCountを再計算
-  wallCount = 0;
-  for (int i = 0; i < currentLaneCount; i++) {
-    if (laneSpawns[i] == 3) {
-      wallCount++;
+    // noneCountの処理でWallが増えた可能性があるのでwallCountを再計算
+    wallCount = 0;
+    for (int i = 0; i < currentLaneCount; i++) {
+      if (laneSpawns[i] == 3) {
+        wallCount++;
+      }
     }
-  }
 
-  // 全てWallの場合は1つを確実に通れるようにする
-  if (wallCount == currentLaneCount) {
-    int changeIndex = std::rand() % currentLaneCount;
-    if (currentLaneCount == 1) {
-      // 1レーンしかなく全てWallの場合は、必ず通れる障害物にする
-      laneSpawns[changeIndex] = 1 + (std::rand() % 2); // 1:Low または 2:High
-    } else {
+    // 全てWallの場合は1つを確実に通れるようにする
+    if (wallCount == currentLaneCount) {
+      int changeIndex = std::rand() % currentLaneCount;
       laneSpawns[changeIndex] = 0;
     }
   }

@@ -1,4 +1,4 @@
-﻿#include "GameCameraController.h"
+#include "GameCameraController.h"
 #include "../../../Editer/EditorManager.h"
 #include <Entity/Player.h>
 #include <Stage/StageSettings.h>
@@ -55,27 +55,74 @@ void GameCameraController::StartTransition(const Transform &targetTransform,
                                            int laneCount,
                                            StageSettings *stageSettings) {
   if (stageSettings) {
-    stageSettings->SetSpawningPaused(true);
+    if (laneCount == 1) {
+      // 1レーン移行時はスポーンを止めず、奥から自然に流れてくるようにする
+      stageSettings->SetSpawningPaused(false);
+    } else {
+      stageSettings->SetSpawningPaused(true);
+    }
     stageSettings->SetLaneCount(laneCount);
   }
   isCameraTransitionPending_ = true;
   pendingCameraTargetTransform_ = targetTransform;
   pendingLaneCount_ = laneCount;
+  pendingTransitionTimer_ = 0.0f;
 }
 
 void GameCameraController::UpdateTransition(
     StageSettings *stageSettings, std::function<void()> onFinished) {
   if (isCameraTransitionPending_ && stageSettings) {
-    bool hasActiveObstacles = false;
-    for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
-      Obstacle *obstacle = stageSettings->GetObstacle(i);
-      if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit()) {
-        hasActiveObstacles = true;
-        break;
+    pendingTransitionTimer_ += Engine::kDefaultDeltaTime;
+
+    bool canStartTransition = false;
+
+    if (pendingLaneCount_ == 1) {
+      // --- 1レーンへの移行演出 ---
+      // ユーザー要望:「1レーンになる前にカメラが移動するのを直してほしい」
+      // 1. プレイヤー位置（足元 Z=0m、または直前 Z=5m）の床が実際に 1 レーンに切り替わるまで待機する
+      // 2. プレイヤー直近（Z <= 15m）の古い障害物が通り過ぎるのを待つ
+      // これにより、床が1レーンになる前にカメラがサイドビューへ移動してしまう現象を防止する
+      bool isOneLaneAtPlayer = (stageSettings->GetLaneCountAtZ(0.0f) == 1 ||
+                                stageSettings->GetLaneCountAtZ(5.0f) == 1);
+
+      bool hasNearObstacles = false;
+      for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
+        Obstacle *obstacle = stageSettings->GetObstacle(i);
+        if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit()) {
+          float z = obstacle->GetTransform().translate.z;
+          if (z > 0.0f && z <= 15.0f) {
+            hasNearObstacles = true;
+            break;
+          }
+        }
+      }
+
+      // 床が実際に1レーンになり、かつ直近の危険障害物が通過したらカメラ移動を開始
+      // （安全のためのフォールバック: 最大4.5秒経過でも開始）
+      if (!hasNearObstacles && (isOneLaneAtPlayer || pendingTransitionTimer_ >= 4.5f)) {
+        canStartTransition = true;
+      }
+    } else {
+      // --- ボス戦や通常3レーン移行の場合 ---
+      // 画面内の直近障害物が消えるのを待つ
+      bool hasActiveObstacles = false;
+      for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
+        Obstacle *obstacle = stageSettings->GetObstacle(i);
+        if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit()) {
+          float z = obstacle->GetTransform().translate.z;
+          if (z > 0.0f && z <= 25.0f) {
+            hasActiveObstacles = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasActiveObstacles) {
+        canStartTransition = true;
       }
     }
 
-    if (!hasActiveObstacles) {
+    if (canStartTransition) {
       isCameraTransitionPending_ = false;
       isCameraTransitioning_ = true;
       cameraTransitionTimer_ = 0.0f;

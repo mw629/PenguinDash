@@ -566,9 +566,13 @@ void GameScene::PlayingUpdate() {
 
   // --- 1レーン（右サイドカメラ）モードの走行距離加算・終了判定 ---
   if (isRightSideMode_) {
-    rightSideDistance_ += scoreScrollSpeed * timeScale;
-    if (rightSideDistance_ >= kOneLaneTotalDistance) {
-      ChangePlayingState(PlayingState::ThreeLane);
+    // カメラトランジション中および待機中は距離を加算しない（1レーン本編の走行距離のみカウント）
+    if (!cameraController_->IsTransitioning() &&
+        !cameraController_->IsTransitionPending()) {
+      rightSideDistance_ += scoreScrollSpeed * timeScale;
+      if (rightSideDistance_ >= kOneLaneTotalDistance) {
+        ChangePlayingState(PlayingState::ThreeLane);
+      }
     }
   }
 
@@ -1149,6 +1153,9 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     rightSideDistance_ = 0.0f;
     boss_->Reset();
     bossBattleController_->Reset();
+    // 1レーン移行開始時に奥（Z=45m〜）へ1レーン用障害物を先行配置
+    // カメラが切り替わるまでの間に手前へ流れてきて、サイドビューになった瞬間に障害物が「出た状態」で迎える
+    stageSettings_->SetupOneLaneInitialObstacles();
     break;
 
   case PlayingState::Boss:

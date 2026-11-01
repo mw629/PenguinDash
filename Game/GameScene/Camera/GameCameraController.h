@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Camera.h"
 #include <Engine.h>
 #include <Math/Calculation.h>
@@ -37,6 +37,7 @@ private:
 
   // トランジション
   bool isCameraTransitionPending_ = false;
+  float pendingTransitionTimer_ = 0.0f;
   Transform pendingCameraTargetTransform_;
   int pendingLaneCount_ = kDefaultLaneCount;
 
