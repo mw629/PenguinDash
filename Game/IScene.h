@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 enum SceneID
 {
@@ -7,8 +7,7 @@ enum SceneID
 	StageSelect = 2,
 	Game = 3,
 	Clear = 4,
-	GameOver = 5,
-	Json = 6
+	GameOver = 5
 };
 
 class IScene

@@ -54,11 +54,6 @@ public:
 	/// <param name="draw">描画マネージャ</param>
 	void DrawUI(class Draw& draw);
 
-	/// <summary>
-	/// 毎フレームの更新と描画の一括実行
-	/// </summary>
-	/// <param name="draw">描画マネージャ</param>
-	void Run(class Draw& draw);
 
 	/// <summary>
 	/// 指定IDに応じたシーンインスタンスを生成

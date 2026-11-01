@@ -1,14 +1,13 @@
 #include "SceneManager.h"
 #include "GameScene.h"
 #include "TestScene.h"
-#include "JsonScene/JsonScene.h"
 #include <Engine.h>
 #include "../Editer/EditorManager.h"
 #include <imgui.h>
 
 SceneManager::SceneManager()
 {
-	// 最初のシーンをJsonSceneに設定
+	// 最初のシーンをGameSceneに設定
 	scene_ = std::make_unique<GameScene>();
 	Initialize();
 }
@@ -70,19 +69,11 @@ void SceneManager::DrawUI(class Draw& draw) {
 	}
 }
 
-void SceneManager::Run(class Draw& draw)
-{
-	ImGui();
-	Update();
-	Draw(draw);
-}
-
 std::unique_ptr<IScene> SceneManager::CreateScene(int sceneID)
 {
 	switch (sceneID) {
 	case SceneID::Test:  return std::make_unique<TestScene>();
 	case SceneID::Game:  return std::make_unique<GameScene>(); 
-	case SceneID::Json:  return std::make_unique<JsonScene>();
 	default: return nullptr;
 	}
 }

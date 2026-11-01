@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include=".github">
@@ -42,9 +42,6 @@
     </Filter>
     <Filter Include="Game\GameScene\UI">
       <UniqueIdentifier>{8052ac9d-fd0e-4112-a8a0-4e3febf6c47b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Game\JsonScene">
-      <UniqueIdentifier>{82d1c5cd-eb8d-4bf9-b3f1-87f850eb9b08}</UniqueIdentifier>
     </Filter>
     <Filter Include="Game\TestScene">
       <UniqueIdentifier>{e290b9d6-e4e8-4e76-a060-307906ea3826}</UniqueIdentifier>
@@ -266,9 +263,6 @@
     </ClCompile>
     <ClCompile Include="Game\GameScene\UI\GameHUD.cpp">
       <Filter>Game\GameScene\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Game\JsonScene\JsonScene.cpp">
-      <Filter>Game\JsonScene</Filter>
     </ClCompile>
     <ClCompile Include="Game\SceneManager.cpp">
       <Filter>Game</Filter>
@@ -592,9 +586,6 @@
     </ClInclude>
     <ClInclude Include="Game\IScene.h">
       <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\JsonScene\JsonScene.h">
-      <Filter>Game\JsonScene</Filter>
     </ClInclude>
     <ClInclude Include="Game\SceneManager.h">
       <Filter>Game</Filter>
