@@ -519,7 +519,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     OnHit();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
     if (scene->GetCameraController()) {
-      scene->GetCameraController()->ShakeDefeat();
+      scene->GetCameraController()->ShakeImpact();
     }
     if (scene->GetStageSettings()) {
       for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {

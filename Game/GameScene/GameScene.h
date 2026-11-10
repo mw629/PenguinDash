@@ -264,16 +264,18 @@ public:
     PlayerName = 0,
     GameStart,
     Ranking,
+    Achievements,
     HowToPlay,
     Exit,
     Count
   };
 
-  enum class TitleSubView { None = 0, Ranking, HowToPlay };
+  enum class TitleSubView { None = 0, Ranking, HowToPlay, Achievements };
 
 private:
   TitleMenuItem titleMenuIndex_ = TitleMenuItem::GameStart;
   TitleSubView titleSubView_ = TitleSubView::None;
+  int titleAchievementPage_ = 0;
   std::string titlePlayerName_ = "Player";
   bool isEditingTitlePlayerName_ = false;
 

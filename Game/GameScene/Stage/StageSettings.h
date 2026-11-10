@@ -234,13 +234,31 @@ private:
   void ResetDriftIce();
   void SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int index);
 
+  static constexpr float kDefaultRoadChunkFallInitialSpeed = 2.0f;
+  static constexpr float kDefaultRoadChunkFallGravity = 35.0f;
+  static constexpr float kDefaultRoadChunkFallDelayPerMeter = 0.012f;
+  static constexpr float kDefaultRoadChunkFallDespawnDrop = 60.0f;
+
   ModelData roadModelData_;
   Vector4 roadColor_ = kDefaultRoadColor;
   class GameObjectManager *manager_ = nullptr;
   std::vector<std::shared_ptr<RenderObject>> chunkPool_;
 
+  struct FallingChunk {
+    std::shared_ptr<RenderObject> renderObj;
+    Transform transform;
+    float initialY = 0.0f;
+    float velocityY = 0.0f;
+    float delayTimer = 0.0f;
+  };
+  std::vector<FallingChunk> fallingChunks_;
+
   void GenerateRoadChunks(Matrix4x4 view = IdentityMatrix());
-  void RebuildChunkRow(int rowIndex, int newLaneCount, float newZ, Matrix4x4 view = IdentityMatrix());
+  void RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
+                       Matrix4x4 view = IdentityMatrix(),
+                       bool fallRemovedLanes = false);
+  void UpdateFallingChunks(Matrix4x4 view, float currentScroll, float dt);
+  void ClearFallingChunks();
 
   // テクスチャ
   std::unique_ptr<Texture> texture_ = std::make_unique<Texture>();

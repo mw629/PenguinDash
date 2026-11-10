@@ -11,6 +11,7 @@ class Boss;
 class StageSettings;
 class Sprite;
 class Texture;
+class AchievementManager;
 struct RankingEntry;
 
 struct GameHUDContext {
@@ -51,8 +52,10 @@ struct GameHUDContext {
   // タイトル画面用メニュー・名前登録・サブビュー
   int titleMenuIndex = 1;
   int titleSubView = 0;
+  int titleAchievementPage = 0;
   const std::string* titlePlayerName = nullptr;
   bool isEditingTitlePlayerName = false;
+  const AchievementManager* achievementManager = nullptr;
 };
 
 class GameHUD {
@@ -193,6 +196,9 @@ private:
   static constexpr float kGameOverMyRankFontSize = 19.5f;
   static constexpr Vector2 kGameOverBottomBtnPos = {245.0f, 535.0f};
   static constexpr float kGameOverBottomBtnFontSize = 22.0f;
+  static constexpr float kResultMainPanelOffsetX = -125.0f;
+  static constexpr Vector2 kResultAchPanelPos = {970.0f, 50.0f};
+  static constexpr Vector2 kResultAchPanelSize = {235.0f, 600.0f};
 
   // タイトル画面
   static constexpr float kTitleMainFontSize = 112.0f;
@@ -287,6 +293,11 @@ private:
   /// タイトル画面操作説明モーダルの描画
   /// </summary>
   void DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// タイトル画面実績一覧モーダルの描画
+  /// </summary>
+  void DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx);
 
   /// <summary>
   /// エディターモード中HUDの描画

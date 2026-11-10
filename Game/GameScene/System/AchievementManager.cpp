@@ -29,21 +29,22 @@ AchievementManager::AddAchievement(std::unique_ptr<Achievement> achievement) {
 Achievement *AchievementManager::RegisterProgress(
     const std::string &id, const std::string &title,
     const std::string &description, float scoreReward, float targetValue,
-    ValueGetterFunc valueGetter, const std::string &unit) {
+    ValueGetterFunc valueGetter, const std::string &unit,
+    AchievementRarity rarity) {
   auto ach = std::make_unique<ProgressAchievement>(
       id, title, description, scoreReward, targetValue, std::move(valueGetter),
-      unit);
+      unit, rarity);
   return AddAchievement(std::move(ach));
 }
 
 Achievement *AchievementManager::RegisterCondition(
     const std::string &id, const std::string &title,
     const std::string &description, float scoreReward,
-    AchievementConditionFunc conditionFunc,
+    AchievementConditionFunc conditionFunc, AchievementRarity rarity,
     AchievementProgressFunc progressFunc,
     AchievementProgressTextFunc progressTextFunc) {
   auto ach = std::make_unique<ConditionAchievement>(
-      id, title, description, scoreReward, std::move(conditionFunc),
+      id, title, description, scoreReward, std::move(conditionFunc), rarity,
       std::move(progressFunc), std::move(progressTextFunc));
   return AddAchievement(std::move(ach));
 }
@@ -56,11 +57,12 @@ void AchievementManager::RegisterDefaultAchievements() {
   // ■ 目標値型（距離、スコア、撃破数など）:
   //   RegisterProgress("ID", "タイトル", "説明文", 加点スコア, 目標値,
   //                    [](const AchievementContext& ctx) { return ctx.xxx; },
-  //                    "単位");
+  //                    "単位", AchievementRarity::Common / Rare / SuperRare);
   //
   // ■ 条件判定型（フラグ、複合条件など）:
   //   RegisterCondition("ID", "タイトル", "説明文", 加点スコア,
-  //                     [](const AchievementContext& ctx) { return ctx.xxx; });
+  //                     [](const AchievementContext& ctx) { return ctx.xxx; },
+  //                     AchievementRarity::Common / Rare / SuperRare);
   //
   // ■ 独自クラス型（複雑な状態を持つ実績など）:
   //   AddAchievement(std::make_unique<MyCustomAchievement>(...));
@@ -69,19 +71,23 @@ void AchievementManager::RegisterDefaultAchievements() {
   // --- 1. 走行距離系実績 ---
   RegisterProgress(
       "dist_500", "ペンギン散歩", "走行距離500mを突破する", 200.0f, 500.0f,
-      [](const AchievementContext &ctx) { return ctx.distance; }, "m");
+      [](const AchievementContext &ctx) { return ctx.distance; }, "m",
+      AchievementRarity::Common);
 
   RegisterProgress(
       "dist_1000", "俊足のランナー", "走行距離1000mを突破する", 500.0f, 1000.0f,
-      [](const AchievementContext &ctx) { return ctx.distance; }, "m");
+      [](const AchievementContext &ctx) { return ctx.distance; }, "m",
+      AchievementRarity::Common);
 
   RegisterProgress(
       "dist_2000", "氷原の覇者", "走行距離2000mを突破する", 1000.0f, 2000.0f,
-      [](const AchievementContext &ctx) { return ctx.distance; }, "m");
+      [](const AchievementContext &ctx) { return ctx.distance; }, "m",
+      AchievementRarity::Rare);
 
   RegisterProgress(
       "dist_5000", "南極点到達！", "走行距離5000mを突破する", 2000.0f, 5000.0f,
-      [](const AchievementContext &ctx) { return ctx.distance; }, "m");
+      [](const AchievementContext &ctx) { return ctx.distance; }, "m",
+      AchievementRarity::SuperRare);
 
   // --- 2. ボーナス敵撃破系実績 ---
   RegisterProgress(
@@ -89,7 +95,7 @@ void AchievementManager::RegisterDefaultAchievements() {
       [](const AchievementContext &ctx) {
         return static_cast<float>(ctx.bonusEnemyHitCount);
       },
-      "体");
+      "体", AchievementRarity::Common);
 
   RegisterProgress(
       "bonus_3", "ボーナスコレクター", "ボーナス敵を累計3体吹っ飛ばす", 800.0f,
@@ -97,7 +103,7 @@ void AchievementManager::RegisterDefaultAchievements() {
       [](const AchievementContext &ctx) {
         return static_cast<float>(ctx.bonusEnemyHitCount);
       },
-      "体");
+      "体", AchievementRarity::Rare);
 
   RegisterProgress(
       "bonus_5", "ボーナスハンター", "ボーナス敵を累計5体吹っ飛ばす", 1500.0f,
@@ -105,20 +111,23 @@ void AchievementManager::RegisterDefaultAchievements() {
       [](const AchievementContext &ctx) {
         return static_cast<float>(ctx.bonusEnemyHitCount);
       },
-      "体");
+      "体", AchievementRarity::SuperRare);
 
   // --- 3. スコア到達系実績 ---
   RegisterProgress(
       "score_1000", "スコアスターター", "スコア1,000ptを突破する", 300.0f,
-      1000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt");
+      1000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt",
+      AchievementRarity::Common);
 
   RegisterProgress(
       "score_3000", "ハイスコアラー", "スコア3,000ptを突破する", 1000.0f,
-      3000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt");
+      3000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt",
+      AchievementRarity::Rare);
 
   RegisterProgress(
       "score_5000", "スコアマスター", "スコア5,000ptを突破する", 2500.0f,
-      5000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt");
+      5000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt",
+      AchievementRarity::SuperRare);
 
   // --- 4. アクション・特殊モード系実績 ---
   RegisterProgress(
@@ -126,7 +135,7 @@ void AchievementManager::RegisterDefaultAchievements() {
       [](const AchievementContext &ctx) {
         return static_cast<float>(ctx.jumpCount);
       },
-      "回");
+      "回", AchievementRarity::Common);
 
   RegisterProgress(
       "roll_10", "スライディング職人", "スライディングを累計10回行う", 300.0f,
@@ -134,28 +143,33 @@ void AchievementManager::RegisterDefaultAchievements() {
       [](const AchievementContext &ctx) {
         return static_cast<float>(ctx.rollCount);
       },
-      "回");
+      "回", AchievementRarity::Common);
 
   RegisterCondition(
       "speed_zone", "トップスピード", "高速1レーンモードに突入する", 500.0f,
-      [](const AchievementContext &ctx) { return ctx.isOneLaneMode; });
+      [](const AchievementContext &ctx) { return ctx.isOneLaneMode; },
+      AchievementRarity::Rare);
 
   RegisterProgress(
       "unmoved_3s", "不動の精神", "3秒間動かずに留まる", 500.0f, 3.0f,
-      [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒");
+      [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒",
+      AchievementRarity::Rare);
 
   RegisterProgress(
       "unmoved_5s", "石像の境地", "5秒間動かずに留まる", 1000.0f, 5.0f,
-      [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒");
+      [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒",
+      AchievementRarity::SuperRare);
 
   // --- 5. ボス戦系実績 ---
   RegisterCondition(
       "boss_encounter", "氷雪の王と対峙", "ボス戦に突入する", 500.0f,
-      [](const AchievementContext &ctx) { return ctx.isBossBattle; });
+      [](const AchievementContext &ctx) { return ctx.isBossBattle; },
+      AchievementRarity::Rare);
 
   RegisterCondition(
       "boss_defeat", "アイスキング討伐！", "ボスを撃破する", 3000.0f,
-      [](const AchievementContext &ctx) { return ctx.isBossDefeated; });
+      [](const AchievementContext &ctx) { return ctx.isBossDefeated; },
+      AchievementRarity::SuperRare);
 }
 
 void AchievementManager::Update(float deltaTime, const AchievementContext &ctx,
@@ -201,6 +215,7 @@ void AchievementManager::TriggerUnlock(Achievement *ach,
   notif.title = ach->GetTitle();
   notif.description = ach->GetDescription();
   notif.scoreReward = ach->GetScoreReward();
+  notif.rarity = ach->GetRarity();
   notif.timer = 0.0f;
   notifications_.push_back(notif);
 }
@@ -277,21 +292,28 @@ void AchievementManager::DrawUI(Draw &draw) {
   draw.DrawFillRect(panelPos, panelSize,
                     Vector4(0.04f, 0.08f, 0.16f, 0.90f * alpha));
 
-  // 金色のアクセントボーダー（上部）
-  draw.DrawFillRect(panelPos, Vector2(kPanelWidth, 3.0f),
-                    Vector4(1.0f, 0.85f, 0.25f, alpha));
+  // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫）
+  Vector4 borderMainColor = Vector4(1.0f, 1.0f, 1.0f, alpha);
+  Vector4 borderSubColor = Vector4(0.90f, 0.92f, 0.95f, 0.85f * alpha);
+  if (notif.rarity == AchievementRarity::Rare) {
+    borderMainColor = Vector4(0.20f, 0.95f, 0.35f, alpha);
+    borderSubColor = Vector4(0.18f, 0.85f, 0.30f, 0.85f * alpha);
+  } else if (notif.rarity == AchievementRarity::SuperRare) {
+    borderMainColor = Vector4(0.75f, 0.30f, 1.0f, alpha);
+    borderSubColor = Vector4(0.68f, 0.25f, 0.95f, 0.85f * alpha);
+  }
 
-  // 金色の外枠（下・左・右）
-  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + kPanelHeight - 1.5f),
-                    Vector2(kPanelWidth, 1.5f),
-                    Vector4(0.6f, 0.5f, 0.15f, 0.6f * alpha));
-  draw.DrawFillRect(panelPos, Vector2(1.5f, kPanelHeight),
-                    Vector4(0.6f, 0.5f, 0.15f, 0.6f * alpha));
-  draw.DrawFillRect(Vector2(panelPos.x + kPanelWidth - 1.5f, panelPos.y),
-                    Vector2(1.5f, kPanelHeight),
-                    Vector4(0.6f, 0.5f, 0.15f, 0.6f * alpha));
+  // アクセントボーダー（上部）
+  draw.DrawFillRect(panelPos, Vector2(kPanelWidth, 3.0f), borderMainColor);
 
-  // テキスト1行目: ★ 実績解除！ [タイトル] (+500 pt) ★
+  // 外枠（下・左・右）
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + kPanelHeight - 2.0f),
+                    Vector2(kPanelWidth, 2.0f), borderSubColor);
+  draw.DrawFillRect(panelPos, Vector2(2.0f, kPanelHeight), borderSubColor);
+  draw.DrawFillRect(Vector2(panelPos.x + kPanelWidth - 2.0f, panelPos.y),
+                    Vector2(2.0f, kPanelHeight), borderSubColor);
+
+  // テキスト1行目: ★ 実績解除！ [タイトル] (+500 pt) ★（白文字）
   char titleBuf[128];
   if (notif.scoreReward > 0.0f) {
     snprintf(titleBuf, sizeof(titleBuf), "★ 実績解除！ [%s]  +%.0f pt",
@@ -302,14 +324,14 @@ void AchievementManager::DrawUI(Draw &draw) {
   }
 
   draw.DrawMSDFString(titleBuf, Vector2(panelPos.x + 16.0f, panelPos.y + 12.0f),
-                      19.0f, Vector4(1.0f, 0.88f, 0.25f, alpha), true,
-                      Vector4(0.2f, 0.12f, 0.0f, 0.8f * alpha), 0.08f);
+                      19.0f, Vector4(1.0f, 1.0f, 1.0f, alpha), true,
+                      Vector4(0.0f, 0.05f, 0.15f, 0.85f * alpha), 0.08f);
 
-  // テキスト2行目: 説明文
+  // テキスト2行目: 説明文（白文字）
   draw.DrawMSDFString(notif.description.c_str(),
                       Vector2(panelPos.x + 16.0f, panelPos.y + 38.0f), 15.0f,
-                      Vector4(0.92f, 0.94f, 0.98f, 0.95f * alpha), true,
-                      Vector4(0.0f, 0.05f, 0.15f, 0.7f * alpha), 0.08f);
+                      Vector4(1.0f, 1.0f, 1.0f, 0.95f * alpha), true,
+                      Vector4(0.0f, 0.05f, 0.15f, 0.75f * alpha), 0.08f);
 }
 
 void AchievementManager::ImGui(const AchievementContext &ctx,
@@ -363,6 +385,15 @@ void AchievementManager::ImGui(const AchievementContext &ctx,
       } else {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[未解除]");
       }
+      ImGui::SameLine();
+
+      ImVec4 rarityImColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+      if (ach->GetRarity() == AchievementRarity::Rare) {
+        rarityImColor = ImVec4(0.2f, 0.95f, 0.35f, 1.0f);
+      } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
+        rarityImColor = ImVec4(0.8f, 0.4f, 1.0f, 1.0f);
+      }
+      ImGui::TextColored(rarityImColor, "[%s]", ach->GetRarityName());
       ImGui::SameLine();
       ImGui::Text("%s (+%.0f pt) - %s", ach->GetTitle().c_str(),
                   ach->GetScoreReward(), ach->GetDescription().c_str());

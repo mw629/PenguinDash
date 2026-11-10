@@ -4,6 +4,15 @@
 #include <memory>
 
 /// <summary>
+/// 実績のレア度
+/// </summary>
+enum class AchievementRarity {
+    Common,     // コモン（白枠）
+    Rare,       // レア（緑枠）
+    SuperRare   // スーパーレア（紫枠）
+};
+
+/// <summary>
 /// 実績の判定に必要なゲーム情報コンテキスト
 /// </summary>
 struct AchievementContext {
@@ -29,7 +38,8 @@ public:
     Achievement(const std::string& id,
                 const std::string& title,
                 const std::string& description,
-                float scoreReward);
+                float scoreReward,
+                AchievementRarity rarity = AchievementRarity::Common);
     virtual ~Achievement() = default;
 
     /// <summary>
@@ -56,9 +66,12 @@ public:
     const std::string& GetTitle() const { return title_; }
     const std::string& GetDescription() const { return description_; }
     float GetScoreReward() const { return scoreReward_; }
+    AchievementRarity GetRarity() const { return rarity_; }
+    const char* GetRarityName() const;
     bool IsUnlocked() const { return isUnlocked_; }
 
     // 操作
+    void SetRarity(AchievementRarity rarity) { rarity_ = rarity; }
     virtual void Unlock() { isUnlocked_ = true; }
     virtual void Reset() { isUnlocked_ = false; }
 
@@ -67,6 +80,7 @@ protected:
     std::string title_;         // 実績のタイトル (例: "初めの一歩")
     std::string description_;   // 実績の説明文 (例: "走行距離100mを突破する")
     float scoreReward_ = 0.0f;  // 解除時に加算されるスコアボーナス
+    AchievementRarity rarity_ = AchievementRarity::Common; // レア度
     bool isUnlocked_ = false;   // 解除済みフラグ
 };
 
@@ -85,6 +99,7 @@ public:
         const std::string& description,
         float scoreReward,
         AchievementConditionFunc conditionFunc,
+        AchievementRarity rarity = AchievementRarity::Common,
         AchievementProgressFunc progressFunc = nullptr,
         AchievementProgressTextFunc progressTextFunc = nullptr);
 
@@ -112,7 +127,8 @@ public:
         float scoreReward,
         float targetValue,
         ValueGetterFunc valueGetter,
-        const std::string& unit = "");
+        const std::string& unit = "",
+        AchievementRarity rarity = AchievementRarity::Common);
 
     bool CheckCondition(const AchievementContext& ctx) override;
     float GetProgress(const AchievementContext& ctx) const override;

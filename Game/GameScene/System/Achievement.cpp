@@ -1,4 +1,4 @@
-﻿#include "Achievement.h"
+#include "Achievement.h"
 #include <algorithm>
 #include <cstdio>
 
@@ -8,8 +8,22 @@
 Achievement::Achievement(const std::string& id,
                          const std::string& title,
                          const std::string& description,
-                         float scoreReward)
-    : id_(id), title_(title), description_(description), scoreReward_(scoreReward), isUnlocked_(false) {}
+                         float scoreReward,
+                         AchievementRarity rarity)
+    : id_(id), title_(title), description_(description), scoreReward_(scoreReward), rarity_(rarity), isUnlocked_(false) {}
+
+const char* Achievement::GetRarityName() const {
+    switch (rarity_) {
+    case AchievementRarity::Common:
+        return "コモン";
+    case AchievementRarity::Rare:
+        return "レア";
+    case AchievementRarity::SuperRare:
+        return "スーパーレア";
+    default:
+        return "コモン";
+    }
+}
 
 // --------------------------------------------------------------------------------------
 // ConditionAchievement
@@ -20,9 +34,10 @@ ConditionAchievement::ConditionAchievement(
     const std::string& description,
     float scoreReward,
     AchievementConditionFunc conditionFunc,
+    AchievementRarity rarity,
     AchievementProgressFunc progressFunc,
     AchievementProgressTextFunc progressTextFunc)
-    : Achievement(id, title, description, scoreReward),
+    : Achievement(id, title, description, scoreReward, rarity),
       conditionFunc_(std::move(conditionFunc)),
       progressFunc_(std::move(progressFunc)),
       progressTextFunc_(std::move(progressTextFunc)) {}
@@ -68,8 +83,9 @@ ProgressAchievement::ProgressAchievement(
     float scoreReward,
     float targetValue,
     ValueGetterFunc valueGetter,
-    const std::string& unit)
-    : Achievement(id, title, description, scoreReward),
+    const std::string& unit,
+    AchievementRarity rarity)
+    : Achievement(id, title, description, scoreReward, rarity),
       targetValue_(targetValue),
       valueGetter_(std::move(valueGetter)),
       unit_(unit) {}

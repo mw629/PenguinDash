@@ -309,6 +309,7 @@ void GameScene::ReturnToTitle() {
   // --- タイトルメニューおよびプレイヤー名入力状態のリセット ---
   titleSubView_ = TitleSubView::None;
   titleMenuIndex_ = TitleMenuItem::GameStart;
+  titleAchievementPage_ = 0;
   isEditingTitlePlayerName_ = false;
   if (scoreManager_) {
     titlePlayerName_ = scoreManager_->GetPlayerName();
@@ -592,6 +593,12 @@ void GameScene::PlayingUpdate() {
   player_->SetLaneLimits(stageSettings_->GetMinLaneIndex(),
                          stageSettings_->GetMaxLaneIndex(),
                          stageSettings_->GetLaneWidth());
+  if ((stageSettings_->GetLaneCountAtZ(0.0f) == 1 ||
+       stageSettings_->GetLaneCountAtZ(8.0f) == 1) &&
+      (player_->GetTargetLaneIndex() < 0 ||
+       player_->GetTargetLaneIndex() > 0)) {
+    player_->StartForceToCenter(12.0f);
+  }
 
   bool isCameraInverted = (playingState_ == PlayingState::Boss &&
                            cameraController_->GetTransform().rotate.y >
@@ -754,9 +761,38 @@ void GameScene::TitleUpdate() {
   }
 
   // ==========================================================
-  // モーダル表示中（ランキング または 操作説明）の入力処理
+  // モーダル表示中（ランキング / 操作説明 / 実績一覧）の入力処理
   // ==========================================================
   if (titleSubView_ != TitleSubView::None) {
+    if (titleSubView_ == TitleSubView::Achievements && achievementManager_) {
+      constexpr int kItemsPerPage = 10;
+      int totalCount = achievementManager_->GetTotalCount();
+      int totalPages = (std::max)(1, (totalCount + kItemsPerPage - 1) / kItemsPerPage);
+
+      bool prevPage = Input::PushKey(DIK_LEFT) || Input::PushKey(DIK_A) ||
+                      Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_LEFT) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                      GamePadInput::PushLeftStickLeft() ||
+                      GamePadInput::PushLeftStickUp();
+      bool nextPage = Input::PushKey(DIK_RIGHT) || Input::PushKey(DIK_D) ||
+                      Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_RIGHT) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                      GamePadInput::PushLeftStickRight() ||
+                      GamePadInput::PushLeftStickDown();
+
+      if (totalPages > 1) {
+        if (prevPage) {
+          titleAchievementPage_ = (titleAchievementPage_ - 1 + totalPages) % totalPages;
+          SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+        } else if (nextPage) {
+          titleAchievementPage_ = (titleAchievementPage_ + 1) % totalPages;
+          SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+        }
+      }
+    }
+
     bool closeTriggered =
         Input::PushKey(DIK_ESCAPE) || Input::PushKey(DIK_SPACE) ||
         Input::PushKey(DIK_RETURN) || Input::PushKey(DIK_NUMPADENTER) ||
@@ -861,6 +897,12 @@ void GameScene::TitleUpdate() {
         SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
         FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
         titleSubView_ = TitleSubView::Ranking;
+        break;
+
+      case TitleMenuItem::Achievements:
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+        titleAchievementPage_ = 0;
+        titleSubView_ = TitleSubView::Achievements;
         break;
 
       case TitleMenuItem::HowToPlay:
@@ -1156,6 +1198,9 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     // 1レーン移行開始時に奥（Z=45m〜）へ1レーン用障害物を先行配置
     // カメラが切り替わるまでの間に手前へ流れてきて、サイドビューになった瞬間に障害物が「出た状態」で迎える
     stageSettings_->SetupOneLaneInitialObstacles();
+    if (cameraController_) {
+      cameraController_->ShakeImpact();
+    }
     break;
 
   case PlayingState::Boss:
@@ -1168,6 +1213,9 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     stageSettings_->SetSpawningPaused(true);
     bossBattleController_->Reset();
     boss_->Reset();
+    if (cameraController_) {
+      cameraController_->ShakeImpact();
+    }
     SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Boss);
     break;
   }
@@ -1230,8 +1278,10 @@ void GameScene::DrawUI(class Draw &draw) {
   // タイトル画面メニュー＆名前登録
   ctx.titleMenuIndex = static_cast<int>(titleMenuIndex_);
   ctx.titleSubView = static_cast<int>(titleSubView_);
+  ctx.titleAchievementPage = titleAchievementPage_;
   ctx.titlePlayerName = &titlePlayerName_;
   ctx.isEditingTitlePlayerName = isEditingTitlePlayerName_;
+  ctx.achievementManager = achievementManager_.get();
 
   // --- メインゲームHUD（2D UI）の描画 ---
   gameHUD_->DrawHUD(draw, ctx);
@@ -1407,15 +1457,16 @@ void GameScene::ImGui() {
                       &isEditingTitlePlayerName_);
 
       const char *menuNames[] = {"0: 名前登録バー", "1: ゲームスタート",
-                                 "2: ランキング確認", "3: 操作説明",
-                                 "4: ゲーム終了"};
+                                 "2: ランキング確認", "3: 実績一覧",
+                                 "4: 操作説明", "5: ゲーム終了"};
       int curMenuIdx = static_cast<int>(titleMenuIndex_);
       if (ImGui::Combo("選択中メニュー項目", &curMenuIdx, menuNames,
                        IM_ARRAYSIZE(menuNames))) {
         titleMenuIndex_ = static_cast<TitleMenuItem>(curMenuIdx);
       }
 
-      const char *subViewNames[] = {"なし", "オンラインランキング", "操作説明"};
+      const char *subViewNames[] = {"なし", "オンラインランキング", "操作説明",
+                                    "実績一覧"};
       int curSubView = static_cast<int>(titleSubView_);
       if (ImGui::Combo("モーダルサブビュー", &curSubView, subViewNames,
                        IM_ARRAYSIZE(subViewNames))) {
@@ -1707,6 +1758,9 @@ void GameScene::ImGui() {
 
       ImGui::Separator();
       if (ImGui::Button("全障害物吹き飛ばし")) {
+        if (cameraController_) {
+          cameraController_->ShakeImpact();
+        }
         for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
           Obstacle *obs = stageSettings_->GetObstacle(j);
           if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {

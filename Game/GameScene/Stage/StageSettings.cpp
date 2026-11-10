@@ -181,13 +181,13 @@ void StageSettings::SetLaneCount(int count) {
     return;
   targetLaneCount_ = count;
 
-  // 画面外の奥（Z >= 70.0f）にあるチャンクを targetLaneCount_ に事前変換する
-  // これにより、画面内（プレイヤー視界内）の床は変えずに、地平線奥から即座に新レーンが出現して流れてくる
+  // 奥（Z >= kLaneChangeHorizonZ）にあるチャンクを targetLaneCount_ に事前変換する
+  // レーン数が減少する（1レーンになる）場合は、外側のレーンチャンクを急に消さず落下演出させる
   for (int i = 0; i < kChunkCount_; i++) {
     if (i < roadTransforms_.size() && !roadTransforms_[i].empty()) {
       if (roadTransforms_[i][0].translate.z >= kLaneChangeHorizonZ) {
         RebuildChunkRow(i, targetLaneCount_, roadTransforms_[i][0].translate.z,
-                        IdentityMatrix());
+                        IdentityMatrix(), true);
       }
     }
   }
@@ -196,6 +196,7 @@ void StageSettings::SetLaneCount(int count) {
 void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
   if (count < 1)
     count = 1;
+  ClearFallingChunks();
   targetLaneCount_ = count;
   laneCount_ = count;
   minLaneIndex_ = -(laneCount_ / 2);
@@ -267,6 +268,14 @@ void StageSettings::SetRoadColor(const Vector4 &color) {
         if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
           model->SetColor(roadColor_);
         }
+      }
+    }
+  }
+  for (auto &fc : fallingChunks_) {
+    if (fc.renderObj) {
+      if (auto model =
+              dynamic_cast<Model *>(fc.renderObj->GetObjectBase().get())) {
+        model->SetColor(roadColor_);
       }
     }
   }
@@ -356,8 +365,60 @@ void StageSettings::SetWaterWidthScale(float scale) {
   UpdateSidePlanesTransform();
 }
 
+void StageSettings::ClearFallingChunks() {
+  for (auto &fc : fallingChunks_) {
+    if (manager_ && fc.renderObj) {
+      manager_->RemoveObject(fc.renderObj);
+    }
+    if (fc.renderObj) {
+      chunkPool_.push_back(fc.renderObj);
+    }
+  }
+  fallingChunks_.clear();
+}
+
+void StageSettings::UpdateFallingChunks(Matrix4x4 view, float currentScroll,
+                                        float dt) {
+  float recycleThreshold =
+      -static_cast<float>(kBackwardChunks_ + 1) * chunkLength_;
+  float speedFactor =
+      (baseScrollSpeed_ > 0.0f)
+          ? (std::max)(1.0f, scrollSpeed_ / baseScrollSpeed_)
+          : 1.0f;
+
+  for (auto it = fallingChunks_.begin(); it != fallingChunks_.end();) {
+    it->transform.translate.z -= currentScroll;
+
+    if (it->delayTimer > 0.0f) {
+      it->delayTimer -= dt * speedFactor;
+    } else {
+      it->velocityY -= kDefaultRoadChunkFallGravity * speedFactor * dt;
+      it->transform.translate.y += it->velocityY * dt;
+    }
+
+    if (it->renderObj) {
+      it->renderObj->SetTransform(it->transform);
+      it->renderObj->Update(view, 0.0f);
+    }
+
+    float droppedDist = it->initialY - it->transform.translate.y;
+    if (droppedDist >= kDefaultRoadChunkFallDespawnDrop ||
+        it->transform.translate.z < recycleThreshold) {
+      if (manager_ && it->renderObj) {
+        manager_->RemoveObject(it->renderObj);
+      }
+      if (it->renderObj) {
+        chunkPool_.push_back(it->renderObj);
+      }
+      it = fallingChunks_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
-                                    Matrix4x4 view) {
+                                    Matrix4x4 view, bool fallRemovedLanes) {
   if (rowIndex < 0 || rowIndex >= kChunkCount_)
     return;
 
@@ -372,15 +433,50 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
   }
 
   int currentCount = static_cast<int>(roadChunks_[rowIndex].size());
+  int newMinLane = -(newLaneCount / 2);
+  int newMaxLane = (newLaneCount - 1) / 2;
+
   if (currentCount > newLaneCount) {
-    for (int l = newLaneCount; l < currentCount; l++) {
-      if (manager_ && roadChunks_[rowIndex][l]) {
-        manager_->RemoveObject(roadChunks_[rowIndex][l]);
+    if (fallRemovedLanes &&
+        rowIndex < static_cast<int>( roadTransforms_.size()) &&
+        roadTransforms_[rowIndex].size() == roadChunks_[rowIndex].size()) {
+      int oldMinLane = chunkRowInfos_[rowIndex].minLaneIndex;
+      std::vector<std::shared_ptr<RenderObject>> keptChunks;
+      keptChunks.reserve(newLaneCount);
+
+      for (int l = 0; l < currentCount; l++) {
+        int oldLogicalLane = oldMinLane + l;
+        if (oldLogicalLane >= newMinLane && oldLogicalLane <= newMaxLane &&
+            static_cast<int>(keptChunks.size()) < newLaneCount) {
+          keptChunks.push_back(roadChunks_[rowIndex][l]);
+        } else {
+          // 1レーン化によって無くなる外側レーンを落下リストへ移行（即座に消さずに落下させる）
+          if (roadChunks_[rowIndex][l]) {
+            FallingChunk fc;
+            fc.renderObj = roadChunks_[rowIndex][l];
+            fc.transform = roadTransforms_[rowIndex][l];
+            fc.initialY = fc.transform.translate.y;
+            fc.velocityY = -kDefaultRoadChunkFallInitialSpeed;
+            fc.delayTimer =
+                (std::max)(0.0f, (newZ - kLaneChangeHorizonZ) *
+                                     kDefaultRoadChunkFallDelayPerMeter);
+            fallingChunks_.push_back(fc);
+          }
+        }
       }
-      chunkPool_.push_back(roadChunks_[rowIndex][l]);
+      roadChunks_[rowIndex] = std::move(keptChunks);
+      roadChunks_[rowIndex].resize(newLaneCount);
+      roadTransforms_[rowIndex].resize(newLaneCount);
+    } else {
+      for (int l = newLaneCount; l < currentCount; l++) {
+        if (manager_ && roadChunks_[rowIndex][l]) {
+          manager_->RemoveObject(roadChunks_[rowIndex][l]);
+        }
+        chunkPool_.push_back(roadChunks_[rowIndex][l]);
+      }
+      roadChunks_[rowIndex].resize(newLaneCount);
+      roadTransforms_[rowIndex].resize(newLaneCount);
     }
-    roadChunks_[rowIndex].resize(newLaneCount);
-    roadTransforms_[rowIndex].resize(newLaneCount);
   } else if (currentCount < newLaneCount) {
     roadChunks_[rowIndex].resize(newLaneCount);
     roadTransforms_[rowIndex].resize(newLaneCount);
@@ -464,6 +560,8 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
 }
 
 void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
+  ClearFallingChunks();
+
   // 既存のZ座標を保存（ゲーム中にレーン数が変わった際に地面が飛ぶのを防ぐため）
   std::vector<float> currentZs(kChunkCount_);
   for (int zIndex = 0; zIndex < kChunkCount_; zIndex++) {
@@ -988,6 +1086,10 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
     }
   }
 
+  // 1レーン移行時等に外れた外側レーンチャンクの落下更新
+  float dt = Engine::kDefaultDeltaTime * timeScale;
+  UpdateFallingChunks(view, currentScroll, dt);
+
   // 海に浮かぶ流氷の更新（道路が停止中・カウントダウン中も海の潮の流れによって自然に流れる）
   float driftIceScroll = currentScroll;
   if ((baseScrollSpeed_ <= 0.0f || driftIceScroll < kDefaultDriftIceFlowSpeed * timeScale) &&
@@ -997,7 +1099,6 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   UpdateDriftIce(view, driftIceScroll, timeScale);
 
   // アイテムのクールタイム減算（実時間・秒単位）
-  float dt = Engine::kDefaultDeltaTime * timeScale;
   for (auto &pair : itemCoolDowns_) {
     // スポーン停止中（ボス戦中やカメラ遷移中）はボスアイテムのクールタイムを減算しない
     if (pair.first == Obstacle::Type::BossItem && isSpawningPaused_) {
@@ -1321,6 +1422,7 @@ void StageSettings::ClearObstacles(float safeDistance) {
 }
 
 void StageSettings::Reset() {
+  ClearFallingChunks();
   isGameOver_ = false;
   isNarrowingSection_ = false;
   isSpawningPaused_ = false;

@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <string>
 #include "Network/Firebase/FirebaseRankingManager.h"
+#include "../System/AchievementManager.h"
 #include "../System/SoundManager.h"
 
 void GameHUD::Initialize(Texture *texture) {
@@ -58,6 +59,7 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "ろゎわゐゑをん"
         "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモ"
         "ヤユヨラリルレロワヲンッャュョー"
+        "ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポヴ"
         "一二三四五六七八九十百千万到達距離スコア速度最高記録ベストゲームオーバ"
         "ーリスタートリザルトへ戻る一時停止中現在獲得順位反撃チャンス左中央右打"
         "ち返せ跳ね返しボーナス敵撃破モードシールドバリアアクティブジャンプスラ"
@@ -65,7 +67,9 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "ペンギンダッシュ―—"
         "操作方法十字説明攻略倒し方緑赤色迫る直撃減少命中削切回避手前当てろ避け"
         "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続生"
-        "行圏外以成通最新取得設定送信功失敗未判");
+        "行圏外以成通最新取得設定送信功失敗未判"
+        "実績一覧条件報酬達成解除済全種頁切替上下散歩俊足氷原覇者南極点突吹"
+        "累計職人高速不動精神秒間留石像境地雪王対峙討伐名前（）");
   }
 }
 
@@ -741,7 +745,7 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
   float p = t - 1.0f;
   float ease = 1.0f + c3 * p * p * p + c1 * p * p;
   float currentDropOffsetY = (1.0f - ease) * kResultDropStartY;
-  Vector2 dropOffset(0.0f, currentDropOffsetY);
+  Vector2 dropOffset(kResultMainPanelOffsetX, currentDropOffsetY);
 
   // 暗幕（Dim）フェードイン（背景を徐々に暗く）
   float dimProgress = std::clamp(ctx.resultTimer / 0.35f, 0.0f, 1.0f);
@@ -769,9 +773,9 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
 
   // タイトル左右のアクセントライン
   float lineY = kGameOverTitlePos.y + dropOffset.y + 26.0f;
-  draw.DrawFillRect(Vector2(260.0f, lineY), Vector2(250.0f, 2.0f),
+  draw.DrawFillRect(Vector2(260.0f + dropOffset.x, lineY), Vector2(250.0f, 2.0f),
                     Vector4(1.0f, 0.82f, 0.3f, 0.65f));
-  draw.DrawFillRect(Vector2(770.0f, lineY), Vector2(250.0f, 2.0f),
+  draw.DrawFillRect(Vector2(770.0f + dropOffset.x, lineY), Vector2(250.0f, 2.0f),
                     Vector4(1.0f, 0.82f, 0.3f, 0.65f));
 
   // タイトル "RESULT"
@@ -969,7 +973,7 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
       snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.1f m", item.rank, item.playerName.c_str(), item.value);
     }
 
-    Vector2 itemPos(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
+    Vector2 itemPos(kGameOverRankItemDistX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
     if (item.isCurrentPlay) {
       draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
                         Vector4(0.2f, 0.45f, 0.8f, 0.28f));
@@ -988,14 +992,14 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
   for (int i = distDisplayCount; i < 3; i++) {
     char rBuf[64];
     snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
                         kGameOverRankItemFontSize,
                         Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
   }
 
   // 走行距離ランキング下の表示
   {
-    Vector2 boxPos(kGameOverRankItemDistX - 6.0f, kGameOverMyRankBoxY + dropOffset.y);
+    Vector2 boxPos(kGameOverRankItemDistX - 6.0f + dropOffset.x, kGameOverMyRankBoxY + dropOffset.y);
     draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
     draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(0.3f, 0.7f, 1.0f, 0.9f));
 
@@ -1055,7 +1059,7 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
       snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.0f pt", item.rank, item.playerName.c_str(), item.value);
     }
 
-    Vector2 itemPos(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
+    Vector2 itemPos(kGameOverRankItemScoreX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
     if (item.isCurrentPlay) {
       draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
                         Vector4(0.8f, 0.45f, 0.1f, 0.28f));
@@ -1074,14 +1078,14 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
   for (int i = scoreDisplayCount; i < 3; i++) {
     char rBuf[64];
     snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
                         kGameOverRankItemFontSize,
                         Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
   }
 
   // スコアランキング下の表示
   {
-    Vector2 boxPos(kGameOverRankItemScoreX - 6.0f, kGameOverMyRankBoxY + dropOffset.y);
+    Vector2 boxPos(kGameOverRankItemScoreX - 6.0f + dropOffset.x, kGameOverMyRankBoxY + dropOffset.y);
     draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
     draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(1.0f, 0.75f, 0.2f, 0.9f));
 
@@ -1119,6 +1123,95 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
                         kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
                         Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // ==========================================
+  // 右側サブパネル: 獲得実績（名前のみ一覧表示）
+  // ==========================================
+  Vector2 achPanelPos(kResultAchPanelPos.x, kResultAchPanelPos.y + currentDropOffsetY);
+  draw.DrawFillRect(achPanelPos, kResultAchPanelSize,
+                    Vector4(0.06f, 0.08f, 0.13f, 0.95f));
+  draw.DrawFillRect(achPanelPos, Vector2(kResultAchPanelSize.x, kGameOverAccentHeight),
+                    Vector4(1.0f, 0.78f, 0.25f, 0.95f));
+
+  // 見出し "獲得実績"
+  auto *tr = draw.GetTextRenderer();
+  const char *achHeaderStr = "獲得実績";
+  const float achHeaderSize = 24.0f;
+  float achHeaderW = tr ? tr->MeasureString(achHeaderStr, achHeaderSize).x : 96.0f;
+  draw.DrawMSDFString(achHeaderStr,
+                      Vector2(achPanelPos.x + (kResultAchPanelSize.x - achHeaderW) * 0.5f, achPanelPos.y + 20.0f),
+                      achHeaderSize, Vector4(1.0f, 0.88f, 0.32f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
+
+  // 見出し下の区切り線
+  draw.DrawFillRect(Vector2(achPanelPos.x + 16.0f, achPanelPos.y + 56.0f),
+                    Vector2(kResultAchPanelSize.x - 32.0f, 2.0f),
+                    Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+  if (ctx.achievementManager) {
+    const auto &achievements = ctx.achievementManager->GetAchievements();
+
+    // 初回描画時に実績タイトル文字のグリフをキャッシュ登録
+    static size_t s_cachedResultAchCount = 0;
+    if (s_cachedResultAchCount != achievements.size() && tr && tr->GetAtlas()) {
+      s_cachedResultAchCount = achievements.size();
+      std::string allTitleChars;
+      for (const auto &ach : achievements) {
+        if (ach) {
+          allTitleChars += ach->GetTitle();
+        }
+      }
+      tr->GetAtlas()->PreloadString(allTitleChars);
+    }
+
+    int unlockedIdx = 0;
+    const float listStartY = achPanelPos.y + 72.0f;
+    const float listStepY = 29.0f;
+    const float itemFontSize = 18.0f;
+
+    for (const auto &ach : achievements) {
+      if (!ach || !ach->IsUnlocked()) {
+        continue;
+      }
+
+      float itemY = listStartY + unlockedIdx * listStepY;
+      float boxX = achPanelPos.x + 12.0f;
+      float boxY = itemY - 2.0f;
+      float boxW = kResultAchPanelSize.x - 24.0f;
+      float boxH = 25.0f;
+
+      // レア度に応じた枠色（コモン: 白 / レア: 緑 / スーパーレア: 紫）
+      Vector4 frameColor = Vector4(1.0f, 1.0f, 1.0f, 0.90f);
+      if (ach->GetRarity() == AchievementRarity::Rare) {
+        frameColor = Vector4(0.20f, 0.95f, 0.35f, 0.90f);
+      } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
+        frameColor = Vector4(0.75f, 0.30f, 1.0f, 0.90f);
+      }
+
+      // 背景と枠線
+      draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, boxH),
+                        Vector4(0.08f, 0.12f, 0.20f, 0.85f));
+      draw.DrawFillRect(Vector2(boxX, boxY), Vector2(3.5f, boxH), frameColor);
+      draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, 1.5f), frameColor);
+      draw.DrawFillRect(Vector2(boxX, boxY + boxH - 1.5f), Vector2(boxW, 1.5f), frameColor);
+      draw.DrawFillRect(Vector2(boxX + boxW - 1.5f, boxY), Vector2(1.5f, boxH), frameColor);
+
+      // 実績名テキスト（白文字）
+      draw.DrawMSDFString(ach->GetTitle(), Vector2(boxX + 10.0f, itemY),
+                          itemFontSize, Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+      unlockedIdx++;
+    }
+
+    if (unlockedIdx == 0) {
+      const char *noneStr = "なし";
+      float noneW = tr ? tr->MeasureString(noneStr, 18.0f).x : 36.0f;
+      draw.DrawMSDFString(noneStr,
+                          Vector2(achPanelPos.x + (kResultAchPanelSize.x - noneW) * 0.5f, listStartY + 12.0f),
+                          18.0f, Vector4(0.6f, 0.65f, 0.7f, 0.85f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    }
   }
 }
 
@@ -1204,14 +1297,14 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
     const float inputBarW = menuPanelW;
     const float inputBarH = 44.0f;
     const float inputBarX = menuLeftX;
-    const float inputBarY = 384.0f + elementsOffsetY;
+    const float inputBarY = 352.0f + elementsOffsetY;
     const bool isNameSelected = (ctx.titleMenuIndex == 0);
     const bool isEditing = isNameSelected && ctx.isEditingTitlePlayerName;
 
     // 見出しラベル
-    const char *nameLabel = isEditing ? "PLAYER NAME [ ENTER決定 ]"
-                                      : (isNameSelected ? "PLAYER NAME [ SPACE編集 ]"
-                                                        : "PLAYER NAME");
+    const char *nameLabel = isEditing ? "プレイヤー名 [ ENTER決定 ]"
+                                      : (isNameSelected ? "プレイヤー名 [ SPACE編集 ]"
+                                                        : "プレイヤー名");
     draw.DrawMSDFString(nameLabel, Vector2(inputBarX + 4.0f, inputBarY - 18.0f), 12.5f,
                         isEditing ? Vector4(1.0f, 0.85f, 0.2f, menuAlpha)
                                   : (isNameSelected ? Vector4(0.4f, 0.95f, 1.0f, menuAlpha)
@@ -1248,15 +1341,15 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
       textWithCursor += "|";
     }
 
-    // "NAME:" プレフィックス
-    draw.DrawMSDFString("NAME:", Vector2(inputBarX + 10.0f, inputBarY + 12.0f), 15.0f,
+    // "名前:" プレフィックス
+    draw.DrawMSDFString("名前:", Vector2(inputBarX + 10.0f, inputBarY + 12.0f), 15.0f,
                         isEditing ? Vector4(1.0f, 0.85f, 0.2f, menuAlpha)
                                   : (isNameSelected ? Vector4(0.3f, 0.9f, 1.0f, menuAlpha)
                                                     : Vector4(0.6f, 0.7f, 0.8f, 0.8f * menuAlpha)),
                         true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.07f);
 
     // プレイヤー名
-    draw.DrawMSDFString(textWithCursor, Vector2(inputBarX + 60.0f, inputBarY + 10.0f), 19.0f,
+    draw.DrawMSDFString(textWithCursor, Vector2(inputBarX + 56.0f, inputBarY + 10.0f), 19.0f,
                         isEditing ? Vector4(1.0f, 0.98f, 0.6f, menuAlpha)
                                   : (isNameSelected ? Vector4(1.0f, 1.0f, 1.0f, menuAlpha)
                                                     : Vector4(0.85f, 0.9f, 0.95f, 0.9f * menuAlpha)),
@@ -1275,20 +1368,15 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
     // 1-2. 選択式メニュー一覧
     // ==========================================================
     const char *menuLabels[] = {
-        "1. GAME START",
-        "2. RANKING",
-        "3. HOW TO PLAY",
-        "4. EXIT"
+        "1. ゲームスタート",
+        "2. ランキング確認",
+        "3. 実績一覧",
+        "4. あそびかた",
+        "5. ゲーム終了"
     };
-    const char *menuSubLabels[] = {
-        "ゲームスタート",
-        "ランキング確認",
-        "あそびかた",
-        "ゲーム終了"
-    };
-    constexpr int kMenuCount = 4;
-    const float menuStartY = 456.0f + elementsOffsetY;
-    const float menuRowH = 48.0f;
+    constexpr int kMenuCount = 5;
+    const float menuStartY = 418.0f + elementsOffsetY;
+    const float menuRowH = 44.0f;
     const float menuPanelX = menuLeftX;
 
     for (int i = 0; i < kMenuCount; i++) {
@@ -1298,40 +1386,33 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
 
       if (isSelected) {
         // 選択中ハイライト背景
-        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 42.0f),
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 38.0f),
                           Vector4(0.10f, 0.28f, 0.55f, 0.88f * menuAlpha));
         // 左アクセントバー
-        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(5.0f, 42.0f),
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(5.0f, 38.0f),
                           Vector4(1.0f, 0.85f, 0.2f, menuAlpha));
         // 上下ボーダー
         draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 1.5f),
                           Vector4(0.3f, 0.8f, 1.0f, 0.7f * menuAlpha));
-        draw.DrawFillRect(Vector2(menuPanelX, rowY + 40.5f), Vector2(menuPanelW, 1.5f),
+        draw.DrawFillRect(Vector2(menuPanelX, rowY + 36.5f), Vector2(menuPanelW, 1.5f),
                           Vector4(0.3f, 0.8f, 1.0f, 0.7f * menuAlpha));
 
         // カーソル記号
-        draw.DrawMSDFString("▶", Vector2(menuPanelX + 10.0f, rowY + 9.0f), 19.0f,
+        draw.DrawMSDFString("▶", Vector2(menuPanelX + 10.0f, rowY + 7.0f), 18.5f,
                             Vector4(1.0f, 0.85f, 0.2f, menuAlpha), true,
                             Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.10f);
 
         // テキスト
-        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 9.0f), 19.0f,
+        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 7.0f), 18.5f,
                             Vector4(1.0f, 0.96f, 0.5f, menuAlpha), true,
                             Vector4(0.05f, 0.15f, 0.3f, menuAlpha), 0.12f);
-
-        // 選択中項目の右側に日本語補足を表示
-        draw.DrawMSDFString(menuSubLabels[i],
-                            Vector2(menuPanelX + menuPanelW + 12.0f, rowY + 11.0f),
-                            14.0f,
-                            Vector4(0.45f, 0.92f, 1.0f, 0.9f * menuAlpha), true,
-                            Vector4(0.0f, 0.0f, 0.0f, 0.9f * menuAlpha), 0.07f);
       } else {
         // 非選択行背景（うっすら）
-        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 42.0f),
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 38.0f),
                           Vector4(0.03f, 0.05f, 0.09f, 0.45f * menuAlpha));
 
         // テキスト
-        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 10.0f), 18.0f,
+        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 8.0f), 17.5f,
                             Vector4(0.75f, 0.85f, 0.95f, 0.75f * menuAlpha), true,
                             Vector4(0.0f, 0.0f, 0.0f, 0.75f * menuAlpha), 0.08f);
       }
@@ -1339,12 +1420,14 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 
   // ==========================================================
-  // 2. サブモーダル表示（ランキング / 操作説明）
+  // 2. サブモーダル表示（ランキング / 操作説明 / 実績一覧）
   // ==========================================================
   if (ctx.titleSubView == 1) {
     DrawTitleRankingModal(draw, ctx);
   } else if (ctx.titleSubView == 2) {
     DrawTitleHowToPlayModal(draw, ctx);
+  } else if (ctx.titleSubView == 3) {
+    DrawTitleAchievementsModal(draw, ctx);
   }
 }
 
@@ -1367,7 +1450,7 @@ void GameHUD::DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx) {
                     Vector4(0.2f, 0.4f, 0.6f, 0.8f));
 
   // モーダルタイトル
-  const char *headerTitle = "★ ONLINE RANKINGS (オンラインランキング TOP 5) ★";
+  const char *headerTitle = "★ オンラインランキング TOP 5 ★";
   draw.DrawMSDFString(headerTitle, Vector2(panelPos.x + 30.0f, panelPos.y + 24.0f), 28.0f,
                       Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
@@ -1467,7 +1550,7 @@ void GameHUD::DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx) {
   draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(0.3f, 0.85f, 1.0f, 1.0f));
 
   // モーダルタイトル
-  draw.DrawMSDFString("=== HOW TO PLAY (ゲーム操作説明・ルール) ===",
+  draw.DrawMSDFString("=== あそびかた（ゲーム操作説明・ルール） ===",
                       Vector2(panelPos.x + 30.0f, panelPos.y + 24.0f), 26.0f,
                       Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
@@ -1526,6 +1609,167 @@ void GameHUD::DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx) {
                     Vector4(0.03f, 0.05f, 0.09f, 0.95f));
   draw.DrawMSDFString(returnGuide, Vector2(panelPos.x + (panelSize.x - 360.0f) * 0.5f, panelPos.y + panelSize.y - 38.0f), 18.0f,
                       Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+}
+
+void GameHUD::DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx) {
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
+
+  // 全画面ディム（暗転）
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(screenWidth, screenHeight),
+                    Vector4(0.0f, 0.0f, 0.0f, 0.80f));
+
+  // メインパネル
+  const Vector2 panelPos = {120.0f, 45.0f};
+  const Vector2 panelSize = {1040.0f, 610.0f};
+  draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
+  // トップアクセントバー (ゴールド)
+  draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+  // パネル外枠
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 2.0f), Vector2(panelSize.x, 2.0f),
+                    Vector4(0.2f, 0.4f, 0.6f, 0.8f));
+
+  // モーダルタイトル
+  const char *headerTitle = "★ 実績リスト（達成条件一覧） ★";
+  draw.DrawMSDFString(headerTitle, Vector2(panelPos.x + 30.0f, panelPos.y + 20.0f), 26.0f,
+                      Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  if (!ctx.achievementManager) {
+    return;
+  }
+
+  const auto &achievements = ctx.achievementManager->GetAchievements();
+  const int totalCount = static_cast<int>(achievements.size());
+
+  // 初回描画時に全実績のタイトル・説明文のフォントグリフをキャッシュ登録
+  static size_t s_cachedAchCount = 0;
+  if (s_cachedAchCount != achievements.size() && draw.GetTextRenderer() &&
+      draw.GetTextRenderer()->GetAtlas()) {
+    s_cachedAchCount = achievements.size();
+    std::string allAchChars;
+    for (const auto &ach : achievements) {
+      if (ach) {
+        allAchChars += ach->GetTitle();
+        allAchChars += ach->GetDescription();
+      }
+    }
+    draw.GetTextRenderer()->GetAtlas()->PreloadString(allAchChars);
+  }
+
+  constexpr int kItemsPerPage = 10; // 2列 × 5行
+  const int totalPages = (std::max)(1, (totalCount + kItemsPerPage - 1) / kItemsPerPage);
+  const int currentPage = std::clamp(ctx.titleAchievementPage, 0, totalPages - 1);
+
+  // 右上: 総実績数・ページ番号表示
+  char pageHeaderBuf[96];
+  snprintf(pageHeaderBuf, sizeof(pageHeaderBuf), "全 %d 種   [ ページ %d / %d ]",
+           totalCount, currentPage + 1, totalPages);
+  draw.DrawMSDFString(pageHeaderBuf, Vector2(panelPos.x + panelSize.x - 275.0f, panelPos.y + 24.0f), 19.0f,
+                      Vector4(0.45f, 0.92f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+  // 区切り線
+  draw.DrawFillRect(Vector2(panelPos.x + 20.0f, panelPos.y + 62.0f),
+                    Vector2(panelSize.x - 40.0f, 1.5f),
+                    Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+  // 2カラム × 5行 カードグリッド描画
+  const float colWidth = 480.0f;
+  const float cardHeight = 78.0f;
+  const float rowStepY = 92.0f;
+  const float startXLeft = panelPos.x + 28.0f;
+  const float startXRight = panelPos.x + 532.0f;
+  const float startY = panelPos.y + 80.0f;
+
+  auto *tr = draw.GetTextRenderer();
+  const int startIdx = currentPage * kItemsPerPage;
+  const int endIdx = (std::min)(totalCount, startIdx + kItemsPerPage);
+
+  for (int idx = startIdx; idx < endIdx; ++idx) {
+    const auto &ach = achievements[idx];
+    if (!ach) continue;
+
+    const int localIdx = idx - startIdx;
+    const int col = localIdx / 5; // 左列に5件、右列に5件
+    const int row = localIdx % 5;
+
+    const float cardX = (col == 0) ? startXLeft : startXRight;
+    const float cardY = startY + row * rowStepY;
+
+    // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫）
+    Vector4 frameMainColor = Vector4(1.0f, 1.0f, 1.0f, 0.95f);
+    Vector4 frameSubColor = Vector4(0.90f, 0.92f, 0.95f, 0.85f);
+    Vector4 badgeBgColor = Vector4(0.18f, 0.22f, 0.30f, 0.90f);
+    if (ach->GetRarity() == AchievementRarity::Rare) {
+      frameMainColor = Vector4(0.20f, 0.95f, 0.35f, 0.95f);
+      frameSubColor = Vector4(0.18f, 0.85f, 0.30f, 0.85f);
+      badgeBgColor = Vector4(0.10f, 0.26f, 0.14f, 0.90f);
+    } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
+      frameMainColor = Vector4(0.75f, 0.30f, 1.0f, 0.95f);
+      frameSubColor = Vector4(0.68f, 0.25f, 0.95f, 0.85f);
+      badgeBgColor = Vector4(0.22f, 0.10f, 0.32f, 0.90f);
+    }
+
+    // カード背景
+    draw.DrawFillRect(Vector2(cardX, cardY), Vector2(colWidth, cardHeight),
+                      Vector4(0.08f, 0.13f, 0.22f, 0.88f));
+
+    // カード外枠（左アクセントバー + 上・下・右枠線）
+    draw.DrawFillRect(Vector2(cardX, cardY), Vector2(4.0f, cardHeight),
+                      frameMainColor);
+    draw.DrawFillRect(Vector2(cardX, cardY), Vector2(colWidth, 2.0f),
+                      frameSubColor);
+    draw.DrawFillRect(Vector2(cardX, cardY + cardHeight - 2.0f), Vector2(colWidth, 2.0f),
+                      frameSubColor);
+    draw.DrawFillRect(Vector2(cardX + colWidth - 2.0f, cardY), Vector2(2.0f, cardHeight),
+                      frameSubColor);
+
+    // 1行目左: 番号 + 実績タイトル（白文字）
+    char titleBuf[128];
+    snprintf(titleBuf, sizeof(titleBuf), "No.%02d  %s", idx + 1, ach->GetTitle().c_str());
+    draw.DrawMSDFString(titleBuf, Vector2(cardX + 16.0f, cardY + 11.0f), 20.0f,
+                        Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.09f);
+
+    // 1行目右: 獲得ボーナススコアバッジ（枠はレア度色、文字は白）
+    char rewardBuf[64];
+    snprintf(rewardBuf, sizeof(rewardBuf), "+%.0f pt", ach->GetScoreReward());
+    float rewardW = tr ? tr->MeasureString(rewardBuf, 17.0f).x : 80.0f;
+    float badgeW = rewardW + 20.0f;
+    float badgeX = cardX + colWidth - badgeW - 12.0f;
+    float badgeY = cardY + 9.0f;
+
+    draw.DrawFillRect(Vector2(badgeX, badgeY), Vector2(badgeW, 26.0f),
+                      badgeBgColor);
+    draw.DrawFillRect(Vector2(badgeX, badgeY), Vector2(badgeW, 1.5f),
+                      frameMainColor);
+    draw.DrawMSDFString(rewardBuf, Vector2(badgeX + 10.0f, badgeY + 4.0f), 17.0f,
+                        Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+    // 2行目: 達成条件（説明文・白文字）
+    char descBuf[160];
+    snprintf(descBuf, sizeof(descBuf), "条件: %s", ach->GetDescription().c_str());
+    draw.DrawMSDFString(descBuf, Vector2(cardX + 18.0f, cardY + 45.0f), 17.0f,
+                        Vector4(1.0f, 1.0f, 1.0f, 0.95f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // 下部フッター案内
+  bool isPad = GamePadInput::IsConnected();
+  const char *footerGuide = isPad
+      ? "[ 十字キー / Lスティック ] ページ切替      |      [ Bボタン / Aボタン ] タイトルへ戻る"
+      : "[ ← → / A D / ↑ ↓ / W S ] ページ切替      |      [ ESC / ENTER / SPACE ] タイトルへ戻る";
+
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 50.0f),
+                    Vector2(panelSize.x, 50.0f),
+                    Vector4(0.03f, 0.05f, 0.09f, 0.95f));
+  float guideW = tr ? tr->MeasureString(footerGuide, 17.5f).x : 680.0f;
+  draw.DrawMSDFString(footerGuide,
+                      Vector2(panelPos.x + (panelSize.x - guideW) * 0.5f, panelPos.y + panelSize.y - 36.0f),
+                      17.5f, Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 }
 

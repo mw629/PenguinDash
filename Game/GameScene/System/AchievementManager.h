@@ -17,6 +17,7 @@ struct AchievementNotification {
   std::string title;
   std::string description;
   float scoreReward = 0.0f;
+  AchievementRarity rarity = AchievementRarity::Common;
   float timer = 0.0f;                           // 経過時間 (秒)
   static constexpr float kDuration = 3.5f;      // 表示継続時間
   static constexpr float kFadeDuration = 0.35f; // フェード時間
@@ -59,7 +60,8 @@ public:
                                 const std::string &description,
                                 float scoreReward, float targetValue,
                                 ValueGetterFunc valueGetter,
-                                const std::string &unit = "");
+                                const std::string &unit = "",
+                                AchievementRarity rarity = AchievementRarity::Common);
 
   /// <summary>
   /// 手軽な実績追加ヘルパー：自由条件判定型（ラムダ式による条件チェック）
@@ -69,12 +71,14 @@ public:
   /// <param name="description">説明文 (例: "ボスを撃破する")</param>
   /// <param name="scoreReward">解除時に加点されるスコア (例: 3000.0f)</param>
   /// <param name="conditionFunc">条件判定関数 (true を返すと解除)</param>
+  /// <param name="rarity">レア度（コモン / レア / スーパーレア）</param>
   /// <param name="progressFunc">任意の進捗率計算関数 (0.0f〜1.0f)</param>
   /// <param name="progressTextFunc">任意の進捗文字列取得関数</param>
   Achievement *
   RegisterCondition(const std::string &id, const std::string &title,
                     const std::string &description, float scoreReward,
                     AchievementConditionFunc conditionFunc,
+                    AchievementRarity rarity = AchievementRarity::Common,
                     AchievementProgressFunc progressFunc = nullptr,
                     AchievementProgressTextFunc progressTextFunc = nullptr);
 
