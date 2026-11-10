@@ -121,8 +121,9 @@ std::string ProgressAchievement::GetProgressText(const AchievementContext& ctx) 
     }
     float current = valueGetter_ ? valueGetter_(ctx) : 0.0f;
     char buf[64];
-    // 小数が必要な単位（m など）と整数（体、回 など）で分岐
-    if (targetValue_ >= 10.0f && std::floor(targetValue_) == targetValue_) {
+    // 小数が必要な単位（m, 秒 など）と整数（体、回、個 など）で分岐
+    bool isIntegerUnit = (unit_ == "体" || unit_ == "回" || unit_ == "個" || unit_ == "pt");
+    if (isIntegerUnit || (targetValue_ >= 10.0f && std::floor(targetValue_) == targetValue_)) {
         snprintf(buf, sizeof(buf), "%.0f / %.0f %s", current, targetValue_, unit_.c_str());
     } else {
         snprintf(buf, sizeof(buf), "%.1f / %.1f %s", current, targetValue_, unit_.c_str());

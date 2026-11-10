@@ -488,6 +488,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   if (type_ == Type::CameraItem) {
     OnHit();
+    scene->AddItemGetCount();
     // 遠方の障害物を吹き飛ばし、カメラ遷移までの待機時間（約8秒）を解消する
     // 直近（Z <= 15m）の障害物は残して自然なプレイ感を維持
     if (scene->GetStageSettings()) {
@@ -507,6 +508,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   if (type_ == Type::BarrierItem) {
     OnHit();
+    scene->AddItemGetCount();
     player->SetHasBarrier(true);
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
     if (scene->GetEffectManager()) {
@@ -517,6 +519,8 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   if (type_ == Type::ClearItem) {
     OnHit();
+    scene->AddItemGetCount();
+    scene->AddClearBombCount();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
     if (scene->GetCameraController()) {
       scene->GetCameraController()->ShakeImpact();
@@ -534,6 +538,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   if (type_ == Type::BossItem) {
     OnHit();
+    scene->AddItemGetCount();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
     if (scene->GetStageSettings()) {
       for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
@@ -555,6 +560,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
 
   if (player->GetHasBarrier()) {
     player->SetHasBarrier(false);
+    scene->AddBarrierBlockCount();
     OnBlowAway();
     if (scene->GetCameraController()) {
       scene->GetCameraController()->ShakeDefeat();

@@ -1,4 +1,4 @@
-﻿#include "BossBattleController.h"
+#include "BossBattleController.h"
 #include "../Camera/GameCameraController.h"
 #include "../Effect/GameSceneEffect.h"
 #include "SoundManager.h"
@@ -243,6 +243,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             obs->SetReflectDuration(bossReflectDuration_);
             obs->SetReflected(true);
             obs->SetReflectedTarget(boss->GetTransform().translate);
+            totalReflectCount_++;
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossReflect);
             GamePadInput::Rumble(kReflectRumbleDuration, kReflectRumbleSpeed,
                                  kReflectRumbleSpeed);

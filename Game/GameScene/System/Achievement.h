@@ -23,10 +23,16 @@ struct AchievementContext {
     bool isBossBattle = false;       // ボス戦中か
     bool isBossDefeated = false;     // ボスを撃破したか
     bool isOneLaneMode = false;      // 1レーン（高速）モード中か
-    int jumpCount = 0;              // ジャンプ回数
-    int rollCount = 0;              // スライディング（ロール）回数
-    int laneChangeCount = 0;        // レーン移動回数
-    float unMovedTime = 0.0f;       // 移動・操作せずに留まった時間 (秒)
+    int jumpCount = 0;               // ジャンプ回数
+    int rollCount = 0;               // スライディング（ロール）回数
+    int laneChangeCount = 0;         // レーン移動回数
+    float unMovedTime = 0.0f;        // 移動・操作せずに留まった時間 (秒)
+    int barrierBlockCount = 0;       // バリアで障害物を防いだ回数
+    int clearBombCount = 0;          // ボムアイテムで障害物を一掃した回数
+    int itemGetCount = 0;            // アイテム累計取得数
+    int oneLaneClearCount = 0;       // 1レーンモード完走回数
+    int bossReflectCount = 0;        // ボス戦での魚跳ね返し回数
+    bool isFirstPerson = false;      // 一人称視点プレイ中か
 };
 
 /// <summary>

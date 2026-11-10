@@ -113,6 +113,14 @@ void AchievementManager::RegisterDefaultAchievements() {
       },
       "体", AchievementRarity::SuperRare);
 
+  RegisterProgress(
+      "bonus_10", "雪だるまバスター", "ボーナス敵を累計10体吹っ飛ばす", 2500.0f,
+      10.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.bonusEnemyHitCount);
+      },
+      "体", AchievementRarity::SuperRare);
+
   // --- 3. スコア到達系実績 ---
   RegisterProgress(
       "score_1000", "スコアスターター", "スコア1,000ptを突破する", 300.0f,
@@ -129,6 +137,11 @@ void AchievementManager::RegisterDefaultAchievements() {
       5000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt",
       AchievementRarity::SuperRare);
 
+  RegisterProgress(
+      "score_10000", "レジェンドペンギン", "スコア10,000ptを突破する", 3000.0f,
+      10000.0f, [](const AchievementContext &ctx) { return ctx.score; }, "pt",
+      AchievementRarity::SuperRare);
+
   // --- 4. アクション・特殊モード系実績 ---
   RegisterProgress(
       "jump_10", "ジャンピングスター", "ジャンプを累計10回行う", 300.0f, 10.0f,
@@ -138,6 +151,13 @@ void AchievementManager::RegisterDefaultAchievements() {
       "回", AchievementRarity::Common);
 
   RegisterProgress(
+      "jump_30", "空飛ぶペンギン", "ジャンプを累計30回行う", 800.0f, 30.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.jumpCount);
+      },
+      "回", AchievementRarity::Rare);
+
+  RegisterProgress(
       "roll_10", "スライディング職人", "スライディングを累計10回行う", 300.0f,
       10.0f,
       [](const AchievementContext &ctx) {
@@ -145,10 +165,44 @@ void AchievementManager::RegisterDefaultAchievements() {
       },
       "回", AchievementRarity::Common);
 
+  RegisterProgress(
+      "roll_30", "氷上の曲芸師", "スライディングを累計30回行う", 800.0f, 30.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.rollCount);
+      },
+      "回", AchievementRarity::Rare);
+
+  RegisterProgress(
+      "lane_15", "華麗なるステップ", "レーン移動を累計15回行う", 300.0f, 15.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.laneChangeCount);
+      },
+      "回", AchievementRarity::Common);
+
+  RegisterProgress(
+      "lane_40", "氷上のダンサー", "レーン移動を累計40回行う", 800.0f, 40.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.laneChangeCount);
+      },
+      "回", AchievementRarity::Rare);
+
   RegisterCondition(
-      "speed_zone", "トップスピード", "高速1レーンモードに突入する", 500.0f,
+      "speed_zone", "トップスピード", "1レーンモードに突入する", 500.0f,
       [](const AchievementContext &ctx) { return ctx.isOneLaneMode; },
       AchievementRarity::Rare);
+
+  RegisterProgress(
+      "speed_zone_clear", "疾風の突破者", "1レーンモードを完走する",
+      1000.0f, 1.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.oneLaneClearCount);
+      },
+      "回", AchievementRarity::Rare);
+
+  /*RegisterCondition(
+      "first_person", "臨場感マックス", "一人称視点に切り替えて走る", 300.0f,
+      [](const AchievementContext &ctx) { return ctx.isFirstPerson; },
+      AchievementRarity::Common);*/
 
   RegisterProgress(
       "unmoved_3s", "不動の精神", "3秒間動かずに留まる", 500.0f, 3.0f,
@@ -160,11 +214,70 @@ void AchievementManager::RegisterDefaultAchievements() {
       [](const AchievementContext &ctx) { return ctx.unMovedTime; }, "秒",
       AchievementRarity::SuperRare);
 
-  // --- 5. ボス戦系実績 ---
+  // --- 5. アイテム・サバイバル系実績 ---
+  RegisterProgress(
+      "barrier_block_1", "九死に一生", "バリアで障害物の激突を1回防ぐ", 400.0f,
+      1.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.barrierBlockCount);
+      },
+      "回", AchievementRarity::Common);
+
+  RegisterProgress(
+      "barrier_block_3", "鉄壁のペンギン", "バリアで障害物の激突を累計3回防ぐ",
+      1200.0f, 3.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.barrierBlockCount);
+      },
+      "回", AchievementRarity::Rare);
+
+  RegisterProgress(
+      "clear_bomb_1", "一掃ボマー", "ボムアイテムで障害物を一掃する", 400.0f,
+      1.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.clearBombCount);
+      },
+      "回", AchievementRarity::Common);
+
+  RegisterProgress(
+      "item_collector_5", "アイテムコレクター", "アイテムを累計5個取得する",
+      800.0f, 5.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.itemGetCount);
+      },
+      "個", AchievementRarity::Rare);
+
+  RegisterProgress(
+      "survive_60s", "氷原のサバイバー", "1回のプレイで60秒間生き残る", 500.0f,
+      60.0f, [](const AchievementContext &ctx) { return ctx.playTime; }, "秒",
+      AchievementRarity::Common);
+
+  RegisterProgress(
+      "survive_120s", "不屈の鉄人", "1回のプレイで120秒間生き残る", 1200.0f,
+      120.0f, [](const AchievementContext &ctx) { return ctx.playTime; }, "秒",
+      AchievementRarity::Rare);
+
+  // --- 6. ボス戦系実績 ---
   RegisterCondition(
       "boss_encounter", "氷雪の王と対峙", "ボス戦に突入する", 500.0f,
       [](const AchievementContext &ctx) { return ctx.isBossBattle; },
       AchievementRarity::Rare);
+
+  RegisterProgress(
+      "boss_reflect_1", "カウンターストライク", "ボス戦で魚を1回跳ね返す",
+      400.0f, 1.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.bossReflectCount);
+      },
+      "回", AchievementRarity::Common);
+
+  RegisterProgress(
+      "boss_reflect_5", "反射の達人", "ボス戦で魚を累計5回跳ね返す", 1200.0f,
+      5.0f,
+      [](const AchievementContext &ctx) {
+        return static_cast<float>(ctx.bossReflectCount);
+      },
+      "回", AchievementRarity::Rare);
 
   RegisterCondition(
       "boss_defeat", "アイスキング討伐！", "ボスを撃破する", 3000.0f,
@@ -364,9 +477,12 @@ void AchievementManager::ImGui(const AchievementContext &ctx,
                   ctx.distance, ctx.score, ctx.bonusEnemyHitCount);
       ImGui::Text("アクション累計: ジャンプ %d 回 / スライディング %d 回 / レーン移動 %d 回",
                   ctx.jumpCount, ctx.rollCount, ctx.laneChangeCount);
-      ImGui::Text("プレイ時間: %.1f 秒 | 1レーン: %s | ボス戦: %s",
+      ImGui::Text("プレイ時間: %.1f 秒 | 1レーン: %s (完走 %d 回) | ボス戦: %s",
                   ctx.playTime, ctx.isOneLaneMode ? "ON" : "OFF",
-                  ctx.isBossBattle ? "ON" : "OFF");
+                  ctx.oneLaneClearCount, ctx.isBossBattle ? "ON" : "OFF");
+      ImGui::Text("アイテム取得: %d 個 | バリア防御: %d 回 | ボム一掃: %d 回 | 魚反射: %d 回",
+                  ctx.itemGetCount, ctx.barrierBlockCount, ctx.clearBombCount,
+                  ctx.bossReflectCount);
       ImGui::TreePop();
     }
 

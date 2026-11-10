@@ -68,6 +68,10 @@ private:
   int rollCount_ = 0;
   int laneChangeCount_ = 0;
   float unMovedTime_ = 0.0f;
+  int barrierBlockCount_ = 0;
+  int clearBombCount_ = 0;
+  int itemGetCount_ = 0;
+  int oneLaneClearCount_ = 0;
   bool wasJumping_ = false;
   bool wasRolling_ = false;
   int lastPlayerLane_ = 0;
@@ -342,4 +346,31 @@ public:
   /// <param name="isTrip">つまずき転倒かどうか</param>
   /// <param name="isLargeObstacle">大型障害物（カメラ激突対象）かどうか</param>
   void TriggerPlayerHit(bool isTrip, bool isLargeObstacle = false);
+
+  /// <summary>
+  /// 実績トラッキング：アイテム取得カウント加算
+  /// </summary>
+  void AddItemGetCount() {
+    if (gameState_ == GameState::Playing) {
+      itemGetCount_++;
+    }
+  }
+
+  /// <summary>
+  /// 実績トラッキング：バリア防御カウント加算
+  /// </summary>
+  void AddBarrierBlockCount() {
+    if (gameState_ == GameState::Playing) {
+      barrierBlockCount_++;
+    }
+  }
+
+  /// <summary>
+  /// 実績トラッキング：ボム一掃カウント加算
+  /// </summary>
+  void AddClearBombCount() {
+    if (gameState_ == GameState::Playing) {
+      clearBombCount_++;
+    }
+  }
 };

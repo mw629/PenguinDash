@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Entity/Obstacle.h>
 #include <Math/Calculation.h>
 #include <functional>
@@ -60,6 +60,7 @@ private:
   Vector3 bossCameraRotate_ = kDefaultBossCameraRotate;
 
   int currentReflectLane_ = kNoReflectLane;
+  int totalReflectCount_ = 0;
 
   std::vector<QueuedAttack> attackQueue_;
   int lastPatternIndex_ = -1;
@@ -101,6 +102,8 @@ public:
   }
 
   int GetReflectLane() const { return currentReflectLane_; }
+  int GetTotalReflectCount() const { return totalReflectCount_; }
+  void ResetTotalReflectCount() { totalReflectCount_ = 0; }
   const Vector3 &GetBossCameraTranslate() const { return bossCameraTranslate_; }
   void SetBossCameraTranslate(const Vector3 &tr) { bossCameraTranslate_ = tr; }
   const Vector3 &GetBossCameraRotate() const { return bossCameraRotate_; }

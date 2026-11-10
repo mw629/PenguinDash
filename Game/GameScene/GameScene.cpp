@@ -223,6 +223,11 @@ void GameScene::ResetGame() {
   rollCount_ = 0;
   laneChangeCount_ = 0;
   unMovedTime_ = 0.0f;
+  barrierBlockCount_ = 0;
+  clearBombCount_ = 0;
+  itemGetCount_ = 0;
+  oneLaneClearCount_ = 0;
+  bossBattleController_->ResetTotalReflectCount();
   wasJumping_ = false;
   wasRolling_ = false;
   if (player_) {
@@ -288,6 +293,7 @@ void GameScene::StartPlaying() {
   scoreManager_->Reset();
   wasBossBattle_ = false;
   bossBattleController_->Reset();
+  bossBattleController_->ResetTotalReflectCount();
   boss_->Reset();
 
   effectManager_->ClearBarrier();
@@ -572,6 +578,7 @@ void GameScene::PlayingUpdate() {
         !cameraController_->IsTransitionPending()) {
       rightSideDistance_ += scoreScrollSpeed * timeScale;
       if (rightSideDistance_ >= kOneLaneTotalDistance) {
+        oneLaneClearCount_++;
         ChangePlayingState(PlayingState::ThreeLane);
       }
     }
@@ -656,6 +663,12 @@ void GameScene::PlayingUpdate() {
     achCtx.rollCount = rollCount_;
     achCtx.laneChangeCount = laneChangeCount_;
     achCtx.unMovedTime = unMovedTime_;
+    achCtx.barrierBlockCount = barrierBlockCount_;
+    achCtx.clearBombCount = clearBombCount_;
+    achCtx.itemGetCount = itemGetCount_;
+    achCtx.oneLaneClearCount = oneLaneClearCount_;
+    achCtx.bossReflectCount = bossBattleController_->GetTotalReflectCount();
+    achCtx.isFirstPerson = cameraController_->IsFirstPerson();
 
     achievementManager_->Update(dt, achCtx, scoreManager_.get());
   } else {
@@ -1710,6 +1723,13 @@ void GameScene::ImGui() {
         debugAchCtx.rollCount = rollCount_;
         debugAchCtx.laneChangeCount = laneChangeCount_;
         debugAchCtx.unMovedTime = unMovedTime_;
+        debugAchCtx.barrierBlockCount = barrierBlockCount_;
+        debugAchCtx.clearBombCount = clearBombCount_;
+        debugAchCtx.itemGetCount = itemGetCount_;
+        debugAchCtx.oneLaneClearCount = oneLaneClearCount_;
+        debugAchCtx.bossReflectCount =
+            bossBattleController_->GetTotalReflectCount();
+        debugAchCtx.isFirstPerson = cameraController_->IsFirstPerson();
 
         achievementManager_->ImGui(debugAchCtx, scoreManager_.get());
       }
