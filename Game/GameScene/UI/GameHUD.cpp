@@ -1181,12 +1181,14 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
       float boxW = kResultAchPanelSize.x - 24.0f;
       float boxH = 25.0f;
 
-      // レア度に応じた枠色（コモン: 白 / レア: 緑 / スーパーレア: 紫）
+      // レア度に応じた枠色（コモン: 白 / レア: 緑 / スーパーレア: 紫 / シークレット: 金）
       Vector4 frameColor = Vector4(1.0f, 1.0f, 1.0f, 0.90f);
       if (ach->GetRarity() == AchievementRarity::Rare) {
         frameColor = Vector4(0.20f, 0.95f, 0.35f, 0.90f);
       } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
         frameColor = Vector4(0.75f, 0.30f, 1.0f, 0.90f);
+      } else if (ach->GetRarity() == AchievementRarity::Secret) {
+        frameColor = Vector4(1.0f, 0.84f, 0.0f, 0.95f);
       }
 
       // 背景と枠線
@@ -1641,7 +1643,9 @@ void GameHUD::DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx) 
   }
 
   const auto &achievements = ctx.achievementManager->GetAchievements();
-  const int totalCount = static_cast<int>(achievements.size());
+  // 実績一覧（モーダル）にはシークレットを除外した実績を表示
+  const auto displayAchievements = ctx.achievementManager->GetVisibleAchievements();
+  const int totalCount = static_cast<int>(displayAchievements.size());
 
   // 初回描画時に全実績のタイトル・説明文のフォントグリフをキャッシュ登録
   static size_t s_cachedAchCount = 0;
@@ -1688,7 +1692,7 @@ void GameHUD::DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx) 
   const int endIdx = (std::min)(totalCount, startIdx + kItemsPerPage);
 
   for (int idx = startIdx; idx < endIdx; ++idx) {
-    const auto &ach = achievements[idx];
+    const auto *ach = displayAchievements[idx];
     if (!ach) continue;
 
     const int localIdx = idx - startIdx;
@@ -1698,7 +1702,7 @@ void GameHUD::DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx) 
     const float cardX = (col == 0) ? startXLeft : startXRight;
     const float cardY = startY + row * rowStepY;
 
-    // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫）
+    // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫 / シークレット: 金）
     Vector4 frameMainColor = Vector4(1.0f, 1.0f, 1.0f, 0.95f);
     Vector4 frameSubColor = Vector4(0.90f, 0.92f, 0.95f, 0.85f);
     Vector4 badgeBgColor = Vector4(0.18f, 0.22f, 0.30f, 0.90f);
@@ -1710,6 +1714,10 @@ void GameHUD::DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx) 
       frameMainColor = Vector4(0.75f, 0.30f, 1.0f, 0.95f);
       frameSubColor = Vector4(0.68f, 0.25f, 0.95f, 0.85f);
       badgeBgColor = Vector4(0.22f, 0.10f, 0.32f, 0.90f);
+    } else if (ach->GetRarity() == AchievementRarity::Secret) {
+      frameMainColor = Vector4(1.0f, 0.84f, 0.0f, 0.95f);
+      frameSubColor = Vector4(1.0f, 0.65f, 0.15f, 0.85f);
+      badgeBgColor = Vector4(0.30f, 0.22f, 0.08f, 0.90f);
     }
 
     // カード背景

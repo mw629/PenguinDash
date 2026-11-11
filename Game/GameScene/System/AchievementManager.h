@@ -71,7 +71,7 @@ public:
   /// <param name="description">説明文 (例: "ボスを撃破する")</param>
   /// <param name="scoreReward">解除時に加点されるスコア (例: 3000.0f)</param>
   /// <param name="conditionFunc">条件判定関数 (true を返すと解除)</param>
-  /// <param name="rarity">レア度（コモン / レア / スーパーレア）</param>
+  /// <param name="rarity">レア度（コモン / レア / スーパーレア / シークレット）</param>
   /// <param name="progressFunc">任意の進捗率計算関数 (0.0f〜1.0f)</param>
   /// <param name="progressTextFunc">任意の進捗文字列取得関数</param>
   Achievement *
@@ -107,8 +107,13 @@ public:
   const std::vector<std::unique_ptr<Achievement>> &GetAchievements() const {
     return achievements_;
   }
+  /// <summary>
+  /// 実績一覧（モーダルなど）に表示対象の実績リストを取得（シークレットを除外）
+  /// </summary>
+  std::vector<Achievement *> GetVisibleAchievements() const;
   int GetUnlockedCount() const;
   int GetTotalCount() const { return static_cast<int>(achievements_.size()); }
+  int GetVisibleTotalCount() const;
   float GetTotalScoreEarned() const { return totalScoreEarned_; }
 
   /// <summary>

@@ -1,4 +1,4 @@
-﻿#include "ScoreManager.h"
+#include "ScoreManager.h"
 #include "Network/Firebase/FirebaseRankingManager.h"
 #include <imgui.h>
 
@@ -133,7 +133,13 @@ bool ScoreManager::IsDistanceFirstPlace() const {
       return (currentDistance_ >= distRanks[0].distance);
     }
   }
-  return (lastDistanceRank_ == 1);
+  if (lastDistanceRank_ == 1) {
+    return true;
+  }
+  if (topRankings_[0] > 0.0f) {
+    return (currentDistance_ >= topRankings_[0]);
+  }
+  return (currentDistance_ >= 500.0f);
 }
 
 bool ScoreManager::IsFirstPlace() const {

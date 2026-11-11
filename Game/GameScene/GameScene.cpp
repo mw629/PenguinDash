@@ -669,6 +669,7 @@ void GameScene::PlayingUpdate() {
     achCtx.oneLaneClearCount = oneLaneClearCount_;
     achCtx.bossReflectCount = bossBattleController_->GetTotalReflectCount();
     achCtx.isFirstPerson = cameraController_->IsFirstPerson();
+    achCtx.isDistanceFirstPlace = scoreManager_->IsDistanceFirstPlace();
 
     achievementManager_->Update(dt, achCtx, scoreManager_.get());
   } else {
@@ -779,7 +780,7 @@ void GameScene::TitleUpdate() {
   if (titleSubView_ != TitleSubView::None) {
     if (titleSubView_ == TitleSubView::Achievements && achievementManager_) {
       constexpr int kItemsPerPage = 10;
-      int totalCount = achievementManager_->GetTotalCount();
+      int totalCount = achievementManager_->GetVisibleTotalCount();
       int totalPages = (std::max)(1, (totalCount + kItemsPerPage - 1) / kItemsPerPage);
 
       bool prevPage = Input::PushKey(DIK_LEFT) || Input::PushKey(DIK_A) ||
@@ -1730,6 +1731,7 @@ void GameScene::ImGui() {
         debugAchCtx.bossReflectCount =
             bossBattleController_->GetTotalReflectCount();
         debugAchCtx.isFirstPerson = cameraController_->IsFirstPerson();
+        debugAchCtx.isDistanceFirstPlace = scoreManager_->IsDistanceFirstPlace();
 
         achievementManager_->ImGui(debugAchCtx, scoreManager_.get());
       }

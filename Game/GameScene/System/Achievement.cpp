@@ -20,6 +20,8 @@ const char* Achievement::GetRarityName() const {
         return "レア";
     case AchievementRarity::SuperRare:
         return "スーパーレア";
+    case AchievementRarity::Secret:
+        return "シークレット";
     default:
         return "コモン";
     }

@@ -57,12 +57,15 @@ void AchievementManager::RegisterDefaultAchievements() {
   // ■ 目標値型（距離、スコア、撃破数など）:
   //   RegisterProgress("ID", "タイトル", "説明文", 加点スコア, 目標値,
   //                    [](const AchievementContext& ctx) { return ctx.xxx; },
-  //                    "単位", AchievementRarity::Common / Rare / SuperRare);
+  //                    "単位", AchievementRarity::Common / Rare / SuperRare / Secret);
   //
   // ■ 条件判定型（フラグ、複合条件など）:
   //   RegisterCondition("ID", "タイトル", "説明文", 加点スコア,
   //                     [](const AchievementContext& ctx) { return ctx.xxx; },
-  //                     AchievementRarity::Common / Rare / SuperRare);
+  //                     AchievementRarity::Common / Rare / SuperRare / Secret);
+  //
+  // ※ AchievementRarity::Secret を指定した実績は、タイトル画面の実績一覧（モーダル）に
+  //    表示されない隠し実績（シークレット）になります。解除時には特別な金枠で通知されます。
   //
   // ■ 独自クラス型（複雑な状態を持つ実績など）:
   //   AddAchievement(std::make_unique<MyCustomAchievement>(...));
@@ -283,6 +286,12 @@ void AchievementManager::RegisterDefaultAchievements() {
       "boss_defeat", "アイスキング討伐！", "ボスを撃破する", 3000.0f,
       [](const AchievementContext &ctx) { return ctx.isBossDefeated; },
       AchievementRarity::SuperRare);
+
+  // --- 7. シークレット実績（実績一覧には表示されない隠し実績） ---
+  RegisterCondition(
+      "secret_zenjin_mitou", "前人未踏", "走行距離ランキングで1位に到達する", 0.0f,
+      [](const AchievementContext &ctx) { return ctx.isDistanceFirstPlace; },
+      AchievementRarity::Secret);
 }
 
 void AchievementManager::Update(float deltaTime, const AchievementContext &ctx,
@@ -352,6 +361,27 @@ Achievement *AchievementManager::FindAchievement(const std::string &id) const {
   return nullptr;
 }
 
+std::vector<Achievement *> AchievementManager::GetVisibleAchievements() const {
+  std::vector<Achievement *> visible;
+  visible.reserve(achievements_.size());
+  for (const auto &ach : achievements_) {
+    if (ach && ach->IsVisibleInList()) {
+      visible.push_back(ach.get());
+    }
+  }
+  return visible;
+}
+
+int AchievementManager::GetVisibleTotalCount() const {
+  int count = 0;
+  for (const auto &ach : achievements_) {
+    if (ach && ach->IsVisibleInList()) {
+      count++;
+    }
+  }
+  return count;
+}
+
 int AchievementManager::GetUnlockedCount() const {
   int count = 0;
   for (const auto &ach : achievements_) {
@@ -374,7 +404,7 @@ void AchievementManager::DrawUI(Draw &draw) {
   if (notifications_.empty())
     return;
 
-  // 最新の通知を画面上部にアニメーション付きで表示
+  // 最新の通知を画面右上（1レーン表示・ボスHPより下）にアニメーション付きで表示
   const auto &notif = notifications_.front();
 
   // フェードイン / フェードアウトの計算
@@ -383,20 +413,20 @@ void AchievementManager::DrawUI(Draw &draw) {
   if (notif.timer < AchievementNotification::kFadeDuration) {
     float t = notif.timer / AchievementNotification::kFadeDuration;
     alpha = t;
-    offsetY = (1.0f - t) * -20.0f; // 上からスライドイン
+    offsetY = (1.0f - t) * -15.0f; // 上からスライドイン
   } else if (notif.timer > AchievementNotification::kDuration -
                                AchievementNotification::kFadeDuration) {
     float t = (AchievementNotification::kDuration - notif.timer) /
               AchievementNotification::kFadeDuration;
     alpha = t;
-    offsetY = (1.0f - t) * -20.0f;
+    offsetY = (1.0f - t) * -15.0f; // 上へスライドアウト
   }
 
-  // パネル配置（画面中央上部）
+  // パネル配置（画面右上：1レーン表示[下端61px]・ボスHPバー[下端106px]・反撃チャンス警告[下端156px]より下）
   constexpr float kPanelWidth = 440.0f;
   constexpr float kPanelHeight = 65.0f;
-  constexpr float kBaseX = (1280.0f - kPanelWidth) * 0.5f;
-  constexpr float kBaseY = 25.0f;
+  constexpr float kBaseX = 1280.0f - kPanelWidth - 20.0f; // 右端から20pxマージン (x = 820.0f)
+  constexpr float kBaseY = 165.0f;                         // 1レーン・ボスHP関連HUDより下の位置 (y = 165.0f)
 
   Vector2 panelPos = {kBaseX, kBaseY + offsetY};
   Vector2 panelSize = {kPanelWidth, kPanelHeight};
@@ -405,7 +435,7 @@ void AchievementManager::DrawUI(Draw &draw) {
   draw.DrawFillRect(panelPos, panelSize,
                     Vector4(0.04f, 0.08f, 0.16f, 0.90f * alpha));
 
-  // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫）
+  // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫 / シークレット: 金）
   Vector4 borderMainColor = Vector4(1.0f, 1.0f, 1.0f, alpha);
   Vector4 borderSubColor = Vector4(0.90f, 0.92f, 0.95f, 0.85f * alpha);
   if (notif.rarity == AchievementRarity::Rare) {
@@ -414,6 +444,9 @@ void AchievementManager::DrawUI(Draw &draw) {
   } else if (notif.rarity == AchievementRarity::SuperRare) {
     borderMainColor = Vector4(0.75f, 0.30f, 1.0f, alpha);
     borderSubColor = Vector4(0.68f, 0.25f, 0.95f, 0.85f * alpha);
+  } else if (notif.rarity == AchievementRarity::Secret) {
+    borderMainColor = Vector4(1.0f, 0.84f, 0.0f, alpha);         // ゴールド
+    borderSubColor = Vector4(1.0f, 0.65f, 0.15f, 0.85f * alpha); // オレンジゴールド
   }
 
   // アクセントボーダー（上部）
@@ -426,14 +459,15 @@ void AchievementManager::DrawUI(Draw &draw) {
   draw.DrawFillRect(Vector2(panelPos.x + kPanelWidth - 2.0f, panelPos.y),
                     Vector2(2.0f, kPanelHeight), borderSubColor);
 
-  // テキスト1行目: ★ 実績解除！ [タイトル] (+500 pt) ★（白文字）
+  // テキスト1行目: ★ 実績解除！ [タイトル] (+500 pt) ★（白文字、シークレットは特別な冠表記）
   char titleBuf[128];
+  const char *prefix = (notif.rarity == AchievementRarity::Secret) ? "★ シークレット実績解除！" : "★ 実績解除！";
   if (notif.scoreReward > 0.0f) {
-    snprintf(titleBuf, sizeof(titleBuf), "★ 実績解除！ [%s]  +%.0f pt",
-             notif.title.c_str(), notif.scoreReward);
+    snprintf(titleBuf, sizeof(titleBuf), "%s [%s]  +%.0f pt",
+             prefix, notif.title.c_str(), notif.scoreReward);
   } else {
-    snprintf(titleBuf, sizeof(titleBuf), "★ 実績解除！ [%s]",
-             notif.title.c_str());
+    snprintf(titleBuf, sizeof(titleBuf), "%s [%s]",
+             prefix, notif.title.c_str());
   }
 
   draw.DrawMSDFString(titleBuf, Vector2(panelPos.x + 16.0f, panelPos.y + 12.0f),
@@ -483,6 +517,9 @@ void AchievementManager::ImGui(const AchievementContext &ctx,
       ImGui::Text("アイテム取得: %d 個 | バリア防御: %d 回 | ボム一掃: %d 回 | 魚反射: %d 回",
                   ctx.itemGetCount, ctx.barrierBlockCount, ctx.clearBombCount,
                   ctx.bossReflectCount);
+      ImGui::Text("視点: %s | 走行距離1位: %s",
+                  ctx.isFirstPerson ? "一人称" : "三人称",
+                  ctx.isDistanceFirstPlace ? "★ 1位到達！" : "NO");
       ImGui::TreePop();
     }
 
@@ -508,6 +545,8 @@ void AchievementManager::ImGui(const AchievementContext &ctx,
         rarityImColor = ImVec4(0.2f, 0.95f, 0.35f, 1.0f);
       } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
         rarityImColor = ImVec4(0.8f, 0.4f, 1.0f, 1.0f);
+      } else if (ach->GetRarity() == AchievementRarity::Secret) {
+        rarityImColor = ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
       }
       ImGui::TextColored(rarityImColor, "[%s]", ach->GetRarityName());
       ImGui::SameLine();

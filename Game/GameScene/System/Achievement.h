@@ -9,7 +9,8 @@
 enum class AchievementRarity {
     Common,     // コモン（白枠）
     Rare,       // レア（緑枠）
-    SuperRare   // スーパーレア（紫枠）
+    SuperRare,  // スーパーレア（紫枠）
+    Secret      // シークレット（金枠・実績一覧非表示）
 };
 
 /// <summary>
@@ -33,6 +34,7 @@ struct AchievementContext {
     int oneLaneClearCount = 0;       // 1レーンモード完走回数
     int bossReflectCount = 0;        // ボス戦での魚跳ね返し回数
     bool isFirstPerson = false;      // 一人称視点プレイ中か
+    bool isDistanceFirstPlace = false; // 走行距離ランキング1位（一番）か
 };
 
 /// <summary>
@@ -75,6 +77,8 @@ public:
     AchievementRarity GetRarity() const { return rarity_; }
     const char* GetRarityName() const;
     bool IsUnlocked() const { return isUnlocked_; }
+    bool IsSecret() const { return rarity_ == AchievementRarity::Secret; }
+    bool IsVisibleInList() const { return rarity_ != AchievementRarity::Secret; }
 
     // 操作
     void SetRarity(AchievementRarity rarity) { rarity_ = rarity; }
