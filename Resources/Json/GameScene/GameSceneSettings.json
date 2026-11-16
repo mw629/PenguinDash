@@ -41,6 +41,7 @@
             7.0,
             14.0
         ],
+        "lighting": true,
         "reflectArcHeight": 7.0,
         "reflectDuration": 36.0
     },
@@ -82,10 +83,96 @@
     "font": {
         "boldness": 0.07000000029802322
     },
+    "lights": {
+        "bossPoint": {
+            "active": true,
+            "color": [
+                0.88,
+                0.95,
+                1.0,
+                1.0
+            ],
+            "decay": 1.6,
+            "intensity": 0.5,
+            "radius": 45.0,
+            "translate": [
+                0.0,
+                10.0,
+                -14.0
+            ]
+        },
+        "coursePoint": {
+            "active": true,
+            "color": [
+                0.75,
+                0.92,
+                1.0,
+                1.0
+            ],
+            "decay": 1.6,
+            "intensity": 0.55,
+            "radius": 45.0,
+            "translate": [
+                0.0,
+                9.0,
+                12.0
+            ]
+        },
+        "mainDir": {
+            "active": true,
+            "color": [
+                1.0,
+                0.98,
+                0.92,
+                1.0
+            ],
+            "intensity": 1.05,
+            "rotate": [
+                0.72,
+                2.35,
+                0.0
+            ],
+            "translate": [
+                12.0,
+                25.0,
+                -15.0
+            ]
+        },
+        "subDir": {
+            "active": true,
+            "color": [
+                0.6,
+                0.82,
+                1.0,
+                1.0
+            ],
+            "intensity": 0.48,
+            "rotate": [
+                1.21,
+                -0.78,
+                0.0
+            ],
+            "translate": [
+                -12.0,
+                20.0,
+                22.0
+            ]
+        },
+        "sunOrbit": {
+            "angle": 0.45,
+            "colorTransition": true,
+            "cycleDuration": 24.0,
+            "enabled": true,
+            "maxElevation": 28.0,
+            "minElevation": 7.0,
+            "radius": 35.0
+        }
+    },
     "player": {
         "gravity": 0.014000000432133675,
         "jumpPower": 0.20999999344348907,
         "laneChangeSpeed": 0.20000000298023224,
+        "lighting": true,
         "rollDuration": 30.0
     },
     "sound": {
@@ -109,7 +196,7 @@
             "distanceOffset": 0.0,
             "enabled": true,
             "heightOffset": 0.0,
-            "lighting": false,
+            "lighting": true,
             "sizeScale": 1.0,
             "thicknessScale": 1.0
         },
@@ -131,6 +218,7 @@
         "minGraceFrames": 5.0,
         "minObstacleDistance": 6.0,
         "noSpawnChance": 0.05000000074505806,
+        "obstacleLighting": true,
         "oneLaneWidthMultiplier": 1.0,
         "roadColor": [
             1.0,
@@ -138,6 +226,7 @@
             1.0,
             1.0
         ],
+        "roadLighting": true,
         "scrollAcceleration": 9.999999747378752e-05,
         "spawnObstacleZ": 50.0,
         "water": {

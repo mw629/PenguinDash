@@ -57,6 +57,7 @@ void Player::Initialize(ModelData modelData) {
   model_->SetAnimation("walk");
   model_->SetName("Player Penguin Animation Model");
   model_->SetVisibleBones(false);
+  model_->SetLighting(lightingEnabled_);
 
   // コライダーの初期化
   auto collider = AddComponent<BoxColliderComponent>();
@@ -73,6 +74,7 @@ void Player::Initialize(ModelData modelData) {
   }
   snowballModel_->Initialize(sphereData);
   snowballModel_->SetShader("ObjectShader");
+  snowballModel_->SetLighting(lightingEnabled_);
   snowballModel_->SetName("Player Snowball Model");
   if (snowballModel_->GetMaterial()) {
     snowballModel_->GetMaterial()->SetColor({0.96f, 0.98f, 1.0f, 1.0f});
@@ -805,13 +807,23 @@ void Player::StartForceToCenter(float duration) {
   ChangeActionState(PlayerActionType::ForcedCenter);
 }
 
+void Player::SetLighting(bool enabled) {
+  lightingEnabled_ = enabled;
+  if (model_) {
+    model_->SetLighting(enabled);
+  }
+  if (snowballModel_) {
+    snowballModel_->SetLighting(enabled);
+  }
+}
+
 void Player::SetHasBarrier(bool hasBarrier) {
   hasBarrier_ = hasBarrier;
-  if (model_ && model_->GetMaterial()) {
+  if (model_) {
     if (hasBarrier_) {
-      model_->GetMaterial()->SetColor(kBarrierColor); // シアン
+      model_->SetColor(kBarrierColor); // シアン
     } else {
-      model_->GetMaterial()->SetColor(kDefaultPlayerColor); // 白（デフォルト）
+      model_->SetColor(kDefaultPlayerColor); // 白（デフォルト）
     }
   }
 }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include"ObjectBase.h"
 
 
@@ -60,7 +60,7 @@ public:
 	void SetBillboard(bool isBillboard) { isBillboard_ = isBillboard; }
 	bool GetBillboard() const { return isBillboard_; }
 
-	void SetLighting(bool isActive) {
+	void SetLighting(bool isActive) override {
 		ObjectBase::SetLighting(isActive);
 		for (auto& mat : subMeshMaterials_) {
 			if (mat.materialFactory) {

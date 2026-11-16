@@ -1,4 +1,4 @@
-﻿#include "Boss.h"
+#include "Boss.h"
 #include "Graphics/Render/Draw.h"
 #include "Math/Calculation.h"
 #include <cmath>
@@ -14,7 +14,15 @@ Boss::~Boss() {}
 void Boss::Initialize(ModelData modelData) {
   model_->Initialize(modelData);
   model_->SetShader("ObjectShader");
+  model_->SetLighting(lightingEnabled_);
   Reset();
+}
+
+void Boss::SetLighting(bool enabled) {
+  lightingEnabled_ = enabled;
+  if (model_) {
+    model_->SetLighting(enabled);
+  }
 }
 
 // ==========================================

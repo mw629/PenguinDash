@@ -64,9 +64,16 @@ public:
 	void SetTransform(Transform&& transform) {
 		GameObject::SetTransform(transform);
 	}
-	void SetLighting(bool isActive) { 
+	virtual void SetLighting(bool isActive) { 
 		auto matComp = GetComponent<MaterialComponent>();
-		if(matComp) matComp->GetMaterialFactory()->SetMaterialLighting(isActive);
+		if(matComp && matComp->GetMaterialFactory()) matComp->GetMaterialFactory()->SetMaterialLighting(isActive);
+	}
+	bool GetLighting() const {
+		auto matComp = GetComponent<MaterialComponent>();
+		if (matComp && matComp->GetMaterialFactory() && matComp->GetMaterialFactory()->GetMaterialData()) {
+			return matComp->GetMaterialFactory()->GetMaterialData()->enableLighting != 0;
+		}
+		return false;
 	}
 	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) { textureSrvHandleGPU_ = textureSrvHandleGPU; }
 

@@ -52,6 +52,7 @@ void StageSettings::Initialize(
     obstacles_[i]->Initialize(fallenTreeModelData, iceArchwayModelData,
                               iceWallModelData, bonusModelData, iceBomModelData,
                               reflectingAttackModelData, type);
+    obstacles_[i]->SetLighting(obstacleLighting_);
 
     if (manager)
       manager->AddObject(obstacles_[i]);
@@ -339,6 +340,52 @@ void StageSettings::SetDriftIceLighting(bool enabled) {
   }
 }
 
+void StageSettings::SetRoadLighting(bool enabled) {
+  roadLighting_ = enabled;
+  for (auto &row : roadChunks_) {
+    for (auto &chunk : row) {
+      if (chunk) {
+        if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
+          model->SetLighting(roadLighting_);
+        }
+      }
+    }
+  }
+  for (auto &fc : fallingChunks_) {
+    if (fc.renderObj) {
+      if (auto model =
+              dynamic_cast<Model *>(fc.renderObj->GetObjectBase().get())) {
+        model->SetLighting(roadLighting_);
+      }
+    }
+  }
+  for (auto &chunk : chunkPool_) {
+    if (chunk) {
+      if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
+        model->SetLighting(roadLighting_);
+      }
+    }
+  }
+}
+
+void StageSettings::SetObstacleLighting(bool enabled) {
+  obstacleLighting_ = enabled;
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->SetLighting(obstacleLighting_);
+    }
+  }
+}
+
+void StageSettings::SetWaterLighting(bool enabled) {
+  waterLighting_ = enabled;
+  for (int i = 0; i < 2; ++i) {
+    if (sidePlanes_[i] && sidePlanes_[i]->GetObjectBase()) {
+      sidePlanes_[i]->GetObjectBase()->SetLighting(waterLighting_);
+    }
+  }
+}
+
 void StageSettings::SetBabySealSpinSpeed(float speed) {
   babySealSpinSpeed_ = speed;
   for (auto &ice : driftIces_) {
@@ -488,6 +535,7 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
         if (renderObj) {
           if (auto model = dynamic_cast<Model *>(renderObj->GetObjectBase().get())) {
             model->SetColor(roadColor_);
+            model->SetLighting(roadLighting_);
           }
         }
       } else {
@@ -496,7 +544,7 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
         if (auto matComp = roadModel->GetComponent<MaterialComponent>()) {
           matComp->SetTexturePath("Resources/Model/Ground/Ground.png");
         }
-        roadModel->SetLighting(false);
+        roadModel->SetLighting(roadLighting_);
         roadModel->SetTexture(
             texture_->TextureData("Resources/Model/Ground/Ground.png"));
         roadModel->SetColor(roadColor_);
@@ -594,7 +642,7 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
       model->Initialize(planeModelData_);
       model->SetShader(WaterShader);
       model->SetColor(kDefaultWaterColor);
-      model->SetLighting(true);
+      model->SetLighting(waterLighting_);
       model->SetCullMode(kCullModeNone);
       if (auto matComp = model->GetComponent<MaterialComponent>()) {
         matComp->SetTexturePath("Resources/Texture/white64x64.png");
@@ -1604,6 +1652,15 @@ void StageSettings::ImGui() {
     if (ImGui::ColorEdit4("地面の色 (Ground Color)", roadColorArr)) {
       SetRoadColor({roadColorArr[0], roadColorArr[1],
                     roadColorArr[2], roadColorArr[3]});
+    }
+    bool roadLighting = GetRoadLighting();
+    if (ImGui::Checkbox("地面ライティングを有効化", &roadLighting)) {
+      SetRoadLighting(roadLighting);
+    }
+    ImGui::SameLine();
+    bool obsLighting = GetObstacleLighting();
+    if (ImGui::Checkbox("障害物ライティングを有効化", &obsLighting)) {
+      SetObstacleLighting(obsLighting);
     }
 
     bool driftIceEnabled = GetDriftIceEnabled();

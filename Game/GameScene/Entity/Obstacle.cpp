@@ -24,29 +24,36 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
 
   lowModel_->Initialize(lowData);
   lowModel_->SetShader("ObjectShader");
+  lowModel_->SetLighting(lightingEnabled_);
   lowModel_->GetMaterial()->SetColor(kNormalColor);
 
   highModel_->Initialize(highData);
   highModel_->SetShader("ObjectShader");
+  highModel_->SetLighting(lightingEnabled_);
   highModel_->GetMaterial()->SetColor(kNormalColor);
 
   wallModel_->Initialize(wallData);
   wallModel_->SetShader("ObjectShader");
+  wallModel_->SetLighting(lightingEnabled_);
   wallModel_->GetMaterial()->SetColor(kNormalColor);
 
   bonusModel_->Initialize(bonusData);
   bonusModel_->SetShader("ObjectShader");
+  bonusModel_->SetLighting(lightingEnabled_);
   bonusModel_->GetMaterial()->SetColor(kNormalColor);
 
   itemModel_->Initialize(wallData);
   itemModel_->SetShader("ObjectShader");
+  itemModel_->SetLighting(lightingEnabled_);
 
   iceBomModel_->Initialize(iceBomData);
   iceBomModel_->SetShader("ObjectShader");
+  iceBomModel_->SetLighting(lightingEnabled_);
   iceBomModel_->GetMaterial()->SetColor(kNormalColor);
 
   reflectingAttackModel_->Initialize(reflectingAttackData);
   reflectingAttackModel_->SetShader("ObjectShader");
+  reflectingAttackModel_->SetLighting(lightingEnabled_);
   reflectingAttackModel_->GetMaterial()->SetColor(kNormalColor);
 
   // ビルボードアイテム用平面モデルの初期化
@@ -113,6 +120,17 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
 void Obstacle::Initialize(ModelData normalData, ModelData bonusData,
                           Type type) {
   Initialize(normalData, normalData, normalData, bonusData, type);
+}
+
+void Obstacle::SetLighting(bool enabled) {
+  lightingEnabled_ = enabled;
+  if (lowModel_) lowModel_->SetLighting(enabled);
+  if (highModel_) highModel_->SetLighting(enabled);
+  if (wallModel_) wallModel_->SetLighting(enabled);
+  if (bonusModel_) bonusModel_->SetLighting(enabled);
+  if (itemModel_) itemModel_->SetLighting(enabled);
+  if (iceBomModel_) iceBomModel_->SetLighting(enabled);
+  if (reflectingAttackModel_) reflectingAttackModel_->SetLighting(enabled);
 }
 
 void Obstacle::SetType(Type type) {

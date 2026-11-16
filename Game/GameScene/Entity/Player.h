@@ -155,6 +155,7 @@ private:
 
   std::unique_ptr<CharacterAnimator> model_ =
       std::make_unique<CharacterAnimator>();
+  bool lightingEnabled_ = true;
 
   // レーン設定定数
   static constexpr int kDefaultMinLane = -1;
@@ -591,4 +592,7 @@ public:
   int GetMinLane() const { return minLane_; }
   int GetMaxLane() const { return maxLane_; }
   float GetLaneWidth() const { return laneWidth_; }
+
+  void SetLighting(bool enabled);
+  bool GetLighting() const { return lightingEnabled_; }
 };

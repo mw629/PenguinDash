@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Line.h"
 #include "ObjectBase.h"
 #include <memory>
@@ -91,6 +91,28 @@ public:
                                const std::string &overrideName = "");
 
   void SettingWvp(Matrix4x4 viewMatrix) override;
+
+  void SetLighting(bool isActive) override {
+    ObjectBase::SetLighting(isActive);
+    for (auto &mat : subMeshMaterials_) {
+      if (mat.materialFactory) {
+        mat.materialFactory->SetMaterialLighting(isActive);
+      }
+    }
+  }
+
+  void SetColor(Vector4 color) {
+    if (auto matComp = GetComponent<MaterialComponent>()) {
+      if (matComp->GetMaterialFactory()) {
+        matComp->GetMaterialFactory()->SetColor(color);
+      }
+    }
+    for (auto &mat : subMeshMaterials_) {
+      if (mat.materialFactory) {
+        mat.materialFactory->SetColor(color);
+      }
+    }
+  }
 
   void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
     ObjectBase::SetTexture(textureSrvHandleGPU);

@@ -314,6 +314,12 @@ void Draw::DrawAnimation(CharacterAnimator *obj) {
     commandList_->IASetVertexBuffers(0, 1, &vbv);
 
     if (i < subMeshMaterials.size()) {
+      if (obj->GetMaterial() && obj->GetMaterial()->GetMaterialData() &&
+          subMeshMaterials[i].materialFactory &&
+          subMeshMaterials[i].materialFactory->GetMaterialData()) {
+        *subMeshMaterials[i].materialFactory->GetMaterialData() =
+            *obj->GetMaterial()->GetMaterialData();
+      }
       SetCBV(shader, blend, "gMaterial",
              subMeshMaterials[i]
                  .materialFactory->GetMaterialResource()
@@ -393,6 +399,10 @@ void Draw::DrawModel(Model *model) {
     MaterialFactory *mat = (i < subMeshMaterials.size())
                                ? subMeshMaterials[i].materialFactory.get()
                                : model->GetMaterial();
+    if (mat && model->GetMaterial() && mat != model->GetMaterial() &&
+        mat->GetMaterialData() && model->GetMaterial()->GetMaterialData()) {
+      *mat->GetMaterialData() = *model->GetMaterial()->GetMaterialData();
+    }
     D3D12_GPU_DESCRIPTOR_HANDLE texHandle =
         (i < subMeshMaterials.size()) ? subMeshMaterials[i].textureSrvHandleGPU
                                       : model->GetTextureSrvHandleGPU();

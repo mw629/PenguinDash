@@ -3,10 +3,12 @@
 #include "../Direction/FreezeTransition.h"
 #include "../IScene.h"
 #include "Camera/GameCameraController.h"
+#include "DirectionalLight.h"
 #include "Effect/CrashEffect.h"
 #include "Effect/GameSceneEffect.h"
 #include "Effect/RankingCutinEffect.h"
 #include "GameObjectManager.h"
+#include "PointLight.h"
 #include "RenderObject.h"
 #include "System/AchievementManager.h"
 #include "System/BossBattleController.h"
@@ -101,6 +103,13 @@ private:
   // エンティティ・ワールド管理
   std::shared_ptr<Player> player_ = std::make_shared<Player>();
   std::shared_ptr<Boss> boss_ = std::make_shared<Boss>();
+  std::shared_ptr<DirectionalLight> mainDirLight_ =
+      std::make_shared<DirectionalLight>();
+  std::shared_ptr<DirectionalLight> subDirLight_ =
+      std::make_shared<DirectionalLight>();
+  std::shared_ptr<PointLight> coursePointLight_ =
+      std::make_shared<PointLight>();
+  std::shared_ptr<PointLight> bossPointLight_ = std::make_shared<PointLight>();
   std::unique_ptr<GameObjectManager> gameObjectManager_ =
       std::make_unique<GameObjectManager>();
   std::unique_ptr<StageSettings> stageSettings_ =
@@ -144,6 +153,41 @@ private:
   /// </summary>
   /// <param name="target">遷移先（リスタート / タイトル復帰）</param>
   void StartResultTransition(ResultTransition target);
+
+  /// <summary>
+  /// シーン内のデフォルトライト配置・パラメータ設定
+  /// </summary>
+  void SetupDefaultLights();
+
+  /// <summary>
+  /// 太陽の軌道運動・時間帯に応じたライト方向・色・強度の更新
+  /// </summary>
+  /// <param name="dt">デルタタイム（秒）</param>
+  void UpdateSunLight(float dt);
+
+  bool isMasterLightingEnabled_ = true;
+  bool isSunOrbitEnabled_ = true;
+  bool isSunColorTransitionEnabled_ = true;
+  float sunCycleDuration_ = 24.0f; // 1周（昼→夕→夜→朝→昼）にかかる秒数
+  float sunAngle_ = 0.45f;         // 太陽の軌道角 (rad: 0=昼, π/2=夕, π=夜, 3π/2=朝)
+  float sunOrbitRadius_ = 35.0f;   // 太陽の軌道半径 (m)
+  float sunMaxElevation_ = 28.0f;  // 南中時の最大高度Y (m)
+  float sunMinElevation_ = 7.0f;   // 朝夕・夜間の最低高度Y (m)
+  float sunOrbitOffsetZ_ = -15.0f; // カメラ手前側のZオフセット (m)
+
+public:
+  /// <summary>
+  /// シーン内すべての対象オブジェクトのライティングを一括でON/OFF設定
+  /// </summary>
+  /// <param name="enabled">有効時true</param>
+  void SetAllLighting(bool enabled);
+
+  /// <summary>
+  /// シーン内すべての対象オブジェクトのライティングを一括トグル切り替え
+  /// </summary>
+  void ToggleAllLighting();
+
+  bool IsMasterLightingEnabled() const { return isMasterLightingEnabled_; }
 
 public:
   /// <summary>

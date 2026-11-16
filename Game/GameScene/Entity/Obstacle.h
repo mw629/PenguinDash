@@ -41,6 +41,7 @@ private:
   std::unique_ptr<Model> clearItemModel_ = std::make_unique<Model>();        // BomItem (Billboard)
   std::unique_ptr<Model> oneLaneItemModel_ = std::make_unique<Model>();      // Onelane (Billboard)
   Model *currentModel_ = nullptr;
+  bool lightingEnabled_ = true;
 
   float itemFloatTimer_ = 0.0f; // アイテムの浮遊ボビング演出用タイマー
 
@@ -253,7 +254,9 @@ public:
     reflectTimer_ = 0.0f;
   }
 
-  // ゲッター
+  // ゲッター・ライティング設定
+  void SetLighting(bool enabled);
+  bool GetLighting() const { return lightingEnabled_; }
   Type GetType() const { return type_; }
   bool GetIsHit() const { return isHit_; }
   float GetCollisionWidth() const { return collisionWidth_; }

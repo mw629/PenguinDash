@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "GameObject.h"
 #include <Engine.h>
 #include <memory>
@@ -77,6 +77,7 @@ private:
 
 private:
   std::unique_ptr<Model> model_ = std::make_unique<Model>();
+  bool lightingEnabled_ = true;
   int hp_ = kMaxHP;
   bool isHit_ = false;
   float hitTimer_ = 0.0f;
@@ -198,4 +199,7 @@ public:
   void SetStartPos(const Vector3 &startPos) { startPos_ = startPos; }
 
   float &GetBattleAnimTimerRef() { return battleAnimTimer_; }
+
+  void SetLighting(bool enabled);
+  bool GetLighting() const { return lightingEnabled_; }
 };

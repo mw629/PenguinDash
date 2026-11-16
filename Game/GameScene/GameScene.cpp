@@ -116,6 +116,13 @@ void GameScene::Initialize() {
   gameObjectManager_->AddObject(player_);
   gameObjectManager_->AddObject(boss_);
 
+  // --- シーンライトの初期配置と登録 ---
+  SetupDefaultLights();
+  gameObjectManager_->AddObject(mainDirLight_);
+  gameObjectManager_->AddObject(subDirLight_);
+  gameObjectManager_->AddObject(coursePointLight_);
+  gameObjectManager_->AddObject(bossPointLight_);
+
   // --- エディター用コールバック（シーン保存・読込・モデルD&D）の登録 ---
   EditorManager::SetSaveCallback([this](const std::string &filePath) {
     gameObjectManager_->SaveScene(filePath);
@@ -256,8 +263,10 @@ void GameScene::StartGame() {
   stageSettings_->SetSpawningPaused(true);
 
   // --- コース上の不要な遠方障害物のクリア ---
-  // 遠すぎる障害物（Z > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
-  // 3.4秒のカウントダウン（3, 2, 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
+  // 遠すぎる障害物（Z
+  // > 28.0f）のみ消去。手前〜中距離の障害物は自然に通り過ぎていき、
+  // 3.4秒のカウントダウン（3, 2,
+  // 1）中にすべて画面外へ捌けてGOの瞬間にコースが何もない状態になる
   for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
     Obstacle *obs = stageSettings_->GetObstacle(i);
     if (obs && obs->GetIsActive()) {
@@ -338,7 +347,8 @@ void GameScene::StartResultTransition(ResultTransition target) {
   }
   resultTransition_ = target;
 
-  // --- 画面凍結・破砕トランジションの開始と完了時コールバック（リスタート / タイトル復帰） ---
+  // --- 画面凍結・破砕トランジションの開始と完了時コールバック（リスタート /
+  // タイトル復帰） ---
   FreezeTransition::GetInstance()->Start(
       kResultFreezeDuration, kResultShatterDuration, [this, target]() {
         if (target == ResultTransition::Restart) {
@@ -379,7 +389,7 @@ void GameScene::Update() {
     settingsStatusTimer_ -= Engine::kDefaultDeltaTime;
   }
 
-  // --- デバッグ入力処理（レーン数切り替え・デバッグ描画） ---
+  // --- デバッグ入力処理（レーン数切り替え・デバッグ描画・ライティング切替） ---
 #ifdef _DEBUG
   if (Input::PushKey(DIK_Q)) {
     ChangePlayingState(PlayingState::ThreeLane);
@@ -389,6 +399,9 @@ void GameScene::Update() {
   }
   if (Input::PushKey(DIK_F1)) {
     ColliderComponent::ToggleDrawDebug();
+  }
+  if (Input::PushKey(DIK_F4)) {
+    ToggleAllLighting();
   }
 #endif
 
@@ -433,6 +446,13 @@ void GameScene::Update() {
 
   // --- 通常カメラの追従更新とSkyBoxの同期 ---
   float timeScale = EditorManager::GetPlaySpeed();
+  if (gameState_ == GameState::Paused) {
+    UpdateSunLight(0.0f);
+  } else if (gameState_ == GameState::Editor) {
+    UpdateSunLight(Engine::kDefaultDeltaTime);
+  } else {
+    UpdateSunLight(Engine::kDefaultDeltaTime * timeScale);
+  }
   if (!cameraController_->IsFirstPerson()) {
     if (gameState_ == GameState::Title) {
       titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
@@ -481,10 +501,12 @@ void GameScene::Update() {
         !FreezeTransition::GetInstance()->IsActive()) {
       // リザルトパネル落下中の誤入力を防止するため、一定時間経過後に入力を受付
       if (resultTimer_ >= 0.45f) {
-        if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+        if (Input::PushKey(DIK_1) ||
+            GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
           StartResultTransition(ResultTransition::Restart);
         }
-        if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
+        if (Input::PushKey(DIK_2) ||
+            GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
           StartResultTransition(ResultTransition::Title);
         }
       }
@@ -540,7 +562,8 @@ void GameScene::PlayingUpdate() {
         SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
       }
     } else {
-      // 3, 2, 1 の間はスポーン停止＆プレイヤー入力無効（走るアニメーションとスクロールは維持）
+      // 3, 2, 1
+      // の間はスポーン停止＆プレイヤー入力無効（走るアニメーションとスクロールは維持）
       stageSettings_->SetSpawningPaused(true);
       player_->SetInputEnabled(false);
       player_->ClearInputBuffer();
@@ -617,8 +640,8 @@ void GameScene::PlayingUpdate() {
   CheckCollisions();
 
   // --- 実績用の数値計算・トラッキング ---
-  bool isCountdownActive = titleDirector_->IsCountdownActive() &&
-                           !titleDirector_->IsInputAllowed();
+  bool isCountdownActive =
+      titleDirector_->IsCountdownActive() && !titleDirector_->IsInputAllowed();
   if (!isCountdownActive) {
     float dt = (1.0f / 60.0f) * timeScale;
     playTime_ += dt;
@@ -781,7 +804,8 @@ void GameScene::TitleUpdate() {
     if (titleSubView_ == TitleSubView::Achievements && achievementManager_) {
       constexpr int kItemsPerPage = 10;
       int totalCount = achievementManager_->GetVisibleTotalCount();
-      int totalPages = (std::max)(1, (totalCount + kItemsPerPage - 1) / kItemsPerPage);
+      int totalPages =
+          (std::max)(1, (totalCount + kItemsPerPage - 1) / kItemsPerPage);
 
       bool prevPage = Input::PushKey(DIK_LEFT) || Input::PushKey(DIK_A) ||
                       Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
@@ -798,7 +822,8 @@ void GameScene::TitleUpdate() {
 
       if (totalPages > 1) {
         if (prevPage) {
-          titleAchievementPage_ = (titleAchievementPage_ - 1 + totalPages) % totalPages;
+          titleAchievementPage_ =
+              (titleAchievementPage_ - 1 + totalPages) % totalPages;
           SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
         } else if (nextPage) {
           titleAchievementPage_ = (titleAchievementPage_ + 1) % totalPages;
@@ -961,13 +986,15 @@ void GameScene::PlayerHitUpdate() {
   // === 雪玉状態時の障害物吹き飛ばし判定＆被弾中障害物の物理・描画更新 ===
   if (stageSettings_) {
     const Matrix4x4 &view = cameraController_->GetViewMatrix();
-    bool isSnowballRolling = player_->GetIsTrip() && player_->GetIsSnowballActive() &&
+    bool isSnowballRolling = player_->GetIsTrip() &&
+                             player_->GetIsSnowballActive() &&
                              (player_->GetSnowballScale() > 0.1f);
 
     BoundingSphere snowballSphere{};
     if (isSnowballRolling) {
       snowballSphere.center = player_->GetSnowballTransform().translate;
-      snowballSphere.radius = (std::max)(player_->GetSnowballScale() * 1.15f, 1.2f);
+      snowballSphere.radius =
+          (std::max)(player_->GetSnowballScale() * 1.15f, 1.2f);
     }
 
     for (int i = 0; i < stageSettings_->GetMaxObstacles(); i++) {
@@ -1020,7 +1047,8 @@ void GameScene::PlayerHitUpdate() {
     }
   }
 
-  // --- 被弾アニメーション終了後のリザルト演出判定（1位カットイン or ゲームオーバー画面） ---
+  // --- 被弾アニメーション終了後のリザルト演出判定（1位カットイン or
+  // ゲームオーバー画面） ---
   if (player_->IsHitAnimationFinished()) {
     bool isScoreFirst = scoreManager_->IsScoreFirstPlace();
     bool isDistFirst = scoreManager_->IsDistanceFirstPlace();
@@ -1108,7 +1136,9 @@ void GameScene::CheckCollisions() {
 }
 
 void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
-  // --- 被弾時の演出・フィードバック発生（クラッシュ、画面揺れ、SE、コントローラー振動） ---
+  // ---
+  // 被弾時の演出・フィードバック発生（クラッシュ、画面揺れ、SE、コントローラー振動）
+  // ---
   gameState_ = GameState::PlayerHit;
   crashEffect_->Reset();
   cameraController_->ShakeImpact();
@@ -1132,8 +1162,9 @@ void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
       screenSize = {Camera::kDefaultScreenWidth, Camera::kDefaultScreenHeight};
     }
     // カメラの画面中央・手前約2.2mのワールド座標を取得
-    cameraHitTarget = cameraController_->GetGameCamera()->GetScreenWorldPosition(
-        {screenSize.x * 0.5f, screenSize.y * 0.5f}, 2.2f);
+    cameraHitTarget =
+        cameraController_->GetGameCamera()->GetScreenWorldPosition(
+            {screenSize.x * 0.5f, screenSize.y * 0.5f}, 2.2f);
   }
 
   player_->OnHit(isTrip, isLargeObstacle, cameraHitTarget);
@@ -1175,7 +1206,8 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
   if (!force && playingState_ == newState)
     return;
 
-  // --- 前の状態からの離脱処理（ボス戦終了時のクールダウンタイマー設定など） ---
+  // --- 前の状態からの離脱処理（ボス戦終了時のクールダウンタイマー設定など）
+  // ---
   PlayingState prevState = playingState_;
   playingState_ = newState;
 
@@ -1188,7 +1220,8 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
                                          bossItemDuration);
   }
 
-  // --- 遷移先状態（3レーン / 1レーン / ボス戦）に応じたカメラ目標値・レーン数設定 ---
+  // --- 遷移先状態（3レーン / 1レーン /
+  // ボス戦）に応じたカメラ目標値・レーン数設定 ---
   Transform target;
   int laneCount = kThreeLaneCount;
 
@@ -1253,7 +1286,9 @@ void GameScene::Draw(class Draw &draw) {
 void GameScene::DrawUI(class Draw &draw) {
   draw_ = &draw;
 
-  // --- HUD描画コンテキスト（GameHUDContext）への各種ゲーム数値・状態の収集と受け渡し ---
+  // ---
+  // HUD描画コンテキスト（GameHUDContext）への各種ゲーム数値・状態の収集と受け渡し
+  // ---
   GameHUDContext ctx;
   ctx.gameState = static_cast<int>(gameState_);
   ctx.playingState = static_cast<int>(playingState_);
@@ -1383,6 +1418,94 @@ void GameScene::ImGui() {
       ImGui::Separator();
     }
 
+    // デバッグ用ライティング＆太陽移動クイックパネル
+    if (ImGui::CollapsingHeader("ライティング・太陽軌道 デバッグ切替 (Shortcut: F4)",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+      bool masterLight = isMasterLightingEnabled_;
+      if (ImGui::Checkbox(
+              "シーン全体のライティングを一括有効化 (Master Lighting ON/OFF)",
+              &masterLight)) {
+        SetAllLighting(masterLight);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("一括ON")) {
+        SetAllLighting(true);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("一括OFF")) {
+        SetAllLighting(false);
+      }
+
+      bool obsLightQuick = stageSettings_->GetObstacleLighting();
+      if (ImGui::Checkbox("障害物##QuickLight", &obsLightQuick)) {
+        stageSettings_->SetObstacleLighting(obsLightQuick);
+      }
+      ImGui::SameLine();
+      bool driftLightQuick = stageSettings_->GetDriftIceLighting();
+      if (ImGui::Checkbox("流氷・アザラシ##QuickLight", &driftLightQuick)) {
+        stageSettings_->SetDriftIceLighting(driftLightQuick);
+      }
+      ImGui::SameLine();
+      bool roadLightQuick = stageSettings_->GetRoadLighting();
+      if (ImGui::Checkbox("地面##QuickLight", &roadLightQuick)) {
+        stageSettings_->SetRoadLighting(roadLightQuick);
+      }
+      ImGui::SameLine();
+      bool waterLightQuick = stageSettings_->GetWaterLighting();
+      if (ImGui::Checkbox("海面##QuickLight", &waterLightQuick)) {
+        stageSettings_->SetWaterLighting(waterLightQuick);
+      }
+      ImGui::SameLine();
+      bool playerLightQuick = player_ ? player_->GetLighting() : true;
+      if (ImGui::Checkbox("プレイヤー##QuickLight", &playerLightQuick)) {
+        if (player_) player_->SetLighting(playerLightQuick);
+      }
+      ImGui::SameLine();
+      bool bossLightQuick = boss_ ? boss_->GetLighting() : true;
+      if (ImGui::Checkbox("ボス##QuickLight", &bossLightQuick)) {
+        if (boss_) boss_->SetLighting(bossLightQuick);
+      }
+
+      ImGui::Separator();
+      ImGui::Checkbox("太陽のようにライトを自動で動かす (Sun Orbit)",
+                      &isSunOrbitEnabled_);
+      ImGui::SameLine();
+      if (ImGui::Checkbox("時間帯で太陽の色を変える (朝・昼・夕・夜)",
+                          &isSunColorTransitionEnabled_)) {
+        UpdateSunLight(0.0f);
+      }
+      ImGui::SliderFloat("太陽の1周時間 (秒)", &sunCycleDuration_, 4.0f, 120.0f,
+                         "%.1f 秒/周");
+      float deg = sunAngle_ * (180.0f / 3.14159265f);
+      if (ImGui::SliderFloat("現在の太陽角度 (0°=昼, 90°=夕, 180°=夜, 270°=朝)",
+                             &deg, 0.0f, 360.0f, "%.1f°")) {
+        sunAngle_ = deg * (3.14159265f / 180.0f);
+        UpdateSunLight(0.0f);
+      }
+      ImGui::Text("時間帯プリセット:");
+      ImGui::SameLine();
+      if (ImGui::SmallButton("昼 (Noon)")) {
+        sunAngle_ = 0.35f;
+        UpdateSunLight(0.0f);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("夕焼け (Sunset)")) {
+        sunAngle_ = 1.570796f;
+        UpdateSunLight(0.0f);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("夜・月光 (Night)")) {
+        sunAngle_ = 3.141593f;
+        UpdateSunLight(0.0f);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("朝焼け (Sunrise)")) {
+        sunAngle_ = 4.712389f;
+        UpdateSunLight(0.0f);
+      }
+      ImGui::Separator();
+    }
+
     // リザルト時の表示
     if (gameState_ == GameState::GameOver) {
       ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.85f, 0.65f, 0.2f, 1.0f));
@@ -1470,9 +1593,9 @@ void GameScene::ImGui() {
       ImGui::Checkbox("名前入力中 (Space入力/Enter決定)",
                       &isEditingTitlePlayerName_);
 
-      const char *menuNames[] = {"0: 名前登録バー", "1: ゲームスタート",
+      const char *menuNames[] = {"0: 名前登録バー",   "1: ゲームスタート",
                                  "2: ランキング確認", "3: 実績一覧",
-                                 "4: 操作説明", "5: ゲーム終了"};
+                                 "4: 操作説明",       "5: ゲーム終了"};
       int curMenuIdx = static_cast<int>(titleMenuIndex_);
       if (ImGui::Combo("選択中メニュー項目", &curMenuIdx, menuNames,
                        IM_ARRAYSIZE(menuNames))) {
@@ -1556,9 +1679,9 @@ void GameScene::ImGui() {
     // ゲームステート
     if (ImGui::CollapsingHeader("ゲームステート",
                                 ImGuiTreeNodeFlags_DefaultOpen)) {
-      const char *stateNames[] = {"タイトル",       "プレイ中",     "一時停止",
-                                  "被弾",           "1位カットイン", "ゲームクリア",
-                                  "ゲームオーバー", "エディター"};
+      const char *stateNames[] = {
+          "タイトル",      "プレイ中",     "一時停止",       "被弾",
+          "1位カットイン", "ゲームクリア", "ゲームオーバー", "エディター"};
       ImGui::Text("現在のゲーム状態: %s", stateNames[gameState_]);
 
       const char *playingStateNames[] = {"3レーン", "1レーン", "ボス戦"};
@@ -1683,14 +1806,16 @@ void GameScene::ImGui() {
         ImGui::Text("動かない時間 (未操作): %.2f 秒", unMovedTime_);
         float progress3s = (std::min)(unMovedTime_ / 3.0f, 1.0f);
         char overlay3s[64];
-        snprintf(overlay3s, sizeof(overlay3s), "目標3秒: %.2f / 3.00 秒 (%.0f%%)",
-                 unMovedTime_, progress3s * 100.0f);
+        snprintf(overlay3s, sizeof(overlay3s),
+                 "目標3秒: %.2f / 3.00 秒 (%.0f%%)", unMovedTime_,
+                 progress3s * 100.0f);
         ImGui::ProgressBar(progress3s, ImVec2(280.0f, 0.0f), overlay3s);
 
         float progress5s = (std::min)(unMovedTime_ / 5.0f, 1.0f);
         char overlay5s[64];
-        snprintf(overlay5s, sizeof(overlay5s), "目標5秒: %.2f / 5.00 秒 (%.0f%%)",
-                 unMovedTime_, progress5s * 100.0f);
+        snprintf(overlay5s, sizeof(overlay5s),
+                 "目標5秒: %.2f / 5.00 秒 (%.0f%%)", unMovedTime_,
+                 progress5s * 100.0f);
         ImGui::ProgressBar(progress5s, ImVec2(280.0f, 0.0f), overlay5s);
 
         ImGui::SliderFloat("動かない時間を調整", &unMovedTime_, 0.0f, 10.0f,
@@ -1731,7 +1856,8 @@ void GameScene::ImGui() {
         debugAchCtx.bossReflectCount =
             bossBattleController_->GetTotalReflectCount();
         debugAchCtx.isFirstPerson = cameraController_->IsFirstPerson();
-        debugAchCtx.isDistanceFirstPlace = scoreManager_->IsDistanceFirstPlace();
+        debugAchCtx.isDistanceFirstPlace =
+            scoreManager_->IsDistanceFirstPlace();
 
         achievementManager_->ImGui(debugAchCtx, scoreManager_.get());
       }
@@ -1760,6 +1886,164 @@ void GameScene::ImGui() {
 
     // ステージ・アイテム設定
     stageSettings_->ImGui();
+
+    // ライティング・ライト設定
+    if (ImGui::CollapsingHeader("ライティング / ライト設定 (Lighting & Lights)",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f),
+                         "[ オブジェクト別ライティング ON / OFF ]");
+      bool obsLight = stageSettings_->GetObstacleLighting();
+      if (ImGui::Checkbox("障害物・アイテム (Obstacles)", &obsLight)) {
+        stageSettings_->SetObstacleLighting(obsLight);
+      }
+      ImGui::SameLine();
+      bool driftLight = stageSettings_->GetDriftIceLighting();
+      if (ImGui::Checkbox("流氷・アザラシ (Drift Ice)", &driftLight)) {
+        stageSettings_->SetDriftIceLighting(driftLight);
+      }
+      ImGui::SameLine();
+      bool roadLight = stageSettings_->GetRoadLighting();
+      if (ImGui::Checkbox("地面・道路 (Road)", &roadLight)) {
+        stageSettings_->SetRoadLighting(roadLight);
+      }
+      ImGui::SameLine();
+      bool waterLight = stageSettings_->GetWaterLighting();
+      if (ImGui::Checkbox("海面 (Water)", &waterLight)) {
+        stageSettings_->SetWaterLighting(waterLight);
+      }
+
+      bool playerLight = player_ ? player_->GetLighting() : true;
+      if (ImGui::Checkbox("プレイヤー・雪玉 (Player)", &playerLight)) {
+        if (player_)
+          player_->SetLighting(playerLight);
+      }
+      ImGui::SameLine();
+      bool bossLight = boss_ ? boss_->GetLighting() : true;
+      if (ImGui::Checkbox("ボス (Boss)", &bossLight)) {
+        if (boss_)
+          boss_->SetLighting(bossLight);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("すべてON (F4)")) {
+        SetAllLighting(true);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("すべてOFF (F4)")) {
+        SetAllLighting(false);
+      }
+
+      ImGui::Separator();
+      ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f),
+                         "[ 太陽の軌道・日周運動設定 (Sun Cycle) ]");
+      ImGui::Checkbox("太陽のようにライトを動かす##DetailSun",
+                      &isSunOrbitEnabled_);
+      ImGui::SameLine();
+      if (ImGui::Checkbox("朝・昼・夕・夜の色変化を有効化##DetailSun",
+                          &isSunColorTransitionEnabled_)) {
+        UpdateSunLight(0.0f);
+      }
+      ImGui::SliderFloat("1周の周期 (秒)##DetailSun", &sunCycleDuration_, 4.0f,
+                         180.0f, "%.1f 秒");
+      if (ImGui::SliderFloat("軌道半径##DetailSun", &sunOrbitRadius_, 10.0f,
+                             80.0f, "%.1f m")) {
+        UpdateSunLight(0.0f);
+      }
+      if (ImGui::SliderFloat("南中最大高度Y##DetailSun", &sunMaxElevation_,
+                             10.0f, 60.0f, "%.1f m")) {
+        UpdateSunLight(0.0f);
+      }
+      if (ImGui::SliderFloat("最低高度Y##DetailSun", &sunMinElevation_, 2.0f,
+                             25.0f, "%.1f m")) {
+        UpdateSunLight(0.0f);
+      }
+
+      ImGui::Separator();
+      ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f),
+                         "[ シーンライト配置・調整 ]");
+      if (ImGui::Button("ライトを初期の最適な配置にリセット")) {
+        SetupDefaultLights();
+      }
+
+      auto drawDirLightGui =
+          [](const char *label,
+             const std::shared_ptr<DirectionalLight> &light) {
+            if (!light)
+              return;
+            ImGui::PushID(label);
+            if (ImGui::TreeNodeEx(label, ImGuiTreeNodeFlags_DefaultOpen)) {
+              bool active = light->GetIsActive();
+              if (ImGui::Checkbox("有効 (Active)", &active)) {
+                light->SetIsActive(active);
+              }
+              Vector4 col = light->GetColor();
+              if (ImGui::ColorEdit4("ライト色 (Color)", &col.x)) {
+                light->SetColor(col);
+              }
+              float intensity = light->GetIntensity();
+              if (ImGui::SliderFloat("強度 (Intensity)", &intensity, 0.0f, 3.0f,
+                                     "%.2f")) {
+                light->SetIntensity(intensity);
+              }
+              Transform t = light->GetTransform();
+              if (ImGui::DragFloat3("角度 (Rotate)", &t.rotate.x, 0.02f, -3.14f,
+                                    3.14f)) {
+                light->SetTransform(t);
+              }
+              if (ImGui::DragFloat3("ギズモ位置 (Translate)", &t.translate.x,
+                                    0.5f, -100.0f, 100.0f)) {
+                light->SetTransform(t);
+              }
+              ImGui::TreePop();
+            }
+            ImGui::PopID();
+          };
+
+      auto drawPointLightGui = [](const char *label,
+                                  const std::shared_ptr<PointLight> &light) {
+        if (!light)
+          return;
+        ImGui::PushID(label);
+        if (ImGui::TreeNode(label)) {
+          bool active = light->GetIsActive();
+          if (ImGui::Checkbox("有効 (Active)", &active)) {
+            light->SetIsActive(active);
+          }
+          Vector4 col = light->GetColor();
+          if (ImGui::ColorEdit4("ライト色 (Color)", &col.x)) {
+            light->SetColor(col);
+          }
+          float intensity = light->GetIntensity();
+          if (ImGui::SliderFloat("強度 (Intensity)", &intensity, 0.0f, 3.0f,
+                                 "%.2f")) {
+            light->SetIntensity(intensity);
+          }
+          Transform t = light->GetTransform();
+          if (ImGui::DragFloat3("位置 (Position)", &t.translate.x, 0.5f,
+                                -100.0f, 150.0f)) {
+            light->SetTransform(t);
+          }
+          float radius = light->GetRadius();
+          if (ImGui::SliderFloat("半径 (Radius)", &radius, 1.0f, 120.0f,
+                                 "%.1f m")) {
+            light->SetRadius(radius);
+          }
+          float decay = light->GetDecay();
+          if (ImGui::SliderFloat("減衰 (Decay)", &decay, 0.1f, 5.0f, "%.2f")) {
+            light->SetDecay(decay);
+          }
+          ImGui::TreePop();
+        }
+        ImGui::PopID();
+      };
+
+      drawDirLightGui("メイン太陽光 (Main Directional Light)", mainDirLight_);
+      drawDirLightGui("スカイ補助光・氷河反射光 (Sub Sky Fill Light)",
+                      subDirLight_);
+      drawPointLightGui("コース前方アクセントライト (Course Point Light)",
+                        coursePointLight_);
+      drawPointLightGui("プレイヤー＆ボス照明ライト (Boss/Player Point Light)",
+                        bossPointLight_);
+    }
 
     // アイテム効果のデバッグ
     if (ImGui::CollapsingHeader("アイテムデバッグ / エフェクト",
@@ -1932,6 +2216,7 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     root["player"]["gravity"] = player_->GetGravity();
     root["player"]["laneChangeSpeed"] = player_->GetLaneChangeSpeed();
     root["player"]["rollDuration"] = player_->GetRollDuration();
+    root["player"]["lighting"] = player_->GetLighting();
 
     // 5. ステージ設定
     root["stage"]["laneCount"] = stageSettings_->GetTargetLaneCount();
@@ -1954,6 +2239,8 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
 
     Vector4 roadCol = stageSettings_->GetRoadColor();
     root["stage"]["roadColor"] = {roadCol.x, roadCol.y, roadCol.z, roadCol.w};
+    root["stage"]["roadLighting"] = stageSettings_->GetRoadLighting();
+    root["stage"]["obstacleLighting"] = stageSettings_->GetObstacleLighting();
 
     root["stage"]["driftIce"]["enabled"] = stageSettings_->GetDriftIceEnabled();
     Vector4 iceCol = stageSettings_->GetDriftIceColor();
@@ -2011,6 +2298,64 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     root["boss"]["cameraTranslate"] = {bossCamTr.x, bossCamTr.y, bossCamTr.z};
     const Vector3 &bossCamRot = bossBattleController_->GetBossCameraRotate();
     root["boss"]["cameraRotate"] = {bossCamRot.x, bossCamRot.y, bossCamRot.z};
+    root["boss"]["lighting"] = boss_->GetLighting();
+
+    // 6.5 ライト設定
+    root["lights"]["sunOrbit"]["enabled"] = isSunOrbitEnabled_;
+    root["lights"]["sunOrbit"]["colorTransition"] =
+        isSunColorTransitionEnabled_;
+    root["lights"]["sunOrbit"]["cycleDuration"] = sunCycleDuration_;
+    root["lights"]["sunOrbit"]["angle"] = sunAngle_;
+    root["lights"]["sunOrbit"]["radius"] = sunOrbitRadius_;
+    root["lights"]["sunOrbit"]["maxElevation"] = sunMaxElevation_;
+    root["lights"]["sunOrbit"]["minElevation"] = sunMinElevation_;
+    if (mainDirLight_) {
+      const Transform &lt = mainDirLight_->GetTransform();
+      const Vector4 &lc = mainDirLight_->GetColor();
+      root["lights"]["mainDir"]["active"] = mainDirLight_->GetIsActive();
+      root["lights"]["mainDir"]["color"] = {lc.x, lc.y, lc.z, lc.w};
+      root["lights"]["mainDir"]["intensity"] = mainDirLight_->GetIntensity();
+      root["lights"]["mainDir"]["translate"] = {lt.translate.x, lt.translate.y,
+                                                lt.translate.z};
+      root["lights"]["mainDir"]["rotate"] = {lt.rotate.x, lt.rotate.y,
+                                             lt.rotate.z};
+    }
+    if (subDirLight_) {
+      const Transform &lt = subDirLight_->GetTransform();
+      const Vector4 &lc = subDirLight_->GetColor();
+      root["lights"]["subDir"]["active"] = subDirLight_->GetIsActive();
+      root["lights"]["subDir"]["color"] = {lc.x, lc.y, lc.z, lc.w};
+      root["lights"]["subDir"]["intensity"] = subDirLight_->GetIntensity();
+      root["lights"]["subDir"]["translate"] = {lt.translate.x, lt.translate.y,
+                                               lt.translate.z};
+      root["lights"]["subDir"]["rotate"] = {lt.rotate.x, lt.rotate.y,
+                                            lt.rotate.z};
+    }
+    if (coursePointLight_) {
+      const Transform &lt = coursePointLight_->GetTransform();
+      const Vector4 &lc = coursePointLight_->GetColor();
+      root["lights"]["coursePoint"]["active"] =
+          coursePointLight_->GetIsActive();
+      root["lights"]["coursePoint"]["color"] = {lc.x, lc.y, lc.z, lc.w};
+      root["lights"]["coursePoint"]["intensity"] =
+          coursePointLight_->GetIntensity();
+      root["lights"]["coursePoint"]["translate"] = {
+          lt.translate.x, lt.translate.y, lt.translate.z};
+      root["lights"]["coursePoint"]["radius"] = coursePointLight_->GetRadius();
+      root["lights"]["coursePoint"]["decay"] = coursePointLight_->GetDecay();
+    }
+    if (bossPointLight_) {
+      const Transform &lt = bossPointLight_->GetTransform();
+      const Vector4 &lc = bossPointLight_->GetColor();
+      root["lights"]["bossPoint"]["active"] = bossPointLight_->GetIsActive();
+      root["lights"]["bossPoint"]["color"] = {lc.x, lc.y, lc.z, lc.w};
+      root["lights"]["bossPoint"]["intensity"] =
+          bossPointLight_->GetIntensity();
+      root["lights"]["bossPoint"]["translate"] = {
+          lt.translate.x, lt.translate.y, lt.translate.z};
+      root["lights"]["bossPoint"]["radius"] = bossPointLight_->GetRadius();
+      root["lights"]["bossPoint"]["decay"] = bossPointLight_->GetDecay();
+    }
 
     // 7. クラッシュ演出設定
     const Vector2 &crashPos = crashEffect_->GetCrashPosition();
@@ -2176,6 +2521,8 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
         player_->SetLaneChangeSpeed(p["laneChangeSpeed"].get<float>());
       if (p.contains("rollDuration"))
         player_->SetRollDuration(p["rollDuration"].get<float>());
+      if (p.contains("lighting"))
+        player_->SetLighting(p["lighting"].get<bool>());
     }
 
     // 5. ステージ設定
@@ -2218,6 +2565,10 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
             {st["roadColor"][0].get<float>(), st["roadColor"][1].get<float>(),
              st["roadColor"][2].get<float>(), st["roadColor"][3].get<float>()});
       }
+      if (st.contains("roadLighting"))
+        stageSettings_->SetRoadLighting(st["roadLighting"].get<bool>());
+      if (st.contains("obstacleLighting"))
+        stageSettings_->SetObstacleLighting(st["obstacleLighting"].get<bool>());
 
       if (st.contains("driftIce")) {
         const auto &di = st["driftIce"];
@@ -2324,6 +2675,94 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
              b["cameraRotate"][1].get<float>(),
              b["cameraRotate"][2].get<float>()});
       }
+      if (b.contains("lighting"))
+        boss_->SetLighting(b["lighting"].get<bool>());
+    }
+
+    // 6.5 ライト設定
+    if (root.contains("lights")) {
+      const auto &l = root["lights"];
+      auto loadDirLight = [](const nlohmann::json &jl,
+                             const std::shared_ptr<DirectionalLight> &light) {
+        if (!light)
+          return;
+        if (jl.contains("active"))
+          light->SetIsActive(jl["active"].get<bool>());
+        if (jl.contains("color") && jl["color"].is_array() &&
+            jl["color"].size() >= 4) {
+          light->SetColor(
+              {jl["color"][0].get<float>(), jl["color"][1].get<float>(),
+               jl["color"][2].get<float>(), jl["color"][3].get<float>()});
+        }
+        if (jl.contains("intensity"))
+          light->SetIntensity(jl["intensity"].get<float>());
+        Transform t = light->GetTransform();
+        if (jl.contains("translate") && jl["translate"].is_array() &&
+            jl["translate"].size() >= 3) {
+          t.translate = {jl["translate"][0].get<float>(),
+                         jl["translate"][1].get<float>(),
+                         jl["translate"][2].get<float>()};
+        }
+        if (jl.contains("rotate") && jl["rotate"].is_array() &&
+            jl["rotate"].size() >= 3) {
+          t.rotate = {jl["rotate"][0].get<float>(),
+                      jl["rotate"][1].get<float>(),
+                      jl["rotate"][2].get<float>()};
+        }
+        light->SetTransform(t);
+      };
+      auto loadPointLight = [](const nlohmann::json &jl,
+                               const std::shared_ptr<PointLight> &light) {
+        if (!light)
+          return;
+        if (jl.contains("active"))
+          light->SetIsActive(jl["active"].get<bool>());
+        if (jl.contains("color") && jl["color"].is_array() &&
+            jl["color"].size() >= 4) {
+          light->SetColor(
+              {jl["color"][0].get<float>(), jl["color"][1].get<float>(),
+               jl["color"][2].get<float>(), jl["color"][3].get<float>()});
+        }
+        if (jl.contains("intensity"))
+          light->SetIntensity(jl["intensity"].get<float>());
+        Transform t = light->GetTransform();
+        if (jl.contains("translate") && jl["translate"].is_array() &&
+            jl["translate"].size() >= 3) {
+          t.translate = {jl["translate"][0].get<float>(),
+                         jl["translate"][1].get<float>(),
+                         jl["translate"][2].get<float>()};
+        }
+        light->SetTransform(t);
+        if (jl.contains("radius"))
+          light->SetRadius(jl["radius"].get<float>());
+        if (jl.contains("decay"))
+          light->SetDecay(jl["decay"].get<float>());
+      };
+      if (l.contains("mainDir"))
+        loadDirLight(l["mainDir"], mainDirLight_);
+      if (l.contains("subDir"))
+        loadDirLight(l["subDir"], subDirLight_);
+      if (l.contains("coursePoint"))
+        loadPointLight(l["coursePoint"], coursePointLight_);
+      if (l.contains("bossPoint"))
+        loadPointLight(l["bossPoint"], bossPointLight_);
+      if (l.contains("sunOrbit")) {
+        const auto &so = l["sunOrbit"];
+        if (so.contains("enabled"))
+          isSunOrbitEnabled_ = so["enabled"].get<bool>();
+        if (so.contains("colorTransition"))
+          isSunColorTransitionEnabled_ = so["colorTransition"].get<bool>();
+        if (so.contains("cycleDuration"))
+          sunCycleDuration_ = so["cycleDuration"].get<float>();
+        if (so.contains("angle"))
+          sunAngle_ = so["angle"].get<float>();
+        if (so.contains("radius"))
+          sunOrbitRadius_ = so["radius"].get<float>();
+        if (so.contains("maxElevation"))
+          sunMaxElevation_ = so["maxElevation"].get<float>();
+        if (so.contains("minElevation"))
+          sunMinElevation_ = so["minElevation"].get<float>();
+      }
     }
 
     // 7. クラッシュ演出設定
@@ -2426,6 +2865,7 @@ void GameScene::ResetSettingsToDefault() {
   player_->SetGravity(0.014f);
   player_->SetLaneChangeSpeed(0.2f);
   player_->SetRollDuration(30.0f);
+  player_->SetLighting(true);
 
   // 5. ステージ設定
   stageSettings_->SetLaneCount(3);
@@ -2442,6 +2882,8 @@ void GameScene::ResetSettingsToDefault() {
   stageSettings_->SetNoSpawnChance(0.05f);
   stageSettings_->SetSpawnObstacleZ(105.0f);
   stageSettings_->SetRoadColor({1.0f, 1.0f, 1.0f, 1.0f});
+  stageSettings_->SetRoadLighting(true);
+  stageSettings_->SetObstacleLighting(true);
 
   stageSettings_->SetDriftIceEnabled(true);
   stageSettings_->SetDriftIceColor({1.0f, 1.0f, 1.0f, 1.0f});
@@ -2451,7 +2893,7 @@ void GameScene::ResetSettingsToDefault() {
   stageSettings_->SetDriftIceThicknessScale(1.0f);
   stageSettings_->SetDriftIceHeightOffset(0.0f);
   stageSettings_->SetDriftIceDistanceOffset(0.0f);
-  stageSettings_->SetDriftIceLighting(false);
+  stageSettings_->SetDriftIceLighting(true);
   stageSettings_->SetBabySealSpinSpeed(3.5f);
 
   stageSettings_->SetWaterForwardExtension(500.0f);
@@ -2474,6 +2916,10 @@ void GameScene::ResetSettingsToDefault() {
   bossBattleController_->SetReflectDuration(36.0f);
   bossBattleController_->SetBossCameraTranslate({0.0f, 7.0f, 14.0f});
   bossBattleController_->SetBossCameraRotate({0.24f, 3.25f, 0.0f});
+  boss_->SetLighting(true);
+
+  // 6.5 ライト設定
+  SetupDefaultLights();
 
   // 7. クラッシュ演出設定
   crashEffect_->SetCrashPosition({640.0f, 320.0f});
@@ -2498,4 +2944,214 @@ void GameScene::ResetSettingsToDefault() {
 
   settingsStatusMessage_ = "初期設定に戻しました";
   settingsStatusTimer_ = 3.0f;
+}
+
+void GameScene::SetAllLighting(bool enabled) {
+  isMasterLightingEnabled_ = enabled;
+  if (stageSettings_) {
+    stageSettings_->SetObstacleLighting(enabled);
+    stageSettings_->SetDriftIceLighting(enabled);
+    stageSettings_->SetRoadLighting(enabled);
+    stageSettings_->SetWaterLighting(enabled);
+  }
+  if (player_) {
+    player_->SetLighting(enabled);
+  }
+  if (boss_) {
+    boss_->SetLighting(enabled);
+  }
+  settingsStatusMessage_ =
+      enabled ? "デバッグ: ライティングをすべて ON にしました"
+              : "デバッグ: ライティングをすべて OFF にしました";
+  settingsStatusTimer_ = 2.5f;
+}
+
+void GameScene::ToggleAllLighting() {
+  SetAllLighting(!isMasterLightingEnabled_);
+}
+
+void GameScene::SetupDefaultLights() {
+  isSunOrbitEnabled_ = true;
+  isSunColorTransitionEnabled_ = true;
+  sunCycleDuration_ = 24.0f;
+  sunAngle_ = 0.45f;
+  sunOrbitRadius_ = 35.0f;
+  sunMaxElevation_ = 28.0f;
+  sunMinElevation_ = 7.0f;
+  sunOrbitOffsetZ_ = -15.0f;
+
+  // 1. メイン太陽光 (Key Light: 右斜め上・カメラ手前側からコース奥へ照射)
+  if (mainDirLight_) {
+    mainDirLight_->SetName("MainDirectionalLight");
+    mainDirLight_->SetIsActive(true);
+    mainDirLight_->SetColor({1.0f, 0.98f, 0.92f, 1.0f});
+    mainDirLight_->SetIntensity(1.05f);
+    Transform t;
+    t.scale = {1.0f, 1.0f, 1.0f};
+    t.rotate = {0.72f, 2.35f, 0.0f};
+    t.translate = {12.0f, 25.0f, -15.0f};
+    mainDirLight_->SetTransform(t);
+  }
+
+  // 2. スカイ補助光・氷河反射光 (Fill / Rim Light:
+  // 左斜め上・奥側から手前へ照射)
+  if (subDirLight_) {
+    subDirLight_->SetName("SubDirectionalLight");
+    subDirLight_->SetIsActive(true);
+    subDirLight_->SetColor({0.60f, 0.82f, 1.0f, 1.0f});
+    subDirLight_->SetIntensity(0.48f);
+    Transform t;
+    t.scale = {1.0f, 1.0f, 1.0f};
+    t.rotate = {1.21f, -0.78f, 0.0f};
+    t.translate = {-12.0f, 20.0f, 22.0f};
+    subDirLight_->SetTransform(t);
+  }
+
+  // 3. コース前方アクセントライト (Point Light:
+  // プレイヤー前方の障害物アプローチゾーン上空)
+  if (coursePointLight_) {
+    coursePointLight_->SetName("CoursePointLight");
+    coursePointLight_->SetIsActive(true);
+    coursePointLight_->SetColor({0.75f, 0.92f, 1.0f, 1.0f});
+    coursePointLight_->SetIntensity(0.55f);
+    coursePointLight_->SetRadius(45.0f);
+    coursePointLight_->SetDecay(1.6f);
+    Transform t;
+    t.scale = {1.0f, 1.0f, 1.0f};
+    t.rotate = {0.0f, 0.0f, 0.0f};
+    t.translate = {0.0f, 9.0f, 12.0f};
+    coursePointLight_->SetTransform(t);
+  }
+
+  // 4. プレイヤー＆ボス周辺ライト (Point Light:
+  // プレイヤー後方上空〜ボス出現エリア)
+  if (bossPointLight_) {
+    bossPointLight_->SetName("BossPointLight");
+    bossPointLight_->SetIsActive(true);
+    bossPointLight_->SetColor({0.88f, 0.95f, 1.0f, 1.0f});
+    bossPointLight_->SetIntensity(0.50f);
+    bossPointLight_->SetRadius(45.0f);
+    bossPointLight_->SetDecay(1.6f);
+    Transform t;
+    t.scale = {1.0f, 1.0f, 1.0f};
+    t.rotate = {0.0f, 0.0f, 0.0f};
+    t.translate = {0.0f, 10.0f, -14.0f};
+    bossPointLight_->SetTransform(t);
+  }
+
+  UpdateSunLight(0.0f);
+}
+
+void GameScene::UpdateSunLight(float dt) {
+  constexpr float kTwoPi = 6.2831853f;
+  constexpr float kHalfPi = 1.5707963f;
+
+  if (isSunOrbitEnabled_ && dt > 0.0f) {
+    float duration = (std::max)(1.0f, sunCycleDuration_);
+    sunAngle_ += (kTwoPi / duration) * dt;
+    while (sunAngle_ >= kTwoPi) {
+      sunAngle_ -= kTwoPi;
+    }
+    while (sunAngle_ < 0.0f) {
+      sunAngle_ += kTwoPi;
+    }
+  }
+
+  if (!isSunOrbitEnabled_ && dt > 0.0f) {
+    return;
+  }
+
+  float sinA = std::sin(sunAngle_);
+  float cosA = std::cos(sunAngle_);
+  // heightFactor: 1.0 = 南中(昼), 0.5 = 朝・夕, 0.0 = 夜(極夜・月光)
+  float heightFactor = 0.5f + 0.5f * cosA;
+
+  // 太陽の3D座標（東 +X → 南中 上空 → 西 -X の弧を描く軌道）
+  Vector3 sunPos;
+  sunPos.x = sinA * sunOrbitRadius_;
+  sunPos.y =
+      sunMinElevation_ + (sunMaxElevation_ - sunMinElevation_) * heightFactor;
+  sunPos.z = sunOrbitOffsetZ_ - cosA * 6.0f;
+
+  // ステージ中心 (0, 2, 0) へ向かう照射方向ベクトルから DirectionalLight の回転角を算出
+  auto calcLightEuler = [](const Vector3 &fromPos,
+                           const Vector3 &targetPos) -> Vector3 {
+    Vector3 dir = Normalize(Vector3{targetPos.x - fromPos.x,
+                                    targetPos.y - fromPos.y,
+                                    targetPos.z - fromPos.z});
+    float clampedNegY = std::clamp(-dir.y, -1.0f, 1.0f);
+    float rx = std::acos(clampedNegY);
+    float ry = (std::abs(dir.x) > 0.0001f || std::abs(dir.z) > 0.0001f)
+                   ? std::atan2(-dir.x, -dir.z)
+                   : 0.0f;
+    return {rx, ry, 0.0f};
+  };
+
+  Vector3 stageCenter = {0.0f, 2.0f, 0.0f};
+
+  if (mainDirLight_) {
+    Transform t = mainDirLight_->GetTransform();
+    t.translate = sunPos;
+    t.rotate = calcLightEuler(sunPos, stageCenter);
+    mainDirLight_->SetTransform(t);
+  }
+
+  // スカイ補助光も太陽の反対側で連動し、影面を自然にフォロー
+  if (subDirLight_) {
+    Vector3 subPos;
+    subPos.x = -sinA * (sunOrbitRadius_ * 0.7f);
+    subPos.y = 14.0f + (1.0f - heightFactor) * 8.0f;
+    subPos.z = 20.0f;
+    Transform t = subDirLight_->GetTransform();
+    t.translate = subPos;
+    t.rotate = calcLightEuler(subPos, stageCenter);
+    subDirLight_->SetTransform(t);
+  }
+
+  // 時間帯（昼 → 夕焼け → 夜・月明かり → 朝焼け）に応じたライト色・強度の補間
+  if (isSunColorTransitionEnabled_) {
+    struct SunKeyframe {
+      Vector4 mainColor;
+      float mainIntensity;
+      Vector4 subColor;
+      float subIntensity;
+    };
+    // 0: 昼 (0 rad), 1: 夕焼け (π/2), 2: 夜・月光 (π), 3: 朝焼け (3π/2)
+    static constexpr SunKeyframe kPhases[4] = {
+        {{1.00f, 0.98f, 0.92f, 1.0f}, 1.08f, {0.60f, 0.82f, 1.00f, 1.0f}, 0.48f},
+        {{1.00f, 0.62f, 0.35f, 1.0f}, 0.96f, {0.55f, 0.52f, 0.90f, 1.0f}, 0.45f},
+        {{0.50f, 0.72f, 1.00f, 1.0f}, 0.72f, {0.32f, 0.58f, 0.88f, 1.0f}, 0.40f},
+        {{1.00f, 0.76f, 0.58f, 1.0f}, 0.98f, {0.58f, 0.78f, 1.00f, 1.0f}, 0.46f},
+    };
+
+    float wrapped = sunAngle_;
+    while (wrapped < 0.0f) wrapped += kTwoPi;
+    while (wrapped >= kTwoPi) wrapped -= kTwoPi;
+
+    float phasePos = wrapped / kHalfPi; // 0.0 ~ 4.0
+    int idx0 = static_cast<int>(phasePos) % 4;
+    int idx1 = (idx0 + 1) % 4;
+    float frac = phasePos - std::floor(phasePos);
+    // Smoothstep で滑らかに色遷移
+    float smoothT = frac * frac * (3.0f - 2.0f * frac);
+
+    const auto &p0 = kPhases[idx0];
+    const auto &p1 = kPhases[idx1];
+
+    auto lerpColor = [](const Vector4 &a, const Vector4 &b, float t) -> Vector4 {
+      return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+              a.z + (b.z - a.z) * t, 1.0f};
+    };
+
+    if (mainDirLight_) {
+      mainDirLight_->SetColor(lerpColor(p0.mainColor, p1.mainColor, smoothT));
+      mainDirLight_->SetIntensity(
+          p0.mainIntensity + (p1.mainIntensity - p0.mainIntensity) * smoothT);
+    }
+    if (subDirLight_) {
+      subDirLight_->SetColor(lerpColor(p0.subColor, p1.subColor, smoothT));
+      subDirLight_->SetIntensity(
+          p0.subIntensity + (p1.subIntensity - p0.subIntensity) * smoothT);
+    }
+  }
 }
