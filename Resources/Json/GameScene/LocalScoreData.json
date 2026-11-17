@@ -1,15 +1,15 @@
 {
-    "bestDistance": 78.46211242675781,
-    "bestScore": 1878.462158203125,
+    "bestDistance": 737.3081665039063,
+    "bestScore": 14683.609375,
     "playerName": "Player ",
     "topDistanceRankings": [
+        737.3081665039063,
         78.46211242675781,
-        0.0,
         0.0
     ],
     "topScoreRankings": [
+        14683.609375,
         1878.462158203125,
-        0.0,
         0.0
     ]
 }

@@ -56,10 +56,13 @@ struct GameHUDContext {
   const std::string* titlePlayerName = nullptr;
   bool isEditingTitlePlayerName = false;
   const AchievementManager* achievementManager = nullptr;
+  int resultAchievementScroll = 0;
 };
 
 class GameHUD {
 public:
+  static constexpr int kResultAchMaxVisibleItems = 16;
+
   GameHUD() = default;
   ~GameHUD() = default;
 

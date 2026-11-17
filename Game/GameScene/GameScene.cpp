@@ -226,6 +226,8 @@ void GameScene::ResetGame() {
   rankingCutinEffect_->Reset();
   wasBossBattle_ = false;
   resultTimer_ = 0.0f;
+  resultAchievementScrollOffset_ = 0;
+  resultScrollRepeatTimer_ = 0.0f;
 
   // --- 実績トラッキング用カウンター・タイマーのリセット ---
   playTime_ = 0.0f;
@@ -320,6 +322,8 @@ void GameScene::ReturnToTitle() {
   stageSettings_->SetSpawningPaused(false);
   gameState_ = GameState::Title;
   resultTimer_ = 0.0f;
+  resultAchievementScrollOffset_ = 0;
+  resultScrollRepeatTimer_ = 0.0f;
 
   // --- タイトルメニューおよびプレイヤー名入力状態のリセット ---
   titleSubView_ = TitleSubView::None;
@@ -507,6 +511,67 @@ void GameScene::Update() {
         if (Input::PushKey(DIK_2) ||
             GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
           StartResultTransition(ResultTransition::Title);
+        }
+
+        // リザルト獲得実績リストのスクロール入力処理
+        int unlockedCount =
+            achievementManager_ ? achievementManager_->GetUnlockedCount() : 0;
+        int maxScroll =
+            (std::max)(0, unlockedCount - GameHUD::kResultAchMaxVisibleItems);
+        resultAchievementScrollOffset_ =
+            std::clamp(resultAchievementScrollOffset_, 0, maxScroll);
+
+        if (maxScroll > 0) {
+          bool pushUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
+                        GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                        GamePadInput::PushLeftStickUp() ||
+                        GamePadInput::PushRightStickUp();
+          bool pushDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
+                          GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                          GamePadInput::PushLeftStickDown() ||
+                          GamePadInput::PushRightStickDown();
+
+          bool holdUp = Input::PressKey(DIK_UP) || Input::PressKey(DIK_W) ||
+                        GamePadInput::PressButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                        (GamePadInput::GetLeftStickY() > 0.5f) ||
+                        (GamePadInput::GetRightStickY() > 0.5f);
+          bool holdDown = Input::PressKey(DIK_DOWN) || Input::PressKey(DIK_S) ||
+                          GamePadInput::PressButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                          (GamePadInput::GetLeftStickY() < -0.5f) ||
+                          (GamePadInput::GetRightStickY() < -0.5f);
+
+          int scrollDelta = 0;
+          int wheel = Input::GetMouseWheel();
+          if (wheel > 0) {
+            scrollDelta -= 1;
+          } else if (wheel < 0) {
+            scrollDelta += 1;
+          }
+
+          if (pushUp) {
+            scrollDelta -= 1;
+            resultScrollRepeatTimer_ = 0.28f;
+          } else if (pushDown) {
+            scrollDelta += 1;
+            resultScrollRepeatTimer_ = 0.28f;
+          } else if (holdUp || holdDown) {
+            resultScrollRepeatTimer_ -= Engine::kDefaultDeltaTime;
+            if (resultScrollRepeatTimer_ <= 0.0f) {
+              scrollDelta += holdUp ? -1 : 1;
+              resultScrollRepeatTimer_ = 0.07f;
+            }
+          } else {
+            resultScrollRepeatTimer_ = 0.0f;
+          }
+
+          if (scrollDelta != 0) {
+            int nextOffset = std::clamp(
+                resultAchievementScrollOffset_ + scrollDelta, 0, maxScroll);
+            if (nextOffset != resultAchievementScrollOffset_) {
+              resultAchievementScrollOffset_ = nextOffset;
+              SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+            }
+          }
         }
       }
     }
@@ -1076,6 +1141,8 @@ void GameScene::PlayerHitUpdate() {
     } else {
       gameState_ = GameState::GameOver;
       resultTimer_ = 0.0f;
+      resultAchievementScrollOffset_ = 0;
+      resultScrollRepeatTimer_ = 0.0f;
     }
   }
 }
@@ -1096,6 +1163,8 @@ void GameScene::FirstPlaceCutInUpdate() {
   if (rankingCutinEffect_->IsFinished()) {
     gameState_ = GameState::GameOver;
     resultTimer_ = 0.0f;
+    resultAchievementScrollOffset_ = 0;
+    resultScrollRepeatTimer_ = 0.0f;
   }
 }
 
@@ -1334,6 +1403,7 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.titlePlayerName = &titlePlayerName_;
   ctx.isEditingTitlePlayerName = isEditingTitlePlayerName_;
   ctx.achievementManager = achievementManager_.get();
+  ctx.resultAchievementScroll = resultAchievementScrollOffset_;
 
   // --- メインゲームHUD（2D UI）の描画 ---
   gameHUD_->DrawHUD(draw, ctx);

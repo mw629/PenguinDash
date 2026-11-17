@@ -69,7 +69,7 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続生"
         "行圏外以成通最新取得設定送信功失敗未判更冠両"
         "実績一覧条件報酬達成解除済全種頁切替上下散歩俊足氷原覇者南極点突吹"
-        "累計職人高速不動精神秒間留石像境地雪王対峙討伐名前（）");
+        "累計職人高速不動精神秒間留石像境地雪王対峙討伐名前（）件〜");
   }
 }
 
@@ -1010,7 +1010,7 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
                           kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.3f, 1.0f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.10f);
     } else {
-      if (distMyRank > 3) {
+      if (distMyRank > 3 && distMyRank < 10) {
         snprintf(myDistBuf, sizeof(myDistBuf), "あなたの順位:  %d位  (%.1f m)", distMyRank, ctx.currentDistance);
       } else {
         snprintf(myDistBuf, sizeof(myDistBuf), "あなたの順位:  圏外  (%.1f m)", ctx.currentDistance);
@@ -1096,7 +1096,7 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
                           kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.3f, 1.0f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.10f);
     } else {
-      if (scoreMyRank > 3) {
+      if (scoreMyRank > 3 && scoreMyRank < 10) {
         snprintf(myScoreBuf, sizeof(myScoreBuf), "あなたの順位:  %d位  (%.0f pt)", scoreMyRank, ctx.currentScore);
       } else {
         snprintf(myScoreBuf, sizeof(myScoreBuf), "あなたの順位:  圏外  (%.0f pt)", ctx.currentScore);
@@ -1165,21 +1165,33 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
       tr->GetAtlas()->PreloadString(allTitleChars);
     }
 
-    int unlockedIdx = 0;
+    std::vector<const Achievement *> unlockedList;
+    unlockedList.reserve(achievements.size());
+    for (const auto &ach : achievements) {
+      if (ach && ach->IsUnlocked()) {
+        unlockedList.push_back(ach.get());
+      }
+    }
+
+    const int totalUnlocked = static_cast<int>(unlockedList.size());
+    const bool canScroll = (totalUnlocked > kResultAchMaxVisibleItems);
+    const int maxScroll = (std::max)(0, totalUnlocked - kResultAchMaxVisibleItems);
+    const int scrollOffset = std::clamp(ctx.resultAchievementScroll, 0, maxScroll);
+    const int endIdx = (std::min)(totalUnlocked, scrollOffset + kResultAchMaxVisibleItems);
+
     const float listStartY = achPanelPos.y + 72.0f;
     const float listStepY = 29.0f;
     const float itemFontSize = 18.0f;
+    const float boxH = 25.0f;
 
-    for (const auto &ach : achievements) {
-      if (!ach || !ach->IsUnlocked()) {
-        continue;
-      }
+    for (int i = scrollOffset; i < endIdx; ++i) {
+      const Achievement *ach = unlockedList[i];
+      int visibleRow = i - scrollOffset;
 
-      float itemY = listStartY + unlockedIdx * listStepY;
+      float itemY = listStartY + visibleRow * listStepY;
       float boxX = achPanelPos.x + 12.0f;
       float boxY = itemY - 2.0f;
-      float boxW = kResultAchPanelSize.x - 24.0f;
-      float boxH = 25.0f;
+      float boxW = kResultAchPanelSize.x - (canScroll ? 34.0f : 24.0f);
 
       // レア度に応じた枠色（コモン: 白 / レア: 緑 / スーパーレア: 紫 / シークレット: 金）
       Vector4 frameColor = Vector4(1.0f, 1.0f, 1.0f, 0.90f);
@@ -1199,14 +1211,77 @@ void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
       draw.DrawFillRect(Vector2(boxX, boxY + boxH - 1.5f), Vector2(boxW, 1.5f), frameColor);
       draw.DrawFillRect(Vector2(boxX + boxW - 1.5f, boxY), Vector2(1.5f, boxH), frameColor);
 
-      // 実績名テキスト（白文字）
-      draw.DrawMSDFString(ach->GetTitle(), Vector2(boxX + 10.0f, itemY),
-                          itemFontSize, Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+      // 実績名テキスト（枠幅を超える場合は自動でフォントサイズを縮小して枠内に収める）
+      float drawFontSize = itemFontSize;
+      float maxTextW = boxW - 16.0f;
+      if (tr) {
+        float measuredW = tr->MeasureString(ach->GetTitle(), itemFontSize).x;
+        if (measuredW > maxTextW && measuredW > 0.0f) {
+          drawFontSize = itemFontSize * (maxTextW / measuredW);
+        }
+      }
+      float textY = itemY + (itemFontSize - drawFontSize) * 0.5f;
+      draw.DrawMSDFString(ach->GetTitle(), Vector2(boxX + 10.0f, textY),
+                          drawFontSize, Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-      unlockedIdx++;
     }
 
-    if (unlockedIdx == 0) {
+    // 枠を超える場合のスクロールバー＆下部スクロール案内描画
+    if (canScroll) {
+      float trackX = achPanelPos.x + kResultAchPanelSize.x - 15.0f;
+      float trackY = listStartY - 2.0f;
+      float trackW = 5.0f;
+      float trackH = (kResultAchMaxVisibleItems - 1) * listStepY + boxH;
+
+      // スクロールバートラック背景
+      draw.DrawFillRect(Vector2(trackX, trackY), Vector2(trackW, trackH),
+                        Vector4(0.12f, 0.18f, 0.28f, 0.90f));
+
+      // スクロールバーつまみ（Thumb）
+      float thumbRatio = static_cast<float>(kResultAchMaxVisibleItems) /
+                         static_cast<float>(totalUnlocked);
+      float thumbH = (std::max)(24.0f, trackH * thumbRatio);
+      float scrollRatio = (maxScroll > 0)
+                              ? (static_cast<float>(scrollOffset) /
+                                 static_cast<float>(maxScroll))
+                              : 0.0f;
+      float thumbY = trackY + (trackH - thumbH) * scrollRatio;
+      draw.DrawFillRect(Vector2(trackX, thumbY), Vector2(trackW, thumbH),
+                        Vector4(1.0f, 0.82f, 0.30f, 0.95f));
+
+      // 下部区切り線
+      draw.DrawFillRect(Vector2(achPanelPos.x + 16.0f, achPanelPos.y + 538.0f),
+                        Vector2(kResultAchPanelSize.x - 32.0f, 1.5f),
+                        Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+      // 表示範囲・上下矢印インジケーター
+      char rangeBuf[64];
+      snprintf(rangeBuf, sizeof(rangeBuf), "%s %d〜%d / %d 件 %s",
+               (scrollOffset > 0) ? "▲" : " ", scrollOffset + 1, endIdx,
+               totalUnlocked, (scrollOffset < maxScroll) ? "▼" : " ");
+      float rangeFontSize = 15.5f;
+      float rangeW = tr ? tr->MeasureString(rangeBuf, rangeFontSize).x : 130.0f;
+      draw.DrawMSDFString(
+          rangeBuf,
+          Vector2(achPanelPos.x + (kResultAchPanelSize.x - rangeW) * 0.5f,
+                  achPanelPos.y + 545.0f),
+          rangeFontSize, Vector4(1.0f, 0.90f, 0.35f, 1.0f), true,
+          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+
+      // スクロール操作ガイド
+      const char *scrollGuide = isOverPad ? "[十字 / スティック] スクロール"
+                                          : "[↑↓ / W S] スクロール";
+      float guideFontSize = 14.0f;
+      float guideW = tr ? tr->MeasureString(scrollGuide, guideFontSize).x : 170.0f;
+      draw.DrawMSDFString(
+          scrollGuide,
+          Vector2(achPanelPos.x + (kResultAchPanelSize.x - guideW) * 0.5f,
+                  achPanelPos.y + 569.0f),
+          guideFontSize, Vector4(0.75f, 0.88f, 1.0f, 0.95f), true,
+          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    }
+
+    if (totalUnlocked == 0) {
       const char *noneStr = "なし";
       float noneW = tr ? tr->MeasureString(noneStr, 18.0f).x : 36.0f;
       draw.DrawMSDFString(noneStr,
