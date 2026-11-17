@@ -182,7 +182,16 @@ void RankingCutinEffect::SpawnShards() {
              360.0f + static_cast<float>((std::rand() % 400) - 200)};
     float speed = 80.0f + static_cast<float>(std::rand() % 260);
     float angle = -0.5f + static_cast<float>(std::rand() % 100) * 0.01f;
-    s.velocity = {-speed * std::cos(angle), -speed * std::sin(angle) + 40.0f};
+    if (currentType_ == CutinType::Score) {
+      // 左から右へカットインするため右方向へ舞う
+      s.velocity = {speed * std::cos(angle), -speed * std::sin(angle) + 40.0f};
+    } else if (currentType_ == CutinType::Distance) {
+      // 右から左へカットインするため左方向へ舞う
+      s.velocity = {-speed * std::cos(angle), -speed * std::sin(angle) + 40.0f};
+    } else {
+      // 上から下へカットインするため下方向・放射状に舞う
+      s.velocity = {speed * std::sin(angle) * 1.5f, speed * std::cos(angle)};
+    }
     s.rotation = static_cast<float>(std::rand() % 314) * 0.02f;
     s.rotSpeed = (std::rand() % 2 == 0 ? 1.0f : -1.0f) *
                  (1.5f + static_cast<float>(std::rand() % 4));
@@ -278,30 +287,66 @@ void RankingCutinEffect::Update(float dt) {
   Vector2 curPos = bannerCenterPos_;
   Vector2 curScale = {1.0f, 1.0f};
   float curAngle = bannerAngle_;
+  if (currentType_ == CutinType::Score) {
+    // 左から右への突入に合わせた右上がりスラント
+    curAngle = std::abs(bannerAngle_);
+  } else if (currentType_ == CutinType::Distance) {
+    // 右から左への突入に合わせた左上がりスラント
+    curAngle = -std::abs(bannerAngle_);
+  } else {
+    // 上から下への突入は水平・正面インパクト
+    curAngle = 0.0f;
+  }
 
   if (state_ == State::FlashAndSlash) {
-    // 画面右外からポップにスライドイン（EaseOutBack風）
     float t = std::clamp(timer_ / kSlideInDuration, 0.0f, 1.0f);
     float ease = EaseOutExpo(t);
-    curPos.x = 1850.0f + (bannerCenterPos_.x - 1850.0f) * ease;
     float s = 1.30f - 0.30f * ease;
     curScale = {s, s};
+
+    if (currentType_ == CutinType::Score) {
+      // スコア更新：画面左外からスライドイン
+      constexpr float kStartLeftX = -570.0f;
+      curPos.x = kStartLeftX + (bannerCenterPos_.x - kStartLeftX) * ease;
+    } else if (currentType_ == CutinType::Distance) {
+      // 走行距離更新：画面右外からスライドイン
+      constexpr float kStartRightX = 1850.0f;
+      curPos.x = kStartRightX + (bannerCenterPos_.x - kStartRightX) * ease;
+    } else {
+      // ダブル更新：画面上外からスライドイン
+      constexpr float kStartTopY = -450.0f;
+      curPos.y = kStartTopY + (bannerCenterPos_.y - kStartTopY) * ease;
+    }
   } else if (state_ == State::BannerHold) {
-    // 中央で構え、カメラが極めてゆっくりと迫る
+    // 中央で構え、カットイン方向へわずかに進む
     float t = std::clamp((timer_ - kSlideInDuration) /
                              (kExitStartTimer - kSlideInDuration),
                          0.0f, 1.0f);
-    curPos.x = bannerCenterPos_.x - 15.0f * t;
+    if (currentType_ == CutinType::Score) {
+      curPos.x = bannerCenterPos_.x + 15.0f * t;
+    } else if (currentType_ == CutinType::Distance) {
+      curPos.x = bannerCenterPos_.x - 15.0f * t;
+    } else {
+      curPos.y = bannerCenterPos_.y + 15.0f * t;
+    }
     float s = 1.0f + 0.04f * t;
     curScale = {s, s};
   } else if (state_ == State::SlashExit) {
-    // 左方向へ高速で抜ける
+    // カットイン方向へ高速で抜ける
     float t = std::clamp((timer_ - kExitStartTimer) /
                              (totalDuration_ - kExitStartTimer),
                          0.0f, 1.0f);
     float ease = EaseInQuad(t);
-    curPos.x = (bannerCenterPos_.x - 15.0f) - 1600.0f * ease;
-    curScale = {1.04f + 0.1f * t, 1.04f};
+    if (currentType_ == CutinType::Score) {
+      curPos.x = (bannerCenterPos_.x + 15.0f) + 1600.0f * ease;
+      curScale = {1.04f + 0.1f * t, 1.04f};
+    } else if (currentType_ == CutinType::Distance) {
+      curPos.x = (bannerCenterPos_.x - 15.0f) - 1600.0f * ease;
+      curScale = {1.04f + 0.1f * t, 1.04f};
+    } else {
+      curPos.y = (bannerCenterPos_.y + 15.0f) + 1000.0f * ease;
+      curScale = {1.04f, 1.04f + 0.1f * t};
+    }
   }
 
   // 画面揺れの加算
@@ -350,6 +395,11 @@ void RankingCutinEffect::Update(float dt) {
       float rot = gt * 3.14159f;
 
       Vector2 glintPos = {curPos.x + 35.0f, curPos.y - 75.0f};
+      if (currentType_ == CutinType::Distance) {
+        glintPos = {curPos.x - 105.0f, curPos.y - 55.0f};
+      } else if (currentType_ == CutinType::Double) {
+        glintPos = {curPos.x, curPos.y - 80.0f};
+      }
       Transform eg;
       eg.scale = {glintScale, glintScale, 1.0f};
       eg.translate = {glintPos.x, glintPos.y, 0.0f};
@@ -380,21 +430,29 @@ void RankingCutinEffect::Render(Draw &draw) {
 
   // 2. スピードライン／集中線の背景装飾
   if (state_ == State::FlashAndSlash || state_ == State::BannerHold) {
-    for (int i = 0; i < 7; ++i) {
-      float y = 60.0f + i * 95.0f + std::sin(timer_ * 12.0f + i) * 6.0f;
-      float h = (i % 2 == 0) ? 6.0f : 14.0f;
-      Vector4 col;
-      if (currentType_ == CutinType::Score) {
-        col = (i % 3 == 0) ? Vector4(1.0f, 0.40f, 0.65f, 0.35f)
-                           : Vector4(0.0f, 0.0f, 0.0f, 0.45f);
-      } else if (currentType_ == CutinType::Distance) {
-        col = (i % 3 == 0) ? Vector4(0.15f, 0.75f, 1.0f, 0.35f)
-                           : Vector4(0.0f, 0.0f, 0.0f, 0.45f);
-      } else {
-        col = (i % 3 == 0) ? Vector4(1.0f, 0.82f, 0.20f, 0.40f)
-                           : Vector4(0.0f, 0.0f, 0.0f, 0.45f);
+    if (currentType_ == CutinType::Double) {
+      // 上から下への突入に合わせた縦方向のスピードライン
+      for (int i = 0; i < 9; ++i) {
+        float x = 80.0f + i * 140.0f + std::sin(timer_ * 12.0f + i) * 8.0f;
+        float w = (i % 2 == 0) ? 6.0f : 14.0f;
+        Vector4 col = (i % 3 == 0) ? Vector4(1.0f, 0.82f, 0.20f, 0.40f)
+                                   : Vector4(0.0f, 0.0f, 0.0f, 0.45f);
+        draw.DrawFillRect(Vector2(x, 0.0f), Vector2(w, 720.0f), col);
       }
-      draw.DrawFillRect(Vector2(0.0f, y), Vector2(1280.0f, h), col);
+    } else {
+      for (int i = 0; i < 7; ++i) {
+        float y = 60.0f + i * 95.0f + std::sin(timer_ * 12.0f + i) * 6.0f;
+        float h = (i % 2 == 0) ? 6.0f : 14.0f;
+        Vector4 col;
+        if (currentType_ == CutinType::Score) {
+          col = (i % 3 == 0) ? Vector4(1.0f, 0.40f, 0.65f, 0.35f)
+                             : Vector4(0.0f, 0.0f, 0.0f, 0.45f);
+        } else {
+          col = (i % 3 == 0) ? Vector4(0.15f, 0.75f, 1.0f, 0.35f)
+                             : Vector4(0.0f, 0.0f, 0.0f, 0.45f);
+        }
+        draw.DrawFillRect(Vector2(0.0f, y), Vector2(1280.0f, h), col);
+      }
     }
   }
 
@@ -433,94 +491,112 @@ void RankingCutinEffect::Render(Draw &draw) {
 
   // 7. スラントタイポグラフィ（斜めバナー＆文字演出）
   if (state_ == State::BannerHold || state_ == State::FlashAndSlash) {
-    Vector2 tagPos(50.0f, 62.0f);
-    Vector2 tagSize(430.0f, 64.0f);
-    Vector2 botPos(760.0f, 595.0f);
-    Vector2 botSize(470.0f, 60.0f);
-
-    // 影
-    draw.DrawFillRect(Vector2(tagPos.x + 6.0f, tagPos.y + 6.0f), tagSize,
-                      Vector4(0.0f, 0.0f, 0.0f, 0.85f));
-    draw.DrawFillRect(Vector2(botPos.x + 5.0f, botPos.y + 5.0f), botSize,
-                      Vector4(0.0f, 0.0f, 0.0f, 0.85f));
-
     if (currentType_ == CutinType::Score) {
-      // --- スコア用バナー演出 ---
+      // --- スコア用バナー演出（左から右へのカットインに合わせ左上メイン・右下サブ） ---
+      Vector2 tagPos(45.0f, 52.0f);
+      Vector2 tagSize(500.0f, 70.0f);
+      Vector2 botPos(720.0f, 592.0f);
+      Vector2 botSize(510.0f, 64.0f);
+
+      draw.DrawFillRect(Vector2(tagPos.x + 6.0f, tagPos.y + 6.0f), tagSize,
+                        Vector4(0.0f, 0.0f, 0.0f, 0.85f));
+      draw.DrawFillRect(Vector2(botPos.x + 5.0f, botPos.y + 5.0f), botSize,
+                        Vector4(0.0f, 0.0f, 0.0f, 0.85f));
+
       draw.DrawFillRect(tagPos, tagSize, Vector4(1.0f, 0.72f, 0.12f, 0.98f));
-      draw.DrawFillRect(Vector2(tagPos.x, tagPos.y + tagSize.y - 5.0f),
-                        Vector2(tagSize.x, 5.0f),
+      draw.DrawFillRect(Vector2(tagPos.x, tagPos.y + tagSize.y - 6.0f),
+                        Vector2(tagSize.x, 6.0f),
                         Vector4(0.95f, 0.22f, 0.25f, 1.0f));
 
-      draw.DrawMSDFString("★ HIGH SCORE No. 1 !! ★",
-                          Vector2(tagPos.x + 20.0f, tagPos.y + 14.0f), 34.0f,
+      draw.DrawMSDFString("★ スコア最高記録更新!! ★",
+                          Vector2(tagPos.x + 22.0f, tagPos.y + 15.0f), 36.0f,
                           Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
                           Vector4(0.12f, 0.14f, 0.22f, 1.0f), 0.18f, 0.14f);
 
       draw.DrawFillRect(botPos, botSize, Vector4(0.10f, 0.12f, 0.20f, 0.98f));
-      draw.DrawFillRect(botPos, Vector2(6.0f, botSize.y),
+      draw.DrawFillRect(botPos, Vector2(8.0f, botSize.y),
                         Vector4(1.0f, 0.72f, 0.12f, 1.0f));
 
-      draw.DrawMSDFString("★ TOP SCORE ACHIEVED ★",
-                          Vector2(botPos.x + 25.0f, botPos.y + 13.0f), 32.0f,
-                          Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+      draw.DrawMSDFString("HIGH SCORE No.1 // スコア第1位",
+                          Vector2(botPos.x + 22.0f, botPos.y + 16.0f), 28.0f,
+                          Vector4(1.0f, 0.92f, 0.35f, 1.0f), true,
                           Vector4(0.95f, 0.22f, 0.25f, 1.0f), 0.16f, 0.12f);
 
-      draw.DrawMSDFString("BRAVE PILOT // ARCADE HIGH SCORE",
-                          Vector2(65.0f, 134.0f), 20.0f,
+      draw.DrawMSDFString(">>> SCORE RECORD BREAKER >>>",
+                          Vector2(55.0f, 132.0f), 20.0f,
                           Vector4(1.0f, 0.88f, 0.3f, 0.95f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.15f, 0.10f);
 
     } else if (currentType_ == CutinType::Distance) {
-      // --- 走行距離用バナー演出 ---
+      // --- 走行距離用バナー演出（右から左へのカットインに合わせ右上メイン・左下サブ） ---
+      Vector2 tagPos(715.0f, 52.0f);
+      Vector2 tagSize(520.0f, 70.0f);
+      Vector2 botPos(45.0f, 592.0f);
+      Vector2 botSize(520.0f, 64.0f);
+
+      draw.DrawFillRect(Vector2(tagPos.x + 6.0f, tagPos.y + 6.0f), tagSize,
+                        Vector4(0.0f, 0.0f, 0.0f, 0.85f));
+      draw.DrawFillRect(Vector2(botPos.x + 5.0f, botPos.y + 5.0f), botSize,
+                        Vector4(0.0f, 0.0f, 0.0f, 0.85f));
+
       draw.DrawFillRect(tagPos, tagSize, Vector4(0.15f, 0.70f, 0.98f, 0.98f));
-      draw.DrawFillRect(Vector2(tagPos.x, tagPos.y + tagSize.y - 5.0f),
-                        Vector2(tagSize.x, 5.0f),
+      draw.DrawFillRect(Vector2(tagPos.x, tagPos.y + tagSize.y - 6.0f),
+                        Vector2(tagSize.x, 6.0f),
                         Vector4(0.25f, 0.98f, 0.70f, 1.0f));
 
-      draw.DrawMSDFString("★ MAX DISTANCE No. 1 !! ★",
-                          Vector2(tagPos.x + 12.0f, tagPos.y + 14.0f), 32.0f,
+      draw.DrawMSDFString("★ 走行距離 最高記録更新!! ★",
+                          Vector2(tagPos.x + 18.0f, tagPos.y + 15.0f), 34.0f,
                           Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
                           Vector4(0.05f, 0.20f, 0.35f, 1.0f), 0.18f, 0.14f);
 
       draw.DrawFillRect(botPos, botSize, Vector4(0.06f, 0.14f, 0.22f, 0.98f));
-      draw.DrawFillRect(botPos, Vector2(6.0f, botSize.y),
+      draw.DrawFillRect(Vector2(botPos.x + botSize.x - 8.0f, botPos.y),
+                        Vector2(8.0f, botSize.y),
                         Vector4(0.20f, 0.90f, 0.70f, 1.0f));
 
-      draw.DrawMSDFString("★ TOP RUNNER ACHIEVED ★",
-                          Vector2(botPos.x + 25.0f, botPos.y + 13.0f), 32.0f,
-                          Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
-                          Vector4(0.15f, 0.70f, 0.98f, 1.0f), 0.16f, 0.12f);
+      draw.DrawMSDFString("MAX DISTANCE No.1 // 走行距離第1位",
+                          Vector2(botPos.x + 20.0f, botPos.y + 16.0f), 26.0f,
+                          Vector4(0.45f, 0.98f, 0.88f, 1.0f), true,
+                          Vector4(0.08f, 0.45f, 0.80f, 1.0f), 0.16f, 0.12f);
 
-      draw.DrawMSDFString("TURBO DASH // RECORD BREAKER",
-                          Vector2(65.0f, 134.0f), 20.0f,
+      draw.DrawMSDFString("<<< DISTANCE RECORD BREAKER <<<",
+                          Vector2(860.0f, 132.0f), 20.0f,
                           Vector4(0.40f, 0.95f, 0.85f, 0.95f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.15f, 0.10f);
 
     } else {
-      // --- ダブル1位（究極記録）用バナー演出 ---
+      // --- ダブル1位（究極記録）用バナー演出（上から下へのカットインに合わせ中央上部＆下部シンメトリー） ---
+      Vector2 tagPos(310.0f, 42.0f);
+      Vector2 tagSize(660.0f, 70.0f);
+      Vector2 botPos(290.0f, 594.0f);
+      Vector2 botSize(700.0f, 64.0f);
+
+      draw.DrawFillRect(Vector2(tagPos.x + 6.0f, tagPos.y + 6.0f), tagSize,
+                        Vector4(0.0f, 0.0f, 0.0f, 0.85f));
+      draw.DrawFillRect(Vector2(botPos.x + 5.0f, botPos.y + 5.0f), botSize,
+                        Vector4(0.0f, 0.0f, 0.0f, 0.85f));
+
       draw.DrawFillRect(tagPos, tagSize, Vector4(1.0f, 0.80f, 0.15f, 0.98f));
-      draw.DrawFillRect(Vector2(tagPos.x, tagPos.y + tagSize.y - 5.0f),
-                        Vector2(tagSize.x, 5.0f),
+      draw.DrawFillRect(Vector2(tagPos.x, tagPos.y + tagSize.y - 6.0f),
+                        Vector2(tagSize.x, 6.0f),
                         Vector4(1.0f, 0.30f, 0.75f, 1.0f));
 
-      draw.DrawMSDFString("★ GRAND CHAMPION No. 1 !! ★",
-                          Vector2(tagPos.x + 8.0f, tagPos.y + 14.0f), 30.0f,
+      draw.DrawMSDFString("★ スコア＆走行距離 両方最高記録更新!! ★",
+                          Vector2(tagPos.x + 22.0f, tagPos.y + 16.0f), 32.0f,
                           Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
                           Vector4(0.35f, 0.10f, 0.25f, 1.0f), 0.18f, 0.14f);
 
       draw.DrawFillRect(botPos, botSize, Vector4(0.18f, 0.05f, 0.25f, 0.98f));
-      draw.DrawFillRect(botPos, Vector2(6.0f, botSize.y),
+      draw.DrawFillRect(botPos, Vector2(8.0f, botSize.y),
                         Vector4(1.0f, 0.80f, 0.15f, 1.0f));
+      draw.DrawFillRect(Vector2(botPos.x + botSize.x - 8.0f, botPos.y),
+                        Vector2(8.0f, botSize.y),
+                        Vector4(0.20f, 0.90f, 0.95f, 1.0f));
 
-      draw.DrawMSDFString("★ DUAL RECORD ACHIEVED ★",
-                          Vector2(botPos.x + 25.0f, botPos.y + 13.0f), 32.0f,
+      draw.DrawMSDFString("★ SCORE No.1  &  DISTANCE No.1  2冠達成!! ★",
+                          Vector2(botPos.x + 42.0f, botPos.y + 15.0f), 28.0f,
                           Vector4(1.0f, 0.95f, 0.35f, 1.0f), true,
                           Vector4(0.95f, 0.25f, 0.70f, 1.0f), 0.16f, 0.12f);
-
-      draw.DrawMSDFString("GRAND VICTORY // LEGENDARY RUN",
-                          Vector2(65.0f, 134.0f), 20.0f,
-                          Vector4(1.0f, 0.85f, 0.3f, 0.95f), true,
-                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.15f, 0.10f);
     }
 
     // スキップガイド
@@ -542,11 +618,17 @@ void RankingCutinEffect::Render(Draw &draw) {
   if (state_ == State::SlashExit) {
     float exitT =
         (timer_ - kExitStartTimer) / (totalDuration_ - kExitStartTimer);
-    float slashH = 12.0f + 60.0f * exitT;
+    float slashW = 12.0f + 60.0f * exitT;
     float slashAlpha = (1.0f - exitT);
-    draw.DrawFillRect(Vector2(0.0f, 360.0f - slashH * 0.5f),
-                      Vector2(1280.0f, slashH),
-                      Vector4(1.0f, 1.0f, 1.0f, slashAlpha));
+    if (currentType_ == CutinType::Double) {
+      draw.DrawFillRect(Vector2(640.0f - slashW * 0.5f, 0.0f),
+                        Vector2(slashW, 720.0f),
+                        Vector4(1.0f, 1.0f, 1.0f, slashAlpha));
+    } else {
+      draw.DrawFillRect(Vector2(0.0f, 360.0f - slashW * 0.5f),
+                        Vector2(1280.0f, slashW),
+                        Vector4(1.0f, 1.0f, 1.0f, slashAlpha));
+    }
   }
 }
 
