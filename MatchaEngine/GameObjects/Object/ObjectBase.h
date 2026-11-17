@@ -121,6 +121,14 @@ public:
 		if (auto mat = GetComponent<MaterialComponent>()) mat->SetBlend(blend); 
 	}
 
+	void SetColor(const Vector4& color) {
+		if (auto mat = GetComponent<MaterialComponent>()) mat->SetColor(color);
+	}
+	Vector4 GetColor() const {
+		if (auto mat = GetComponent<MaterialComponent>()) return mat->GetColor();
+		return { 1.0f, 1.0f, 1.0f, 1.0f };
+	}
+
 	void SetCullMode(CullMode cull) {
 		cullMode_ = cull;
 		if (auto mat = GetComponent<MaterialComponent>()) mat->SetCullMode(cull);

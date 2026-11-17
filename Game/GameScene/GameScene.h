@@ -175,6 +175,32 @@ private:
   float sunMinElevation_ = 7.0f;   // 朝夕・夜間の最低高度Y (m)
   float sunOrbitOffsetZ_ = -15.0f; // カメラ手前側のZオフセット (m)
 
+  // 時間帯別ライティング設定（昼: 白で明るく / 夕: 赤色で薄暗く / 夜: くらくして / 朝: 赤色で薄暗く）
+  Vector4 dayMainColor_ = {1.00f, 0.99f, 0.96f, 1.0f};    // 昼の太陽光色 (白)
+  Vector4 daySubColor_ = {0.70f, 0.85f, 1.00f, 1.0f};     // 昼の環境補助光色
+  Vector4 daySkyColor_ = {1.00f, 1.00f, 1.00f, 1.0f};     // 昼の空色 (白く明るい空)
+  float dayMainIntensity_ = 1.15f;                        // 昼のメイン光強度 (明るく)
+  float daySubIntensity_ = 0.45f;                         // 昼の補助光強度
+
+  Vector4 sunsetMainColor_ = {1.00f, 0.15f, 0.08f, 1.0f}; // 夕方の太陽光色 (鮮やかな赤色)
+  Vector4 sunsetSubColor_ = {0.65f, 0.12f, 0.25f, 1.0f};  // 夕方の補助光色 (赤紫色の環境光)
+  Vector4 sunsetSkyColor_ = {0.75f, 0.18f, 0.16f, 1.0f};  // 夕方の空色 (赤色で薄暗く)
+  float sunsetMainIntensity_ = 0.58f;                     // 夕方のメイン光強度 (薄暗く)
+  float sunsetSubIntensity_ = 0.20f;                      // 夕方の補助光強度
+
+  Vector4 nightMainColor_ = {0.30f, 0.45f, 0.80f, 1.0f}; // 夜の月光色
+  Vector4 nightSubColor_ = {0.10f, 0.16f, 0.35f, 1.0f};  // 夜の環境補助光色
+  float nightMainIntensity_ = 0.16f;                      // 夜のメイン光強度 (くらくして)
+  float nightSubIntensity_ = 0.05f;                       // 夜の補助光強度
+  float nightSkyBrightness_ = 0.12f;                      // 夜の空の明るさ (暗い夜空)
+  float nightIntensityScale_ = 1.0f;                      // 夜の明るさ倍率 (0.0〜2.0)
+
+  Vector4 sunriseMainColor_ = {1.00f, 0.18f, 0.10f, 1.0f};// 朝の太陽光色 (赤色)
+  Vector4 sunriseSubColor_ = {0.60f, 0.15f, 0.30f, 1.0f}; // 朝の補助光色 (赤紫色の環境光)
+  Vector4 sunriseSkyColor_ = {0.75f, 0.20f, 0.18f, 1.0f}; // 朝の空色 (赤色で薄暗く)
+  float sunriseMainIntensity_ = 0.58f;                    // 朝のメイン光強度 (薄暗く)
+  float sunriseSubIntensity_ = 0.20f;                     // 朝の補助光強度
+
 public:
   /// <summary>
   /// シーン内すべての対象オブジェクトのライティングを一括でON/OFF設定

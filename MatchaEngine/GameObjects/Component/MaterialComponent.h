@@ -29,6 +29,9 @@ public:
     void ImGui() override;
 
     MaterialFactory* GetMaterialFactory() const { return materialFactory_.get(); }
+    void SetColor(const Vector4& color) {
+        if (materialFactory_) materialFactory_->SetColor(color);
+    }
     Vector4 GetColor() const {
         if (materialFactory_) return materialFactory_->GetColor();
         return Vector4(1.0f, 1.0f, 1.0f, 1.0f);

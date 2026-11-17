@@ -1486,23 +1486,31 @@ void GameScene::ImGui() {
       }
       ImGui::Text("時間帯プリセット:");
       ImGui::SameLine();
-      if (ImGui::SmallButton("昼 (Noon)")) {
-        sunAngle_ = 0.35f;
+      if (ImGui::SmallButton("昼 (白・明るく)")) {
+        sunAngle_ = 0.0f;
         UpdateSunLight(0.0f);
       }
       ImGui::SameLine();
-      if (ImGui::SmallButton("夕焼け (Sunset)")) {
+      if (ImGui::SmallButton("夕 (赤色・薄暗く)")) {
         sunAngle_ = 1.570796f;
         UpdateSunLight(0.0f);
       }
       ImGui::SameLine();
-      if (ImGui::SmallButton("夜・月光 (Night)")) {
+      if (ImGui::SmallButton("夜 (くらくして)")) {
         sunAngle_ = 3.141593f;
         UpdateSunLight(0.0f);
       }
       ImGui::SameLine();
-      if (ImGui::SmallButton("朝焼け (Sunrise)")) {
+      if (ImGui::SmallButton("朝 (赤色・薄暗く)")) {
         sunAngle_ = 4.712389f;
+        UpdateSunLight(0.0f);
+      }
+      if (ImGui::SliderFloat("夜の明るさ倍率", &nightIntensityScale_, 0.0f,
+                             2.0f, "%.2f")) {
+        UpdateSunLight(0.0f);
+      }
+      if (ImGui::SliderFloat("夜の空の明るさ", &nightSkyBrightness_, 0.0f,
+                             1.0f, "%.2f")) {
         UpdateSunLight(0.0f);
       }
       ImGui::Separator();
@@ -1957,6 +1965,39 @@ void GameScene::ImGui() {
       if (ImGui::SliderFloat("最低高度Y##DetailSun", &sunMinElevation_, 2.0f,
                              25.0f, "%.1f m")) {
         UpdateSunLight(0.0f);
+      }
+      if (ImGui::TreeNodeEx("【昼】白で明るく", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::SliderFloat("メイン光強度##Day", &dayMainIntensity_, 0.0f, 2.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::SliderFloat("補助光強度##Day", &daySubIntensity_, 0.0f, 1.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("太陽光色##Day", &dayMainColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("空色##Day", &daySkyColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("補助光色##Day", &daySubColor_.x)) UpdateSunLight(0.0f);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNodeEx("【夕】赤色で薄暗く", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::SliderFloat("メイン光強度##Sunset", &sunsetMainIntensity_, 0.0f, 2.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::SliderFloat("補助光強度##Sunset", &sunsetSubIntensity_, 0.0f, 1.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("太陽光色##Sunset", &sunsetMainColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("空色##Sunset", &sunsetSkyColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("補助光色##Sunset", &sunsetSubColor_.x)) UpdateSunLight(0.0f);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNodeEx("【夜】くらくして", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::SliderFloat("夜の明るさ倍率##Night", &nightIntensityScale_, 0.0f, 2.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::SliderFloat("月光強度##Night", &nightMainIntensity_, 0.0f, 1.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::SliderFloat("補助光強度##Night", &nightSubIntensity_, 0.0f, 1.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::SliderFloat("空の明るさ##Night", &nightSkyBrightness_, 0.0f, 1.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("月光色##Night", &nightMainColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("補助光色##Night", &nightSubColor_.x)) UpdateSunLight(0.0f);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNodeEx("【朝】赤色で薄暗く", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::SliderFloat("メイン光強度##Sunrise", &sunriseMainIntensity_, 0.0f, 2.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::SliderFloat("補助光強度##Sunrise", &sunriseSubIntensity_, 0.0f, 1.0f, "%.2f")) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("太陽光色##Sunrise", &sunriseMainColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("空色##Sunrise", &sunriseSkyColor_.x)) UpdateSunLight(0.0f);
+        if (ImGui::ColorEdit4("補助光色##Sunrise", &sunriseSubColor_.x)) UpdateSunLight(0.0f);
+        ImGui::TreePop();
       }
 
       ImGui::Separator();
@@ -2972,11 +3013,36 @@ void GameScene::SetupDefaultLights() {
   isSunOrbitEnabled_ = true;
   isSunColorTransitionEnabled_ = true;
   sunCycleDuration_ = 24.0f;
-  sunAngle_ = 0.45f;
+  sunAngle_ = 0.0f; // 昼からスタート
   sunOrbitRadius_ = 35.0f;
   sunMaxElevation_ = 28.0f;
   sunMinElevation_ = 7.0f;
   sunOrbitOffsetZ_ = -15.0f;
+
+  dayMainColor_ = {1.00f, 0.99f, 0.96f, 1.0f};
+  daySubColor_ = {0.70f, 0.85f, 1.00f, 1.0f};
+  daySkyColor_ = {1.00f, 1.00f, 1.00f, 1.0f};
+  dayMainIntensity_ = 1.15f;
+  daySubIntensity_ = 0.45f;
+
+  sunsetMainColor_ = {1.00f, 0.15f, 0.08f, 1.0f};
+  sunsetSubColor_ = {0.65f, 0.12f, 0.25f, 1.0f};
+  sunsetSkyColor_ = {0.75f, 0.18f, 0.16f, 1.0f};
+  sunsetMainIntensity_ = 0.58f;
+  sunsetSubIntensity_ = 0.20f;
+
+  nightMainColor_ = {0.30f, 0.45f, 0.80f, 1.0f};
+  nightSubColor_ = {0.10f, 0.16f, 0.35f, 1.0f};
+  nightMainIntensity_ = 0.16f;
+  nightSubIntensity_ = 0.05f;
+  nightSkyBrightness_ = 0.12f;
+  nightIntensityScale_ = 1.0f;
+
+  sunriseMainColor_ = {1.00f, 0.18f, 0.10f, 1.0f};
+  sunriseSubColor_ = {0.60f, 0.15f, 0.30f, 1.0f};
+  sunriseSkyColor_ = {0.75f, 0.20f, 0.18f, 1.0f};
+  sunriseMainIntensity_ = 0.58f;
+  sunriseSubIntensity_ = 0.20f;
 
   // 1. メイン太陽光 (Key Light: 右斜め上・カメラ手前側からコース奥へ照射)
   if (mainDirLight_) {
@@ -3106,30 +3172,69 @@ void GameScene::UpdateSunLight(float dt) {
     subDirLight_->SetTransform(t);
   }
 
-  // 時間帯（昼 → 夕焼け → 夜・月明かり → 朝焼け）に応じたライト色・強度の補間
+  // 時間帯ループ（昼: 白で明るく → 夕: オレンジめで薄暗く → 夜: くらくして → 朝: オレンジめで薄暗く）
   if (isSunColorTransitionEnabled_) {
     struct SunKeyframe {
+      float angle;
       Vector4 mainColor;
       float mainIntensity;
       Vector4 subColor;
       float subIntensity;
+      Vector4 skyColor;
     };
-    // 0: 昼 (0 rad), 1: 夕焼け (π/2), 2: 夜・月光 (π), 3: 朝焼け (3π/2)
-    static constexpr SunKeyframe kPhases[4] = {
-        {{1.00f, 0.98f, 0.92f, 1.0f}, 1.08f, {0.60f, 0.82f, 1.00f, 1.0f}, 0.48f},
-        {{1.00f, 0.62f, 0.35f, 1.0f}, 0.96f, {0.55f, 0.52f, 0.90f, 1.0f}, 0.45f},
-        {{0.50f, 0.72f, 1.00f, 1.0f}, 0.72f, {0.32f, 0.58f, 0.88f, 1.0f}, 0.40f},
-        {{1.00f, 0.76f, 0.58f, 1.0f}, 0.98f, {0.58f, 0.78f, 1.00f, 1.0f}, 0.46f},
+
+    float actualNightMainInt = nightMainIntensity_ * nightIntensityScale_;
+    float actualNightSubInt = nightSubIntensity_ * nightIntensityScale_;
+    float actualNightSky = (std::clamp)(nightSkyBrightness_ * nightIntensityScale_, 0.0f, 1.0f);
+
+    Vector4 actualNightSkyColor = {
+        actualNightSky * 0.70f,
+        actualNightSky * 0.85f,
+        actualNightSky * 1.30f,
+        1.0f
     };
+
+    // 0: 昼(白で明るく), 1: 夕(オレンジめで薄暗く), 2: 夜(くらくして), 3: 朝(オレンジめで薄暗く), 4: 昼(ループ終端)
+    const SunKeyframe kPhases[] = {
+        {0.0f,
+         dayMainColor_, dayMainIntensity_,
+         daySubColor_, daySubIntensity_,
+         daySkyColor_},
+        {kHalfPi, // 90° (夕)
+         sunsetMainColor_, sunsetMainIntensity_,
+         sunsetSubColor_, sunsetSubIntensity_,
+         sunsetSkyColor_},
+        {3.14159265f, // 180° (夜)
+         nightMainColor_, actualNightMainInt,
+         nightSubColor_, actualNightSubInt,
+         actualNightSkyColor},
+        {4.71238898f, // 270° (朝)
+         sunriseMainColor_, sunriseMainIntensity_,
+         sunriseSubColor_, sunriseSubIntensity_,
+         sunriseSkyColor_},
+        {kTwoPi, // 360° (昼)
+         dayMainColor_, dayMainIntensity_,
+         daySubColor_, daySubIntensity_,
+         daySkyColor_},
+    };
+    constexpr int kNumPhases = static_cast<int>(sizeof(kPhases) / sizeof(kPhases[0]));
 
     float wrapped = sunAngle_;
     while (wrapped < 0.0f) wrapped += kTwoPi;
     while (wrapped >= kTwoPi) wrapped -= kTwoPi;
 
-    float phasePos = wrapped / kHalfPi; // 0.0 ~ 4.0
-    int idx0 = static_cast<int>(phasePos) % 4;
-    int idx1 = (idx0 + 1) % 4;
-    float frac = phasePos - std::floor(phasePos);
+    int idx0 = 0;
+    int idx1 = 1;
+    for (int i = 0; i < kNumPhases - 1; ++i) {
+      if (wrapped >= kPhases[i].angle && wrapped <= kPhases[i + 1].angle) {
+        idx0 = i;
+        idx1 = i + 1;
+        break;
+      }
+    }
+
+    float segLen = kPhases[idx1].angle - kPhases[idx0].angle;
+    float frac = (segLen > 0.0001f) ? (wrapped - kPhases[idx0].angle) / segLen : 0.0f;
     // Smoothstep で滑らかに色遷移
     float smoothT = frac * frac * (3.0f - 2.0f * frac);
 
@@ -3150,6 +3255,9 @@ void GameScene::UpdateSunLight(float dt) {
       subDirLight_->SetColor(lerpColor(p0.subColor, p1.subColor, smoothT));
       subDirLight_->SetIntensity(
           p0.subIntensity + (p1.subIntensity - p0.subIntensity) * smoothT);
+    }
+    if (skyBox_) {
+      skyBox_->SetColor(lerpColor(p0.skyColor, p1.skyColor, smoothT));
     }
   }
 }
