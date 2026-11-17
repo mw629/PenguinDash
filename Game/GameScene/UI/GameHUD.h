@@ -83,7 +83,7 @@ private:
   static constexpr float kDefaultGuideAlpha = 1.0f;
 
   // プレイ中ステータスパネル
-  static constexpr Vector2 kStatusPanelPos = {20.0f, 15.0f};
+  static constexpr Vector2 kStatusPanelPos = {20.0f, 58.0f};
   static constexpr Vector2 kStatusPanelSize = {265.0f, 145.0f};
   static constexpr float kPanelBorderHeight = 3.0f;
   static constexpr float kPanelTextOffsetX = 12.0f;

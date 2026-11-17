@@ -1385,6 +1385,20 @@ void GameScene::DrawUI(class Draw &draw) {
     rankingCutinEffect_->Render(draw);
   }
 
+  // --- 左上：演出案内表示 ---
+  if (gameState_ != GameState::Editor) {
+    const Vector2 noticePos(20.0f, 10.0f);
+    const Vector2 noticeSize(235.0f, 36.0f);
+    draw.DrawFillRect(noticePos, noticeSize,
+                      Vector4(0.04f, 0.08f, 0.16f, 0.90f));
+    draw.DrawFillRect(noticePos, Vector2(noticeSize.x, 3.0f),
+                      Vector4(1.0f, 0.85f, 0.20f, 0.95f));
+    draw.DrawMSDFString("三種類演出あるよ",
+                        Vector2(noticePos.x + 14.0f, noticePos.y + 6.0f), 24.0f,
+                        Vector4(1.0f, 0.95f, 0.35f, 1.0f), true,
+                        Vector4(0.05f, 0.10f, 0.20f, 1.0f), 0.12f, 0.08f);
+  }
+
   // --- タイトル演出ペンギン疾走の描画 ---
   if (gameState_ == GameState::Title || gameState_ == GameState::Playing) {
     titleDirector_->DrawPenguins(draw);
