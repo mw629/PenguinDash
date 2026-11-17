@@ -35,6 +35,7 @@ void GameScene::Initialize() {
   crashEffect_->Initialize(texture_.get());
   rankingCutinEffect_->Initialize(texture_.get());
   gameHUD_->Initialize(texture_.get());
+  scoreManager_->Initialize();
 
   // --- 動作状態判定（エディター / 通常プレイ） ---
   if (!EditorManager::IsPlaying()) {

@@ -5,6 +5,8 @@ class ScoreManager {
 private:
   static constexpr int kRankingCount = 3;
   static constexpr float kBonusScoreMultiplier = 200.0f;
+  static constexpr const char *kDefaultSaveFilePath =
+      "Resources/Json/GameScene/LocalScoreData.json";
 
   float currentDistance_ = 0.0f;
   float currentScore_ = 0.0f;
@@ -15,13 +17,37 @@ private:
   float topScoreRankings_[kRankingCount] = {0.0f, 0.0f, 0.0f};
 
 public:
-  ScoreManager() = default;
+  ScoreManager();
   ~ScoreManager() = default;
+
+  /// <summary>
+  /// 初期化処理（ローカル保存データの読み込み）
+  /// </summary>
+  void Initialize();
 
   /// <summary>
   /// スコア、走行距離、ボーナス加算などの状態をリセット
   /// </summary>
   void Reset();
+
+  /// <summary>
+  /// ローカルスコア・走行距離ランキングデータをJSONファイルへ保存
+  /// </summary>
+  /// <param name="filePath">保存先ファイルパス</param>
+  /// <returns>保存成功時true</returns>
+  bool SaveLocalScores(const std::string &filePath = kDefaultSaveFilePath) const;
+
+  /// <summary>
+  /// ローカルスコア・走行距離ランキングデータをJSONファイルから読み込み
+  /// </summary>
+  /// <param name="filePath">読み込み元ファイルパス</param>
+  /// <returns>読み込み成功時true</returns>
+  bool LoadLocalScores(const std::string &filePath = kDefaultSaveFilePath);
+
+  /// <summary>
+  /// ローカルランキングデータを初期化し保存ファイルを更新
+  /// </summary>
+  void ClearLocalScores();
 
   /// <summary>
   /// 走行距離とスコアの毎フレーム加算更新

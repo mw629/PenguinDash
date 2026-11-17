@@ -1,6 +1,18 @@
 #include "ScoreManager.h"
 #include "Network/Firebase/FirebaseRankingManager.h"
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <imgui.h>
+#include <nlohmann/json.hpp>
+
+ScoreManager::ScoreManager() {
+  LoadLocalScores();
+}
+
+void ScoreManager::Initialize() {
+  LoadLocalScores();
+}
 
 void ScoreManager::Reset() {
   currentDistance_ = 0.0f;
@@ -10,6 +22,108 @@ void ScoreManager::Reset() {
   isOnlineScoreSent_ = false;
   lastDistanceRank_ = -1;
   lastScoreRank_ = -1;
+}
+
+bool ScoreManager::SaveLocalScores(const std::string &filePath) const {
+  try {
+    std::filesystem::path path(filePath);
+    if (path.has_parent_path() && !std::filesystem::exists(path.parent_path())) {
+      std::filesystem::create_directories(path.parent_path());
+    }
+
+    nlohmann::json root;
+    root["playerName"] = playerName_;
+
+    nlohmann::json scoreArray = nlohmann::json::array();
+    for (int i = 0; i < kRankingCount; i++) {
+      scoreArray.push_back(topScoreRankings_[i]);
+    }
+    root["topScoreRankings"] = scoreArray;
+
+    nlohmann::json distArray = nlohmann::json::array();
+    for (int i = 0; i < kRankingCount; i++) {
+      distArray.push_back(topRankings_[i]);
+    }
+    root["topDistanceRankings"] = distArray;
+
+    root["bestScore"] = topScoreRankings_[0];
+    root["bestDistance"] = topRankings_[0];
+
+    std::ofstream ofs(path);
+    if (!ofs.is_open()) {
+      return false;
+    }
+    ofs << root.dump(4);
+    ofs.close();
+    return true;
+  } catch (const std::exception &) {
+    return false;
+  }
+}
+
+bool ScoreManager::LoadLocalScores(const std::string &filePath) {
+  try {
+    std::filesystem::path path(filePath);
+    if (!std::filesystem::exists(path)) {
+      return false;
+    }
+
+    std::ifstream ifs(path);
+    if (!ifs.is_open()) {
+      return false;
+    }
+
+    nlohmann::json root;
+    ifs >> root;
+    ifs.close();
+
+    if (root.contains("playerName") && root["playerName"].is_string()) {
+      std::string loadedName = root["playerName"].get<std::string>();
+      playerName_ = loadedName.empty() ? "Player" : loadedName;
+      snprintf(inputPlayerName_, sizeof(inputPlayerName_), "%s",
+               playerName_.c_str());
+    }
+
+    if (root.contains("topScoreRankings") &&
+        root["topScoreRankings"].is_array()) {
+      const auto &arr = root["topScoreRankings"];
+      for (int i = 0; i < kRankingCount; i++) {
+        if (static_cast<size_t>(i) < arr.size() && arr[i].is_number()) {
+          topScoreRankings_[i] =
+              (std::max)(0.0f, arr[i].get<float>());
+        } else {
+          topScoreRankings_[i] = 0.0f;
+        }
+      }
+    }
+
+    if (root.contains("topDistanceRankings") &&
+        root["topDistanceRankings"].is_array()) {
+      const auto &arr = root["topDistanceRankings"];
+      for (int i = 0; i < kRankingCount; i++) {
+        if (static_cast<size_t>(i) < arr.size() && arr[i].is_number()) {
+          topRankings_[i] =
+              (std::max)(0.0f, arr[i].get<float>());
+        } else {
+          topRankings_[i] = 0.0f;
+        }
+      }
+    }
+
+    return true;
+  } catch (const std::exception &) {
+    return false;
+  }
+}
+
+void ScoreManager::ClearLocalScores() {
+  for (int i = 0; i < kRankingCount; i++) {
+    topRankings_[i] = 0.0f;
+    topScoreRankings_[i] = 0.0f;
+  }
+  lastDistanceRank_ = -1;
+  lastScoreRank_ = -1;
+  SaveLocalScores();
 }
 
 void ScoreManager::Update(float scrollSpeed, float timeScale) {
@@ -30,11 +144,13 @@ void ScoreManager::AddAchievementScore(float score) {
 void ScoreManager::RecordCurrentScores() {
   UpdateRanking();
   UpdateScoreRanking();
+  SaveLocalScores();
 }
 
 void ScoreManager::SetPlayerName(const std::string& name) {
   playerName_ = name.empty() ? "Player" : name;
   snprintf(inputPlayerName_, sizeof(inputPlayerName_), "%s", playerName_.c_str());
+  SaveLocalScores();
 }
 
 void ScoreManager::SendCurrentScoreToOnlineRanking(const std::string& playerName) {
@@ -170,6 +286,18 @@ void ScoreManager::ImGui() {
       }
     }
     ImGui::TreePop();
+  }
+
+  if (ImGui::Button("ローカルスコア保存")) {
+    SaveLocalScores();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("ローカルスコア読込")) {
+    LoadLocalScores();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("ローカル記録リセット")) {
+    ClearLocalScores();
   }
 
   ImGui::Separator();
