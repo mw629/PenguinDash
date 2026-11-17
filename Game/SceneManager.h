@@ -73,5 +73,10 @@ public:
 	/// <param name="nextSceneID">遷移先シーンID</param>
 	void ChangeScene(int nextSceneID);
 
+	/// <summary>
+	/// 現在のシーンのカメラを取得
+	/// </summary>
+	Camera* GetCamera();
+
 };
 

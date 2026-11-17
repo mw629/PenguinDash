@@ -380,6 +380,11 @@ public:
   }
 
   /// <summary>
+  /// Sceneウィンドウ用のメインカメラ（デバッグカメラ）を取得
+  /// </summary>
+  Camera *GetCamera() override;
+
+  /// <summary>
   /// 現在のゲームプレイ状態（3レーン/1レーン/ボス戦）を取得
   /// </summary>
   /// <returns>PlayingState</returns>

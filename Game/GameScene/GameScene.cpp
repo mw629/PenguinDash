@@ -76,6 +76,9 @@ void GameScene::Initialize() {
 
         ObjectBase::SetWvpIndex(0);
         EffectDefinition::SetWvpIndex(0);
+
+        // 描画カメラをSceneウィンドウ用のデバッグカメラに復元
+        draw.SetCamera(cameraController_->GetCamera());
       },
       [this](class Draw &draw) { DrawUI(draw); });
 
@@ -198,7 +201,6 @@ void GameScene::Initialize() {
 
   // --- タイトルカメラの初期位置同期 ---
   if (gameState_ == GameState::Title) {
-    cameraController_->SetDebugCamera(false);
     if (player_) {
       titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
                                    0.0f);
@@ -258,7 +260,6 @@ void GameScene::StartGame() {
     return;
 
   // --- ゲーム開始前のカメラ・スポーン状態の準備 ---
-  cameraController_->SetDebugCamera(false);
   // タイトルの障害物を一瞬で消さず、新規スポーンのみ停止して手前の障害物がGOまでに自然に捌けるようにする
   stageSettings_->SetSpawningPaused(true);
 
@@ -285,7 +286,6 @@ void GameScene::StartPlaying() {
   gameState_ = GameState::Playing;
 
   // --- カメラのリセットとプレイヤーの操作解禁準備 ---
-  cameraController_->SetDebugCamera(false);
   cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
 
   player_->SetAutoPilot(false);
@@ -311,7 +311,6 @@ void GameScene::StartPlaying() {
 
 void GameScene::ReturnToTitle() {
   // --- ゲーム状態のリセットとタイトル用パラメータ設定 ---
-  cameraController_->SetDebugCamera(false);
   ResetGame();
   player_->SetAutoPilot(true);
   stageSettings_->SetItemSpawnChance(0.0f);
@@ -355,7 +354,6 @@ void GameScene::StartResultTransition(ResultTransition target) {
           // リスタート時の初期化とカウントダウン演出開始
           ResetGame();
           gameState_ = GameState::Playing;
-          cameraController_->SetDebugCamera(false);
           cameraController_->Reset(
               GameCameraController::kDefaultCameraTransform);
           player_->SetAutoPilot(false);
@@ -1271,6 +1269,10 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
   cameraController_->StartTransition(target, laneCount, stageSettings_.get());
 }
 
+Camera *GameScene::GetCamera() {
+  return cameraController_ ? cameraController_->GetCamera() : nullptr;
+}
+
 void GameScene::Draw(class Draw &draw) {
   // --- カメラ・環境テクスチャの設定 ---
   draw_ = &draw;
@@ -2147,16 +2149,12 @@ void GameScene::ImGui() {
                   projection);
 
 #ifdef _USE_IMGUI
-  if (!EditorManager::IsPlaying()) {
-    EditorManager::SetSceneOverlayCallback([this]() {
-      Matrix4x4 proj = MakePerspectiveFovMatrix(
-          Camera::kDefaultFovY, Camera::kDefaultAspectRatio,
-          Camera::kDefaultNearClip, Camera::kDefaultFarClip);
-      editorUI_->DrawGizmoInScene(cameraController_->GetViewMatrix(), proj);
-    });
-  } else {
-    EditorManager::ClearSceneOverlayCallback();
-  }
+  EditorManager::SetSceneOverlayCallback([this]() {
+    Matrix4x4 proj = MakePerspectiveFovMatrix(
+        Camera::kDefaultFovY, Camera::kDefaultAspectRatio,
+        Camera::kDefaultNearClip, Camera::kDefaultFarClip);
+    editorUI_->DrawGizmoInScene(cameraController_->GetViewMatrix(), proj);
+  });
 #endif
 
 #endif

@@ -14,6 +14,8 @@ const char* LanguageManager::Tr(const char* englishText) {
         
         {"Hierarchy", "ヒエラルキー"},
         {"Scene", "シーン"},
+        {"Game", "Game"},
+        {"Game View", "Game"},
         {"Debug Camera", "デバッグカメラ"},
         {"Reset View", "視点リセット"},
         {"Inspector", "インスペクター"},

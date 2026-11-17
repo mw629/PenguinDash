@@ -6,10 +6,10 @@
 #include <imgui.h>
 
 void GameCameraController::Initialize() {
-  camera_->SetDebugName("GameScene MainCamera");
+  camera_->SetDebugName("GameScene SceneCamera (DebugCamera)");
   camera_->SetTransform(cameraTransform_);
   camera_->ResetDebugCamera(cameraTransform_);
-  camera_->SetDebugCamera(!EditorManager::IsPlaying());
+  camera_->SetDebugCamera(true);
   camera_->Update();
 
   gameCamera_->SetDebugName("GameScene GameCamera");
@@ -29,7 +29,6 @@ void GameCameraController::Reset(const Transform &defaultTransform) {
 
   cameraTransform_ = defaultTransform;
   camera_->SetTransform(cameraTransform_);
-  camera_->ResetDebugCamera(cameraTransform_);
   gameCamera_->SetTransform(cameraTransform_);
   camera_->Update();
   gameCamera_->Update();

@@ -1,4 +1,4 @@
-﻿#include "GameApplication.h"
+#include "GameApplication.h"
 #include "Network/Firebase/FirebaseRankingManager.h"
 
 GameApplication::GameApplication(int32_t kClientWidth, int32_t kClientHeight) {
@@ -34,6 +34,11 @@ void GameApplication::Run() {
     // 1. まずシーンの更新を実行（入力、オブジェクト・パーティクルの更新、emitフラグ確定）
     sceneManager.get()->Update();
 
+    // シーンのカメラ（Sceneウィンドウ用デバッグカメラ）を描画システムに同期
+    if (sceneManager->GetCamera()) {
+      engine->GetDraw()->SetCamera(sceneManager->GetCamera());
+    }
+
 #ifdef _USE_IMGUI
     // 2. エディタ全体のImGuiおよびGameView描画（メインメニューバー、DockSpace、各種エディタウィンドウ）
     // ※DockSpaceを先に宣言しないと、シーン側ウィンドウ(Hierarchy/Inspector等)が毎フレームDockSpaceから切断される
@@ -55,9 +60,14 @@ void GameApplication::Run() {
     sceneManager.get()->Draw(*engine->GetDraw());
 #endif
 
+#ifdef _USE_IMGUI
+    // Sceneウィンドウ（デバッグカメラ）には2DゲームHUDを描画せず純粋な3Dシーンを表示。
+    // ゲームHUDはGameウィンドウ側のs_gameViewUIDrawCallback_で描画される。
+    engine.get()->EndFrame(nullptr);
+#else
     engine.get()->EndFrame(
         [&]() { sceneManager.get()->DrawUI(*engine->GetDraw()); });
+#endif
   }
   engine.get()->End();
 }
-

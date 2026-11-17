@@ -11,6 +11,8 @@ enum SceneID
 	Json = 6
 };
 
+class Camera;
+
 class IScene
 {
 protected:
@@ -49,6 +51,11 @@ public:
 	/// </summary>
 	/// <param name="draw">描画マネージャ</param>
 	virtual void DrawUI(class Draw& /*draw*/) {}
+
+	/// <summary>
+	/// シーンのメインカメラ（Sceneウィンドウ表示用カメラ）を取得
+	/// </summary>
+	virtual Camera* GetCamera() { return nullptr; }
 
 	int GetSceneID() { return sceneID_; }
 	int GetNextSceneID() { return nextSceneID_; }

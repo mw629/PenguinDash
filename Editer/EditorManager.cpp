@@ -359,7 +359,7 @@ void EditorManager::Update(Engine* engine)
 			ImGui::MenuItem(LanguageManager::Tr("Logs"), nullptr, &showLogsWindow_);
 			ImGui::MenuItem(LanguageManager::Tr("Particle Editor"), nullptr, &showParticleViewer_);
 			ImGui::MenuItem(LanguageManager::Tr("Object Editor"), nullptr, &showModelViewer_);
-			ImGui::MenuItem(LanguageManager::Tr("Game View"), nullptr, &showGameViewWindow_);
+			ImGui::MenuItem(LanguageManager::Tr("Game"), nullptr, &showGameViewWindow_);
 			ImGui::Separator();
 			if (ImGui::BeginMenu(LanguageManager::Tr("Layout"))) {
 				if (ImGui::MenuItem(LanguageManager::Tr("Save Layout"))) {
@@ -532,7 +532,9 @@ void EditorManager::Update(Engine* engine)
 		ImGui::DockBuilderDockWindow("ログ", dock_down);
 		ImGui::DockBuilderDockWindow("Scene", dock_main_id);
 		ImGui::DockBuilderDockWindow("シーン", dock_main_id);
+		ImGui::DockBuilderDockWindow("Game", dock_main_id);
 		ImGui::DockBuilderDockWindow("Game View", dock_main_id);
+		ImGui::DockBuilderDockWindow("ゲーム", dock_main_id);
 		ImGui::DockBuilderDockWindow("GameScene", dock_main_id);
 		ImGui::DockBuilderFinish(dockspace_id);
 
@@ -1690,7 +1692,7 @@ void EditorManager::Update(Engine* engine)
 		}
 
 		ImGui::SetNextWindowSize(ImVec2(800, 450), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin(LanguageManager::Tr("Game View"), &showGameViewWindow_)) {
+		if (ImGui::Begin(LanguageManager::Tr("Game"), &showGameViewWindow_)) {
 			ImVec2 availSize = ImGui::GetContentRegionAvail();
 			ImVec2 imageSize = availSize;
 			ImVec2 cursorStart = ImGui::GetCursorPos();

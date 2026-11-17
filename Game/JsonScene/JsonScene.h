@@ -44,4 +44,9 @@ public:
 	/// </summary>
 	/// <param name="draw">描画マネージャ</param>
 	void Draw(class Draw& draw) override;
+
+	/// <summary>
+	/// シーンのカメラを取得
+	/// </summary>
+	Camera* GetCamera() override { return camera_.get(); }
 };

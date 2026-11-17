@@ -77,6 +77,10 @@ void SceneManager::Run(class Draw& draw)
 	Draw(draw);
 }
 
+Camera* SceneManager::GetCamera() {
+	return scene_ ? scene_->GetCamera() : nullptr;
+}
+
 std::unique_ptr<IScene> SceneManager::CreateScene(int sceneID)
 {
 	switch (sceneID) {
