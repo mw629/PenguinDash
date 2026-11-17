@@ -1,18 +1,15 @@
 #include "ScoreManager.h"
 #include "Network/Firebase/FirebaseRankingManager.h"
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <imgui.h>
 #include <nlohmann/json.hpp>
 
-ScoreManager::ScoreManager() {
-  LoadLocalScores();
-}
+ScoreManager::ScoreManager() { LoadLocalScores(); }
 
-void ScoreManager::Initialize() {
-  LoadLocalScores();
-}
+void ScoreManager::Initialize() { LoadLocalScores(); }
 
 void ScoreManager::Reset() {
   currentDistance_ = 0.0f;
@@ -27,7 +24,8 @@ void ScoreManager::Reset() {
 bool ScoreManager::SaveLocalScores(const std::string &filePath) const {
   try {
     std::filesystem::path path(filePath);
-    if (path.has_parent_path() && !std::filesystem::exists(path.parent_path())) {
+    if (path.has_parent_path() &&
+        !std::filesystem::exists(path.parent_path())) {
       std::filesystem::create_directories(path.parent_path());
     }
 
@@ -89,8 +87,7 @@ bool ScoreManager::LoadLocalScores(const std::string &filePath) {
       const auto &arr = root["topScoreRankings"];
       for (int i = 0; i < kRankingCount; i++) {
         if (static_cast<size_t>(i) < arr.size() && arr[i].is_number()) {
-          topScoreRankings_[i] =
-              (std::max)(0.0f, arr[i].get<float>());
+          topScoreRankings_[i] = (std::max)(0.0f, arr[i].get<float>());
         } else {
           topScoreRankings_[i] = 0.0f;
         }
@@ -102,8 +99,7 @@ bool ScoreManager::LoadLocalScores(const std::string &filePath) {
       const auto &arr = root["topDistanceRankings"];
       for (int i = 0; i < kRankingCount; i++) {
         if (static_cast<size_t>(i) < arr.size() && arr[i].is_number()) {
-          topRankings_[i] =
-              (std::max)(0.0f, arr[i].get<float>());
+          topRankings_[i] = (std::max)(0.0f, arr[i].get<float>());
         } else {
           topRankings_[i] = 0.0f;
         }
@@ -133,9 +129,7 @@ void ScoreManager::Update(float scrollSpeed, float timeScale) {
                   achievementBonusScore_;
 }
 
-void ScoreManager::AddBonusEnemyHit() {
-  bonusEnemyHitCount_++;
-}
+void ScoreManager::AddBonusEnemyHit() { bonusEnemyHitCount_++; }
 
 void ScoreManager::AddAchievementScore(float score) {
   achievementBonusScore_ += score;
@@ -147,19 +141,99 @@ void ScoreManager::RecordCurrentScores() {
   SaveLocalScores();
 }
 
-void ScoreManager::SetPlayerName(const std::string& name) {
+void ScoreManager::ApplyClearSceneLoopScores(int loopType) {
+  float d1 = 500.0f;
+  float d2 = 380.0f;
+  float d3 = 250.0f;
+
+  auto rankingMgr = FirebaseRankingManager::GetInstance();
+  if (rankingMgr && rankingMgr->IsConfigured()) {
+    const auto &distRanks = rankingMgr->GetCachedDistanceRankings();
+    if (!distRanks.empty()) {
+      d1 = (std::max)(d1, distRanks[0].distance);
+      d2 = (distRanks.size() >= 2 && distRanks[1].distance < d1)
+               ? distRanks[1].distance
+               : (d1 * 0.76f);
+      d3 = (distRanks.size() >= 3 && distRanks[2].distance < d2)
+               ? distRanks[2].distance
+               : (d2 * 0.68f);
+    }
+  }
+
+  float s1 = 5000.0f;
+  float s2 = 3800.0f;
+  float s3 = 2500.0f;
+  if (rankingMgr && rankingMgr->IsConfigured()) {
+    const auto &scoreRanks = rankingMgr->GetCachedScoreRankings();
+    if (!scoreRanks.empty()) {
+      s1 = (std::max)(s1, scoreRanks[0].score);
+      s2 = (scoreRanks.size() >= 2 && scoreRanks[1].score < s1)
+               ? scoreRanks[1].score
+               : (s1 * 0.76f);
+      s3 = (scoreRanks.size() >= 3 && scoreRanks[2].score < s2)
+               ? scoreRanks[2].score
+               : (s2 * 0.68f);
+    }
+  }
+
+  if (loopType == 0) {
+    // 1. 走行距離のみ1位（スコアは圏外）
+    currentDistance_ = d1 + 50.0f;
+    topRankings_[0] = currentDistance_;
+    topRankings_[1] = d1;
+    topRankings_[2] = d2;
+    lastDistanceRank_ = 1;
+
+    currentScore_ = std::floor((std::min)(1800.0f, s3 * 0.70f));
+    topScoreRankings_[0] = s1;
+    topScoreRankings_[1] = s2;
+    topScoreRankings_[2] = s3;
+    lastScoreRank_ = kRankingCount + 1;
+    bonusEnemyHitCount_ = 0;
+  } else if (loopType == 1) {
+    // 2. スコアのみ1位（走行距離は圏外）
+    currentDistance_ = (std::min)(180.0f, d3 * 0.70f);
+    topRankings_[0] = d1;
+    topRankings_[1] = d2;
+    topRankings_[2] = d3;
+    lastDistanceRank_ = kRankingCount + 1;
+
+    currentScore_ = std::floor(s1 + 1200.0f);
+    topScoreRankings_[0] = currentScore_;
+    topScoreRankings_[1] = s1;
+    topScoreRankings_[2] = s2;
+    lastScoreRank_ = 1;
+    bonusEnemyHitCount_ = 12;
+  } else {
+    // 3. 走行距離＆スコアの両方1位（2冠達成）
+    currentDistance_ = d1 + 120.0f;
+    topRankings_[0] = currentDistance_;
+    topRankings_[1] = d1;
+    topRankings_[2] = d2;
+    lastDistanceRank_ = 1;
+
+    currentScore_ = std::floor(s1 + 2500.0f);
+    topScoreRankings_[0] = currentScore_;
+    topScoreRankings_[1] = s1;
+    topScoreRankings_[2] = s2;
+    lastScoreRank_ = 1;
+    bonusEnemyHitCount_ = 18;
+  }
+}
+
+void ScoreManager::SetPlayerName(const std::string &name) {
   playerName_ = name.empty() ? "Player" : name;
-  snprintf(inputPlayerName_, sizeof(inputPlayerName_), "%s", playerName_.c_str());
+  snprintf(inputPlayerName_, sizeof(inputPlayerName_), "%s",
+           playerName_.c_str());
   SaveLocalScores();
 }
 
-void ScoreManager::SendCurrentScoreToOnlineRanking(const std::string& playerName) {
+void ScoreManager::SendCurrentScoreToOnlineRanking(
+    const std::string &playerName) {
   SetPlayerName(playerName);
   FirebaseRankingManager::GetInstance()->SendScoreAsync(
-      playerName_,
-      currentDistance_,
-      currentScore_,
-      [](bool success, const std::string& /*msg*/) {
+      playerName_, currentDistance_, currentScore_,
+      [](bool success, const std::string & /*msg*/) {
         if (success) {
           FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
         }
@@ -182,10 +256,8 @@ void ScoreManager::SendOnlineScoreAndFetchRanking() {
   if (rankingMgr->IsConfigured()) {
     // スコアを送信し、送信完了時に最新のランキングを再取得 (スコア・距離両方)
     rankingMgr->SendScoreAsync(
-        playerName_,
-        currentDistance_,
-        currentScore_,
-        [](bool success, const std::string& /*msg*/) {
+        playerName_, currentDistance_, currentScore_,
+        [](bool success, const std::string & /*msg*/) {
           if (success) {
             FirebaseRankingManager::GetInstance()->FetchBothRankingsAsync(10);
           }
@@ -230,7 +302,7 @@ bool ScoreManager::IsScoreFirstPlace() const {
   }
   auto rankingMgr = FirebaseRankingManager::GetInstance();
   if (rankingMgr && rankingMgr->IsConfigured()) {
-    const auto& scoreRanks = rankingMgr->GetCachedScoreRankings();
+    const auto &scoreRanks = rankingMgr->GetCachedScoreRankings();
     if (!scoreRanks.empty()) {
       return (currentScore_ >= scoreRanks[0].score);
     }
@@ -244,7 +316,7 @@ bool ScoreManager::IsDistanceFirstPlace() const {
   }
   auto rankingMgr = FirebaseRankingManager::GetInstance();
   if (rankingMgr && rankingMgr->IsConfigured()) {
-    const auto& distRanks = rankingMgr->GetCachedDistanceRankings();
+    const auto &distRanks = rankingMgr->GetCachedDistanceRankings();
     if (!distRanks.empty()) {
       return (currentDistance_ >= distRanks[0].distance);
     }
@@ -276,7 +348,8 @@ void ScoreManager::ImGui() {
     ImGui::TreePop();
   }
 
-  ImGui::Text("現在のスコア: %.0f (実績ボーナス: +%.0f pt)", currentScore_, achievementBonusScore_);
+  ImGui::Text("現在のスコア: %.0f (実績ボーナス: +%.0f pt)", currentScore_,
+              achievementBonusScore_);
   if (ImGui::TreeNode("スコア TOP 3 ランキング (ローカル)")) {
     for (int i = 0; i < kRankingCount; i++) {
       if (topScoreRankings_[i] > 0.0f) {
@@ -305,7 +378,8 @@ void ScoreManager::ImGui() {
     auto rankingMgr = FirebaseRankingManager::GetInstance();
     ImGui::Text("ステータス: %s", rankingMgr->GetLastStatusMessage().c_str());
 
-    ImGui::InputText("プレイヤー名", inputPlayerName_, sizeof(inputPlayerName_));
+    ImGui::InputText("プレイヤー名", inputPlayerName_,
+                     sizeof(inputPlayerName_));
 
     if (rankingMgr->IsSending()) {
       ImGui::BeginDisabled();
@@ -332,4 +406,3 @@ void ScoreManager::ImGui() {
   }
 #endif
 }
-

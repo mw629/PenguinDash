@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <string>
 
 class ScoreManager {
@@ -35,7 +35,8 @@ public:
   /// </summary>
   /// <param name="filePath">保存先ファイルパス</param>
   /// <returns>保存成功時true</returns>
-  bool SaveLocalScores(const std::string &filePath = kDefaultSaveFilePath) const;
+  bool
+  SaveLocalScores(const std::string &filePath = kDefaultSaveFilePath) const;
 
   /// <summary>
   /// ローカルスコア・走行距離ランキングデータをJSONファイルから読み込み
@@ -71,6 +72,12 @@ public:
   /// ゲームオーバー時のスコア・距離をローカルランキングへ記録
   /// </summary>
   void RecordCurrentScores();
+
+  /// <summary>
+  /// クリアシーン紹介ループ用に、演出タイプ（0:距離1位, 1:スコア1位, 2:両方1位）に合わせたスコア・ランキング数値を設定
+  /// </summary>
+  /// <param name="loopType">0: 走行距離1位, 1: スコア1位, 2: 両方1位</param>
+  void ApplyClearSceneLoopScores(int loopType);
 
   float GetCurrentDistance() const { return currentDistance_; }
   float GetCurrentScore() const { return currentScore_; }
@@ -108,15 +115,15 @@ public:
   /// <summary>
   /// 現在のプレイヤー名・走行距離・スコアを Firebase オンラインランキングへ送信
   /// </summary>
-  void SendCurrentScoreToOnlineRanking(const std::string& playerName);
+  void SendCurrentScoreToOnlineRanking(const std::string &playerName);
 
   /// <summary>
   /// ゲームオーバー時の自動送信＆ランキング取得（1ゲームにつき1回のみ実行）
   /// </summary>
   void SendOnlineScoreAndFetchRanking();
 
-  const std::string& GetPlayerName() const { return playerName_; }
-  void SetPlayerName(const std::string& name);
+  const std::string &GetPlayerName() const { return playerName_; }
+  void SetPlayerName(const std::string &name);
 
   bool IsOnlineScoreSent() const { return isOnlineScoreSent_; }
 
@@ -133,4 +140,3 @@ private:
   bool isOnlineScoreSent_ = false;
   char inputPlayerName_[32] = "Player";
 };
-

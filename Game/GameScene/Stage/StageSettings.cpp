@@ -1264,6 +1264,20 @@ void StageSettings::SpawnObstacles(float z) {
   int currentMinLane = GetMinLaneIndexAtZ(z);
   float currentLaneWidth = GetEffectiveLaneWidthAtZ(z);
 
+  // === 壁のみ出現モード（クリアシーン紹介ループ用） ===
+  if (wallOnlyMode_) {
+    for (int i = 0; i < currentLaneCount; i++) {
+      int lane = currentMinLane + i;
+      float x = static_cast<float>(lane) * currentLaneWidth;
+      obstacles_[nextObstacleIndex_]->SetType(Obstacle::Type::Wall);
+      obstacles_[nextObstacleIndex_]->Spawn(x, kObstacleSpawnYWall, z);
+      nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
+    }
+    consecutiveNoSpawnCount_ = 0;
+    return;
+  }
+  // ====================================================
+
   // === 狭まる区間の専用処理 ===
   if (isNarrowingSection_ && currentLaneCount == 3) {
     // 左右レーンに GuideFloor を配置する
@@ -1467,6 +1481,32 @@ void StageSettings::ClearObstacles(float safeDistance) {
   itemCoolDowns_[Obstacle::Type::ClearItem].currentTimer = 0.0f;
   itemCoolDowns_[Obstacle::Type::CameraItem].currentTimer = kCameraInitialCooldown;
   itemCoolDowns_[Obstacle::Type::BossItem].currentTimer = kBossInitialCooldown;
+}
+
+void StageSettings::SpawnImmediateWallBarrier(float startZ) {
+  // 既存の障害物をすべて消去してから、プレイヤー直前（startZ）〜奥まで全レーン壁（Wall）のみを配置
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->Deactivate();
+    }
+  }
+  nextObstacleIndex_ = 0;
+
+  float stepZ = (std::max)(10.0f, obstacleInterval_);
+  for (float z = startZ; z <= spawnObstacleZ_; z += stepZ) {
+    int currentLaneCount = GetLaneCountAtZ(z);
+    int currentMinLane = GetMinLaneIndexAtZ(z);
+    float currentLaneWidth = GetEffectiveLaneWidthAtZ(z);
+    for (int i = 0; i < currentLaneCount; i++) {
+      int lane = currentMinLane + i;
+      float x = static_cast<float>(lane) * currentLaneWidth;
+      obstacles_[nextObstacleIndex_]->SetType(Obstacle::Type::Wall);
+      obstacles_[nextObstacleIndex_]->Spawn(x, kObstacleSpawnYWall, z);
+      nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
+    }
+  }
+
+  distanceSinceLastSpawn_ = 0.0f;
 }
 
 void StageSettings::Reset() {

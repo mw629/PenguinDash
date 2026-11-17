@@ -320,6 +320,9 @@ private:
   // 生成の一時停止フラグ
   bool isSpawningPaused_ = false;
 
+  // 壁のみ出現モード（クリアシーン紹介ループ用）
+  bool wallOnlyMode_ = false;
+
   // 変更フラグ
   bool isDirty_ = false;
 
@@ -534,6 +537,18 @@ public:
   /// </summary>
   /// <param name="safeDistance">プレイヤー手前で安全に残す距離</param>
   void ClearObstacles(float safeDistance = kDefaultClearObstacleSafeDistance);
+
+  /// <summary>
+  /// 壁のみ出現モードの設定・取得（クリアシーン紹介ループ用）
+  /// </summary>
+  void SetWallOnlyMode(bool enabled) { wallOnlyMode_ = enabled; }
+  bool GetWallOnlyMode() const { return wallOnlyMode_; }
+
+  /// <summary>
+  /// プレイヤーの目の前から奥にかけて全レーン壁（Wall）のみを即時配置する
+  /// </summary>
+  /// <param name="startZ">最初の壁を配置するZ座標（プレイヤー直前）</param>
+  void SpawnImmediateWallBarrier(float startZ = 4.5f);
 
   // 流氷（Drift Ice）の設定・取得
   bool GetDriftIceEnabled() const { return driftIceEnabled_; }

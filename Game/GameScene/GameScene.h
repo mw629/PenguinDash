@@ -56,6 +56,8 @@ private:
   std::unique_ptr<CrashEffect> crashEffect_ = std::make_unique<CrashEffect>();
   std::unique_ptr<RankingCutinEffect> rankingCutinEffect_ =
       std::make_unique<RankingCutinEffect>();
+  bool isClearSceneLoopMode_ = true; // クリアシーン紹介ループモード（壁のみ出現＆距離→スコア→両方1位の順で再生）
+  int clearSceneLoopIndex_ = 0;      // 0: 走行距離1位(Distance), 1: スコア1位(Score), 2: 両方1位(Double)
   bool forceFirstPlaceCutInTest_ = false;
   int testCutinType_ = 0; // 0: Score, 1: Distance, 2: Double
   std::unique_ptr<BossBattleController> bossBattleController_ =
