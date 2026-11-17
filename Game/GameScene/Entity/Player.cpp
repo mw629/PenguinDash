@@ -1,8 +1,8 @@
 #include "Player.h"
-#include "Collision.h"
 #include "../GameSceneManager.h"
 #include "../System/SoundManager.h"
 #include "AssetManager.h"
+#include "Collision.h"
 #include "Graphics/Render/Draw.h"
 
 #ifdef _USE_IMGUI
@@ -24,7 +24,9 @@ void Player::UpdateDrawTransform(float speedMultiplier) {
   // 平行移動オフセットの適用
   drawTransform.translate.x += modelOffset_.translate.x;
   drawTransform.translate.y +=
-      modelOffset_.translate.y + ((GetIsRolling() || (GetIsHit() && isTrip_)) ? kDefaultRollingHeightOffset : 0.0f);
+      modelOffset_.translate.y + ((GetIsRolling() || (GetIsHit() && isTrip_))
+                                      ? kDefaultRollingHeightOffset
+                                      : 0.0f);
   drawTransform.translate.z += modelOffset_.translate.z;
 
   // 回転オフセットの適用
@@ -61,13 +63,13 @@ void Player::Initialize(ModelData modelData) {
 
   // コライダーの初期化
   auto collider = AddComponent<BoxColliderComponent>();
-  collider->SetSize({kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth});
+  collider->SetSize({kDefaultColliderWidth, kDefaultColliderHeightStand,
+                     kDefaultColliderDepth});
 
   // 腹滑り雪玉化演出用球体モデルの初期化
   ModelData sphereData =
       AssetManager::LoadModel("Resources/Model/obj", "sphere.obj");
-  int whiteTex =
-      AssetManager::LoadTexture("Resources/Texture/white64x64.png");
+  int whiteTex = AssetManager::LoadTexture("Resources/Texture/white64x64.png");
   sphereData.textureIndex = whiteTex;
   for (auto &subMesh : sphereData.subMeshes) {
     subMesh.textureIndex = whiteTex;
@@ -106,14 +108,16 @@ void PlayerRunState::Update(Player &player, float speedMultiplier) {
 
   // アクション判定 (先行入力バッファまたはキー押下)
   if (player.CanAct() && !player.GetAutoPilot()) {
-    if (player.ConsumeBufferedJump() || GameSceneManager::GetInstance()->IsPushJump()) {
+    if (player.ConsumeBufferedJump() ||
+        GameSceneManager::GetInstance()->IsPushJump()) {
       player.ChangeActionState(PlayerActionType::Jump);
       if (player.GetCurrentActionState()) {
         player.GetCurrentActionState()->Update(player, speedMultiplier);
       }
       return;
     }
-    if (player.ConsumeBufferedRoll() || GameSceneManager::GetInstance()->IsPushRoll()) {
+    if (player.ConsumeBufferedRoll() ||
+        GameSceneManager::GetInstance()->IsPushRoll()) {
       player.ChangeActionState(PlayerActionType::Roll);
       if (player.GetCurrentActionState()) {
         player.GetCurrentActionState()->Update(player, speedMultiplier);
@@ -128,7 +132,9 @@ void PlayerRunState::Update(Player &player, float speedMultiplier) {
 
 // --- PlayerJumpState ---
 void PlayerJumpState::Enter(Player &player) {
-  float mult = player.GetCurrentSpeedMultiplier() > 0.0f ? player.GetCurrentSpeedMultiplier() : 1.0f;
+  float mult = player.GetCurrentSpeedMultiplier() > 0.0f
+                   ? player.GetCurrentSpeedMultiplier()
+                   : 1.0f;
   player.GetVelocityYRef() = player.GetJumpPower() * mult;
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
 }
@@ -145,7 +151,8 @@ void PlayerJumpState::Update(Player &player, float speedMultiplier) {
   // 垂直ジャンプ物理
   Transform &t = player.GetTransformRef();
   t.translate.y += player.GetVelocityYRef();
-  player.GetVelocityYRef() -= player.GetGravity() * (speedMultiplier * speedMultiplier);
+  player.GetVelocityYRef() -=
+      player.GetGravity() * (speedMultiplier * speedMultiplier);
 
   // 地面に着地
   if (t.translate.y <= player.GetBaseHeight()) {
@@ -186,9 +193,11 @@ void PlayerRollState::Enter(Player &player) {
   player.GetRollTimerRef() = player.GetRollDuration();
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
   if (player.GetModel()) {
-    player.GetModel()->SetAnimation("sneakWalk", player.GetRollTransitionDuration());
+    player.GetModel()->SetAnimation("sneakWalk",
+                                    player.GetRollTransitionDuration());
   }
-  player.GetTransformRef().translate.y = player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
+  player.GetTransformRef().translate.y =
+      player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
 }
 
 void PlayerRollState::Update(Player &player, float speedMultiplier) {
@@ -198,7 +207,8 @@ void PlayerRollState::Update(Player &player, float speedMultiplier) {
 
   // 転がり中でもジャンプでキャンセル可能（先行入力バッファまたはキー押下）
   if (player.CanAct() && !player.GetAutoPilot()) {
-    if (player.ConsumeBufferedJump() || GameSceneManager::GetInstance()->IsPushJump()) {
+    if (player.ConsumeBufferedJump() ||
+        GameSceneManager::GetInstance()->IsPushJump()) {
       if (!player.GetKeepRolling()) {
         player.ChangeActionState(PlayerActionType::Jump);
         if (player.GetCurrentActionState()) {
@@ -262,19 +272,23 @@ void PlayerHitState::Enter(Player &player) {
 
   if (player.GetIsCameraSlam()) {
     if (player.GetModel()) {
-      player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+      player.GetModel()->SetAnimation("walk",
+                                      player.GetWalkTransitionDuration());
     }
     player.SetHasHitCamera(false);
     Vector3 startPos = player.GetTransform().translate;
     Vector3 targetPos = player.GetCameraTargetPos();
     float frames = Player::kCameraSlamDurationFrames;
-    if (frames <= 0.0f) frames = 20.0f;
+    if (frames <= 0.0f)
+      frames = 20.0f;
 
     Vector3 vel;
     vel.x = (targetPos.x - startPos.x) / frames;
     vel.z = (targetPos.z - startPos.z) / frames;
     // 重力を考慮して目標Yへ到達する放物線初速
-    vel.y = (targetPos.y - startPos.y) / frames + 0.5f * (player.GetGravity() * Player::kHitGravityMultiplier) * frames;
+    vel.y =
+        (targetPos.y - startPos.y) / frames +
+        0.5f * (player.GetGravity() * Player::kHitGravityMultiplier) * frames;
     player.GetKnockbackVelocityRef() = vel;
   } else if (player.GetIsTrip()) {
     // === 腹滑り雪玉化（Belly Slide & Snowball Roll）演出の開始 ===
@@ -290,17 +304,23 @@ void PlayerHitState::Enter(Player &player) {
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
 
     // お腹が地面に接地する高さに設定し、前方に滑り出す初速を与える
-    player.GetTransformRef().translate.y = player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
+    player.GetTransformRef().translate.y =
+        player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
     player.GetTransformRef().rotate.x = 0.05f;
     player.GetTransformRef().rotate.z = 0.08f;
-    player.GetKnockbackVelocityRef() = {0.0f, 0.0f, Player::kSnowballInitialSpeedZ};
+    player.GetKnockbackVelocityRef() = {0.0f, 0.0f,
+                                        Player::kSnowballInitialSpeedZ};
   } else {
     // 通常被弾
     if (player.GetModel()) {
-      player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
+      player.GetModel()->SetAnimation("walk",
+                                      player.GetWalkTransitionDuration());
     }
-    float randX = ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) * Player::kKnockbackRandXScale;
-    player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y, Player::kHitKnockbackVelocity.z};
+    float randX =
+        ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) *
+        Player::kKnockbackRandXScale;
+    player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y,
+                                        Player::kHitKnockbackVelocity.z};
   }
 }
 
@@ -327,16 +347,19 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
       transform.rotate.z += Player::kCameraSlamSpinSpeedZ;
 
       Vector3 targetPos = player.GetCameraTargetPos();
-      bool reachedZ = (knockback.z < 0.0f && transform.translate.z <= targetPos.z) ||
-                      (knockback.z > 0.0f && transform.translate.z >= targetPos.z);
-      if (reachedZ || player.GetHitTimerRef() >= Player::kCameraSlamDurationFrames) {
+      bool reachedZ =
+          (knockback.z < 0.0f && transform.translate.z <= targetPos.z) ||
+          (knockback.z > 0.0f && transform.translate.z >= targetPos.z);
+      if (reachedZ ||
+          player.GetHitTimerRef() >= Player::kCameraSlamDurationFrames) {
         // カメラ画面にドカンと激突！
         player.SetHasHitCamera(true);
         transform.translate.z = targetPos.z;
         transform.translate.x = targetPos.x;
         knockback.x = 0.0f;
         knockback.z = 0.0f;
-        knockback.y = Player::kCameraStickSlideSpeedY; // 画面をゆっくり滑り落ちる
+        knockback.y =
+            Player::kCameraStickSlideSpeedY; // 画面をゆっくり滑り落ちる
 
         // カメラ（正面）を向いて画面にペタッと張り付く姿勢
         transform.rotate.x = 0.0f;
@@ -357,10 +380,12 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
 
     // 1. 前方（奥側+Z）への滑走速度：初期滑走から徐々に雪玉の勢いがついて加速
     float speedT = std::clamp(timer / 60.0f, 0.0f, 1.0f);
-    float currentSpeedZ = Lerp(Player::kSnowballInitialSpeedZ, Player::kSnowballMaxSpeedZ, speedT);
+    float currentSpeedZ = Lerp(Player::kSnowballInitialSpeedZ,
+                               Player::kSnowballMaxSpeedZ, speedT);
     transform.translate.z += currentSpeedZ;
 
-    // 2. 腹ばいスライディング時のコミカルなおっとっと揺れ（雪玉に完全に包まれる前）
+    // 2.
+    // 腹ばいスライディング時のコミカルなおっとっと揺れ（雪玉に完全に包まれる前）
     if (timer < Player::kSnowballFullFormFrames) {
       transform.rotate.z = std::sin(timer * 0.35f) * 0.12f;
       transform.rotate.x = 0.05f;
@@ -368,8 +393,9 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
 
     // 3. 雪玉の生成・成長・転がり処理
     if (timer >= Player::kSnowballFormDelay) {
-      float formProgress = (timer - Player::kSnowballFormDelay) /
-                           (Player::kSnowballFullFormFrames - Player::kSnowballFormDelay);
+      float formProgress =
+          (timer - Player::kSnowballFormDelay) /
+          (Player::kSnowballFullFormFrames - Player::kSnowballFormDelay);
       formProgress = std::clamp(formProgress, 0.0f, 1.0f);
 
       // 雪玉がモコモコッと膨らむ
@@ -377,16 +403,21 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
       player.SetSnowballScale(scale);
 
       // 雪玉の回転（前方にゴロゴロ転がる）
-      player.GetSnowballRotationXRef() += Player::kSnowballRollSpeed * (currentSpeedZ / Player::kSnowballInitialSpeedZ);
+      player.GetSnowballRotationXRef() +=
+          Player::kSnowballRollSpeed *
+          (currentSpeedZ / Player::kSnowballInitialSpeedZ);
 
       // 地面高さ（baseHeight_ + modelOffset_.translate.y = 約2.0m）
-      float groundY = player.GetBaseHeight() + player.GetModelOffset().translate.y;
+      float groundY =
+          player.GetBaseHeight() + player.GetModelOffset().translate.y;
 
       // 雪玉Transform（底面が地面に接地するように設定）
       Transform sbTrans;
       sbTrans.scale = {scale, scale, scale};
-      sbTrans.rotate = {player.GetSnowballRotationX(), 0.0f, std::sin(timer * 0.25f) * 0.08f};
-      sbTrans.translate = {transform.translate.x, groundY + scale, transform.translate.z};
+      sbTrans.rotate = {player.GetSnowballRotationX(), 0.0f,
+                        std::sin(timer * 0.25f) * 0.08f};
+      sbTrans.translate = {transform.translate.x, groundY + scale,
+                           transform.translate.z};
       player.SetSnowballTransform(sbTrans);
 
       // ペンギンを雪玉の中央に追従
@@ -453,7 +484,8 @@ void PlayerForcedCenterState::Update(Player &player, float speedMultiplier) {
   }
 
   float easeT = t * t * (3.0f - 2.0f * t);
-  player.GetTransformRef().translate.x = Lerp(player.GetForcedCenterStartXRef(), 0.0f, easeT);
+  player.GetTransformRef().translate.x =
+      Lerp(player.GetForcedCenterStartXRef(), 0.0f, easeT);
 
   if (t >= 1.0f) {
     player.SetLaneIndex(0);
@@ -615,8 +647,10 @@ void Player::ProcessLaneInput() {
 
       startX_ = static_cast<float>(laneIndex_) * laneWidth_;
       lerpTime_ = 1.0f - lerpTime_;
-      if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
-      if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
+      if (lerpTime_ < 0.0f)
+        lerpTime_ = 0.0f;
+      if (lerpTime_ > 1.0f)
+        lerpTime_ = 1.0f;
 
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
 
@@ -666,7 +700,8 @@ void Player::UpdateLaneMovement(float speedMultiplier) {
 void Player::Update(Matrix4x4 view, float speedMultiplier) {
   currentSpeedMultiplier_ = speedMultiplier;
 
-  // ゲーム一時停止中または描画専用パス（speedMultiplier <= 0.0f）では論理更新を行わない
+  // ゲーム一時停止中または描画専用パス（speedMultiplier <=
+  // 0.0f）では論理更新を行わない
   if (speedMultiplier > 0.0f) {
     // 先行入力バッファの更新
     UpdateInputBuffer(speedMultiplier);
@@ -727,7 +762,8 @@ void Player::Draw(class Draw &draw) {
     draw.DrawAnimation(model_.get());
   }
   // 雪玉がアクティブな場合は雪玉を描画
-  if (isTrip_ && isSnowballActive_ && snowballModel_ && snowballScale_ > 0.01f) {
+  if (isTrip_ && isSnowballActive_ && snowballModel_ &&
+      snowballScale_ > 0.01f) {
     draw.DrawModel(snowballModel_.get());
   }
   GameObject::Draw(draw);
@@ -748,7 +784,8 @@ void Player::ImGuiInnerComponents() {
 
   ImGui::Separator();
   const char *stateNames[] = {"Run", "Jump", "Roll", "Hit", "ForcedCenter"};
-  ImGui::Text("Player State: %s", stateNames[static_cast<int>(GetActionType())]);
+  ImGui::Text("Player State: %s",
+              stateNames[static_cast<int>(GetActionType())]);
   ImGui::Text("Rolling: %s", GetIsRolling() ? "YES" : "NO");
   ImGui::Text("Jumping: %s", GetIsJumping() ? "YES" : "NO");
   ImGui::Text("Can Act: %s", CanAct() ? "YES" : "NO");
@@ -787,7 +824,8 @@ void Player::ImGuiInnerComponents() {
 #endif
 }
 
-void Player::OnHit(bool isTrip, bool isLargeObstacle, const Vector3& cameraPos) {
+void Player::OnHit(bool isTrip, bool isLargeObstacle,
+                   const Vector3 &cameraPos) {
   isTrip_ = isTrip;
   isCameraSlam_ = (!isTrip && isLargeObstacle);
   cameraTargetPos_ = cameraPos;
@@ -832,7 +870,9 @@ bool Player::TriggerJump() {
   if (CanAct() && !(GetIsRolling() && keepRolling_)) {
     ChangeActionState(PlayerActionType::Jump);
     if (currentState_) {
-      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f ? currentSpeedMultiplier_ : 1.0f);
+      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f
+                                       ? currentSpeedMultiplier_
+                                       : 1.0f);
     }
     return true;
   }
@@ -843,7 +883,9 @@ bool Player::TriggerRoll() {
   if (CanAct() && !GetIsRolling() && !GetIsJumping()) {
     ChangeActionState(PlayerActionType::Roll);
     if (currentState_) {
-      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f ? currentSpeedMultiplier_ : 1.0f);
+      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f
+                                       ? currentSpeedMultiplier_
+                                       : 1.0f);
     }
     return true;
   }
@@ -863,8 +905,10 @@ bool Player::TriggerMoveLeft() {
       laneIndex_ = oldTarget;
       startX_ = static_cast<float>(laneIndex_) * laneWidth_;
       lerpTime_ = 1.0f - lerpTime_;
-      if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
-      if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
+      if (lerpTime_ < 0.0f)
+        lerpTime_ = 0.0f;
+      if (lerpTime_ > 1.0f)
+        lerpTime_ = 1.0f;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
       if (GetIsRolling() && !keepRolling_) {
         ChangeActionState(PlayerActionType::Run);
@@ -902,8 +946,10 @@ bool Player::TriggerMoveRight() {
       laneIndex_ = oldTarget;
       startX_ = static_cast<float>(laneIndex_) * laneWidth_;
       lerpTime_ = 1.0f - lerpTime_;
-      if (lerpTime_ < 0.0f) lerpTime_ = 0.0f;
-      if (lerpTime_ > 1.0f) lerpTime_ = 1.0f;
+      if (lerpTime_ < 0.0f)
+        lerpTime_ = 0.0f;
+      if (lerpTime_ > 1.0f)
+        lerpTime_ = 1.0f;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
       if (GetIsRolling() && !keepRolling_) {
         ChangeActionState(PlayerActionType::Run);
@@ -929,12 +975,14 @@ bool Player::TriggerMoveRight() {
 }
 
 AABB Player::GetColliderAABB() const {
-  float height = GetIsRolling() ? kDefaultColliderHeightRoll : kDefaultColliderHeightStand;
-  return Collision::MakeAABB(transform_, kDefaultColliderWidth, height, kDefaultColliderDepth);
+  float height =
+      GetIsRolling() ? kDefaultColliderHeightRoll : kDefaultColliderHeightStand;
+  return Collision::MakeAABB(transform_, kDefaultColliderWidth, height,
+                             kDefaultColliderDepth);
 }
 
 AABB Player::GetStandingColliderAABB() const {
-  return Collision::MakeAABB(transform_, kDefaultColliderWidth, kDefaultColliderHeightStand, kDefaultColliderDepth);
+  return Collision::MakeAABB(transform_, kDefaultColliderWidth,
+                             kDefaultColliderHeightStand,
+                             kDefaultColliderDepth);
 }
-
-

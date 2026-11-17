@@ -290,6 +290,11 @@ void GameScene::StartPlaying() {
 
   // --- カメラのリセットとプレイヤーの操作解禁準備 ---
   cameraController_->Reset(GameCameraController::kDefaultCameraTransform);
+  playingState_ = PlayingState::ThreeLane;
+  isRightSideMode_ = false;
+  rightSideDistance_ = 0.0f;
+  stageSettings_->SetLaneCountImmediate(kThreeLaneCount);
+  GameSceneManager::GetInstance()->SetInBossBattle(false);
 
   player_->SetAutoPilot(false);
   player_->SetInvertedControls(false);
@@ -458,8 +463,15 @@ void GameScene::Update() {
   }
   if (!cameraController_->IsFirstPerson()) {
     if (gameState_ == GameState::Title) {
-      titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
-                                   Engine::kDefaultDeltaTime * timeScale);
+      if (playingState_ == PlayingState::ThreeLane &&
+          !cameraController_->IsTransitioning() &&
+          !cameraController_->IsTransitionPending()) {
+        titleDirector_->UpdateCamera(player_.get(), cameraController_.get(),
+                                     Engine::kDefaultDeltaTime * timeScale);
+      } else {
+        cameraController_->UpdateGameplayCamera(
+            player_.get(), Engine::kDefaultDeltaTime * timeScale);
+      }
     } else if (gameState_ == GameState::Playing ||
                gameState_ == GameState::Editor) {
       cameraController_->UpdateGameplayCamera(
@@ -1301,6 +1313,15 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     rightSideDistance_ = 0.0f;
     boss_->Reset();
     bossBattleController_->Reset();
+    if (prevState == PlayingState::OneLane && stageSettings_) {
+      for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
+        Obstacle *obs = stageSettings_->GetObstacle(j);
+        if (obs && obs->GetIsActive() && !obs->GetIsHit() &&
+            obs->GetTransform().translate.z > 15.0f) {
+          obs->Deactivate();
+        }
+      }
+    }
     break;
 
   case PlayingState::OneLane:
@@ -1310,8 +1331,8 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
     rightSideDistance_ = 0.0f;
     boss_->Reset();
     bossBattleController_->Reset();
-    // 1レーン移行開始時に奥（Z=45m〜）へ1レーン用障害物を先行配置
-    // カメラが切り替わるまでの間に手前へ流れてきて、サイドビューになった瞬間に障害物が「出た状態」で迎える
+    // 先にレーン数を1レーンへ切り替えて奥の床チャンクを更新した上で、安全区間を空けて初期障害物を配置する
+    stageSettings_->SetLaneCount(kOneLaneCount);
     stageSettings_->SetupOneLaneInitialObstacles();
     if (cameraController_) {
       cameraController_->ShakeImpact();
@@ -1649,9 +1670,9 @@ void GameScene::ImGui() {
     // カメラ設定
     cameraController_->ImGui(player_.get(), [this](int presetIndex) {
       if (presetIndex == 0)
-        ChangePlayingState(PlayingState::ThreeLane);
+        ChangePlayingState(PlayingState::ThreeLane, true);
       else if (presetIndex == 1)
-        ChangePlayingState(PlayingState::OneLane);
+        ChangePlayingState(PlayingState::OneLane, true);
       else if (presetIndex == 2)
         ChangePlayingState(PlayingState::Boss, true);
     });
@@ -2190,7 +2211,7 @@ void GameScene::ImGui() {
       }
 
       if (ImGui::Button("視点切り替えアイテム発動 (1レーン)")) {
-        ChangePlayingState(PlayingState::OneLane);
+        ChangePlayingState(PlayingState::OneLane, true);
       }
       ImGui::SameLine();
       if (ImGui::Button("ボス戦アイテム発動 (ボス戦へ)")) {

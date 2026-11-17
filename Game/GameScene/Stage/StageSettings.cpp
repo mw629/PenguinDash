@@ -207,11 +207,10 @@ void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
 
 void StageSettings::SetupOneLaneInitialObstacles() {
   // プレイヤーは Z ≈ 0 にいる。
-  // 1レーン移行開始時、奥（kLaneChangeHorizonZ = 45m）から1レーンの床が出現して流れてくる。
-  // ユーザーの要望：「1レーンの最初の3ウェーブほど障害物をなくしてほしい」
-  // そのため、床の切り替わり開始地点から3ウェーブ分奥（startZ = kLaneChangeHorizonZ + 3 * spacing）から配置を開始する。
-  // これにより、床が1レーンになりカメラが切り替わった直後は3ウェーブ分の安全区間（準備時間）となり、
-  // 落ち着いて構えた後から障害物がテンポよく流れてくる。
+  // 1レーン移行開始時、奥（kLaneChangeHorizonZ = 45m 以上）から1レーンの床が出現して流れてくる。
+  // 実際に1レーンとなった最初の床チャンクのZ座標を基準に、最初の3ウェーブ分（最低25m）奥から配置を開始する。
+  // これにより、1レーンの床がプレイヤー足元に届く前に新規障害物が Z <= 15m に入ってカメラ移動がロックされるのを防ぎ、
+  // カメラが切り替わった直後も3ウェーブ分の安全区間（準備時間）を確保する。
   float currentLaneWidth = GetEffectiveLaneWidthAtZ(0.0f);
   int lane = 0;
   float x = static_cast<float>(lane) * currentLaneWidth;
@@ -219,13 +218,34 @@ void StageSettings::SetupOneLaneInitialObstacles() {
   float currentSpeed = (std::max)(scrollSpeed_, kMinEffectiveSpeed);
   // 約25〜30フレーム間隔（速度0.2なら 約5〜7m間隔）で連続配置
   float spacing = (std::max)(minObstacleDistance_ * 0.8f, currentSpeed * 28.0f);
-  // 1レーン突入後の最初の3ウェーブ分を安全区間にするため、3ウェーブ分奥から配置開始
-  float startZ = kLaneChangeHorizonZ + 3.0f * spacing;
+
+  // 実際に1レーンに切り替わった最初のチャンクのZ座標を取得
+  float firstOneLaneZ = -1.0f;
+  for (int i = 0; i < kChunkCount_; i++) {
+    if (i < static_cast<int>(chunkRowInfos_.size()) &&
+        chunkRowInfos_[i].laneCount == 1 &&
+        i < static_cast<int>(roadTransforms_.size()) &&
+        !roadTransforms_[i].empty()) {
+      float cz = roadTransforms_[i][0].translate.z;
+      if (cz >= kLaneChangeHorizonZ &&
+          (firstOneLaneZ < 0.0f || cz < firstOneLaneZ)) {
+        firstOneLaneZ = cz;
+      }
+    }
+  }
+  if (firstOneLaneZ < 0.0f) {
+    firstOneLaneZ = kLaneChangeHorizonZ;
+  }
+
+  // 1レーン突入後の最初の3ウェーブ分（ボーナスアイテムのZオフセット-5mも考慮し最低25m）を安全区間にする
+  float safeLeadDistance = (std::max)(3.0f * spacing, 25.0f);
+  float startZ = firstOneLaneZ + safeLeadDistance;
 
   // 既存の障害物のうち、プレイヤー直近（Z <= 15.0f）の障害物は回避中の可能性があるため残し、
-  // それより奥にある古い3レーン障害物は非アクティブ化して、最初の3ウェーブの安全区間を確実に確保
+  // それより奥にある古い未ヒット障害物・アイテムは非アクティブ化して安全区間を確実に確保
   for (int i = 0; i < kMaxObstacles_; i++) {
-    if (obstacles_[i] && obstacles_[i]->GetIsActive()) {
+    if (obstacles_[i] && obstacles_[i]->GetIsActive() &&
+        !obstacles_[i]->GetIsHit()) {
       if (obstacles_[i]->GetTransform().translate.z > 15.0f) {
         obstacles_[i]->Deactivate();
       }
@@ -256,9 +276,14 @@ void StageSettings::SetupOneLaneInitialObstacles() {
     nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
   }
 
-  // 進行度をリセットし、スポーン間隔を再計算
-  distanceSinceLastSpawn_ = 0.0f;
+  // スポーン間隔を再計算し、spawnObstacleZ_ が startZ より手前に設定されている場合（例: 50m）でも
+  // 安全区間（startZ）がスポーン地点に到達するまで新規自動スポーンを待機させる
   CalculateNextObstacleInterval();
+  if (startZ > spawnObstacleZ_) {
+    distanceSinceLastSpawn_ = obstacleInterval_ - (startZ - spawnObstacleZ_);
+  } else {
+    distanceSinceLastSpawn_ = 0.0f;
+  }
 }
 
 void StageSettings::SetRoadColor(const Vector4 &color) {
