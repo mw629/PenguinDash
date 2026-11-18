@@ -1385,6 +1385,89 @@ Camera *GameScene::GetCamera() {
   return cameraController_ ? cameraController_->GetCamera() : nullptr;
 }
 
+void GameScene::DrawActionGuideLines(class Draw &draw) {
+  if (!showActionGuideLines_) {
+    return;
+  }
+
+  LineRenderer *lineRenderer = draw.GetLineRenderer();
+  if (!lineRenderer || !stageSettings_ || !player_) {
+    return;
+  }
+
+  Vector3 playerPos = player_->GetTransform().translate;
+  float yGround = guideLineHeight_; // 雪面に埋もれない高さ
+
+  // --- 1. プレイヤー足元のタイミング判定線（横線のみ） ---
+  if (showPlayerTargetLine_) {
+    int minLane = stageSettings_->GetMinLaneIndexAtZ(playerPos.z);
+    int maxLane = stageSettings_->GetMaxLaneIndexAtZ(playerPos.z);
+    float laneWidth = stageSettings_->GetEffectiveLaneWidthAtZ(playerPos.z);
+
+    float xLeft = (static_cast<float>(minLane) - 0.5f) * laneWidth;
+    float xRight = (static_cast<float>(maxLane) + 0.5f) * laneWidth;
+
+    lineRenderer->AddLine({xLeft, yGround, playerPos.z},
+                          {xRight, yGround, playerPos.z},
+                          playerTargetLineColor_);
+  }
+
+  // --- 2. 各障害物に対するジャンプ / しゃがみガイド線（横線のみ） ---
+  int maxObstacles = stageSettings_->GetMaxObstacles();
+  for (int i = 0; i < maxObstacles; i++) {
+    Obstacle *obstacle = stageSettings_->GetObstacle(i);
+    if (!obstacle || !obstacle->GetIsActive() || obstacle->GetIsHit()) {
+      continue;
+    }
+
+    Obstacle::Type type = obstacle->GetType();
+    bool isJump = (type == Obstacle::Type::Low || type == Obstacle::Type::BossAttackLow);
+    bool isRoll = (type == Obstacle::Type::High || type == Obstacle::Type::BossAttackHigh);
+
+    if (!isJump && !isRoll) {
+      continue;
+    }
+
+    Vector3 obsPos = obstacle->GetTransform().translate;
+    bool isBossAttack = obstacle->IsBossAttackType();
+
+    // 障害物の進行方向に応じた手前側（プレイヤー側）オフセット
+    // 通常障害物: 障害物は-Z方向に進むため、プレイヤー側は -Z 方向
+    // ボス攻撃: 障害物は+Z方向に進むため、プレイヤー側は +Z 方向
+    float forwardDir = isBossAttack ? 1.0f : -1.0f;
+    float timingDist = isJump ? jumpGuideTimingDistance_ : rollGuideTimingDistance_;
+    float guideZ = obsPos.z + forwardDir * timingDist;
+
+    // 視界外・通過済み判定（プレイヤーのZ位置基準）
+    float pZ = playerPos.z;
+    if (!isBossAttack) {
+      if (guideZ < pZ - 2.5f || guideZ > pZ + 85.0f) {
+        continue;
+      }
+    } else {
+      if (guideZ > pZ + 2.5f || guideZ < pZ - 60.0f) {
+        continue;
+      }
+    }
+
+    Vector4 color = isJump ? jumpGuideColor_ : rollGuideColor_;
+
+    // 障害物のレーン幅に応じた横幅
+    float laneWidth = stageSettings_->GetEffectiveLaneWidthAtZ(guideZ);
+    float halfWidth = (std::max)(obstacle->GetCollisionWidth() * 0.5f, laneWidth * 0.48f);
+    float xLeft = obsPos.x - halfWidth;
+    float xRight = obsPos.x + halfWidth;
+
+    // 純粋な横線だけを描画（くっきり見えるよう前後に微小オフセットをつけて太さを表現）
+    constexpr float kOffsets[] = {-0.04f, -0.02f, 0.0f, 0.02f, 0.04f};
+    for (float offZ : kOffsets) {
+      lineRenderer->AddLine({xLeft, yGround, guideZ + offZ},
+                            {xRight, yGround, guideZ + offZ},
+                            color);
+    }
+  }
+}
+
 void GameScene::Draw(class Draw &draw) {
   // --- カメラ・環境テクスチャの設定 ---
   draw_ = &draw;
@@ -1395,6 +1478,9 @@ void GameScene::Draw(class Draw &draw) {
   gameObjectManager_->DrawAll(draw);
   stageSettings_->Draw(draw);
   effectManager_->Draw(draw);
+
+  // --- アクションタイミング（ジャンプ・しゃがみ）ガイド線の描画 ---
+  DrawActionGuideLines(draw);
 }
 
 void GameScene::DrawUI(class Draw &draw) {
@@ -1454,6 +1540,7 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.masterVolume = gsm->GetMasterVolume();
   ctx.bgmVolume = gsm->GetBGMVolume();
   ctx.seVolume = gsm->GetSEVolume();
+  ctx.showActionGuideLines = showActionGuideLines_;
 
   // --- メインゲームHUD（2D UI）の描画 ---
   gameHUD_->DrawHUD(draw, ctx);
@@ -1537,6 +1624,42 @@ void GameScene::ImGui() {
       if (settingsStatusTimer_ > 0.0f) {
         ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "%s",
                            settingsStatusMessage_.c_str());
+      }
+      ImGui::Separator();
+    }
+
+    // アクションタイミングガイド設定（ジャンプ・しゃがみ）
+    if (ImGui::CollapsingHeader("アクションタイミングガイド線 (Jump / Duck Guide)",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::Checkbox("ガイド線を表示 (Show Guide Lines)", &showActionGuideLines_);
+      if (showActionGuideLines_) {
+        ImGui::SliderFloat("線の地面高さ (Height) [m]", &guideLineHeight_, 2.0f,
+                           2.5f, "%.2f m");
+        ImGui::Checkbox("プレイヤー足元の判定線を表示 (Player Target Line)",
+                        &showPlayerTargetLine_);
+        ImGui::ColorEdit4("判定線色##TargetLineCol", &playerTargetLineColor_.x);
+
+        ImGui::Separator();
+        ImGui::Text("ジャンプガイド (Jump Guide):");
+        ImGui::SliderFloat("手前距離 (Jump Distance) [m]",
+                           &jumpGuideTimingDistance_, 1.0f, 8.0f, "%.2f m");
+        ImGui::ColorEdit4("ジャンプガイド色##JumpGuideCol", &jumpGuideColor_.x);
+
+        ImGui::Separator();
+        ImGui::Text("しゃがみ/ロールガイド (Roll/Slide Guide):");
+        ImGui::SliderFloat("手前距離 (Roll Distance) [m]",
+                           &rollGuideTimingDistance_, 1.0f, 6.0f, "%.2f m");
+        ImGui::ColorEdit4("しゃがみガイド色##RollGuideCol", &rollGuideColor_.x);
+
+        if (ImGui::Button("ガイド設定を初期値に戻す")) {
+          guideLineHeight_ = 2.18f;
+          jumpGuideTimingDistance_ = 3.0f;
+          rollGuideTimingDistance_ = 2.0f;
+          jumpGuideColor_ = {0.15f, 0.95f, 0.35f, 1.0f};
+          rollGuideColor_ = {1.0f, 0.65f, 0.05f, 1.0f};
+          playerTargetLineColor_ = {0.35f, 0.85f, 1.0f, 0.7f};
+          showPlayerTargetLine_ = true;
+        }
       }
       ImGui::Separator();
     }
@@ -2401,6 +2524,7 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     root["stage"]["roadColor"] = {roadCol.x, roadCol.y, roadCol.z, roadCol.w};
     root["stage"]["roadLighting"] = stageSettings_->GetRoadLighting();
     root["stage"]["obstacleLighting"] = stageSettings_->GetObstacleLighting();
+    root["stage"]["showActionGuideLines"] = showActionGuideLines_;
 
     root["stage"]["driftIce"]["enabled"] = stageSettings_->GetDriftIceEnabled();
     Vector4 iceCol = stageSettings_->GetDriftIceColor();
@@ -2729,6 +2853,8 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
         stageSettings_->SetRoadLighting(st["roadLighting"].get<bool>());
       if (st.contains("obstacleLighting"))
         stageSettings_->SetObstacleLighting(st["obstacleLighting"].get<bool>());
+      if (st.contains("showActionGuideLines"))
+        showActionGuideLines_ = st["showActionGuideLines"].get<bool>();
 
       if (st.contains("driftIce")) {
         const auto &di = st["driftIce"];
@@ -3395,7 +3521,7 @@ void GameScene::UpdateSettingsInput() {
                   GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
                   GamePadInput::PushLeftStickDown();
 
-  constexpr int kSettingsItemCount = 5; // 0: Master, 1: BGM, 2: SE, 3: Reset, 4: Close
+  constexpr int kSettingsItemCount = 6; // 0: Master, 1: BGM, 2: SE, 3: Guide, 4: Reset, 5: Close
   if (moveUp) {
     settingsMenuIndex_ = (settingsMenuIndex_ - 1 + kSettingsItemCount) % kSettingsItemCount;
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
@@ -3404,7 +3530,7 @@ void GameScene::UpdateSettingsInput() {
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
   }
 
-  // 左右音量変更 (Master / BGM / SE)
+  // 左右音量変更 (Master / BGM / SE) または ガイド線ON/OFF
   bool moveLeft = Input::PushKey(DIK_LEFT) || Input::PushKey(DIK_A) ||
                   GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_LEFT) ||
                   GamePadInput::PushLeftStickLeft() ||
@@ -3444,18 +3570,27 @@ void GameScene::UpdateSettingsInput() {
       gsm->SetSEVolume(vol);
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
     }
+  } else if (settingsMenuIndex_ == 3) { // Action Guide Lines (ON / OFF)
+    if (moveLeft || moveRight) {
+      showActionGuideLines_ = !showActionGuideLines_;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    }
   }
 
   // 決定キー (ENTER / SPACE / パッドA)
   bool confirm = Input::PushKey(DIK_RETURN) || Input::PushKey(DIK_NUMPADENTER) ||
                  Input::PushKey(DIK_SPACE) || GamePadInput::PushButton(XINPUT_GAMEPAD_A);
   if (confirm) {
-    if (settingsMenuIndex_ == 3) { // Reset Default
+    if (settingsMenuIndex_ == 3) { // Action Guide Lines (ON / OFF)
+      showActionGuideLines_ = !showActionGuideLines_;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    } else if (settingsMenuIndex_ == 4) { // Reset Default
       gsm->SetMasterVolume(0.5f);
       gsm->SetBGMVolume(0.35f);
       gsm->SetSEVolume(1.0f);
+      showActionGuideLines_ = true;
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
-    } else if (settingsMenuIndex_ == 4) { // Close
+    } else if (settingsMenuIndex_ == 5) { // Close
       CloseSettings();
       return;
     }

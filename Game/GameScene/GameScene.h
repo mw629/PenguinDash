@@ -167,6 +167,22 @@ private:
   /// <param name="dt">デルタタイム（秒）</param>
   void UpdateSunLight(float dt);
 
+  /// <summary>
+  /// ジャンプ・しゃがみタイミングのガイド線描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
+  void DrawActionGuideLines(class Draw &draw);
+
+  // ジャンプ・しゃがみタイミングガイド線設定
+  bool showActionGuideLines_ = true;
+  float guideLineHeight_ = 2.18f;        // ガイド線の地面高さ（雪面よりわずかに上）
+  float jumpGuideTimingDistance_ = 3.0f; // ジャンプ推奨手前距離（約15フレーム分、3.0m）
+  float rollGuideTimingDistance_ = 2.0f; // しゃがみ/ロール推奨手前距離（約10フレーム分、2.0m）
+  Vector4 jumpGuideColor_ = {0.15f, 0.95f, 0.35f, 1.0f};  // ジャンプガイド色（ネオングリーン）
+  Vector4 rollGuideColor_ = {1.0f, 0.65f, 0.05f, 1.0f};   // しゃがみガイド色（鮮やかオレンジ）
+  bool showPlayerTargetLine_ = true;                     // プレイヤー判定線の表示
+  Vector4 playerTargetLineColor_ = {0.35f, 0.85f, 1.0f, 0.7f}; // プレイヤー判定線色（シアン）
+
   bool isMasterLightingEnabled_ = true;
   bool isSunOrbitEnabled_ = true;
   bool isSunColorTransitionEnabled_ = true;
@@ -358,7 +374,7 @@ private:
 
   // 設定画面（音量調整）用
   bool isPauseSettingsOpen_ = false;
-  int settingsMenuIndex_ = 0; // 0: Master, 1: BGM, 2: SE, 3: Reset, 4: Close
+  int settingsMenuIndex_ = 0; // 0: Master, 1: BGM, 2: SE, 3: Guide, 4: Reset, 5: Close
   void UpdateSettingsInput();
   void CloseSettings();
 

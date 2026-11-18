@@ -57,12 +57,13 @@ struct GameHUDContext {
   bool isEditingTitlePlayerName = false;
   const AchievementManager* achievementManager = nullptr;
   int resultAchievementScroll = 0;
-  // 設定画面（音量調整）
+  // 設定画面（音量調整・アシスト表示）
   bool isSettingsOpen = false;
   int settingsMenuIndex = 0;
   float masterVolume = 0.5f;
   float bgmVolume = 0.35f;
   float seVolume = 1.0f;
+  bool showActionGuideLines = true; // ジャンプ・しゃがみガイド線の表示ON/OFF
 };
 
 class GameHUD {

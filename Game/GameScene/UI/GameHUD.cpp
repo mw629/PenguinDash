@@ -1912,8 +1912,8 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
                     Vector4(0.0f, 0.0f, 0.0f, 0.82f));
 
   // メインパネル
-  const Vector2 panelPos = {280.0f, 85.0f};
-  const Vector2 panelSize = {720.0f, 550.0f};
+  const Vector2 panelPos = {280.0f, 65.0f};
+  const Vector2 panelSize = {720.0f, 590.0f};
   draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
   // トップアクセントバー (シアン)
   draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(0.3f, 0.85f, 1.0f, 1.0f));
@@ -1927,7 +1927,7 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
                       Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
 
-  draw.DrawMSDFString("音量バランスをリアルタイムに調整できます",
+  draw.DrawMSDFString("音量やアシスト表示をリアルタイムに調整できます",
                       Vector2(panelPos.x + 35.0f, panelPos.y + 58.0f), 15.0f,
                       Vector4(0.75f, 0.85f, 0.95f, 0.85f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
@@ -1949,8 +1949,8 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
       {"効果音音量 (SE)", "ジャンプ・アイテム取得・激突音などを調整します", ctx.seVolume}
   };
 
-  const float itemStartY = panelPos.y + 98.0f;
-  const float rowH = 72.0f;
+  const float itemStartY = panelPos.y + 95.0f;
+  const float rowH = 68.0f;
   const float contentW = panelSize.x - 60.0f;
   const float contentX = panelPos.x + 30.0f;
 
@@ -1960,32 +1960,32 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
 
     // 行背景
     if (isSelected) {
-      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 64.0f),
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 60.0f),
                         Vector4(0.10f, 0.25f, 0.48f, 0.88f));
       // 左アクセントバー (ゴールド)
-      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 64.0f),
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 60.0f),
                         Vector4(1.0f, 0.85f, 0.2f, 1.0f));
       // カーソル
-      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 12.0f), 18.0f,
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 11.0f), 18.0f,
                           Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
     } else {
-      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 64.0f),
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 60.0f),
                         Vector4(0.04f, 0.07f, 0.12f, 0.50f));
     }
 
     // ラベル & 説明
-    draw.DrawMSDFString(soundOptions[i].label, Vector2(contentX + 32.0f, rowY + 10.0f), 18.0f,
+    draw.DrawMSDFString(soundOptions[i].label, Vector2(contentX + 32.0f, rowY + 9.0f), 18.0f,
                         isSelected ? Vector4(1.0f, 0.95f, 0.4f, 1.0f)
                                    : Vector4(0.9f, 0.95f, 1.0f, 0.9f),
                         true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
-    draw.DrawMSDFString(soundOptions[i].desc, Vector2(contentX + 32.0f, rowY + 36.0f), 13.5f,
+    draw.DrawMSDFString(soundOptions[i].desc, Vector2(contentX + 32.0f, rowY + 34.0f), 13.5f,
                         Vector4(0.65f, 0.75f, 0.85f, 0.75f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
 
     // スライダーゲージバー
     const float barX = contentX + 380.0f;
-    const float barY = rowY + 22.0f;
+    const float barY = rowY + 20.0f;
     const float barW = 180.0f;
     const float barH = 18.0f;
 
@@ -2015,10 +2015,66 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
     } else {
       snprintf(pctBuf, sizeof(pctBuf), "  %3d%%  ", pct);
     }
-    draw.DrawMSDFString(pctBuf, Vector2(barX + barW + 12.0f, rowY + 20.0f), 17.0f,
+    draw.DrawMSDFString(pctBuf, Vector2(barX + barW + 12.0f, rowY + 18.0f), 17.0f,
                         isSelected ? Vector4(1.0f, 0.95f, 0.3f, 1.0f)
                                    : Vector4(0.85f, 0.90f, 0.95f, 0.9f),
                         true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+  }
+
+  // ガイド線ON/OFF切り替え項目 (Index: 3)
+  {
+    bool isGuideSelected = (ctx.settingsMenuIndex == 3);
+    float guideRowY = itemStartY + 3 * rowH;
+
+    if (isGuideSelected) {
+      draw.DrawFillRect(Vector2(contentX, guideRowY), Vector2(contentW, 60.0f),
+                        Vector4(0.10f, 0.25f, 0.48f, 0.88f));
+      draw.DrawFillRect(Vector2(contentX, guideRowY), Vector2(5.0f, 60.0f),
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, guideRowY + 11.0f), 18.0f,
+                          Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+    } else {
+      draw.DrawFillRect(Vector2(contentX, guideRowY), Vector2(contentW, 60.0f),
+                        Vector4(0.04f, 0.07f, 0.12f, 0.50f));
+    }
+
+    draw.DrawMSDFString("アクションガイド線 (GUIDE LINE)", Vector2(contentX + 32.0f, guideRowY + 9.0f), 18.0f,
+                        isGuideSelected ? Vector4(1.0f, 0.95f, 0.4f, 1.0f)
+                                        : Vector4(0.9f, 0.95f, 1.0f, 0.9f),
+                        true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+    draw.DrawMSDFString("ジャンプやしゃがみのタイミング線を表示します", Vector2(contentX + 32.0f, guideRowY + 34.0f), 13.5f,
+                        Vector4(0.65f, 0.75f, 0.85f, 0.75f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+
+    // ON/OFF切り替えスイッチボタン表示
+    const float btnX = contentX + 380.0f;
+    const float btnY = guideRowY + 16.0f;
+    const float btnW = 180.0f;
+    const float btnH = 26.0f;
+
+    // ボタン背景
+    Vector4 btnBgCol = ctx.showActionGuideLines
+        ? (isGuideSelected ? Vector4(0.08f, 0.42f, 0.22f, 0.95f) : Vector4(0.05f, 0.26f, 0.14f, 0.80f))
+        : (isGuideSelected ? Vector4(0.40f, 0.12f, 0.12f, 0.95f) : Vector4(0.24f, 0.08f, 0.08f, 0.80f));
+    draw.DrawFillRect(Vector2(btnX, btnY), Vector2(btnW, btnH), btnBgCol);
+
+    // 枠線
+    Vector4 borderCol = isGuideSelected ? Vector4(1.0f, 0.85f, 0.2f, 1.0f) : Vector4(0.3f, 0.45f, 0.65f, 0.7f);
+    draw.DrawFillRect(Vector2(btnX, btnY), Vector2(btnW, 1.5f), borderCol);
+    draw.DrawFillRect(Vector2(btnX, btnY + btnH - 1.5f), Vector2(btnW, 1.5f), borderCol);
+    draw.DrawFillRect(Vector2(btnX, btnY), Vector2(1.5f, btnH), borderCol);
+    draw.DrawFillRect(Vector2(btnX + btnW - 1.5f, btnY), Vector2(1.5f, btnH), borderCol);
+
+    // ON/OFF テキスト
+    const char *stateStr = isGuideSelected
+        ? (ctx.showActionGuideLines ? "◀   ON   ▶" : "◀  OFF  ▶")
+        : (ctx.showActionGuideLines ? "    ON     " : "   OFF    ");
+    Vector4 textCol = ctx.showActionGuideLines
+        ? (isGuideSelected ? Vector4(0.3f, 1.0f, 0.5f, 1.0f) : Vector4(0.2f, 0.85f, 0.4f, 0.9f))
+        : (isGuideSelected ? Vector4(1.0f, 0.45f, 0.45f, 1.0f) : Vector4(0.85f, 0.35f, 0.35f, 0.9f));
+    draw.DrawMSDFString(stateStr, Vector2(btnX + 38.0f, btnY + 4.0f), 17.0f,
+                        textCol, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
   }
 
   // その他オプション項目 (初期設定に戻す / 設定を保存して閉じる)
@@ -2031,32 +2087,32 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
       {"設定を保存して閉じる (SAVE & CLOSE)", "[ ENTER / Aボタン で確定 ]"}
   };
 
-  const float actionStartY = itemStartY + 3 * rowH + 8.0f;
-  const float actionRowH = 50.0f;
+  const float actionStartY = itemStartY + 4 * rowH + 8.0f;
+  const float actionRowH = 46.0f;
 
   for (int i = 0; i < 2; i++) {
-    int itemIdx = 3 + i;
+    int itemIdx = 4 + i;
     bool isSelected = (ctx.settingsMenuIndex == itemIdx);
     float rowY = actionStartY + i * actionRowH;
 
     if (isSelected) {
-      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 42.0f),
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 40.0f),
                         Vector4(0.10f, 0.25f, 0.48f, 0.88f));
-      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 42.0f),
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 40.0f),
                         Vector4(1.0f, 0.85f, 0.2f, 1.0f));
-      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 11.0f), 18.0f,
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 10.0f), 18.0f,
                           Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
-      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 10.0f), 18.0f,
+      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 9.0f), 18.0f,
                           Vector4(1.0f, 0.95f, 0.4f, 1.0f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
-      draw.DrawMSDFString(actions[i].guide, Vector2(contentX + 410.0f, rowY + 11.0f), 15.0f,
+      draw.DrawMSDFString(actions[i].guide, Vector2(contentX + 410.0f, rowY + 10.0f), 15.0f,
                           Vector4(0.4f, 0.95f, 1.0f, 0.95f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     } else {
-      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 42.0f),
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 40.0f),
                         Vector4(0.04f, 0.07f, 0.12f, 0.50f));
-      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 10.0f), 17.0f,
+      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 9.0f), 17.0f,
                           Vector4(0.8f, 0.85f, 0.92f, 0.8f), true,
                           Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
     }
@@ -2065,8 +2121,8 @@ void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
   // 下部フッター案内
   bool isPad = GamePadInput::IsConnected();
   const char *footerGuide = isPad
-      ? "[ 十字キー / スティック ] 選択・音量変更    [ Aボタン ] 決定    [ Bボタン ] 保存して戻る"
-      : "[ W / S / ↑ ↓ ] 項目選択    [ A / D / ← → ] 音量変更    [ ENTER / SPACE ] 決定    [ ESC ] 保存して戻る";
+      ? "[ 十字キー / スティック ] 選択・変更    [ Aボタン ] 決定    [ Bボタン ] 保存して戻る"
+      : "[ W / S / ↑ ↓ ] 項目選択    [ A / D / ← → ] 設定変更    [ ENTER / SPACE ] 決定    [ ESC ] 保存して戻る";
 
   draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 48.0f),
                     Vector2(panelSize.x, 48.0f),
