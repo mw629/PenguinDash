@@ -342,11 +342,12 @@ public:
     Ranking,
     Achievements,
     HowToPlay,
+    Settings,
     Exit,
     Count
   };
 
-  enum class TitleSubView { None = 0, Ranking, HowToPlay, Achievements };
+  enum class TitleSubView { None = 0, Ranking, HowToPlay, Achievements, Settings };
 
 private:
   TitleMenuItem titleMenuIndex_ = TitleMenuItem::GameStart;
@@ -354,6 +355,12 @@ private:
   int titleAchievementPage_ = 0;
   std::string titlePlayerName_ = "Player";
   bool isEditingTitlePlayerName_ = false;
+
+  // 設定画面（音量調整）用
+  bool isPauseSettingsOpen_ = false;
+  int settingsMenuIndex_ = 0; // 0: Master, 1: BGM, 2: SE, 3: Reset, 4: Close
+  void UpdateSettingsInput();
+  void CloseSettings();
 
   /// <summary>
   /// タイトル画面でのプレイヤー名入力処理

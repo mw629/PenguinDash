@@ -69,7 +69,8 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続生"
         "行圏外以成通最新取得設定送信功失敗未判更冠両"
         "実績一覧条件報酬達成解除済全種頁切替上下散歩俊足氷原覇者南極点突吹"
-        "累計職人高速不動精神秒間留石像境地雪王対峙討伐名前（）件〜");
+        "累計職人高速不動精神秒間留石像境地雪王対峙討伐名前（）件〜"
+        "主効果音量調整直枠戻保存初期化");
   }
 }
 
@@ -87,6 +88,9 @@ void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
   } else if (ctx.gameState == State_Paused) {
     DrawPlayingHUD(draw, ctx);
     DrawPauseHUD(draw, ctx);
+    if (ctx.isSettingsOpen) {
+      DrawSettingsModal(draw, ctx);
+    }
   } else if (ctx.gameState == State_PlayerHit) {
     DrawPlayingHUD(draw, ctx);
     if (ctx.crashSprite) {
@@ -561,6 +565,9 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
     draw.DrawMSDFString("[ START ] ゲームを再開 (RESUME)", kPauseBtnResumePos,
                         kPauseBtnFontSize, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Xボタン ] 音量設定 (SETTINGS)", kPauseBtnSettingsPos,
+                        kPauseBtnFontSize, Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[ Aボタン ] 最初からリスタート (RESTART)",
                         kPauseBtnRestartPos, kPauseBtnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
@@ -571,6 +578,9 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   } else {
     draw.DrawMSDFString("[ ESC ] ゲームを再開 (RESUME)", kPauseBtnResumePos,
                         kPauseBtnFontSize, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  3  ] 音量設定 (SETTINGS)", kPauseBtnSettingsPos,
+                        kPauseBtnFontSize, Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
                         kPauseBtnRestartPos, kPauseBtnFontSize,
@@ -710,12 +720,16 @@ void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
                         Vector2(btnX, panelY + 360.0f), btnFontSize,
                         Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Xボタン ] 音量設定 (SETTINGS)",
+                        Vector2(btnX, panelY + 398.0f), btnFontSize,
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[ Aボタン ] 最初からリスタート (RESTART)",
-                        Vector2(btnX, panelY + 400.0f), btnFontSize,
+                        Vector2(btnX, panelY + 436.0f), btnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[ Bボタン ] タイトルへ戻る (TITLE)",
-                        Vector2(btnX, panelY + 440.0f), btnFontSize,
+                        Vector2(btnX, panelY + 474.0f), btnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
   } else {
@@ -723,12 +737,16 @@ void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
                         Vector2(btnX, panelY + 360.0f), btnFontSize,
                         Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  3  ] 音量設定 (SETTINGS)",
+                        Vector2(btnX, panelY + 398.0f), btnFontSize,
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
-                        Vector2(btnX, panelY + 400.0f), btnFontSize,
+                        Vector2(btnX, panelY + 436.0f), btnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[  2  ] タイトルへ戻る (TITLE)",
-                        Vector2(btnX, panelY + 440.0f), btnFontSize,
+                        Vector2(btnX, panelY + 474.0f), btnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
   }
@@ -1449,11 +1467,12 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
         "2. ランキング確認",
         "3. 実績一覧",
         "4. あそびかた",
-        "5. ゲーム終了"
+        "5. 設定",
+        "6. ゲーム終了"
     };
-    constexpr int kMenuCount = 5;
-    const float menuStartY = 418.0f + elementsOffsetY;
-    const float menuRowH = 44.0f;
+    constexpr int kMenuCount = 6;
+    const float menuStartY = 410.0f + elementsOffsetY;
+    const float menuRowH = 41.0f;
     const float menuPanelX = menuLeftX;
 
     for (int i = 0; i < kMenuCount; i++) {
@@ -1497,7 +1516,7 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 
   // ==========================================================
-  // 2. サブモーダル表示（ランキング / 操作説明 / 実績一覧）
+  // 2. サブモーダル表示（ランキング / 操作説明 / 実績一覧 / 設定）
   // ==========================================================
   if (ctx.titleSubView == 1) {
     DrawTitleRankingModal(draw, ctx);
@@ -1505,6 +1524,8 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
     DrawTitleHowToPlayModal(draw, ctx);
   } else if (ctx.titleSubView == 3) {
     DrawTitleAchievementsModal(draw, ctx);
+  } else if (ctx.titleSubView == 4 || ctx.isSettingsOpen) {
+    DrawSettingsModal(draw, ctx);
   }
 }
 
@@ -1878,6 +1899,182 @@ void GameHUD::DrawBadgeFPV(Draw &draw) {
                     Vector4(0.3f, 0.85f, 1.0f, 1.0f));
   draw.DrawMSDFString("[F2] 1ST PERSON", Vector2(kFpvBadgePos.x + kFpvTextOffset.x, kFpvBadgePos.y + kFpvTextOffset.y), kFpvFontSize,
                       Vector4(0.4f, 0.9f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+}
+
+void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
+  auto *tr = draw.GetTextRenderer();
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
+
+  // 全画面ディム（暗転）
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(screenWidth, screenHeight),
+                    Vector4(0.0f, 0.0f, 0.0f, 0.82f));
+
+  // メインパネル
+  const Vector2 panelPos = {280.0f, 85.0f};
+  const Vector2 panelSize = {720.0f, 550.0f};
+  draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
+  // トップアクセントバー (シアン)
+  draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(0.3f, 0.85f, 1.0f, 1.0f));
+  // ボトムボーダー
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 2.0f), Vector2(panelSize.x, 2.0f),
+                    Vector4(0.2f, 0.4f, 0.6f, 0.8f));
+
+  // モーダルタイトル
+  draw.DrawMSDFString("=== 設定 (SETTINGS) ===",
+                      Vector2(panelPos.x + 35.0f, panelPos.y + 24.0f), 26.0f,
+                      Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  draw.DrawMSDFString("音量バランスをリアルタイムに調整できます",
+                      Vector2(panelPos.x + 35.0f, panelPos.y + 58.0f), 15.0f,
+                      Vector4(0.75f, 0.85f, 0.95f, 0.85f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+
+  // 区切り線
+  draw.DrawFillRect(Vector2(panelPos.x + 25.0f, panelPos.y + 82.0f),
+                    Vector2(panelSize.x - 50.0f, 1.5f),
+                    Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+  // 音量スライダー項目 (Master, BGM, SE)
+  struct SoundOption {
+    const char *label;
+    const char *desc;
+    float value;
+  };
+  SoundOption soundOptions[3] = {
+      {"主音量 (MASTER)", "全体のマスター音量を調整します", ctx.masterVolume},
+      {"BGM音量 (BGM)",   "タイトルや走行中の音楽音量を調整します", ctx.bgmVolume},
+      {"効果音音量 (SE)", "ジャンプ・アイテム取得・激突音などを調整します", ctx.seVolume}
+  };
+
+  const float itemStartY = panelPos.y + 98.0f;
+  const float rowH = 72.0f;
+  const float contentW = panelSize.x - 60.0f;
+  const float contentX = panelPos.x + 30.0f;
+
+  for (int i = 0; i < 3; i++) {
+    bool isSelected = (ctx.settingsMenuIndex == i);
+    float rowY = itemStartY + i * rowH;
+
+    // 行背景
+    if (isSelected) {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 64.0f),
+                        Vector4(0.10f, 0.25f, 0.48f, 0.88f));
+      // 左アクセントバー (ゴールド)
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 64.0f),
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+      // カーソル
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 12.0f), 18.0f,
+                          Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+    } else {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 64.0f),
+                        Vector4(0.04f, 0.07f, 0.12f, 0.50f));
+    }
+
+    // ラベル & 説明
+    draw.DrawMSDFString(soundOptions[i].label, Vector2(contentX + 32.0f, rowY + 10.0f), 18.0f,
+                        isSelected ? Vector4(1.0f, 0.95f, 0.4f, 1.0f)
+                                   : Vector4(0.9f, 0.95f, 1.0f, 0.9f),
+                        true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+    draw.DrawMSDFString(soundOptions[i].desc, Vector2(contentX + 32.0f, rowY + 36.0f), 13.5f,
+                        Vector4(0.65f, 0.75f, 0.85f, 0.75f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+
+    // スライダーゲージバー
+    const float barX = contentX + 380.0f;
+    const float barY = rowY + 22.0f;
+    const float barW = 180.0f;
+    const float barH = 18.0f;
+
+    // スライダー背景溝
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW, barH),
+                      Vector4(0.02f, 0.03f, 0.06f, 0.95f));
+    // スライダー枠
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW, 1.5f), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+    draw.DrawFillRect(Vector2(barX, barY + barH - 1.5f), Vector2(barW, 1.5f), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(1.5f, barH), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+    draw.DrawFillRect(Vector2(barX + barW - 1.5f, barY), Vector2(1.5f, barH), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+    // ゲージフィル
+    float fillW = barW * std::clamp(soundOptions[i].value, 0.0f, 1.0f);
+    if (fillW > 0.0f) {
+      Vector4 fillCol = isSelected ? Vector4(0.2f, 0.85f, 1.0f, 0.95f)
+                                   : Vector4(0.2f, 0.55f, 0.8f, 0.8f);
+      draw.DrawFillRect(Vector2(barX + 2.0f, barY + 2.0f), Vector2((std::max)(0.0f, fillW - 4.0f), barH - 4.0f),
+                        fillCol);
+    }
+
+    // パーセント数値表示 (例: ◀ 50% ▶)
+    char pctBuf[32];
+    int pct = static_cast<int>(std::round(soundOptions[i].value * 100.0f));
+    if (isSelected) {
+      snprintf(pctBuf, sizeof(pctBuf), "◀ %3d%% ▶", pct);
+    } else {
+      snprintf(pctBuf, sizeof(pctBuf), "  %3d%%  ", pct);
+    }
+    draw.DrawMSDFString(pctBuf, Vector2(barX + barW + 12.0f, rowY + 20.0f), 17.0f,
+                        isSelected ? Vector4(1.0f, 0.95f, 0.3f, 1.0f)
+                                   : Vector4(0.85f, 0.90f, 0.95f, 0.9f),
+                        true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+  }
+
+  // その他オプション項目 (初期設定に戻す / 設定を保存して閉じる)
+  struct ActionOption {
+    const char *label;
+    const char *guide;
+  };
+  ActionOption actions[2] = {
+      {"初期設定に戻す (RESET DEFAULT)", "[ ENTER / Aボタン で初期値へ ]"},
+      {"設定を保存して閉じる (SAVE & CLOSE)", "[ ENTER / Aボタン で確定 ]"}
+  };
+
+  const float actionStartY = itemStartY + 3 * rowH + 8.0f;
+  const float actionRowH = 50.0f;
+
+  for (int i = 0; i < 2; i++) {
+    int itemIdx = 3 + i;
+    bool isSelected = (ctx.settingsMenuIndex == itemIdx);
+    float rowY = actionStartY + i * actionRowH;
+
+    if (isSelected) {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 42.0f),
+                        Vector4(0.10f, 0.25f, 0.48f, 0.88f));
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 42.0f),
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 11.0f), 18.0f,
+                          Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 10.0f), 18.0f,
+                          Vector4(1.0f, 0.95f, 0.4f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+      draw.DrawMSDFString(actions[i].guide, Vector2(contentX + 410.0f, rowY + 11.0f), 15.0f,
+                          Vector4(0.4f, 0.95f, 1.0f, 0.95f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    } else {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 42.0f),
+                        Vector4(0.04f, 0.07f, 0.12f, 0.50f));
+      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 10.0f), 17.0f,
+                          Vector4(0.8f, 0.85f, 0.92f, 0.8f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    }
+  }
+
+  // 下部フッター案内
+  bool isPad = GamePadInput::IsConnected();
+  const char *footerGuide = isPad
+      ? "[ 十字キー / スティック ] 選択・音量変更    [ Aボタン ] 決定    [ Bボタン ] 保存して戻る"
+      : "[ W / S / ↑ ↓ ] 項目選択    [ A / D / ← → ] 音量変更    [ ENTER / SPACE ] 決定    [ ESC ] 保存して戻る";
+
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 48.0f),
+                    Vector2(panelSize.x, 48.0f),
+                    Vector4(0.03f, 0.05f, 0.09f, 0.95f));
+  float guideW = tr ? tr->MeasureString(footerGuide, 16.0f).x : 580.0f;
+  draw.DrawMSDFString(footerGuide,
+                      Vector2(panelPos.x + (panelSize.x - guideW) * 0.5f, panelPos.y + panelSize.y - 34.0f), 16.0f,
+                      Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 }
 

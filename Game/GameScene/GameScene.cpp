@@ -495,15 +495,20 @@ void GameScene::Update() {
     if (Input::PushKey(DIK_ESCAPE) ||
         GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
       gameState_ = GameState::Paused;
+      isPauseSettingsOpen_ = false;
       SoundManager::GetInstance()->PauseBGM();
     }
   } else if (gameState_ == GameState::Paused) {
-    PausedUpdate();
-    effectManager_->EditorUpdate(cameraController_->GetViewMatrix());
-    if (Input::PushKey(DIK_ESCAPE) ||
-        GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
-      gameState_ = GameState::Playing;
-      SoundManager::GetInstance()->ResumeBGM();
+    if (isPauseSettingsOpen_) {
+      UpdateSettingsInput();
+    } else {
+      PausedUpdate();
+      effectManager_->EditorUpdate(cameraController_->GetViewMatrix());
+      if (Input::PushKey(DIK_ESCAPE) ||
+          GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
+        gameState_ = GameState::Playing;
+        SoundManager::GetInstance()->ResumeBGM();
+      }
     }
   } else if (gameState_ == GameState::PlayerHit) {
     PlayerHitUpdate();
@@ -874,9 +879,14 @@ void GameScene::TitleUpdate() {
   }
 
   // ==========================================================
-  // モーダル表示中（ランキング / 操作説明 / 実績一覧）の入力処理
+  // モーダル表示中（ランキング / 操作説明 / 実績一覧 / 設定）の入力処理
   // ==========================================================
   if (titleSubView_ != TitleSubView::None) {
+    if (titleSubView_ == TitleSubView::Settings) {
+      UpdateSettingsInput();
+      return;
+    }
+
     if (titleSubView_ == TitleSubView::Achievements && achievementManager_) {
       constexpr int kItemsPerPage = 10;
       int totalCount = achievementManager_->GetVisibleTotalCount();
@@ -1025,6 +1035,12 @@ void GameScene::TitleUpdate() {
         titleSubView_ = TitleSubView::HowToPlay;
         break;
 
+      case TitleMenuItem::Settings:
+        SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+        settingsMenuIndex_ = 0;
+        titleSubView_ = TitleSubView::Settings;
+        break;
+
       case TitleMenuItem::Exit:
         SoundManager::GetInstance()->PlaySE(SoundManager::SE::Start);
         PostQuitMessage(0);
@@ -1038,7 +1054,7 @@ void GameScene::TitleUpdate() {
 }
 
 void GameScene::PausedUpdate() {
-  // --- ポーズ中のリスタート / タイトル復帰の入力受付 ---
+  // --- ポーズ中のリスタート / タイトル復帰 / 音量設定の入力受付 ---
   if (resultTransition_ == ResultTransition::None &&
       !FreezeTransition::GetInstance()->IsActive()) {
     if (Input::PushKey(DIK_1) || GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
@@ -1046,6 +1062,11 @@ void GameScene::PausedUpdate() {
     }
     if (Input::PushKey(DIK_2) || GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
       StartResultTransition(ResultTransition::Title);
+    }
+    if (Input::PushKey(DIK_3) || GamePadInput::PushButton(XINPUT_GAMEPAD_X)) {
+      isPauseSettingsOpen_ = true;
+      settingsMenuIndex_ = 0;
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
     }
   }
 }
@@ -1425,6 +1446,14 @@ void GameScene::DrawUI(class Draw &draw) {
   ctx.isEditingTitlePlayerName = isEditingTitlePlayerName_;
   ctx.achievementManager = achievementManager_.get();
   ctx.resultAchievementScroll = resultAchievementScrollOffset_;
+
+  // 設定画面（音量調整）
+  auto *gsm = GameSceneManager::GetInstance();
+  ctx.isSettingsOpen = (titleSubView_ == TitleSubView::Settings) || isPauseSettingsOpen_;
+  ctx.settingsMenuIndex = settingsMenuIndex_;
+  ctx.masterVolume = gsm->GetMasterVolume();
+  ctx.bgmVolume = gsm->GetBGMVolume();
+  ctx.seVolume = gsm->GetSEVolume();
 
   // --- メインゲームHUD（2D UI）の描画 ---
   gameHUD_->DrawHUD(draw, ctx);
@@ -3352,4 +3381,97 @@ void GameScene::UpdateSunLight(float dt) {
       skyBox_->SetColor(lerpColor(p0.skyColor, p1.skyColor, smoothT));
     }
   }
+}
+
+void GameScene::UpdateSettingsInput() {
+  auto *gsm = GameSceneManager::GetInstance();
+  if (!gsm) return;
+
+  // 上下移動
+  bool moveUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
+                GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                GamePadInput::PushLeftStickUp();
+  bool moveDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
+                  GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                  GamePadInput::PushLeftStickDown();
+
+  constexpr int kSettingsItemCount = 5; // 0: Master, 1: BGM, 2: SE, 3: Reset, 4: Close
+  if (moveUp) {
+    settingsMenuIndex_ = (settingsMenuIndex_ - 1 + kSettingsItemCount) % kSettingsItemCount;
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+  } else if (moveDown) {
+    settingsMenuIndex_ = (settingsMenuIndex_ + 1) % kSettingsItemCount;
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+  }
+
+  // 左右音量変更 (Master / BGM / SE)
+  bool moveLeft = Input::PushKey(DIK_LEFT) || Input::PushKey(DIK_A) ||
+                  GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_LEFT) ||
+                  GamePadInput::PushLeftStickLeft() ||
+                  GamePadInput::PushButton(XINPUT_GAMEPAD_LEFT_SHOULDER);
+  bool moveRight = Input::PushKey(DIK_RIGHT) || Input::PushKey(DIK_D) ||
+                   GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_RIGHT) ||
+                   GamePadInput::PushLeftStickRight() ||
+                   GamePadInput::PushButton(XINPUT_GAMEPAD_RIGHT_SHOULDER);
+
+  constexpr float kVolStep = 0.05f;
+
+  if (settingsMenuIndex_ == 0) { // Master Volume
+    if (moveLeft) {
+      float vol = (std::max)(0.0f, gsm->GetMasterVolume() - kVolStep);
+      gsm->SetMasterVolume(vol);
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    } else if (moveRight) {
+      float vol = (std::min)(1.0f, gsm->GetMasterVolume() + kVolStep);
+      gsm->SetMasterVolume(vol);
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    }
+  } else if (settingsMenuIndex_ == 1) { // BGM Volume
+    if (moveLeft) {
+      float vol = (std::max)(0.0f, gsm->GetBGMVolume() - kVolStep);
+      gsm->SetBGMVolume(vol);
+    } else if (moveRight) {
+      float vol = (std::min)(1.0f, gsm->GetBGMVolume() + kVolStep);
+      gsm->SetBGMVolume(vol);
+    }
+  } else if (settingsMenuIndex_ == 2) { // SE Volume
+    if (moveLeft) {
+      float vol = (std::max)(0.0f, gsm->GetSEVolume() - kVolStep);
+      gsm->SetSEVolume(vol);
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    } else if (moveRight) {
+      float vol = (std::min)(1.0f, gsm->GetSEVolume() + kVolStep);
+      gsm->SetSEVolume(vol);
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    }
+  }
+
+  // 決定キー (ENTER / SPACE / パッドA)
+  bool confirm = Input::PushKey(DIK_RETURN) || Input::PushKey(DIK_NUMPADENTER) ||
+                 Input::PushKey(DIK_SPACE) || GamePadInput::PushButton(XINPUT_GAMEPAD_A);
+  if (confirm) {
+    if (settingsMenuIndex_ == 3) { // Reset Default
+      gsm->SetMasterVolume(0.5f);
+      gsm->SetBGMVolume(0.35f);
+      gsm->SetSEVolume(1.0f);
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
+    } else if (settingsMenuIndex_ == 4) { // Close
+      CloseSettings();
+      return;
+    }
+  }
+
+  // 閉じるキー (ESC / パッドB)
+  bool cancel = Input::PushKey(DIK_ESCAPE) || GamePadInput::PushButton(XINPUT_GAMEPAD_B);
+  if (cancel) {
+    CloseSettings();
+    return;
+  }
+}
+
+void GameScene::CloseSettings() {
+  SaveSettingsToJson("GameSceneSettings");
+  titleSubView_ = TitleSubView::None;
+  isPauseSettingsOpen_ = false;
+  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
 }

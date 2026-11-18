@@ -57,6 +57,12 @@ struct GameHUDContext {
   bool isEditingTitlePlayerName = false;
   const AchievementManager* achievementManager = nullptr;
   int resultAchievementScroll = 0;
+  // 設定画面（音量調整）
+  bool isSettingsOpen = false;
+  int settingsMenuIndex = 0;
+  float masterVolume = 0.5f;
+  float bgmVolume = 0.35f;
+  float seVolume = 1.0f;
 };
 
 class GameHUD {
@@ -147,25 +153,26 @@ private:
 
   // ポーズ画面
   static constexpr float kPauseDimAlpha = 0.65f;
-  static constexpr Vector2 kPausePanelPos = {360.0f, 160.0f};
-  static constexpr Vector2 kPausePanelSize = {560.0f, 410.0f};
-  static constexpr Vector2 kPauseBossPanelPos = {300.0f, 95.0f};
-  static constexpr Vector2 kPauseBossPanelSize = {680.0f, 495.0f};
+  static constexpr Vector2 kPausePanelPos = {360.0f, 140.0f};
+  static constexpr Vector2 kPausePanelSize = {560.0f, 455.0f};
+  static constexpr Vector2 kPauseBossPanelPos = {300.0f, 80.0f};
+  static constexpr Vector2 kPauseBossPanelSize = {680.0f, 535.0f};
   static constexpr float kPauseAccentHeight = 4.0f;
-  static constexpr Vector2 kPauseTitlePos = {490.0f, 190.0f};
+  static constexpr Vector2 kPauseTitlePos = {490.0f, 170.0f};
   static constexpr float kPauseTitleFontSize = 52.0f;
-  static constexpr Vector2 kPauseSubTitlePos = {540.0f, 255.0f};
+  static constexpr Vector2 kPauseSubTitlePos = {540.0f, 235.0f};
   static constexpr float kPauseSubTitleFontSize = 22.0f;
-  static constexpr Vector2 kPauseDividerPos1 = {400.0f, 290.0f};
-  static constexpr Vector2 kPauseDividerPos2 = {400.0f, 400.0f};
+  static constexpr Vector2 kPauseDividerPos1 = {400.0f, 270.0f};
+  static constexpr Vector2 kPauseDividerPos2 = {400.0f, 380.0f};
   static constexpr Vector2 kPauseDividerSize = {480.0f, 2.0f};
-  static constexpr Vector2 kPauseDistPos = {430.0f, 315.0f};
-  static constexpr Vector2 kPauseScorePos = {430.0f, 355.0f};
+  static constexpr Vector2 kPauseDistPos = {430.0f, 295.0f};
+  static constexpr Vector2 kPauseScorePos = {430.0f, 335.0f};
   static constexpr float kPauseStatFontSize = 26.0f;
-  static constexpr Vector2 kPauseBtnResumePos = {410.0f, 425.0f};
-  static constexpr Vector2 kPauseBtnRestartPos = {410.0f, 465.0f};
-  static constexpr Vector2 kPauseBtnTitlePos = {410.0f, 505.0f};
-  static constexpr float kPauseBtnFontSize = 24.0f;
+  static constexpr Vector2 kPauseBtnResumePos = {410.0f, 400.0f};
+  static constexpr Vector2 kPauseBtnSettingsPos = {410.0f, 440.0f};
+  static constexpr Vector2 kPauseBtnRestartPos = {410.0f, 480.0f};
+  static constexpr Vector2 kPauseBtnTitlePos = {410.0f, 520.0f};
+  static constexpr float kPauseBtnFontSize = 23.0f;
 
   // リザルト画面
   static constexpr float kGameOverDimAlpha = 0.72f;
@@ -301,6 +308,11 @@ private:
   /// タイトル画面実績一覧モーダルの描画
   /// </summary>
   void DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx);
+
+  /// <summary>
+  /// 設定画面（音量変更）モーダルの描画
+  /// </summary>
+  void DrawSettingsModal(Draw &draw, const GameHUDContext &ctx);
 
   /// <summary>
   /// エディターモード中HUDの描画
