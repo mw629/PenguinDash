@@ -169,7 +169,7 @@ private:
   static constexpr float kDefaultBaseHeight = 3.0f;
 
   // ロール（スライディング）パラメータ定数
-  static constexpr float kDefaultRollDuration = 30.0f;
+  static constexpr float kDefaultRollDuration = 50.0f; // ジャンプと同タイミング（手前3m）でしゃがんでも余裕を持ってくぐり抜けられる持続時間（約0.83秒、50フレーム）
   static constexpr float kDefaultRollTransitionDuration = 0.06f;
   static constexpr float kDefaultWalkTransitionDuration = 0.08f;
   static constexpr float kDefaultRollingHeightOffset = 0.5f;
@@ -249,7 +249,7 @@ private:
   float baseHeight_ = kDefaultBaseHeight; // 地面の高さ（Y座標）
 
   float rollTimer_ = 0.0f;
-  float rollDuration_ = kDefaultRollDuration; // 転がりの継続フレーム数（約0.5秒）
+  float rollDuration_ = kDefaultRollDuration; // 転がりの継続フレーム数（約0.83秒、50フレーム）
   bool keepRolling_ = false;   // 強制的にしゃがみを維持するフラグ
   float rollTransitionDuration_ =
       kDefaultRollTransitionDuration; // しゃがみ（sneakWalk）への遷移ブレンド秒数（約3〜4フレーム）

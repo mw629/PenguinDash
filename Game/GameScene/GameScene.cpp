@@ -1671,7 +1671,7 @@ void GameScene::ImGui() {
         if (ImGui::Button("ガイド設定を初期値に戻す")) {
           guideLineHeight_ = 2.18f;
           jumpGuideTimingDistance_ = 3.0f;
-          rollGuideTimingDistance_ = 2.0f;
+          rollGuideTimingDistance_ = 3.0f;
           jumpGuideColor_ = {0.15f, 0.95f, 0.35f, 1.0f};
           rollGuideColor_ = {1.0f, 0.65f, 0.05f, 1.0f};
           playerTargetLineColor_ = {0.35f, 0.85f, 1.0f, 0.7f};
@@ -1990,7 +1990,7 @@ void GameScene::ImGui() {
           player_->SetLaneChangeSpeed(laneSpeed);
         }
         float rollDuration = player_->GetRollDuration();
-        if (ImGui::SliderFloat("ローリング時間", &rollDuration, 10.0f, 60.0f,
+        if (ImGui::SliderFloat("ローリング時間", &rollDuration, 10.0f, 90.0f,
                                "%.0f f")) {
           player_->SetRollDuration(rollDuration);
         }
@@ -3167,7 +3167,7 @@ void GameScene::ResetSettingsToDefault() {
   player_->SetJumpPower(0.21f);
   player_->SetGravity(0.014f);
   player_->SetLaneChangeSpeed(0.2f);
-  player_->SetRollDuration(30.0f);
+  player_->SetRollDuration(50.0f);
   player_->SetLighting(true);
 
   // 5. ステージ設定
