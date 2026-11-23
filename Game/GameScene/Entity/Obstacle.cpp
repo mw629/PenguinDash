@@ -500,6 +500,10 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     if (scene->GetCameraController()) {
       scene->GetCameraController()->ShakeDefeat();
     }
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(transform_.translate, 0);
+      scene->GetEffectManager()->EmitObstacleBreak(transform_.translate);
+    }
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
     return false;
   }
@@ -507,6 +511,9 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
   if (type_ == Type::CameraItem) {
     OnHit();
     scene->AddItemGetCount();
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(transform_.translate, 3);
+    }
     // 遠方の障害物を吹き飛ばし、カメラ遷移までの待機時間（約8秒）を解消する
     // 直近（Z <= 15m）の障害物は残して自然なプレイ感を維持
     if (scene->GetStageSettings()) {
@@ -515,6 +522,9 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
         if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
           if (obs->GetTransform().translate.z > 15.0f) {
             obs->OnBlowAway();
+            if (scene->GetEffectManager()) {
+              scene->GetEffectManager()->EmitObstacleBreak(obs->GetTransform().translate);
+            }
           }
         }
       }
@@ -530,6 +540,7 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     player->SetHasBarrier(true);
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
     if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(transform_.translate, 1);
       scene->GetEffectManager()->EmitBarrier(player->GetTransform().translate);
     }
     return false;
@@ -543,11 +554,18 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     if (scene->GetCameraController()) {
       scene->GetCameraController()->ShakeImpact();
     }
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(transform_.translate, 2);
+      scene->GetEffectManager()->EmitObstacleBreak(transform_.translate);
+    }
     if (scene->GetStageSettings()) {
       for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
         Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
         if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
           obs->OnBlowAway();
+          if (scene->GetEffectManager()) {
+            scene->GetEffectManager()->EmitObstacleBreak(obs->GetTransform().translate);
+          }
         }
       }
     }
@@ -558,11 +576,17 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     OnHit();
     scene->AddItemGetCount();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(transform_.translate, 3);
+    }
     if (scene->GetStageSettings()) {
       for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
         Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
         if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
           obs->OnBlowAway();
+          if (scene->GetEffectManager()) {
+            scene->GetEffectManager()->EmitObstacleBreak(obs->GetTransform().translate);
+          }
         }
       }
     }
@@ -585,6 +609,8 @@ bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
     }
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
     if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitObstacleBreak(transform_.translate);
+      scene->GetEffectManager()->EmitBarrierBreak(player->GetTransform().translate);
       scene->GetEffectManager()->BreakBarrier(player->GetTransform().translate);
     }
     return false;

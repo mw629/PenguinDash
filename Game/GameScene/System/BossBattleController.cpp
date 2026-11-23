@@ -217,6 +217,7 @@ void BossBattleController::Update(float timeScale, Boss *boss,
       if (obs->GetJustLanded()) {
         if (effectManager) {
           effectManager->EmitDust(obs->GetTransform().translate);
+          effectManager->EmitBossImpact(obs->GetTransform().translate);
         }
         SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossLand);
       }
@@ -247,6 +248,9 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossReflect);
             GamePadInput::Rumble(kReflectRumbleDuration, kReflectRumbleSpeed,
                                  kReflectRumbleSpeed);
+            if (effectManager) {
+              effectManager->EmitItemGet(obs->GetTransform().translate, 1);
+            }
             if (cameraController) {
               cameraController->ShakeReflect();
             }
@@ -267,6 +271,10 @@ void BossBattleController::Update(float timeScale, Boss *boss,
           obs->Deactivate();
           boss->OnDamage();
           SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossHit);
+          if (effectManager) {
+            effectManager->EmitObstacleBreak(boss->GetTransform().translate);
+            effectManager->EmitBossImpact(boss->GetTransform().translate);
+          }
           if (cameraController) {
             cameraController->ShakeDefeat();
           }
@@ -275,6 +283,11 @@ void BossBattleController::Update(float timeScale, Boss *boss,
             SoundManager::GetInstance()->PlaySE(SoundManager::SE::BossDefeat);
             GamePadInput::Rumble(kDefeatRumbleDuration, kMaxRumbleSpeed,
                                  kMaxRumbleSpeed);
+            if (effectManager) {
+              effectManager->EmitItemGet(boss->GetTransform().translate, 0);
+              effectManager->EmitObstacleBreak(boss->GetTransform().translate);
+              effectManager->EmitBossImpact(boss->GetTransform().translate);
+            }
             if (cameraController) {
               cameraController->ShakeBossDefeat();
             }

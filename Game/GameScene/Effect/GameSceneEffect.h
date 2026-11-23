@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "HexBarrier.h"
 #include <Emitter.h>
 #include <Engine.h>
@@ -41,7 +41,63 @@ public:
   /// <param name="playerPos">プレイヤー座標</param>
   void EmitDust(const Vector3 &playerPos);
 
+  /// <summary>
+  /// ジャンプ踏み込み時のリング雪煙パーティクル発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
+  void EmitJump(const Vector3 &playerPos);
+
+  /// <summary>
+  /// 着地時のスノーバーストパーティクル発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
+  void EmitLand(const Vector3 &playerPos);
+
+  /// <summary>
+  /// スライディング（お腹滑り）時の激しい雪しぶき発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
+  void EmitSlide(const Vector3 &playerPos);
+
+  /// <summary>
+  /// アイテム取得時のスパークル・キラキラバースト発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  /// <param name="itemType">0:魚/スコア(金), 1:バリア(水色), 2:ボム(赤橙), 3:ボス/その他(紫)</param>
+  void EmitItemGet(const Vector3 &pos, int itemType = 0);
+
+  /// <summary>
+  /// 障害物粉砕時の氷破片バースト発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitObstacleBreak(const Vector3 &pos);
+
+  /// <summary>
+  /// プレイヤー被弾時のクラッシュ・衝撃パーティクル発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitPlayerHit(const Vector3 &pos);
+
+  /// <summary>
+  /// バリア破壊時の氷結晶破散パーティクル発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitBarrierBreak(const Vector3 &pos);
+
+  /// <summary>
+  /// ボス攻撃着地やボス反射ヒット時の衝撃パーティクル発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitBossImpact(const Vector3 &pos);
+
+  /// <summary>
+  /// スピードライン（疾走風パーティクル）の有効・無効切り替え
+  /// </summary>
+  void SetSpeedTrailActive(bool active) { speedTrailActive_ = active; }
+  bool GetSpeedTrailActive() const { return speedTrailActive_; }
+
   Emitter* GetSnowEffect() const { return snowEffect_.get(); }
+  Emitter* GetDiamondDustEffect() const { return diamondDustEffect_.get(); }
 
   /// <summary>
   /// 氷バリアの展開演出を開始
@@ -117,6 +173,18 @@ private:
 
   std::unique_ptr<Emitter> dustEffect_;
   std::unique_ptr<Emitter> snowEffect_;
+  std::unique_ptr<Emitter> diamondDustEffect_;
+  std::unique_ptr<Emitter> jumpEffect_;
+  std::unique_ptr<Emitter> landEffect_;
+  std::unique_ptr<Emitter> slideEffect_;
+  std::unique_ptr<Emitter> speedTrailEffect_;
+  std::unique_ptr<Emitter> itemGetEffect_;
+  std::unique_ptr<Emitter> obstacleBreakEffect_;
+  std::unique_ptr<Emitter> playerHitEffect_;
+  std::unique_ptr<Emitter> barrierBreakEffect_;
+  std::unique_ptr<Emitter> bossImpactEffect_;
+
+  bool speedTrailActive_ = false;
 
   // バリア
   std::unique_ptr<HexBarrier> barrier_;

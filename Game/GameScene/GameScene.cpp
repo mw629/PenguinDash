@@ -104,6 +104,11 @@ void GameScene::Initialize() {
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
     GamePadInput::Rumble(0.4f, kHitRumbleMotorSpeed, kHitRumbleMotorSpeed);
   });
+  player_->SetOnLandCallback([this]() {
+    if (effectManager_) {
+      effectManager_->EmitLand(player_->GetTransform().translate);
+    }
+  });
 
   ModelData bossModelData = AssetManager::LoadModel(
       "Resources/Model/StylizedIceKing", "StylizedIceKing.obj");
@@ -619,11 +624,17 @@ void GameScene::UpdateWorldEntities(float timeScale, float speedMultiplier) {
           : cameraController_->GetCamera()->GetTotalTime();
   stageSettings_->Update(view, timeScale, activeWaterTime);
 
-  // --- エフェクト・パーティクルの更新と接地土煙の発生判定 ---
+  // --- エフェクト・パーティクルの更新と接地土煙・雪しぶきの発生判定 ---
   effectManager_->PlayingUpdate(view, player_->GetTransform().translate);
 
-  if (!player_->GetIsRolling() &&
-      player_->GetTransform().translate.y <= kDustGroundThresholdY) {
+  // スピードライン（高速スクロール時にスピード感ある風の粒子を発生）
+  effectManager_->SetSpeedTrailActive(stageSettings_->GetScrollSpeed() >= 0.28f);
+
+  if (player_->GetIsRolling()) {
+    // お腹滑り（ロール）中は激しい雪しぶきを連続発生
+    effectManager_->EmitSlide(player_->GetTransform().translate);
+  } else if (player_->GetTransform().translate.y <= kDustGroundThresholdY) {
+    // 通常走行中の接地雪煙
     effectManager_->EmitDust(player_->GetTransform().translate);
   }
 }
@@ -731,6 +742,9 @@ void GameScene::PlayingUpdate() {
       bool isJumping = player_->GetIsJumping();
       if (isJumping && !wasJumping_) {
         jumpCount_++;
+        if (effectManager_) {
+          effectManager_->EmitJump(player_->GetTransform().translate);
+        }
       }
       wasJumping_ = isJumping;
 
@@ -1238,7 +1252,7 @@ void GameScene::CheckCollisions() {
 
 void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
   // ---
-  // 被弾時の演出・フィードバック発生（クラッシュ、画面揺れ、SE、コントローラー振動）
+  // 被弾時の演出・フィードバック発生（クラッシュ、画面揺れ、SE、コントローラー振動、氷片パーティクル）
   // ---
   gameState_ = GameState::PlayerHit;
   crashEffect_->Reset();
@@ -1246,6 +1260,9 @@ void GameScene::TriggerPlayerHit(bool isTrip, bool isLargeObstacle) {
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Crash);
   GamePadInput::Rumble(kHitRumbleDuration, kHitRumbleMotorSpeed,
                        kHitRumbleMotorSpeed);
+  if (effectManager_) {
+    effectManager_->EmitPlayerHit(player_->GetTransform().translate);
+  }
 
   // --- ボス戦中のボス状態遷移 ---
   if (playingState_ == PlayingState::Boss && boss_->GetIsActive()) {
