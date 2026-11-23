@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <random>
 #include <functional>
 #include "EffectDefinition.h"
@@ -557,6 +557,7 @@ public:
 	/// パーティクル形状データを取得します。
 	/// </summary>
 	EffectShapeData GetShapeData() const { return shapeData_; }
+	EffectShapeData& GetShapeDataRef() { return shapeData_; }
 
 	/// <summary>
 	/// ブレンドモード（加算、半透明等）を設定します。
@@ -606,6 +607,22 @@ public:
 	/// 基準パーティクル設定データを取得します。
 	/// </summary>
 	const EffectDefinitionData& GetBaseParticleData() const { return SetEffectDefinitionData_; }
+	EffectDefinitionData& GetBaseParticleDataRef() { return SetEffectDefinitionData_; }
+	ParticleMovementData& GetMovementDataRef() { return movementData_; }
+	FieldData& GetFieldDataRef() { return fieldData_; }
+	EmitterData& GetEmitterDataRef() { return emitter_; }
+	EmitterSphere& GetEmitterSphereRef() { return emitterSphere_; }
+	EmitterCircle& GetEmitterCircleRef() { return emitterCircle_; }
+	EmitterCone& GetEmitterConeRef() { return emitterCone_; }
+	bool& GetEnableScaleOverLifetimeRef() { return enableScaleOverLifetime_; }
+	bool& GetEnableColorOverLifetimeRef() { return enableColorOverLifetime_; }
+	Vector3& GetStartScaleRef() { return startScale_; }
+	Vector3& GetEndScaleRef() { return endScale_; }
+	Vector4& GetStartColorRef() { return startColor_; }
+	Vector4& GetEndColorRef() { return endColor_; }
+	int& GetScaleCurveTypeRef() { return scaleCurveType_; }
+	bool& GetAlignToVelocityRef() { return alignToVelocity_; }
+	bool& GetIsHitRef() { return isHit_; }
 
 	/// <summary>
 	/// 生存中の全パーティクルデータリストを取得します。

@@ -78,23 +78,39 @@ void EffectDefinition::CreateVertexData() {
 
   if (shape_ == EffectShape::Plane) {
     vertexSize_ = 6;
-    vertices.push_back({.position = {-1.0f, 1.0f, 0.0f, 1.0f},
+    float hw = shapeData_.planeSize.x;
+    float hh = shapeData_.planeSize.y;
+    float yMin = -hh;
+    float yMax = hh;
+    if (shapeData_.planePivot == 1) { // Bottom (底面)
+      yMin = 0.0f;
+      yMax = hh * 2.0f;
+    } else if (shapeData_.planePivot == 2) { // Top (上面)
+      yMin = -hh * 2.0f;
+      yMax = 0.0f;
+    }
+    float xMin = -hw + shapeData_.planeOffset.x;
+    float xMax = hw + shapeData_.planeOffset.x;
+    yMin += shapeData_.planeOffset.y;
+    yMax += shapeData_.planeOffset.y;
+
+    vertices.push_back({.position = {xMin, yMax, 0.0f, 1.0f},
                         .texcoord = {0.0f, 0.0f},
                         .normal = {0.0f, 0.0f, 1.0f}}); // 左上
-    vertices.push_back({.position = {1.0f, 1.0f, 0.0f, 1.0f},
+    vertices.push_back({.position = {xMax, yMax, 0.0f, 1.0f},
                         .texcoord = {1.0f, 0.0f},
                         .normal = {0.0f, 0.0f, 1.0f}}); // 右上
-    vertices.push_back({.position = {-1.0f, -1.0f, 0.0f, 1.0f},
+    vertices.push_back({.position = {xMin, yMin, 0.0f, 1.0f},
                         .texcoord = {0.0f, 1.0f},
                         .normal = {0.0f, 0.0f, 1.0f}}); // 左下
 
-    vertices.push_back({.position = {-1.0f, -1.0f, 0.0f, 1.0f},
+    vertices.push_back({.position = {xMin, yMin, 0.0f, 1.0f},
                         .texcoord = {0.0f, 1.0f},
                         .normal = {0.0f, 0.0f, 1.0f}}); // 左下
-    vertices.push_back({.position = {1.0f, 1.0f, 0.0f, 1.0f},
+    vertices.push_back({.position = {xMax, yMax, 0.0f, 1.0f},
                         .texcoord = {1.0f, 0.0f},
                         .normal = {0.0f, 0.0f, 1.0f}}); // 右上
-    vertices.push_back({.position = {1.0f, -1.0f, 0.0f, 1.0f},
+    vertices.push_back({.position = {xMax, yMin, 0.0f, 1.0f},
                         .texcoord = {1.0f, 1.0f},
                         .normal = {0.0f, 0.0f, 1.0f}}); // 右下
   } else if (shape_ == EffectShape::Cylinder) {

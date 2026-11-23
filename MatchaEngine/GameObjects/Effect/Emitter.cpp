@@ -282,7 +282,18 @@ void Emitter::ImGui() {
       }
 
       bool shapeChanged = false;
-      if (shape_ == EffectShape::Cylinder) {
+      if (shape_ == EffectShape::Plane) {
+        shapeChanged |= ImGui::DragFloat2(
+            LanguageManager::Tr("Plane Size"),
+            &shapeData_.planeSize.x, 0.05f, 0.01f, 100.0f, "%.2f");
+        const char *pivotItems[] = {"Center", "Bottom", "Top"};
+        shapeChanged |= ImGui::Combo(
+            LanguageManager::Tr("Plane Pivot"),
+            &shapeData_.planePivot, pivotItems, IM_ARRAYSIZE(pivotItems));
+        shapeChanged |= ImGui::DragFloat2(
+            LanguageManager::Tr("Plane Offset"),
+            &shapeData_.planeOffset.x, 0.05f, -50.0f, 50.0f, "%.2f");
+      } else if (shape_ == EffectShape::Cylinder) {
         shapeChanged |=
             ImGui::DragInt(LanguageManager::Tr("Cylinder Divide"),
                            &shapeData_.cylinderDivide, 1.0f, 3, 128);
@@ -511,6 +522,10 @@ void Emitter::SaveToJson(const std::string &name) {
   root["visual"]["isBillboard"] = GetBillboard();
   root["visual"]["shader"] = shaderName_;
   root["visual"]["useGpuParticle"] = GetUseGpuParticle();
+
+  root["visual"]["planeSize"] = {shapeData_.planeSize.x, shapeData_.planeSize.y};
+  root["visual"]["planePivot"] = shapeData_.planePivot;
+  root["visual"]["planeOffset"] = {shapeData_.planeOffset.x, shapeData_.planeOffset.y};
 
   root["visual"]["cylinderDivide"] = shapeData_.cylinderDivide;
   root["visual"]["cylinderTopRadius"] = shapeData_.cylinderTopRadius;
@@ -853,6 +868,18 @@ void Emitter::LoadFromJson(const std::string &name) {
   if (root.contains("visual")) {
     if (root["visual"].contains("texturePath")) {
       SetTexturePath(root["visual"]["texturePath"].get<std::string>());
+    }
+
+    if (root["visual"].contains("planeSize")) {
+      shapeData_.planeSize.x = root["visual"]["planeSize"][0];
+      shapeData_.planeSize.y = root["visual"]["planeSize"][1];
+    }
+    if (root["visual"].contains("planePivot")) {
+      shapeData_.planePivot = root["visual"]["planePivot"];
+    }
+    if (root["visual"].contains("planeOffset")) {
+      shapeData_.planeOffset.x = root["visual"]["planeOffset"][0];
+      shapeData_.planeOffset.y = root["visual"]["planeOffset"][1];
     }
 
     if (root["visual"].contains("cylinderDivide")) {

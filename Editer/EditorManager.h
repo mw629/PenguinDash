@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <functional>
 #include <memory>
 #include <string>
@@ -16,6 +16,7 @@ class Grid;
 class Model;
 
 class Draw;
+class EffectDefinition;
 
 class EditorManager {
 public:
@@ -56,6 +57,13 @@ private:
 	bool isParticleViewerInitialized_ = false;
 	bool showGridInViewer_ = true;
 	bool showEmitterCube_ = true;
+
+	std::unique_ptr<RenderTexture> singleParticleRenderTexture_;
+	std::unique_ptr<DepthStencil> singleParticleDepthStencil_;
+	std::unique_ptr<Camera> singleParticleCamera_;
+	std::unique_ptr<EffectDefinition> singleParticleEffectDef_;
+	bool isSingleParticleViewerInitialized_ = false;
+	float singleParticleTurntableAngle_ = 0.0f;
 
 	std::unique_ptr<RenderTexture> gameViewRenderTextures_[2];
 	std::unique_ptr<DepthStencil> gameViewDepthStencil_;
