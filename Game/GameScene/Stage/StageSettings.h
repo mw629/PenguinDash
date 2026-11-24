@@ -232,6 +232,8 @@ private:
   bool driftIceLighting_ = true;
   bool roadLighting_ = true;
   bool obstacleLighting_ = true;
+  bool obstacleEnvironmentReflection_ = true; // 障害物の鏡面反射（環境反射）フラグ
+  float obstacleEnvironmentCoefficient_ = 1.0f;
   bool waterLighting_ = true;
   float waterTime_ = 0.0f;
   ModelData driftIceModelData_;
@@ -564,6 +566,10 @@ public:
   void SetRoadLighting(bool enabled);
   bool GetObstacleLighting() const { return obstacleLighting_; }
   void SetObstacleLighting(bool enabled);
+  bool GetObstacleEnvironmentReflection() const { return obstacleEnvironmentReflection_; }
+  void SetObstacleEnvironmentReflection(bool enabled);
+  float GetObstacleEnvironmentCoefficient() const { return obstacleEnvironmentCoefficient_; }
+  void SetObstacleEnvironmentCoefficient(float coeff);
   bool GetWaterLighting() const { return waterLighting_; }
   void SetWaterLighting(bool enabled);
   float GetBabySealSpinSpeed() const { return babySealSpinSpeed_; }

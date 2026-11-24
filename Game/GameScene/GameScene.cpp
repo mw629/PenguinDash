@@ -1704,6 +1704,11 @@ void GameScene::ImGui() {
         stageSettings_->SetObstacleLighting(obsLightQuick);
       }
       ImGui::SameLine();
+      bool obsReflectQuick = stageSettings_->GetObstacleEnvironmentReflection();
+      if (ImGui::Checkbox("障害物鏡面反射##QuickReflect", &obsReflectQuick)) {
+        stageSettings_->SetObstacleEnvironmentReflection(obsReflectQuick);
+      }
+      ImGui::SameLine();
       bool driftLightQuick = stageSettings_->GetDriftIceLighting();
       if (ImGui::Checkbox("流氷・アザラシ##QuickLight", &driftLightQuick)) {
         stageSettings_->SetDriftIceLighting(driftLightQuick);
@@ -2168,6 +2173,17 @@ void GameScene::ImGui() {
         stageSettings_->SetObstacleLighting(obsLight);
       }
       ImGui::SameLine();
+      bool obsReflect = stageSettings_->GetObstacleEnvironmentReflection();
+      if (ImGui::Checkbox("障害物鏡面反射 (Obstacle Reflection)", &obsReflect)) {
+        stageSettings_->SetObstacleEnvironmentReflection(obsReflect);
+      }
+      if (obsReflect) {
+        float coeff = stageSettings_->GetObstacleEnvironmentCoefficient();
+        if (ImGui::SliderFloat("障害物鏡面反射率##ObsReflectCoeff", &coeff, 0.0f, 1.0f, "%.2f")) {
+          stageSettings_->SetObstacleEnvironmentCoefficient(coeff);
+        }
+      }
+      ImGui::SameLine();
       bool driftLight = stageSettings_->GetDriftIceLighting();
       if (ImGui::Checkbox("流氷・アザラシ (Drift Ice)", &driftLight)) {
         stageSettings_->SetDriftIceLighting(driftLight);
@@ -2541,6 +2557,10 @@ bool GameScene::SaveSettingsToJson(const std::string &fileName) {
     root["stage"]["roadColor"] = {roadCol.x, roadCol.y, roadCol.z, roadCol.w};
     root["stage"]["roadLighting"] = stageSettings_->GetRoadLighting();
     root["stage"]["obstacleLighting"] = stageSettings_->GetObstacleLighting();
+    root["stage"]["obstacleEnvironmentReflection"] =
+        stageSettings_->GetObstacleEnvironmentReflection();
+    root["stage"]["obstacleEnvironmentCoefficient"] =
+        stageSettings_->GetObstacleEnvironmentCoefficient();
     root["stage"]["showActionGuideLines"] = showActionGuideLines_;
 
     root["stage"]["driftIce"]["enabled"] = stageSettings_->GetDriftIceEnabled();
@@ -2870,6 +2890,12 @@ bool GameScene::LoadSettingsFromJson(const std::string &fileName) {
         stageSettings_->SetRoadLighting(st["roadLighting"].get<bool>());
       if (st.contains("obstacleLighting"))
         stageSettings_->SetObstacleLighting(st["obstacleLighting"].get<bool>());
+      if (st.contains("obstacleEnvironmentReflection"))
+        stageSettings_->SetObstacleEnvironmentReflection(
+            st["obstacleEnvironmentReflection"].get<bool>());
+      if (st.contains("obstacleEnvironmentCoefficient"))
+        stageSettings_->SetObstacleEnvironmentCoefficient(
+            st["obstacleEnvironmentCoefficient"].get<float>());
       if (st.contains("showActionGuideLines"))
         showActionGuideLines_ = st["showActionGuideLines"].get<bool>();
 
@@ -3187,6 +3213,8 @@ void GameScene::ResetSettingsToDefault() {
   stageSettings_->SetRoadColor({1.0f, 1.0f, 1.0f, 1.0f});
   stageSettings_->SetRoadLighting(true);
   stageSettings_->SetObstacleLighting(true);
+  stageSettings_->SetObstacleEnvironmentReflection(true);
+  stageSettings_->SetObstacleEnvironmentCoefficient(1.0f);
 
   stageSettings_->SetDriftIceEnabled(true);
   stageSettings_->SetDriftIceColor({1.0f, 1.0f, 1.0f, 1.0f});

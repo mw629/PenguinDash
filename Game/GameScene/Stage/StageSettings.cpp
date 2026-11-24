@@ -53,6 +53,8 @@ void StageSettings::Initialize(
                               iceWallModelData, bonusModelData, iceBomModelData,
                               reflectingAttackModelData, type);
     obstacles_[i]->SetLighting(obstacleLighting_);
+    obstacles_[i]->SetEnvironmentReflection(obstacleEnvironmentReflection_);
+    obstacles_[i]->SetEnvironmentCoefficient(obstacleEnvironmentCoefficient_);
 
     if (manager)
       manager->AddObject(obstacles_[i]);
@@ -398,6 +400,24 @@ void StageSettings::SetObstacleLighting(bool enabled) {
   for (int i = 0; i < kMaxObstacles_; i++) {
     if (obstacles_[i]) {
       obstacles_[i]->SetLighting(obstacleLighting_);
+    }
+  }
+}
+
+void StageSettings::SetObstacleEnvironmentReflection(bool enabled) {
+  obstacleEnvironmentReflection_ = enabled;
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->SetEnvironmentReflection(obstacleEnvironmentReflection_);
+    }
+  }
+}
+
+void StageSettings::SetObstacleEnvironmentCoefficient(float coeff) {
+  obstacleEnvironmentCoefficient_ = coeff;
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->SetEnvironmentCoefficient(obstacleEnvironmentCoefficient_);
     }
   }
 }
@@ -1686,6 +1706,17 @@ void StageSettings::ImGui() {
     bool obsLighting = GetObstacleLighting();
     if (ImGui::Checkbox("障害物ライティングを有効化", &obsLighting)) {
       SetObstacleLighting(obsLighting);
+    }
+    ImGui::SameLine();
+    bool obsReflect = GetObstacleEnvironmentReflection();
+    if (ImGui::Checkbox("障害物鏡面反射を有効化", &obsReflect)) {
+      SetObstacleEnvironmentReflection(obsReflect);
+    }
+    if (obsReflect) {
+      float coeff = GetObstacleEnvironmentCoefficient();
+      if (ImGui::SliderFloat("障害物鏡面反射強度", &coeff, 0.0f, 1.0f, "%.2f")) {
+        SetObstacleEnvironmentCoefficient(coeff);
+      }
     }
 
     bool driftIceEnabled = GetDriftIceEnabled();

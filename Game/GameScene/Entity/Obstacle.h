@@ -42,6 +42,8 @@ private:
   std::unique_ptr<Model> oneLaneItemModel_ = std::make_unique<Model>();      // Onelane (Billboard)
   Model *currentModel_ = nullptr;
   bool lightingEnabled_ = true;
+  bool environmentReflectionEnabled_ = true; // 鏡面反射（環境マップ反射）フラグ
+  float environmentCoefficient_ = 1.0f;       // 鏡面反射率
 
   float itemFloatTimer_ = 0.0f; // アイテムの浮遊ボビング演出用タイマー
 
@@ -254,9 +256,13 @@ public:
     reflectTimer_ = 0.0f;
   }
 
-  // ゲッター・ライティング設定
+  // ゲッター・ライティング・鏡面反射設定
   void SetLighting(bool enabled);
   bool GetLighting() const { return lightingEnabled_; }
+  void SetEnvironmentReflection(bool enabled);
+  bool GetEnvironmentReflection() const { return environmentReflectionEnabled_; }
+  void SetEnvironmentCoefficient(float coeff);
+  float GetEnvironmentCoefficient() const { return environmentCoefficient_; }
   Type GetType() const { return type_; }
   bool GetIsHit() const { return isHit_; }
   float GetCollisionWidth() const { return collisionWidth_; }

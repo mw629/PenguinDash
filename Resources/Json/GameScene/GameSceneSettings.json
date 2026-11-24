@@ -218,6 +218,8 @@
         "minGraceFrames": 5.0,
         "minObstacleDistance": 6.0,
         "noSpawnChance": 0.05000000074505806,
+        "obstacleEnvironmentCoefficient": 1.0,
+        "obstacleEnvironmentReflection": true,
         "obstacleLighting": true,
         "oneLaneWidthMultiplier": 1.0,
         "roadColor": [

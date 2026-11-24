@@ -75,6 +75,19 @@ public:
 		}
 		return false;
 	}
+	virtual void SetEnvironmentCoefficient(float coefficient) {
+		auto matComp = GetComponent<MaterialComponent>();
+		if (matComp && matComp->GetMaterialFactory()) {
+			matComp->GetMaterialFactory()->SetEnvironmentCoefficient(coefficient);
+		}
+	}
+	float GetEnvironmentCoefficient() const {
+		auto matComp = GetComponent<MaterialComponent>();
+		if (matComp && matComp->GetMaterialFactory()) {
+			return matComp->GetMaterialFactory()->GetEnvironmentCoefficient();
+		}
+		return 0.0f;
+	}
 	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) { textureSrvHandleGPU_ = textureSrvHandleGPU; }
 
 	void SetInstancing(bool isInstancing) { isInstancing_ = isInstancing; }

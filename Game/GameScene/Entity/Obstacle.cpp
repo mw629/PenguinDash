@@ -109,6 +109,7 @@ void Obstacle::Initialize(ModelData lowData, ModelData highData,
   oneLaneItemModel_->GetMaterial()->SetColor(kNormalColor);
 
   SetType(type);
+  SetEnvironmentReflection(environmentReflectionEnabled_);
 }
 
 void Obstacle::Initialize(ModelData lowData, ModelData highData,
@@ -131,6 +132,29 @@ void Obstacle::SetLighting(bool enabled) {
   if (itemModel_) itemModel_->SetLighting(enabled);
   if (iceBomModel_) iceBomModel_->SetLighting(enabled);
   if (reflectingAttackModel_) reflectingAttackModel_->SetLighting(enabled);
+}
+
+void Obstacle::SetEnvironmentReflection(bool enabled) {
+  environmentReflectionEnabled_ = enabled;
+  float coeff = enabled ? environmentCoefficient_ : 0.0f;
+  if (lowModel_) lowModel_->SetEnvironmentCoefficient(coeff);
+  if (highModel_) highModel_->SetEnvironmentCoefficient(coeff);
+  if (wallModel_) wallModel_->SetEnvironmentCoefficient(coeff);
+  if (bonusModel_) bonusModel_->SetEnvironmentCoefficient(coeff);
+  if (iceBomModel_) iceBomModel_->SetEnvironmentCoefficient(coeff);
+  if (reflectingAttackModel_) reflectingAttackModel_->SetEnvironmentCoefficient(coeff);
+}
+
+void Obstacle::SetEnvironmentCoefficient(float coeff) {
+  environmentCoefficient_ = coeff;
+  if (environmentReflectionEnabled_) {
+    if (lowModel_) lowModel_->SetEnvironmentCoefficient(coeff);
+    if (highModel_) highModel_->SetEnvironmentCoefficient(coeff);
+    if (wallModel_) wallModel_->SetEnvironmentCoefficient(coeff);
+    if (bonusModel_) bonusModel_->SetEnvironmentCoefficient(coeff);
+    if (iceBomModel_) iceBomModel_->SetEnvironmentCoefficient(coeff);
+    if (reflectingAttackModel_) reflectingAttackModel_->SetEnvironmentCoefficient(coeff);
+  }
 }
 
 void Obstacle::SetType(Type type) {

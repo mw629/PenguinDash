@@ -69,6 +69,15 @@ public:
 		}
 	}
 
+	void SetEnvironmentCoefficient(float coefficient) {
+		ObjectBase::SetEnvironmentCoefficient(coefficient);
+		for (auto& mat : subMeshMaterials_) {
+			if (mat.materialFactory) {
+				mat.materialFactory->SetEnvironmentCoefficient(coefficient);
+			}
+		}
+	}
+
 	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
 		ObjectBase::SetTexture(textureSrvHandleGPU);
 		for (auto& mat : subMeshMaterials_) {
