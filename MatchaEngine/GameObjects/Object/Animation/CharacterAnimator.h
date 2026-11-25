@@ -101,7 +101,7 @@ public:
     }
   }
 
-  void SetColor(Vector4 color) {
+  void SetColor(const Vector4 &color) override {
     if (auto matComp = GetComponent<MaterialComponent>()) {
       if (matComp->GetMaterialFactory()) {
         matComp->GetMaterialFactory()->SetColor(color);
@@ -114,7 +114,7 @@ public:
     }
   }
 
-  void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
+  void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) override {
     ObjectBase::SetTexture(textureSrvHandleGPU);
     for (auto &mat : subMeshMaterials_) {
       mat.textureSrvHandleGPU = textureSrvHandleGPU;
@@ -132,6 +132,10 @@ public:
   void SkinClusterUpdate(int instanceIndex);
 
   void noUpdate(Matrix4x4 viewMatrix);
+  void Update(Matrix4x4 viewMatrix, float speedMultiplier) override {
+    (void)speedMultiplier;
+    Update(viewMatrix);
+  }
   void Update(Matrix4x4 viewMatrix);
   void UpdateWithDelta(Matrix4x4 viewMatrix, float deltaAnimationTime);
 

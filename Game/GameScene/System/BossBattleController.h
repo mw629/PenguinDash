@@ -8,6 +8,7 @@ class Boss;
 class StageSettings;
 class GameSceneEffect;
 class GameCameraController;
+class IBossAttackPattern;
 
 class BossBattleController {
 public:
@@ -20,12 +21,13 @@ public:
     Count
   };
 
-private:
   struct QueuedAttack {
     float delayFrames = 0.0f;
     int lane = 0; // 0:左, 1:中央, 2:右
     Obstacle::Type type = Obstacle::Type::BossAttack;
   };
+
+private:
 
   static constexpr float kDefaultAttackSpawnZ = -35.0f;
   static constexpr float kDefaultAttackDropHeight = 18.0f;
@@ -67,7 +69,9 @@ private:
   PatternType currentPattern_ = PatternType::Standard;
 
 private:
+  static const IBossAttackPattern *ResolvePattern(PatternType pattern);
   void EnqueuePattern(PatternType pattern);
+  void EnqueuePattern(const IBossAttackPattern &pattern);
   void SpawnAttack(StageSettings *stageSettings, int lane, Obstacle::Type type);
   PatternType SelectNextPattern(int bossHP);
 

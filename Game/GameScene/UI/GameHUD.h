@@ -66,7 +66,22 @@ struct GameHUDContext {
   bool showActionGuideLines = true; // ジャンプ・しゃがみガイド線の表示ON/OFF
 };
 
+class IHUDStateRenderer;
+class ITitleSubViewRenderer;
+
 class GameHUD {
+  friend class TitleHUDRenderer;
+  friend class PlayingHUDRenderer;
+  friend class PausedHUDRenderer;
+  friend class PlayerHitHUDRenderer;
+  friend class FirstPlaceCutInHUDRenderer;
+  friend class GameOverHUDRenderer;
+  friend class EditorHUDRenderer;
+  friend class RankingTitleSubViewRenderer;
+  friend class HowToPlayTitleSubViewRenderer;
+  friend class AchievementsTitleSubViewRenderer;
+  friend class SettingsTitleSubViewRenderer;
+
 public:
   static constexpr int kResultAchMaxVisibleItems = 16;
 
@@ -338,6 +353,10 @@ private:
   float bossDamageFlashTimer_ = 0.0f;
   float bossDamageShakeTimer_ = 0.0f;
   float lastUiTimer_ = 0.0f;
+
+  static const IHUDStateRenderer *ResolveStateRenderer(int gameState);
+  static const ITitleSubViewRenderer *ResolveTitleSubViewRenderer(
+      int titleSubView, bool isSettingsOpen);
 
   // リザルト着地音再生フラグ
   bool resultSePlayed_ = false;

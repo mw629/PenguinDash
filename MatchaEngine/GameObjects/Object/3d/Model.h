@@ -69,7 +69,7 @@ public:
 		}
 	}
 
-	void SetEnvironmentCoefficient(float coefficient) {
+	void SetEnvironmentCoefficient(float coefficient) override {
 		ObjectBase::SetEnvironmentCoefficient(coefficient);
 		for (auto& mat : subMeshMaterials_) {
 			if (mat.materialFactory) {
@@ -78,14 +78,14 @@ public:
 		}
 	}
 
-	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
+	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) override {
 		ObjectBase::SetTexture(textureSrvHandleGPU);
 		for (auto& mat : subMeshMaterials_) {
 			mat.textureSrvHandleGPU = textureSrvHandleGPU;
 		}
 	}
 
-	void SetColor(Vector4 color) {
+	void SetColor(const Vector4& color) override {
 		if (auto matComp = GetComponent<MaterialComponent>()) {
 			if (matComp->GetMaterialFactory()) {
 				matComp->GetMaterialFactory()->SetColor(color);
@@ -104,7 +104,7 @@ public:
 
 	const std::vector<ModelSubMeshMaterial>& GetSubMeshMaterials() const { return subMeshMaterials_; }
 
-	AABB GetWorldAABB() const;
-	BoundingSphere GetWorldBoundingSphere() const;
+	AABB GetWorldAABB() const override;
+	BoundingSphere GetWorldBoundingSphere() const override;
 };
 

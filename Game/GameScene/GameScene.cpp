@@ -16,6 +16,274 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 
+// =========================================================================
+// IGameSceneState（シーン全体の State パターン）
+// =========================================================================
+
+class IGameSceneState {
+public:
+  virtual ~IGameSceneState() = default;
+  virtual GameScene::GameState GetType() const = 0;
+  virtual void Update(GameScene &scene) const = 0;
+};
+
+class TitleSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::Title;
+  }
+  void Update(GameScene &scene) const override { scene.TitleUpdate(); }
+};
+
+class PlayingSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::Playing;
+  }
+  void Update(GameScene &scene) const override {
+    scene.PlayingUpdate();
+    if (Input::PushKey(DIK_ESCAPE) ||
+        GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
+      scene.SetGameState(GameScene::GameState::Paused);
+      scene.isPauseSettingsOpen_ = false;
+      SoundManager::GetInstance()->PauseBGM();
+    }
+  }
+};
+
+class PausedSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::Paused;
+  }
+  void Update(GameScene &scene) const override {
+    if (scene.isPauseSettingsOpen_) {
+      scene.UpdateSettingsInput();
+    } else {
+      scene.PausedUpdate();
+      scene.effectManager_->EditorUpdate(
+          scene.cameraController_->GetViewMatrix());
+      if (Input::PushKey(DIK_ESCAPE) ||
+          GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
+        scene.SetGameState(GameScene::GameState::Playing);
+        SoundManager::GetInstance()->ResumeBGM();
+      }
+    }
+  }
+};
+
+class PlayerHitSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::PlayerHit;
+  }
+  void Update(GameScene &scene) const override { scene.PlayerHitUpdate(); }
+};
+
+class FirstPlaceCutInSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::FirstPlaceCutIn;
+  }
+  void Update(GameScene &scene) const override {
+    scene.FirstPlaceCutInUpdate();
+  }
+};
+
+class GameOverSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::GameOver;
+  }
+  void Update(GameScene &scene) const override { scene.GameOverUpdate(); }
+};
+
+class EditorSceneState final : public IGameSceneState {
+public:
+  GameScene::GameState GetType() const override {
+    return GameScene::GameState::Editor;
+  }
+  void Update(GameScene &scene) const override { scene.EditorUpdate(); }
+};
+
+const IGameSceneState *GameScene::ResolveGameSceneState(GameState state) {
+  static const TitleSceneState kTitle;
+  static const PlayingSceneState kPlaying;
+  static const PausedSceneState kPaused;
+  static const PlayerHitSceneState kPlayerHit;
+  static const FirstPlaceCutInSceneState kFirstPlaceCutIn;
+  static const GameOverSceneState kGameOver;
+  static const EditorSceneState kEditor;
+
+  switch (state) {
+  case GameState::Title:
+    return &kTitle;
+  case GameState::Playing:
+    return &kPlaying;
+  case GameState::Paused:
+    return &kPaused;
+  case GameState::PlayerHit:
+    return &kPlayerHit;
+  case GameState::FirstPlaceCutIn:
+    return &kFirstPlaceCutIn;
+  case GameState::GameOver:
+    return &kGameOver;
+  case GameState::Editor:
+    return &kEditor;
+  default:
+    return &kTitle;
+  }
+}
+
+void GameScene::SetGameState(GameState newState) {
+  gameState_ = newState;
+  currentGameState_ = ResolveGameSceneState(newState);
+}
+
+// =========================================================================
+// IPlayingState（プレイモード: 3レーン / 1レーン / ボス戦 の State パターン）
+// =========================================================================
+
+class IPlayingState {
+public:
+  virtual ~IPlayingState() = default;
+  virtual GameScene::PlayingState GetType() const = 0;
+  virtual void Enter(GameScene &scene, GameScene::PlayingState prevState,
+                     Transform &outTarget, int &outLaneCount) const = 0;
+  virtual void Exit(GameScene & /*scene*/,
+                    GameScene::PlayingState /*nextState*/) const {}
+  virtual void Update(GameScene & /*scene*/, float /*timeScale*/,
+                      float /*scoreScrollSpeed*/) const {}
+  virtual bool ShouldInvertControls(const GameScene & /*scene*/) const {
+    return false;
+  }
+};
+
+class ThreeLanePlayingState final : public IPlayingState {
+public:
+  GameScene::PlayingState GetType() const override {
+    return GameScene::PlayingState::ThreeLane;
+  }
+  void Enter(GameScene &scene, GameScene::PlayingState prevState,
+             Transform &outTarget, int &outLaneCount) const override {
+    outTarget = GameCameraController::kDefaultCameraTransform;
+    outLaneCount = GameScene::kThreeLaneCount;
+    scene.isRightSideMode_ = false;
+    scene.rightSideDistance_ = 0.0f;
+    scene.boss_->Reset();
+    scene.bossBattleController_->Reset();
+    if (prevState == GameScene::PlayingState::OneLane && scene.stageSettings_) {
+      for (int j = 0; j < scene.stageSettings_->GetMaxObstacles(); j++) {
+        Obstacle *obs = scene.stageSettings_->GetObstacle(j);
+        if (obs && obs->GetIsActive() && !obs->GetIsHit() &&
+            obs->GetTransform().translate.z > 15.0f) {
+          obs->Deactivate();
+        }
+      }
+    }
+  }
+};
+
+class OneLanePlayingState final : public IPlayingState {
+public:
+  GameScene::PlayingState GetType() const override {
+    return GameScene::PlayingState::OneLane;
+  }
+  void Enter(GameScene &scene, GameScene::PlayingState /*prevState*/,
+             Transform &outTarget, int &outLaneCount) const override {
+    outTarget = GameCameraController::kDefaultRightSideViewTransform;
+    outLaneCount = GameScene::kOneLaneCount;
+    scene.isRightSideMode_ = true;
+    scene.rightSideDistance_ = 0.0f;
+    scene.boss_->Reset();
+    scene.bossBattleController_->Reset();
+    scene.stageSettings_->SetLaneCount(GameScene::kOneLaneCount);
+    scene.stageSettings_->SetupOneLaneInitialObstacles();
+    if (scene.cameraController_) {
+      scene.cameraController_->ShakeImpact();
+    }
+  }
+  void Update(GameScene &scene, float timeScale,
+              float scoreScrollSpeed) const override {
+    // カメラトランジション中および待機中は距離を加算しない
+    if (!scene.cameraController_->IsTransitioning() &&
+        !scene.cameraController_->IsTransitionPending()) {
+      scene.rightSideDistance_ += scoreScrollSpeed * timeScale;
+      if (scene.rightSideDistance_ >= GameScene::kOneLaneTotalDistance) {
+        scene.oneLaneClearCount_++;
+        scene.ChangePlayingState(GameScene::PlayingState::ThreeLane);
+      }
+    }
+  }
+};
+
+class BossPlayingState final : public IPlayingState {
+public:
+  GameScene::PlayingState GetType() const override {
+    return GameScene::PlayingState::Boss;
+  }
+  void Enter(GameScene &scene, GameScene::PlayingState /*prevState*/,
+             Transform &outTarget, int &outLaneCount) const override {
+    outTarget.scale = {1.0f, 1.0f, 1.0f};
+    outTarget.rotate = scene.bossBattleController_->GetBossCameraRotate();
+    outTarget.translate = scene.bossBattleController_->GetBossCameraTranslate();
+    outLaneCount = GameScene::kThreeLaneCount;
+    scene.isRightSideMode_ = false;
+    scene.rightSideDistance_ = 0.0f;
+    scene.stageSettings_->SetSpawningPaused(true);
+    scene.bossBattleController_->Reset();
+    scene.boss_->Reset();
+    if (scene.cameraController_) {
+      scene.cameraController_->ShakeImpact();
+    }
+    SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Boss);
+  }
+  void Exit(GameScene &scene,
+            GameScene::PlayingState nextState) const override {
+    if (nextState != GameScene::PlayingState::Boss) {
+      scene.wasBossBattle_ = true;
+      SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
+      float bossItemDuration =
+          scene.stageSettings_->GetItemCoolDownDuration(Obstacle::Type::BossItem);
+      scene.stageSettings_->SetItemCoolDownTimer(Obstacle::Type::BossItem,
+                                                 bossItemDuration);
+    }
+  }
+  void Update(GameScene &scene, float timeScale,
+              float /*scoreScrollSpeed*/) const override {
+    if (!scene.boss_->GetIsActive() &&
+        !scene.cameraController_->IsTransitioning() &&
+        !scene.cameraController_->IsTransitionPending()) {
+      scene.ChangePlayingState(GameScene::PlayingState::ThreeLane);
+    } else {
+      scene.bossBattleController_->Update(
+          timeScale, scene.boss_.get(), scene.stageSettings_.get(),
+          scene.effectManager_.get(), scene.cameraController_.get());
+    }
+  }
+  bool ShouldInvertControls(const GameScene &scene) const override {
+    return scene.cameraController_->GetTransform().rotate.y >
+           GameScene::kInvertedCameraThresholdRotateY;
+  }
+};
+
+const IPlayingState *GameScene::ResolvePlayingState(PlayingState state) {
+  static const ThreeLanePlayingState kThreeLane;
+  static const OneLanePlayingState kOneLane;
+  static const BossPlayingState kBoss;
+
+  switch (state) {
+  case PlayingState::ThreeLane:
+    return &kThreeLane;
+  case PlayingState::OneLane:
+    return &kOneLane;
+  case PlayingState::Boss:
+    return &kBoss;
+  default:
+    return &kThreeLane;
+  }
+}
+
 GameScene::~GameScene() {
   // --- エディターコールバック・オーバーレイの登録解除 ---
   EditorManager::SetGameViewDrawCallback(nullptr, nullptr);
@@ -38,11 +306,12 @@ void GameScene::Initialize() {
   scoreManager_->Initialize();
 
   // --- 動作状態判定（エディター / 通常プレイ） ---
+  currentPlayingState_ = ResolvePlayingState(playingState_);
   if (!EditorManager::IsPlaying()) {
-    gameState_ = GameState::Editor;
+    SetGameState(GameState::Editor);
     SoundManager::GetInstance()->StopBGM();
   } else {
-    gameState_ = GameState::Title;
+    SetGameState(GameState::Title);
   }
   sceneChangeRequest_ = false;
 
@@ -492,113 +761,12 @@ void GameScene::Update() {
     skyBox_->SetTransform(skyboxTransform);
   }
 
-  // --- ゲームステート別の更新処理分岐 ---
-  if (gameState_ == GameState::Title) {
-    TitleUpdate();
-  } else if (gameState_ == GameState::Playing) {
-    PlayingUpdate();
-    if (Input::PushKey(DIK_ESCAPE) ||
-        GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
-      gameState_ = GameState::Paused;
-      isPauseSettingsOpen_ = false;
-      SoundManager::GetInstance()->PauseBGM();
-    }
-  } else if (gameState_ == GameState::Paused) {
-    if (isPauseSettingsOpen_) {
-      UpdateSettingsInput();
-    } else {
-      PausedUpdate();
-      effectManager_->EditorUpdate(cameraController_->GetViewMatrix());
-      if (Input::PushKey(DIK_ESCAPE) ||
-          GamePadInput::PushButton(XINPUT_GAMEPAD_START)) {
-        gameState_ = GameState::Playing;
-        SoundManager::GetInstance()->ResumeBGM();
-      }
-    }
-  } else if (gameState_ == GameState::PlayerHit) {
-    PlayerHitUpdate();
-  } else if (gameState_ == GameState::FirstPlaceCutIn) {
-    FirstPlaceCutInUpdate();
-  } else if (gameState_ == GameState::GameOver) {
-    resultTimer_ += Engine::kDefaultDeltaTime;
-    effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
-    if (resultTransition_ == ResultTransition::None &&
-        !FreezeTransition::GetInstance()->IsActive()) {
-      // リザルトパネル落下中の誤入力を防止するため、一定時間経過後に入力を受付
-      if (resultTimer_ >= 0.45f) {
-        if (Input::PushKey(DIK_1) ||
-            GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
-          StartResultTransition(ResultTransition::Restart);
-        }
-        if (Input::PushKey(DIK_2) ||
-            GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
-          StartResultTransition(ResultTransition::Title);
-        }
-
-        // リザルト獲得実績リストのスクロール入力処理
-        int unlockedCount =
-            achievementManager_ ? achievementManager_->GetUnlockedCount() : 0;
-        int maxScroll =
-            (std::max)(0, unlockedCount - GameHUD::kResultAchMaxVisibleItems);
-        resultAchievementScrollOffset_ =
-            std::clamp(resultAchievementScrollOffset_, 0, maxScroll);
-
-        if (maxScroll > 0) {
-          bool pushUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
-                        GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
-                        GamePadInput::PushLeftStickUp() ||
-                        GamePadInput::PushRightStickUp();
-          bool pushDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
-                          GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
-                          GamePadInput::PushLeftStickDown() ||
-                          GamePadInput::PushRightStickDown();
-
-          bool holdUp = Input::PressKey(DIK_UP) || Input::PressKey(DIK_W) ||
-                        GamePadInput::PressButton(XINPUT_GAMEPAD_DPAD_UP) ||
-                        (GamePadInput::GetLeftStickY() > 0.5f) ||
-                        (GamePadInput::GetRightStickY() > 0.5f);
-          bool holdDown = Input::PressKey(DIK_DOWN) || Input::PressKey(DIK_S) ||
-                          GamePadInput::PressButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
-                          (GamePadInput::GetLeftStickY() < -0.5f) ||
-                          (GamePadInput::GetRightStickY() < -0.5f);
-
-          int scrollDelta = 0;
-          int wheel = Input::GetMouseWheel();
-          if (wheel > 0) {
-            scrollDelta -= 1;
-          } else if (wheel < 0) {
-            scrollDelta += 1;
-          }
-
-          if (pushUp) {
-            scrollDelta -= 1;
-            resultScrollRepeatTimer_ = 0.28f;
-          } else if (pushDown) {
-            scrollDelta += 1;
-            resultScrollRepeatTimer_ = 0.28f;
-          } else if (holdUp || holdDown) {
-            resultScrollRepeatTimer_ -= Engine::kDefaultDeltaTime;
-            if (resultScrollRepeatTimer_ <= 0.0f) {
-              scrollDelta += holdUp ? -1 : 1;
-              resultScrollRepeatTimer_ = 0.07f;
-            }
-          } else {
-            resultScrollRepeatTimer_ = 0.0f;
-          }
-
-          if (scrollDelta != 0) {
-            int nextOffset = std::clamp(
-                resultAchievementScrollOffset_ + scrollDelta, 0, maxScroll);
-            if (nextOffset != resultAchievementScrollOffset_) {
-              resultAchievementScrollOffset_ = nextOffset;
-              SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
-            }
-          }
-        }
-      }
-    }
-  } else if (gameState_ == GameState::Editor) {
-    EditorUpdate();
+  // --- ゲームステート別の更新処理（Stateパターンへ委譲） ---
+  if (!currentGameState_ || currentGameState_->GetType() != gameState_) {
+    currentGameState_ = ResolveGameSceneState(gameState_);
+  }
+  if (currentGameState_) {
+    currentGameState_->Update(*this);
   }
 
   // --- 一人称視点（FPV）時のカメラ最終同期 ---
@@ -609,6 +777,86 @@ void GameScene::Update() {
     skyboxTransform.translate =
         cameraController_->GetCamera()->GetTransform().translate;
     skyBox_->SetTransform(skyboxTransform);
+  }
+}
+
+void GameScene::GameOverUpdate() {
+  resultTimer_ += Engine::kDefaultDeltaTime;
+  effectManager_->PlayerHitUpdate(cameraController_->GetViewMatrix());
+  if (resultTransition_ == ResultTransition::None &&
+      !FreezeTransition::GetInstance()->IsActive()) {
+    // リザルトパネル落下中の誤入力を防止するため、一定時間経過後に入力を受付
+    if (resultTimer_ >= 0.45f) {
+      if (Input::PushKey(DIK_1) ||
+          GamePadInput::PushButton(XINPUT_GAMEPAD_A)) {
+        StartResultTransition(ResultTransition::Restart);
+      }
+      if (Input::PushKey(DIK_2) ||
+          GamePadInput::PushButton(XINPUT_GAMEPAD_B)) {
+        StartResultTransition(ResultTransition::Title);
+      }
+
+      // リザルト獲得実績リストのスクロール入力処理
+      int unlockedCount =
+          achievementManager_ ? achievementManager_->GetUnlockedCount() : 0;
+      int maxScroll =
+          (std::max)(0, unlockedCount - GameHUD::kResultAchMaxVisibleItems);
+      resultAchievementScrollOffset_ =
+          std::clamp(resultAchievementScrollOffset_, 0, maxScroll);
+
+      if (maxScroll > 0) {
+        bool pushUp = Input::PushKey(DIK_UP) || Input::PushKey(DIK_W) ||
+                      GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                      GamePadInput::PushLeftStickUp() ||
+                      GamePadInput::PushRightStickUp();
+        bool pushDown = Input::PushKey(DIK_DOWN) || Input::PushKey(DIK_S) ||
+                        GamePadInput::PushButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                        GamePadInput::PushLeftStickDown() ||
+                        GamePadInput::PushRightStickDown();
+
+        bool holdUp = Input::PressKey(DIK_UP) || Input::PressKey(DIK_W) ||
+                      GamePadInput::PressButton(XINPUT_GAMEPAD_DPAD_UP) ||
+                      (GamePadInput::GetLeftStickY() > 0.5f) ||
+                      (GamePadInput::GetRightStickY() > 0.5f);
+        bool holdDown = Input::PressKey(DIK_DOWN) || Input::PressKey(DIK_S) ||
+                        GamePadInput::PressButton(XINPUT_GAMEPAD_DPAD_DOWN) ||
+                        (GamePadInput::GetLeftStickY() < -0.5f) ||
+                        (GamePadInput::GetRightStickY() < -0.5f);
+
+        int scrollDelta = 0;
+        int wheel = Input::GetMouseWheel();
+        if (wheel > 0) {
+          scrollDelta -= 1;
+        } else if (wheel < 0) {
+          scrollDelta += 1;
+        }
+
+        if (pushUp) {
+          scrollDelta -= 1;
+          resultScrollRepeatTimer_ = 0.28f;
+        } else if (pushDown) {
+          scrollDelta += 1;
+          resultScrollRepeatTimer_ = 0.28f;
+        } else if (holdUp || holdDown) {
+          resultScrollRepeatTimer_ -= Engine::kDefaultDeltaTime;
+          if (resultScrollRepeatTimer_ <= 0.0f) {
+            scrollDelta += holdUp ? -1 : 1;
+            resultScrollRepeatTimer_ = 0.07f;
+          }
+        } else {
+          resultScrollRepeatTimer_ = 0.0f;
+        }
+
+        if (scrollDelta != 0) {
+          int nextOffset = std::clamp(
+              resultAchievementScrollOffset_ + scrollDelta, 0, maxScroll);
+          if (nextOffset != resultAchievementScrollOffset_) {
+            resultAchievementScrollOffset_ = nextOffset;
+            SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
+          }
+        }
+      }
+    }
   }
 }
 
@@ -686,29 +934,13 @@ void GameScene::PlayingUpdate() {
   // --- スライディング継続判定 ---
   CheckKeepRolling();
 
-  // --- 1レーン（右サイドカメラ）モードの走行距離加算・終了判定 ---
-  if (isRightSideMode_) {
-    // カメラトランジション中および待機中は距離を加算しない（1レーン本編の走行距離のみカウント）
-    if (!cameraController_->IsTransitioning() &&
-        !cameraController_->IsTransitionPending()) {
-      rightSideDistance_ += scoreScrollSpeed * timeScale;
-      if (rightSideDistance_ >= kOneLaneTotalDistance) {
-        oneLaneClearCount_++;
-        ChangePlayingState(PlayingState::ThreeLane);
-      }
-    }
+  // --- プレイ状態（3レーン / 1レーン / ボス戦）固有の更新 ---
+  if (!currentPlayingState_ ||
+      currentPlayingState_->GetType() != playingState_) {
+    currentPlayingState_ = ResolvePlayingState(playingState_);
   }
-
-  // --- ボス戦の進行管理と終了判定 ---
-  if (playingState_ == PlayingState::Boss) {
-    if (!boss_->GetIsActive() && !cameraController_->IsTransitioning() &&
-        !cameraController_->IsTransitionPending()) {
-      ChangePlayingState(PlayingState::ThreeLane);
-    } else {
-      bossBattleController_->Update(timeScale, boss_.get(),
-                                    stageSettings_.get(), effectManager_.get(),
-                                    cameraController_.get());
-    }
+  if (currentPlayingState_) {
+    currentPlayingState_->Update(*this, timeScale, scoreScrollSpeed);
   }
 
   // --- プレイヤーのレーン移動制限と操作反転の設定 ---
@@ -722,9 +954,8 @@ void GameScene::PlayingUpdate() {
     player_->StartForceToCenter(12.0f);
   }
 
-  bool isCameraInverted = (playingState_ == PlayingState::Boss &&
-                           cameraController_->GetTransform().rotate.y >
-                               kInvertedCameraThresholdRotateY);
+  bool isCameraInverted =
+      currentPlayingState_ && currentPlayingState_->ShouldInvertControls(*this);
   player_->SetInvertedControls(isCameraInverted);
 
   // --- ワールド内エンティティの更新と障害物との衝突判定 ---
@@ -1324,74 +1555,24 @@ void GameScene::ChangePlayingState(PlayingState newState, bool force) {
   if (!force && playingState_ == newState)
     return;
 
-  // --- 前の状態からの離脱処理（ボス戦終了時のクールダウンタイマー設定など）
-  // ---
+  // --- 前の状態からの離脱処理（Stateパターンへ委譲） ---
   PlayingState prevState = playingState_;
-  playingState_ = newState;
-
-  if (prevState == PlayingState::Boss && newState != PlayingState::Boss) {
-    wasBossBattle_ = true;
-    SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Play);
-    float bossItemDuration =
-        stageSettings_->GetItemCoolDownDuration(Obstacle::Type::BossItem);
-    stageSettings_->SetItemCoolDownTimer(Obstacle::Type::BossItem,
-                                         bossItemDuration);
+  if (!currentPlayingState_ ||
+      currentPlayingState_->GetType() != prevState) {
+    currentPlayingState_ = ResolvePlayingState(prevState);
+  }
+  if (currentPlayingState_) {
+    currentPlayingState_->Exit(*this, newState);
   }
 
-  // --- 遷移先状態（3レーン / 1レーン /
-  // ボス戦）に応じたカメラ目標値・レーン数設定 ---
-  Transform target;
+  playingState_ = newState;
+  currentPlayingState_ = ResolvePlayingState(newState);
+
+  // --- 遷移先状態に応じたカメラ目標値・レーン数・初期化設定 ---
+  Transform target = GameCameraController::kDefaultCameraTransform;
   int laneCount = kThreeLaneCount;
-
-  switch (playingState_) {
-  case PlayingState::ThreeLane:
-    target = GameCameraController::kDefaultCameraTransform;
-    laneCount = kThreeLaneCount;
-    isRightSideMode_ = false;
-    rightSideDistance_ = 0.0f;
-    boss_->Reset();
-    bossBattleController_->Reset();
-    if (prevState == PlayingState::OneLane && stageSettings_) {
-      for (int j = 0; j < stageSettings_->GetMaxObstacles(); j++) {
-        Obstacle *obs = stageSettings_->GetObstacle(j);
-        if (obs && obs->GetIsActive() && !obs->GetIsHit() &&
-            obs->GetTransform().translate.z > 15.0f) {
-          obs->Deactivate();
-        }
-      }
-    }
-    break;
-
-  case PlayingState::OneLane:
-    target = GameCameraController::kDefaultRightSideViewTransform;
-    laneCount = kOneLaneCount;
-    isRightSideMode_ = true;
-    rightSideDistance_ = 0.0f;
-    boss_->Reset();
-    bossBattleController_->Reset();
-    // 先にレーン数を1レーンへ切り替えて奥の床チャンクを更新した上で、安全区間を空けて初期障害物を配置する
-    stageSettings_->SetLaneCount(kOneLaneCount);
-    stageSettings_->SetupOneLaneInitialObstacles();
-    if (cameraController_) {
-      cameraController_->ShakeImpact();
-    }
-    break;
-
-  case PlayingState::Boss:
-    target.scale = {1.0f, 1.0f, 1.0f};
-    target.rotate = bossBattleController_->GetBossCameraRotate();
-    target.translate = bossBattleController_->GetBossCameraTranslate();
-    laneCount = kThreeLaneCount;
-    isRightSideMode_ = false;
-    rightSideDistance_ = 0.0f;
-    stageSettings_->SetSpawningPaused(true);
-    bossBattleController_->Reset();
-    boss_->Reset();
-    if (cameraController_) {
-      cameraController_->ShakeImpact();
-    }
-    SoundManager::GetInstance()->PlayBGM(SoundManager::BGM::Boss);
-    break;
+  if (currentPlayingState_) {
+    currentPlayingState_->Enter(*this, prevState, target, laneCount);
   }
 
   // --- カメラトランジション（視点・レーン切り替えアニメーション）の開始 ---

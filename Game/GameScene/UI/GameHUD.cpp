@@ -74,46 +74,195 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
   }
 }
 
-void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
-  PreloadFontStrings(draw);
+// =========================================================================
+// IHUDStateRenderer / ITitleSubViewRenderer（ポリモーフィズムによる描画分離）
+// =========================================================================
 
-  if (ctx.gameState != State_GameOver) {
-    resultSePlayed_ = false;
+class IHUDStateRenderer {
+public:
+  virtual ~IHUDStateRenderer() = default;
+  virtual void Render(GameHUD &hud, Draw &draw,
+                      const GameHUDContext &ctx) const = 0;
+  virtual bool ShouldResetResultSe() const { return true; }
+  virtual bool CanShowFPVBadge() const { return true; }
+};
+
+class TitleHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleHUD(draw, ctx);
   }
+};
 
-  if (ctx.gameState == State_Title) {
-    DrawTitleHUD(draw, ctx);
-  } else if (ctx.gameState == State_GameOver) {
-    DrawResultHUD(draw, ctx);
-  } else if (ctx.gameState == State_Paused) {
-    DrawPlayingHUD(draw, ctx);
-    DrawPauseHUD(draw, ctx);
-    if (ctx.isSettingsOpen) {
-      DrawSettingsModal(draw, ctx);
+class PlayingHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawPlayingHUD(draw, ctx);
+    if (ctx.playingState == PlayState_Boss && ctx.boss &&
+        ctx.boss->GetIsActive()) {
+      hud.DrawBossHUD(draw, ctx);
     }
-  } else if (ctx.gameState == State_PlayerHit) {
-    DrawPlayingHUD(draw, ctx);
+    hud.DrawControlsGuide(draw, ctx);
+    if (ctx.isTitleExiting) {
+      hud.DrawTitleHUD(draw, ctx);
+    }
+  }
+};
+
+class PausedHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawPlayingHUD(draw, ctx);
+    hud.DrawPauseHUD(draw, ctx);
+    if (ctx.isSettingsOpen) {
+      hud.DrawSettingsModal(draw, ctx);
+    }
+  }
+};
+
+class PlayerHitHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawPlayingHUD(draw, ctx);
     if (ctx.crashSprite) {
       draw.DrawSprite(ctx.crashSprite);
     }
-  } else if (ctx.gameState == State_Playing) {
-    DrawPlayingHUD(draw, ctx);
-    if (ctx.playingState == PlayState_Boss && ctx.boss && ctx.boss->GetIsActive()) {
-      DrawBossHUD(draw, ctx);
-    }
-    DrawControlsGuide(draw, ctx);
-    if (ctx.isTitleExiting) {
-      DrawTitleHUD(draw, ctx);
-    }
-  } else if (ctx.gameState == State_Editor) {
-    DrawEditorHUD(draw, ctx);
+  }
+};
+
+class FirstPlaceCutInHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD & /*hud*/, Draw & /*draw*/,
+              const GameHUDContext & /*ctx*/) const override {}
+  bool CanShowFPVBadge() const override { return false; }
+};
+
+class GameOverHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawResultHUD(draw, ctx);
+  }
+  bool ShouldResetResultSe() const override { return false; }
+};
+
+class EditorHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawEditorHUD(draw, ctx);
+  }
+  bool CanShowFPVBadge() const override { return false; }
+};
+
+class ITitleSubViewRenderer {
+public:
+  virtual ~ITitleSubViewRenderer() = default;
+  virtual void Render(GameHUD &hud, Draw &draw,
+                      const GameHUDContext &ctx) const = 0;
+};
+
+class RankingTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleRankingModal(draw, ctx);
+  }
+};
+
+class HowToPlayTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleHowToPlayModal(draw, ctx);
+  }
+};
+
+class AchievementsTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleAchievementsModal(draw, ctx);
+  }
+};
+
+class SettingsTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawSettingsModal(draw, ctx);
+  }
+};
+
+const IHUDStateRenderer *GameHUD::ResolveStateRenderer(int gameState) {
+  static const TitleHUDRenderer kTitle;
+  static const PlayingHUDRenderer kPlaying;
+  static const PausedHUDRenderer kPaused;
+  static const PlayerHitHUDRenderer kPlayerHit;
+  static const FirstPlaceCutInHUDRenderer kFirstPlaceCutIn;
+  static const GameOverHUDRenderer kGameOver;
+  static const EditorHUDRenderer kEditor;
+
+  switch (gameState) {
+  case State_Title:
+    return &kTitle;
+  case State_Playing:
+    return &kPlaying;
+  case State_Paused:
+    return &kPaused;
+  case State_PlayerHit:
+    return &kPlayerHit;
+  case State_FirstPlaceCutIn:
+    return &kFirstPlaceCutIn;
+  case State_GameOver:
+    return &kGameOver;
+  case State_Editor:
+    return &kEditor;
+  default:
+    return nullptr;
+  }
+}
+
+const ITitleSubViewRenderer *
+GameHUD::ResolveTitleSubViewRenderer(int titleSubView, bool isSettingsOpen) {
+  static const RankingTitleSubViewRenderer kRanking;
+  static const HowToPlayTitleSubViewRenderer kHowToPlay;
+  static const AchievementsTitleSubViewRenderer kAchievements;
+  static const SettingsTitleSubViewRenderer kSettings;
+
+  switch (titleSubView) {
+  case 1:
+    return &kRanking;
+  case 2:
+    return &kHowToPlay;
+  case 3:
+    return &kAchievements;
+  case 4:
+    return &kSettings;
+  default:
+    return isSettingsOpen ? &kSettings : nullptr;
+  }
+}
+
+void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
+  PreloadFontStrings(draw);
+
+  const IHUDStateRenderer *renderer = ResolveStateRenderer(ctx.gameState);
+  if (!renderer || renderer->ShouldResetResultSe()) {
+    resultSePlayed_ = false;
+  }
+  if (renderer) {
+    renderer->Render(*this, draw, ctx);
   }
 
   // 一人称視点バッジ
-  if (ctx.isFirstPersonView && ctx.gameState != State_Editor && ctx.gameState != State_FirstPlaceCutIn) {
+  if (ctx.isFirstPersonView && (!renderer || renderer->CanShowFPVBadge())) {
     DrawBadgeFPV(draw);
   }
-
 }
 
 void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
@@ -1518,14 +1667,9 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   // ==========================================================
   // 2. サブモーダル表示（ランキング / 操作説明 / 実績一覧 / 設定）
   // ==========================================================
-  if (ctx.titleSubView == 1) {
-    DrawTitleRankingModal(draw, ctx);
-  } else if (ctx.titleSubView == 2) {
-    DrawTitleHowToPlayModal(draw, ctx);
-  } else if (ctx.titleSubView == 3) {
-    DrawTitleAchievementsModal(draw, ctx);
-  } else if (ctx.titleSubView == 4 || ctx.isSettingsOpen) {
-    DrawSettingsModal(draw, ctx);
+  if (const ITitleSubViewRenderer *subView =
+          ResolveTitleSubViewRenderer(ctx.titleSubView, ctx.isSettingsOpen)) {
+    subView->Render(*this, draw, ctx);
   }
 }
 

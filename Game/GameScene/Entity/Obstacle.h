@@ -5,6 +5,62 @@
 #include "GameObject.h"
 #include "Collision.h"
 
+class Obstacle;
+class GameScene;
+class Player;
+
+/// <summary>
+/// 障害物・アイテム・ボス攻撃の種別ごとの振る舞いを定義するインターフェース
+/// Strategyパターンにより、種別ごとの外観・スポーン・移動・衝突処理をポリモーフィックに分離します。
+/// </summary>
+class IObstacleBehavior {
+public:
+  virtual ~IObstacleBehavior() = default;
+
+  virtual const char *GetDebugTypeName() const = 0;
+  virtual Vector4 GetDebugTypeColor() const = 0;
+
+  virtual bool IsRegularObstacle() const { return false; }
+  virtual bool IsItem() const { return false; }
+  virtual bool IsBossAttackType() const { return false; }
+  virtual bool CanRollUnder() const { return false; }
+  virtual bool RequiresLaneChangeToAvoid() const { return false; }
+  virtual bool IsLargeObstacle() const { return false; }
+  virtual bool IsTripOnHit() const { return false; }
+  virtual bool UsesBottomOriginOffset() const { return false; }
+
+  /// <summary>
+  /// 種別に応じたモデル・プロファイル・マテリアル設定を適用
+  /// </summary>
+  virtual void ApplyAppearance(Obstacle &obs) const = 0;
+
+  /// <summary>
+  /// スポーン時の座標・落下状態初期化
+  /// </summary>
+  virtual void OnSpawn(Obstacle &obs, float x, float y, float z) const;
+
+  /// <summary>
+  /// 通常スクロール・落下移動の更新
+  /// </summary>
+  virtual void UpdateScroll(Obstacle &obs, float scrollSpeed) const;
+
+  /// <summary>
+  /// 描画用Transform補正（底面原点オフセットやアイテム浮遊ボビング演出）
+  /// </summary>
+  virtual void ApplyDrawTransform(Obstacle &obs, Transform &drawTransform) const;
+
+  /// <summary>
+  /// ヒット時の追加処理（アイテム即時消去など）
+  /// </summary>
+  virtual void OnHit(Obstacle &obs) const;
+
+  /// <summary>
+  /// プレイヤーとの衝突処理
+  /// </summary>
+  virtual bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                                 Player *player) const;
+};
+
 /// <summary>
 /// 障害物を表すクラス
 /// ステージ上に配置され、手前に向かってスクロールする
@@ -54,6 +110,25 @@ private:
   ModelData iceBomModelData_;
   ModelData reflectingAttackModelData_;
   Type type_ = Type::Wall;
+  const IObstacleBehavior *behavior_ = nullptr;
+
+  friend class IObstacleBehavior;
+  friend class RegularObstacleBehavior;
+  friend class LowObstacleBehavior;
+  friend class HighObstacleBehavior;
+  friend class WallObstacleBehavior;
+  friend class BonusObstacleBehavior;
+  friend class GuideFloorBehavior;
+  friend class ItemObstacleBehavior;
+  friend class CameraItemBehavior;
+  friend class BarrierItemBehavior;
+  friend class ClearItemBehavior;
+  friend class BossItemBehavior;
+  friend class BossAttackBehavior;
+  friend class BossAttackNormalBehavior;
+  friend class BossAttackReflectableBehavior;
+  friend class BossAttackLowBehavior;
+  friend class BossAttackHighBehavior;
 
 private:
   static constexpr float kDefaultReflectDuration = 36.0f;
@@ -270,27 +345,31 @@ public:
   float GetCollisionDepth() const { return collisionDepth_; }
   AABB GetColliderAABB() const;
 
-  // ポリモーフィズム用メソッド
+  // ポリモーフィズム用メソッド（現在の IObstacleBehavior へ委譲）
   virtual bool IsRegularObstacle() const {
-    return type_ == Type::Low || type_ == Type::High || type_ == Type::Wall;
+    return behavior_ && behavior_->IsRegularObstacle();
   }
   virtual bool IsItem() const {
-    return type_ == Type::CameraItem || type_ == Type::BarrierItem ||
-           type_ == Type::ClearItem || type_ == Type::BossItem;
+    return behavior_ && behavior_->IsItem();
   }
   virtual bool IsBossAttackType() const {
-    return type_ == Type::BossAttack || type_ == Type::BossAttackReflectable ||
-           type_ == Type::BossAttackLow || type_ == Type::BossAttackHigh;
+    return behavior_ && behavior_->IsBossAttackType();
   }
   virtual bool CanRollUnder() const {
-    return type_ == Type::High || type_ == Type::BossAttackHigh;
+    return behavior_ && behavior_->CanRollUnder();
   }
   virtual bool RequiresLaneChangeToAvoid() const {
-    return type_ == Type::Wall || type_ == Type::BossAttack || type_ == Type::BossAttackReflectable;
+    return behavior_ && behavior_->RequiresLaneChangeToAvoid();
   }
   virtual bool IsLargeObstacle() const {
-    return type_ == Type::Wall || type_ == Type::High ||
-           type_ == Type::BossAttack || type_ == Type::BossAttackHigh;
+    return behavior_ && behavior_->IsLargeObstacle();
+  }
+  const char *GetDebugTypeName() const {
+    return behavior_ ? behavior_->GetDebugTypeName() : "不明";
+  }
+  Vector4 GetDebugTypeColor() const {
+    return behavior_ ? behavior_->GetDebugTypeColor()
+                     : Vector4{1.0f, 1.0f, 1.0f, 1.0f};
   }
 
   /// <summary>
@@ -300,4 +379,17 @@ public:
   /// <param name="player">プレイヤーポインタ</param>
   /// <returns>衝突によりループ処理を中断する場合true</returns>
   virtual bool OnPlayerCollision(class GameScene* scene, class Player* player);
+
+private:
+  /// <summary>
+  /// 指定モデルとプロファイルを適用する内部ヘルパー
+  /// </summary>
+  void ApplyProfile(Model *model, const ObstacleProfile &profile,
+                    bool resetStandardMaterial = false,
+                    const Vector4 &color = kNormalColor);
+
+  /// <summary>
+  /// 種別に応じた IObstacleBehavior インスタンスを取得
+  /// </summary>
+  static const IObstacleBehavior *ResolveBehavior(Type type);
 };

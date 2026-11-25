@@ -1,12 +1,450 @@
 #include "Obstacle.h"
+#include "../Camera/GameCameraController.h"
+#include "../Effect/GameSceneEffect.h"
+#include "../GameScene.h"
+#include "../Stage/StageSettings.h"
+#include "../System/ScoreManager.h"
+#include "../System/SoundManager.h"
 #include "Graphics/Render/Draw.h"
-#include "Resource/AssetManager.h"
 #include "Math/Calculation.h"
+#include "Player.h"
+#include "Resource/AssetManager.h"
 #include <cmath>
+
+// =========================================================================
+// IObstacleBehavior 基底実装および具象ビヘイビアクラス群
+// =========================================================================
+
+void IObstacleBehavior::OnSpawn(Obstacle &obs, float x, float y,
+                                float z) const {
+  obs.targetY_ = y;
+  obs.isFalling_ = false;
+  obs.justLanded_ = false;
+  obs.transform_.translate = {x, y, z};
+}
+
+void IObstacleBehavior::UpdateScroll(Obstacle &obs, float scrollSpeed) const {
+  // 通常は手前にスクロール
+  obs.transform_.translate.z -= scrollSpeed;
+  if (obs.transform_.translate.z < Obstacle::kPlayerObstacleDespawnZ) {
+    obs.isActive_ = false;
+  }
+}
+
+void IObstacleBehavior::ApplyDrawTransform(Obstacle &obs,
+                                           Transform &drawTransform) const {
+  if (UsesBottomOriginOffset()) {
+    drawTransform.translate.y -=
+        obs.collisionHeight_ * Obstacle::kScaleOffsetFactor;
+  }
+}
+
+void IObstacleBehavior::OnHit(Obstacle & /*obs*/) const {}
+
+bool IObstacleBehavior::OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                                          Player *player) const {
+  if (player->GetHasBarrier()) {
+    player->SetHasBarrier(false);
+    scene->AddBarrierBlockCount();
+    obs.OnBlowAway();
+    if (scene->GetCameraController()) {
+      scene->GetCameraController()->ShakeDefeat();
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitObstacleBreak(obs.transform_.translate);
+      scene->GetEffectManager()->EmitBarrierBreak(
+          player->GetTransform().translate);
+      scene->GetEffectManager()->BreakBarrier(player->GetTransform().translate);
+    }
+    return false;
+  }
+
+  // 通常被弾
+  scene->TriggerPlayerHit(IsTripOnHit(), IsLargeObstacle());
+  return true;
+}
+
+/// <summary>
+/// 通常障害物（Low / High / Wall）の共通基底ビヘイビア
+/// </summary>
+class RegularObstacleBehavior : public IObstacleBehavior {
+public:
+  bool IsRegularObstacle() const override { return true; }
+  bool UsesBottomOriginOffset() const override { return true; }
+};
+
+class LowObstacleBehavior final : public RegularObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Low (木/ジャンプ)"; }
+  Vector4 GetDebugTypeColor() const override { return {0.2f, 1.0f, 0.3f, 1.0f}; }
+  bool IsTripOnHit() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.lowModel_.get(), Obstacle::kProfileLow, true);
+  }
+};
+
+class HighObstacleBehavior final : public RegularObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "High (アーチ/潜り)"; }
+  Vector4 GetDebugTypeColor() const override { return {1.0f, 0.9f, 0.2f, 1.0f}; }
+  bool CanRollUnder() const override { return true; }
+  bool IsLargeObstacle() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.highModel_.get(), Obstacle::kProfileHigh, true);
+  }
+};
+
+class WallObstacleBehavior final : public RegularObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Wall (氷壁/レーン)"; }
+  Vector4 GetDebugTypeColor() const override { return {1.0f, 0.4f, 0.1f, 1.0f}; }
+  bool RequiresLaneChangeToAvoid() const override { return true; }
+  bool IsLargeObstacle() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.wallModel_.get(), Obstacle::kProfileWall, true,
+                     {1.0f, 1.0f, 1.0f, 0.6f});
+  }
+};
+
+class BonusObstacleBehavior final : public IObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Bonus (ボーナス)"; }
+  Vector4 GetDebugTypeColor() const override { return {0.9f, 0.4f, 1.0f, 1.0f}; }
+  bool UsesBottomOriginOffset() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.bonusModel_.get(), Obstacle::kProfileBonus, true);
+  }
+  bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                         Player * /*player*/) const override {
+    obs.OnBlowAway();
+    if (scene->GetScoreManager()) {
+      scene->GetScoreManager()->AddBonusEnemyHit();
+    }
+    if (scene->GetCameraController()) {
+      scene->GetCameraController()->ShakeDefeat();
+    }
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(obs.transform_.translate, 0);
+      scene->GetEffectManager()->EmitObstacleBreak(obs.transform_.translate);
+    }
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
+    return false;
+  }
+};
+
+class GuideFloorBehavior final : public IObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Guide (誘導床)"; }
+  Vector4 GetDebugTypeColor() const override { return {0.0f, 0.8f, 1.0f, 1.0f}; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.itemModel_.get(), Obstacle::kProfileGuideFloor, false);
+    if (obs.currentModel_) {
+      obs.currentModel_->GetMaterial()->SetColor(Obstacle::kGuideFloorColor);
+      obs.currentModel_->SetShader("ObjectShader");
+    }
+  }
+  bool OnPlayerCollision(Obstacle & /*obs*/, GameScene * /*scene*/,
+                         Player *player) const override {
+    player->StartForceToCenter(Obstacle::kBarrierForceToCenterFrames);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
+    return false;
+  }
+};
+
+/// <summary>
+/// ビルボードアイテム共通基底ビヘイビア
+/// </summary>
+class ItemObstacleBehavior : public IObstacleBehavior {
+public:
+  bool IsItem() const override { return true; }
+
+  void OnSpawn(Obstacle &obs, float x, float y, float z) const override {
+    IObstacleBehavior::OnSpawn(obs, x, y, z);
+    obs.transform_.translate.y += Obstacle::kItemSpawnHeightOffset;
+  }
+
+  void ApplyDrawTransform(Obstacle &obs,
+                          Transform &drawTransform) const override {
+    // ビルボードアイテムの浮遊ボビング演出（上下に優しく揺れる）
+    obs.itemFloatTimer_ += Obstacle::kItemBobbingSpeed;
+    drawTransform.translate.y +=
+        std::sin(obs.itemFloatTimer_ +
+                 obs.transform_.translate.x *
+                     Obstacle::kItemBobbingPhaseMultiplier) *
+        Obstacle::kItemBobbingAmplitude;
+  }
+
+  void OnHit(Obstacle &obs) const override {
+    // アイテム取得時は即座に非アクティブ（消去）にする
+    obs.isActive_ = false;
+  }
+};
+
+class CameraItemBehavior final : public ItemObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Item: 1Lane"; }
+  Vector4 GetDebugTypeColor() const override { return {0.3f, 1.0f, 0.6f, 1.0f}; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.oneLaneItemModel_.get(),
+                     Obstacle::kProfileItemBillboardSmall);
+  }
+  bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                         Player * /*player*/) const override {
+    obs.OnHit();
+    scene->AddItemGetCount();
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(obs.transform_.translate, 3);
+    }
+    // 遠方の障害物を吹き飛ばし、カメラ遷移までの待機時間を解消する
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *target = scene->GetStageSettings()->GetObstacle(j);
+        if (target && target->GetIsActive() && target->IsRegularObstacle()) {
+          if (target->GetTransform().translate.z > 15.0f) {
+            target->OnBlowAway();
+            if (scene->GetEffectManager()) {
+              scene->GetEffectManager()->EmitObstacleBreak(
+                  target->GetTransform().translate);
+            }
+          }
+        }
+      }
+    }
+    scene->ChangePlayingState(GameScene::PlayingState::OneLane);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
+    return false;
+  }
+};
+
+class BarrierItemBehavior final : public ItemObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Item: Barrier"; }
+  Vector4 GetDebugTypeColor() const override { return {0.2f, 0.8f, 1.0f, 1.0f}; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.barrierItemModel_.get(),
+                     Obstacle::kProfileItemBillboardSmall);
+  }
+  bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                         Player *player) const override {
+    obs.OnHit();
+    scene->AddItemGetCount();
+    player->SetHasBarrier(true);
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(obs.transform_.translate, 1);
+      scene->GetEffectManager()->EmitBarrier(player->GetTransform().translate);
+    }
+    return false;
+  }
+};
+
+class ClearItemBehavior final : public ItemObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Item: Bomb"; }
+  Vector4 GetDebugTypeColor() const override { return {1.0f, 0.2f, 0.2f, 1.0f}; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.clearItemModel_.get(),
+                     Obstacle::kProfileItemBillboardSmall);
+  }
+  bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                         Player * /*player*/) const override {
+    obs.OnHit();
+    scene->AddItemGetCount();
+    scene->AddClearBombCount();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
+    if (scene->GetCameraController()) {
+      scene->GetCameraController()->ShakeImpact();
+    }
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(obs.transform_.translate, 2);
+      scene->GetEffectManager()->EmitObstacleBreak(obs.transform_.translate);
+    }
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *target = scene->GetStageSettings()->GetObstacle(j);
+        if (target && target->GetIsActive() && target->IsRegularObstacle()) {
+          target->OnBlowAway();
+          if (scene->GetEffectManager()) {
+            scene->GetEffectManager()->EmitObstacleBreak(
+                target->GetTransform().translate);
+          }
+        }
+      }
+    }
+    return false;
+  }
+};
+
+class BossItemBehavior final : public ItemObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Item: Boss"; }
+  Vector4 GetDebugTypeColor() const override { return {1.0f, 0.8f, 0.0f, 1.0f}; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.bossItemModel_.get(), Obstacle::kProfileBossItem);
+  }
+  bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                         Player * /*player*/) const override {
+    obs.OnHit();
+    scene->AddItemGetCount();
+    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
+    if (scene->GetEffectManager()) {
+      scene->GetEffectManager()->EmitItemGet(obs.transform_.translate, 3);
+    }
+    if (scene->GetStageSettings()) {
+      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
+        Obstacle *target = scene->GetStageSettings()->GetObstacle(j);
+        if (target && target->GetIsActive() && target->IsRegularObstacle()) {
+          target->OnBlowAway();
+          if (scene->GetEffectManager()) {
+            scene->GetEffectManager()->EmitObstacleBreak(
+                target->GetTransform().translate);
+          }
+        }
+      }
+    }
+    scene->ChangePlayingState(GameScene::PlayingState::Boss);
+    return false;
+  }
+};
+
+/// <summary>
+/// ボス攻撃共通基底ビヘイビア（上空落下・+Z進行・反射/落下中判定スキップ）
+/// </summary>
+class BossAttackBehavior : public IObstacleBehavior {
+public:
+  const char *GetDebugTypeName() const override { return "Boss Attack"; }
+  Vector4 GetDebugTypeColor() const override { return {1.0f, 0.3f, 0.6f, 1.0f}; }
+  bool IsBossAttackType() const override { return true; }
+  bool UsesBottomOriginOffset() const override { return true; }
+
+  void OnSpawn(Obstacle &obs, float x, float y, float z) const override {
+    obs.targetY_ = y;
+    obs.isFalling_ = true;
+    obs.fallTimer_ = 0.0f;
+    obs.justLanded_ = false;
+    obs.transform_.translate = {x, obs.targetY_ + obs.dropHeight_, z};
+  }
+
+  void UpdateScroll(Obstacle &obs, float scrollSpeed) const override {
+    // 上空からの落下演出
+    if (obs.isFalling_) {
+      obs.fallTimer_ += 1.0f;
+      float t = obs.fallTimer_ / obs.fallDuration_;
+      if (t >= 1.0f) {
+        t = 1.0f;
+        obs.isFalling_ = false;
+        obs.justLanded_ = true;
+        obs.transform_.translate.y = obs.targetY_;
+      } else {
+        float easeT = t * t;
+        float startY = obs.targetY_ + obs.dropHeight_;
+        obs.transform_.translate.y = startY + (obs.targetY_ - startY) * easeT;
+      }
+    }
+
+    // ボスの攻撃は奥から手前(+Z方向)へ
+    obs.transform_.translate.z += scrollSpeed;
+    if (obs.transform_.translate.z > Obstacle::kBossAttackDespawnZ) {
+      obs.isActive_ = false;
+      obs.isFalling_ = false;
+    }
+  }
+
+  bool OnPlayerCollision(Obstacle &obs, GameScene *scene,
+                         Player *player) const override {
+    if (obs.isReflected_ || obs.isFalling_) {
+      return false;
+    }
+    return IObstacleBehavior::OnPlayerCollision(obs, scene, player);
+  }
+};
+
+class BossAttackNormalBehavior final : public BossAttackBehavior {
+public:
+  bool RequiresLaneChangeToAvoid() const override { return true; }
+  bool IsLargeObstacle() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.wallModel_.get(), Obstacle::kProfileWall, true);
+  }
+};
+
+class BossAttackReflectableBehavior final : public BossAttackBehavior {
+public:
+  bool RequiresLaneChangeToAvoid() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.reflectingAttackModel_.get(),
+                     Obstacle::kProfileBossAttackReflectable, true);
+  }
+};
+
+class BossAttackLowBehavior final : public BossAttackBehavior {
+public:
+  bool IsTripOnHit() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.lowModel_.get(), Obstacle::kProfileLow, true);
+  }
+};
+
+class BossAttackHighBehavior final : public BossAttackBehavior {
+public:
+  bool CanRollUnder() const override { return true; }
+  bool IsLargeObstacle() const override { return true; }
+  void ApplyAppearance(Obstacle &obs) const override {
+    obs.ApplyProfile(obs.highModel_.get(), Obstacle::kProfileHigh, true);
+  }
+};
+
+const IObstacleBehavior *Obstacle::ResolveBehavior(Type type) {
+  static const LowObstacleBehavior kLow;
+  static const HighObstacleBehavior kHigh;
+  static const WallObstacleBehavior kWall;
+  static const BonusObstacleBehavior kBonus;
+  static const GuideFloorBehavior kGuideFloor;
+  static const CameraItemBehavior kCameraItem;
+  static const BarrierItemBehavior kBarrierItem;
+  static const ClearItemBehavior kClearItem;
+  static const BossItemBehavior kBossItem;
+  static const BossAttackNormalBehavior kBossAttack;
+  static const BossAttackReflectableBehavior kBossAttackReflectable;
+  static const BossAttackLowBehavior kBossAttackLow;
+  static const BossAttackHighBehavior kBossAttackHigh;
+
+  switch (type) {
+  case Type::Low:
+    return &kLow;
+  case Type::High:
+    return &kHigh;
+  case Type::Wall:
+    return &kWall;
+  case Type::Bonus:
+    return &kBonus;
+  case Type::GuideFloor:
+    return &kGuideFloor;
+  case Type::CameraItem:
+    return &kCameraItem;
+  case Type::BarrierItem:
+    return &kBarrierItem;
+  case Type::ClearItem:
+    return &kClearItem;
+  case Type::BossItem:
+    return &kBossItem;
+  case Type::BossAttack:
+    return &kBossAttack;
+  case Type::BossAttackReflectable:
+    return &kBossAttackReflectable;
+  case Type::BossAttackLow:
+    return &kBossAttackLow;
+  case Type::BossAttackHigh:
+    return &kBossAttackHigh;
+  }
+  return &kWall;
+}
 
 Obstacle::Obstacle() {
   name_ = "Obstacle";
   isActive_ = false;
+  behavior_ = ResolveBehavior(type_);
 }
 
 Obstacle::~Obstacle() {}
@@ -157,140 +595,32 @@ void Obstacle::SetEnvironmentCoefficient(float coeff) {
   }
 }
 
+void Obstacle::ApplyProfile(Model *model, const ObstacleProfile &profile,
+                            bool resetStandardMaterial, const Vector4 &color) {
+  currentModel_ = model;
+  if (currentModel_ && resetStandardMaterial) {
+    currentModel_->GetMaterial()->SetColor(color);
+    currentModel_->SetShader("ObjectShader");
+    currentModel_->SetBlend(BlendMode::kBlendModeNormal);
+  }
+  collisionWidth_ = profile.collisionSize.x;
+  collisionHeight_ = profile.collisionSize.y;
+  collisionDepth_ = profile.collisionSize.z;
+  transform_.scale = profile.scale;
+  transform_.rotate = profile.rotate;
+}
+
 void Obstacle::SetType(Type type) {
   type_ = type;
+  behavior_ = ResolveBehavior(type_);
 
-  // タイプに応じてモデル、当たり判定サイズ、スケール、回転を設定
-  // 前のサイズ: Low(幅1.5, 高さ1.0, 奥行1.0), High/Wall(幅1.5, 高さ3.0, 奥行1.0) に厳密に一致させる
-  const ObstacleProfile *profile = nullptr;
-
-  switch (type_) {
-  case Type::Low:
-    currentModel_ = lowModel_.get();
-    profile = &kProfileLow;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::High:
-    currentModel_ = highModel_.get();
-    profile = &kProfileHigh;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::Wall:
-    currentModel_ = wallModel_.get();
-    profile = &kProfileWall;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor({1.0f, 1.0f, 1.0f, 0.6f});
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::Bonus:
-    currentModel_ = bonusModel_.get();
-    profile = &kProfileBonus;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::GuideFloor:
-    currentModel_ = itemModel_.get();
-    profile = &kProfileGuideFloor;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kGuideFloorColor);
-      currentModel_->SetShader("ObjectShader");
-    }
-    break;
-
-  case Type::CameraItem:
-    currentModel_ = oneLaneItemModel_.get();
-    profile = &kProfileItemBillboardSmall;
-    break;
-
-  case Type::BarrierItem:
-    currentModel_ = barrierItemModel_.get();
-    profile = &kProfileItemBillboardSmall;
-    break;
-
-  case Type::ClearItem:
-    currentModel_ = clearItemModel_.get();
-    profile = &kProfileItemBillboardSmall;
-    break;
-
-  case Type::BossItem:
-    currentModel_ = bossItemModel_.get();
-    profile = &kProfileBossItem;
-    break;
-
-  case Type::BossAttack:
-    currentModel_ = wallModel_.get();
-    profile = &kProfileWall;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::BossAttackReflectable:
-    currentModel_ = reflectingAttackModel_.get();
-    profile = &kProfileBossAttackReflectable;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::BossAttackLow:
-    currentModel_ = lowModel_.get();
-    profile = &kProfileLow;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-
-  case Type::BossAttackHigh:
-    currentModel_ = highModel_.get();
-    profile = &kProfileHigh;
-    if (currentModel_) {
-      currentModel_->GetMaterial()->SetColor(kNormalColor);
-      currentModel_->SetShader("ObjectShader");
-      currentModel_->SetBlend(BlendMode::kBlendModeNormal);
-    }
-    break;
-  }
-
-  if (profile) {
-    collisionWidth_ = profile->collisionSize.x;
-    collisionHeight_ = profile->collisionSize.y;
-    collisionDepth_ = profile->collisionSize.z;
-    transform_.scale = profile->scale;
-    transform_.rotate = profile->rotate;
+  if (behavior_) {
+    behavior_->ApplyAppearance(*this);
   }
 
   if (currentModel_) {
-    // 新モデルは底面原点(Y=0)のため、中心座標から高さの半分を引いて底面を合わせる
     Transform drawTransform = transform_;
-    if (currentModel_ == lowModel_.get() || currentModel_ == highModel_.get() ||
-        currentModel_ == wallModel_.get() ||
-        currentModel_ == iceBomModel_.get() ||
-        currentModel_ == reflectingAttackModel_.get() ||
-        currentModel_ == bonusModel_.get()) {
+    if (behavior_ && behavior_->UsesBottomOriginOffset()) {
       drawTransform.translate.y -= collisionHeight_ * kScaleOffsetFactor;
     }
     currentModel_->SetTransform(drawTransform);
@@ -298,20 +628,8 @@ void Obstacle::SetType(Type type) {
 }
 
 void Obstacle::Spawn(float x, float y, float z) {
-  targetY_ = y;
-  if (IsBossAttackType()) {
-    isFalling_ = true;
-    fallTimer_ = 0.0f;
-    justLanded_ = false;
-    transform_.translate = {x, targetY_ + dropHeight_, z};
-  } else {
-    isFalling_ = false;
-    justLanded_ = false;
-    transform_.translate = {x, y, z};
-  }
-  if (type_ == Type::BarrierItem || type_ == Type::BossItem ||
-      type_ == Type::ClearItem || type_ == Type::CameraItem) {
-    transform_.translate.y += kItemSpawnHeightOffset;
+  if (behavior_) {
+    behavior_->OnSpawn(*this, x, y, z);
   }
   isActive_ = true;
   isHit_ = false; // 初期化
@@ -319,11 +637,7 @@ void Obstacle::Spawn(float x, float y, float z) {
   reflectTimer_ = 0.0f;
   if (currentModel_) {
     Transform drawTransform = transform_;
-    if (currentModel_ == lowModel_.get() || currentModel_ == highModel_.get() ||
-        currentModel_ == wallModel_.get() ||
-        currentModel_ == iceBomModel_.get() ||
-        currentModel_ == reflectingAttackModel_.get() ||
-        currentModel_ == bonusModel_.get()) {
+    if (behavior_ && behavior_->UsesBottomOriginOffset()) {
       drawTransform.translate.y -= collisionHeight_ * kScaleOffsetFactor;
     }
     currentModel_->SetTransform(drawTransform);
@@ -390,55 +704,16 @@ void Obstacle::StageUpdate(Matrix4x4 view, float scrollSpeed) {
     transform_.rotate.y += kReflectAngularVelocity.y;
     transform_.rotate.z += kReflectAngularVelocity.z;
   } else {
-    // スクロール
-    if (IsBossAttackType()) {
-      // 上空からの落下演出
-      if (isFalling_) {
-        fallTimer_ += 1.0f;
-        float t = fallTimer_ / fallDuration_;
-        if (t >= 1.0f) {
-          t = 1.0f;
-          isFalling_ = false;
-          justLanded_ = true;
-          transform_.translate.y = targetY_;
-        } else {
-          // Ease-In (重力加速): t * t
-          float easeT = t * t;
-          float startY = targetY_ + dropHeight_;
-          transform_.translate.y = startY + (targetY_ - startY) * easeT;
-        }
-      }
-
-      // ボスの攻撃は奥から手前(+Z方向)へ
-      transform_.translate.z += scrollSpeed;
-      if (transform_.translate.z > kBossAttackDespawnZ) {
-        isActive_ = false;
-        isFalling_ = false;
-      }
-    } else {
-      // 手前にスクロール
-      transform_.translate.z -= scrollSpeed;
-
-      // カメラの後ろ（手前）を過ぎたら非アクティブにする
-      if (transform_.translate.z < kPlayerObstacleDespawnZ) {
-        isActive_ = false;
-      }
+    // 種別ごとのスクロール・落下処理へ委譲
+    if (behavior_) {
+      behavior_->UpdateScroll(*this, scrollSpeed);
     }
   }
 
   if (currentModel_) {
     Transform drawTransform = transform_;
-    if (currentModel_ == lowModel_.get() || currentModel_ == highModel_.get() ||
-        currentModel_ == wallModel_.get() ||
-        currentModel_ == iceBomModel_.get() ||
-        currentModel_ == reflectingAttackModel_.get() ||
-        currentModel_ == bonusModel_.get()) {
-      drawTransform.translate.y -= collisionHeight_ * kScaleOffsetFactor;
-    } else if (type_ == Type::BarrierItem || type_ == Type::BossItem ||
-               type_ == Type::ClearItem || type_ == Type::CameraItem) {
-      // ビルボードアイテムの浮遊ボビング演出（上下に優しく揺れる）
-      itemFloatTimer_ += kItemBobbingSpeed;
-      drawTransform.translate.y += std::sin(itemFloatTimer_ + transform_.translate.x * kItemBobbingPhaseMultiplier) * kItemBobbingAmplitude;
+    if (behavior_) {
+      behavior_->ApplyDrawTransform(*this, drawTransform);
     }
 
     currentModel_->SetTransform(drawTransform);
@@ -471,10 +746,8 @@ void Obstacle::OnHit() {
   isHit_ = true;
   isFalling_ = false;
 
-  // アイテム取得時は即座に非アクティブ（消去）にする
-  if (type_ == Type::BarrierItem || type_ == Type::BossItem ||
-      type_ == Type::ClearItem || type_ == Type::CameraItem) {
-    isActive_ = false;
+  if (behavior_) {
+    behavior_->OnHit(*this);
   }
 }
 
@@ -498,153 +771,10 @@ void Obstacle::ImGuiInnerComponents() {
 #endif
 }
 
-#include "../GameScene.h"
-#include "Player.h"
-#include "../Camera/GameCameraController.h"
-#include "../System/ScoreManager.h"
-#include "../Stage/StageSettings.h"
-#include "../Effect/GameSceneEffect.h"
-#include "../System/SoundManager.h"
-
-bool Obstacle::OnPlayerCollision(GameScene* scene, Player* player)
-{
-  if (!scene || !player) return false;
-
-  if (type_ == Type::GuideFloor) {
-    player->StartForceToCenter(kBarrierForceToCenterFrames);
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
+bool Obstacle::OnPlayerCollision(GameScene *scene, Player *player) {
+  if (!scene || !player || !behavior_)
     return false;
-  }
-
-  if (type_ == Type::Bonus) {
-    OnBlowAway();
-    if (scene->GetScoreManager()) {
-      scene->GetScoreManager()->AddBonusEnemyHit();
-    }
-    if (scene->GetCameraController()) {
-      scene->GetCameraController()->ShakeDefeat();
-    }
-    if (scene->GetEffectManager()) {
-      scene->GetEffectManager()->EmitItemGet(transform_.translate, 0);
-      scene->GetEffectManager()->EmitObstacleBreak(transform_.translate);
-    }
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BonusHit);
-    return false;
-  }
-
-  if (type_ == Type::CameraItem) {
-    OnHit();
-    scene->AddItemGetCount();
-    if (scene->GetEffectManager()) {
-      scene->GetEffectManager()->EmitItemGet(transform_.translate, 3);
-    }
-    // 遠方の障害物を吹き飛ばし、カメラ遷移までの待機時間（約8秒）を解消する
-    // 直近（Z <= 15m）の障害物は残して自然なプレイ感を維持
-    if (scene->GetStageSettings()) {
-      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
-        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
-        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
-          if (obs->GetTransform().translate.z > 15.0f) {
-            obs->OnBlowAway();
-            if (scene->GetEffectManager()) {
-              scene->GetEffectManager()->EmitObstacleBreak(obs->GetTransform().translate);
-            }
-          }
-        }
-      }
-    }
-    scene->ChangePlayingState(GameScene::PlayingState::OneLane);
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ItemGet);
-    return false;
-  }
-
-  if (type_ == Type::BarrierItem) {
-    OnHit();
-    scene->AddItemGetCount();
-    player->SetHasBarrier(true);
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
-    if (scene->GetEffectManager()) {
-      scene->GetEffectManager()->EmitItemGet(transform_.translate, 1);
-      scene->GetEffectManager()->EmitBarrier(player->GetTransform().translate);
-    }
-    return false;
-  }
-
-  if (type_ == Type::ClearItem) {
-    OnHit();
-    scene->AddItemGetCount();
-    scene->AddClearBombCount();
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::ClearBomb);
-    if (scene->GetCameraController()) {
-      scene->GetCameraController()->ShakeImpact();
-    }
-    if (scene->GetEffectManager()) {
-      scene->GetEffectManager()->EmitItemGet(transform_.translate, 2);
-      scene->GetEffectManager()->EmitObstacleBreak(transform_.translate);
-    }
-    if (scene->GetStageSettings()) {
-      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
-        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
-        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
-          obs->OnBlowAway();
-          if (scene->GetEffectManager()) {
-            scene->GetEffectManager()->EmitObstacleBreak(obs->GetTransform().translate);
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  if (type_ == Type::BossItem) {
-    OnHit();
-    scene->AddItemGetCount();
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Barrier);
-    if (scene->GetEffectManager()) {
-      scene->GetEffectManager()->EmitItemGet(transform_.translate, 3);
-    }
-    if (scene->GetStageSettings()) {
-      for (int j = 0; j < scene->GetStageSettings()->GetMaxObstacles(); j++) {
-        Obstacle *obs = scene->GetStageSettings()->GetObstacle(j);
-        if (obs && obs->GetIsActive() && obs->IsRegularObstacle()) {
-          obs->OnBlowAway();
-          if (scene->GetEffectManager()) {
-            scene->GetEffectManager()->EmitObstacleBreak(obs->GetTransform().translate);
-          }
-        }
-      }
-    }
-    scene->ChangePlayingState(GameScene::PlayingState::Boss);
-    return false;
-  }
-
-  if (IsBossAttackType()) {
-    if (isReflected_ || isFalling_) {
-      return false;
-    }
-  }
-
-  if (player->GetHasBarrier()) {
-    player->SetHasBarrier(false);
-    scene->AddBarrierBlockCount();
-    OnBlowAway();
-    if (scene->GetCameraController()) {
-      scene->GetCameraController()->ShakeDefeat();
-    }
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::BarrierBreak);
-    if (scene->GetEffectManager()) {
-      scene->GetEffectManager()->EmitObstacleBreak(transform_.translate);
-      scene->GetEffectManager()->EmitBarrierBreak(player->GetTransform().translate);
-      scene->GetEffectManager()->BreakBarrier(player->GetTransform().translate);
-    }
-    return false;
-  }
-
-  // 被弾
-  bool isTrip = (type_ == Type::Low || type_ == Type::BossAttackLow);
-  bool isLarge = IsLargeObstacle();
-  scene->TriggerPlayerHit(isTrip, isLarge);
-  return true;
+  return behavior_->OnPlayerCollision(*this, scene, player);
 }
 
 bool Obstacle::IsTransparent() const {

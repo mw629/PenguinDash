@@ -255,15 +255,17 @@ public:
 	/// <summary>
 	/// エミッタの中心座標を取得します。
 	/// </summary>
-	Vector3 GetPosition() const {
-		switch (emitterType_) {
-		case EmitterType::Sphere: return emitterSphere_.translate;
-		case EmitterType::Circle: return emitterCircle_.translate;
-		case EmitterType::Cone: return emitterCone_.translate;
-		case EmitterType::Box:
-		default: return emitter_.transform.translate;
-		}
-	}
+	Vector3 GetPosition() const;
+
+private:
+	class IEmitterShape;
+	friend class BoxEmitterShape;
+	friend class SphereEmitterShape;
+	friend class CircleEmitterShape;
+	friend class ConeEmitterShape;
+	static const IEmitterShape* ResolveEmitterShape(EmitterType type);
+
+public:
 
 	/// <summary>
 	/// エミッタの射出停止フラグを設定します。

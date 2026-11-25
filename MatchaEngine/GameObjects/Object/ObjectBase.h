@@ -88,7 +88,7 @@ public:
 		}
 		return 0.0f;
 	}
-	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) { textureSrvHandleGPU_ = textureSrvHandleGPU; }
+	virtual void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) { textureSrvHandleGPU_ = textureSrvHandleGPU; }
 
 	void SetInstancing(bool isInstancing) { isInstancing_ = isInstancing; }
 	void AddInstanceTransform(Transform transform) { instancingTransforms_.push_back(transform); }
@@ -134,7 +134,7 @@ public:
 		if (auto mat = GetComponent<MaterialComponent>()) mat->SetBlend(blend); 
 	}
 
-	void SetColor(const Vector4& color) {
+	virtual void SetColor(const Vector4& color) {
 		if (auto mat = GetComponent<MaterialComponent>()) mat->SetColor(color);
 	}
 	Vector4 GetColor() const {
@@ -166,8 +166,8 @@ public:
 	void SetLocalBoundingSphere(const BoundingSphere& sphere) { localSphere_ = sphere; }
 	const BoundingSphere& GetLocalBoundingSphere() const { return localSphere_; }
 
-	AABB GetWorldAABB() const;
-	BoundingSphere GetWorldBoundingSphere() const;
+	virtual AABB GetWorldAABB() const;
+	virtual BoundingSphere GetWorldBoundingSphere() const;
 
 	void SetFrustumCullingEnabled(bool enable) { isFrustumCullingEnabled_ = enable; }
 	bool IsFrustumCullingEnabled() const { return isFrustumCullingEnabled_; }

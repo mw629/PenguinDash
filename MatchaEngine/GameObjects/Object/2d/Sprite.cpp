@@ -294,9 +294,9 @@ void Sprite::SettingWvp()
 	*wvpData_ = { worldViewProjectionMatrix, worldMatrix };
 }
 
-void Sprite::SetTransform(Transform transform)
+void Sprite::SetTransform(const Transform& transform)
 {
-	transform_ = transform;
+	GameObject::SetTransform(transform);
 }
 
 void Sprite::SetSize(Vector2 size)

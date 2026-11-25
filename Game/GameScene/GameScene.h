@@ -23,7 +23,21 @@
 #include <memory>
 #include <string>
 
+class IGameSceneState;
+class IPlayingState;
+
 class GameScene : public IScene {
+  friend class TitleSceneState;
+  friend class PlayingSceneState;
+  friend class PausedSceneState;
+  friend class PlayerHitSceneState;
+  friend class FirstPlaceCutInSceneState;
+  friend class GameOverSceneState;
+  friend class EditorSceneState;
+  friend class ThreeLanePlayingState;
+  friend class OneLanePlayingState;
+  friend class BossPlayingState;
+
 public:
   enum GameState {
     Title,
@@ -42,9 +56,15 @@ private:
   // 基本システム・アセット
   std::unique_ptr<Texture> texture_ = std::make_unique<Texture>();
 
-  // ゲーム状態
+  // ゲーム状態（Stateパターン）
   GameState gameState_ = GameState::Title;
   PlayingState playingState_ = PlayingState::ThreeLane;
+  const IGameSceneState *currentGameState_ = nullptr;
+  const IPlayingState *currentPlayingState_ = nullptr;
+
+  void SetGameState(GameState newState);
+  static const IGameSceneState *ResolveGameSceneState(GameState state);
+  static const IPlayingState *ResolvePlayingState(PlayingState state);
 
   // 分離したモジュールクラス群
   std::unique_ptr<GameCameraController> cameraController_ =
@@ -322,6 +342,11 @@ public:
   /// 1位更新カットイン演出中の更新処理
   /// </summary>
   void FirstPlaceCutInUpdate();
+
+  /// <summary>
+  /// ゲームオーバー画面中の更新処理
+  /// </summary>
+  void GameOverUpdate();
 
   /// <summary>
   /// エディターモード中の更新処理

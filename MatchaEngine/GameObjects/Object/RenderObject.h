@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "GameObject.h"
 #include <memory>
 #include "Graphics/Render/Draw.h"
@@ -207,9 +207,17 @@ public:
     /// <param name="color">乗算カラー (RGBA)</param>
     void SetColor(const Vector4& color) {
         if (objectBase_) {
-            if (auto model = dynamic_cast<Model*>(objectBase_.get())) {
-                model->SetColor(color);
-            }
+            objectBase_->SetColor(color);
+        }
+    }
+
+    /// <summary>
+    /// 内包モデルのライティング有効/無効を設定します。
+    /// </summary>
+    /// <param name="enabled">ライティングを有効にする場合true</param>
+    void SetLighting(bool enabled) {
+        if (objectBase_) {
+            objectBase_->SetLighting(enabled);
         }
     }
 

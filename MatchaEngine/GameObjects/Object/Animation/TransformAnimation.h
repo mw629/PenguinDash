@@ -35,6 +35,10 @@ public:
 
 	void ApplyAnimation();
 
+	void Update(Matrix4x4 viewMatrix, float speedMultiplier) override {
+		(void)speedMultiplier;
+		Update(viewMatrix);
+	}
 	void Update(Matrix4x4 viewMatrix);
 
 	void SetAnimationTime(float time) { animationTime_ = time; }

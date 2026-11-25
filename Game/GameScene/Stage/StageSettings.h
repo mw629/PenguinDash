@@ -142,6 +142,10 @@ private:
 
   // 海に浮かべる流氷・アザラシ（Drift Ice / Baby Seal）
 private:
+  class IDriftIceBehavior;
+  friend class StandardDriftIceBehavior;
+  friend class BabySealDriftIceBehavior;
+
   struct DriftIce {
     static constexpr float kDefaultBaseY = 0.3f;
     static constexpr float kDefaultFloatingHeight = 0.25f;
@@ -155,6 +159,7 @@ private:
 
     enum class Type { DriftIce, BabySeal };
     Type type = Type::DriftIce;
+    const IDriftIceBehavior *behavior = nullptr;
 
     std::shared_ptr<RenderObject> renderObj;
     std::shared_ptr<Model> iceModel;
@@ -242,6 +247,7 @@ private:
       kDefaultBabySealSpinSpeed; // アザラシが水面をスピンする速度 (rad/s)
 
   float CalculateWaterHeight(float x, float z, float time) const;
+  static const IDriftIceBehavior *ResolveDriftIceBehavior(DriftIce::Type type);
   void GenerateDriftIce(Matrix4x4 view = IdentityMatrix());
   void UpdateDriftIce(Matrix4x4 view, float currentScroll, float timeScale);
   void ResetDriftIce();

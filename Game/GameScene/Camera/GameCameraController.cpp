@@ -5,6 +5,75 @@
 #include <cmath>
 #include <imgui.h>
 
+// =========================================================================
+// ICameraTransitionPolicy（レーン種別ごとの遷移開始条件・スポーン方針）
+// =========================================================================
+
+class ICameraTransitionPolicy {
+public:
+  virtual ~ICameraTransitionPolicy() = default;
+  virtual bool ShouldPauseSpawningOnStart() const = 0;
+  virtual bool CanStartTransition(StageSettings *stageSettings,
+                                  float pendingTimer) const = 0;
+
+protected:
+  static bool HasActiveRegularObstacleInRange(StageSettings *stageSettings,
+                                              float maxZ) {
+    for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
+      Obstacle *obstacle = stageSettings->GetObstacle(i);
+      if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit() &&
+          obstacle->IsRegularObstacle()) {
+        float z = obstacle->GetTransform().translate.z;
+        if (z > 0.0f && z <= maxZ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
+class OneLaneTransitionPolicy final : public ICameraTransitionPolicy {
+public:
+  bool ShouldPauseSpawningOnStart() const override {
+    // 1レーン移行時はスポーンを止めず、奥から自然に流れてくるようにする
+    return false;
+  }
+  bool CanStartTransition(StageSettings *stageSettings,
+                          float pendingTimer) const override {
+    bool isOneLaneAtPlayer =
+        (stageSettings->GetLaneCountAtZ(0.0f) == 1 ||
+         stageSettings->GetLaneCountAtZ(5.0f) == 1 ||
+         stageSettings->GetLaneCountAtZ(12.0f) == 1 ||
+         stageSettings->GetScrollSpeed() <= 0.0001f ||
+         !EditorManager::IsPlaying());
+
+    bool hasNearObstacles = HasActiveRegularObstacleInRange(stageSettings, 12.0f);
+    return (!hasNearObstacles && isOneLaneAtPlayer) || pendingTimer >= 4.5f;
+  }
+};
+
+class StandardTransitionPolicy final : public ICameraTransitionPolicy {
+public:
+  bool ShouldPauseSpawningOnStart() const override { return true; }
+  bool CanStartTransition(StageSettings *stageSettings,
+                          float pendingTimer) const override {
+    bool hasActiveObstacles = HasActiveRegularObstacleInRange(stageSettings, 25.0f);
+    return !hasActiveObstacles || pendingTimer >= 2.5f ||
+           stageSettings->GetScrollSpeed() <= 0.0001f ||
+           !EditorManager::IsPlaying();
+  }
+};
+
+const ICameraTransitionPolicy *
+GameCameraController::ResolveTransitionPolicy(int laneCount) {
+  static const OneLaneTransitionPolicy kOneLane;
+  static const StandardTransitionPolicy kStandard;
+  return (laneCount == 1)
+             ? static_cast<const ICameraTransitionPolicy *>(&kOneLane)
+             : static_cast<const ICameraTransitionPolicy *>(&kStandard);
+}
+
 void GameCameraController::Initialize() {
   camera_->SetDebugName("GameScene SceneCamera (DebugCamera)");
   camera_->SetTransform(cameraTransform_);
@@ -57,13 +126,10 @@ void GameCameraController::SetDebugCamera(bool debug) {
 void GameCameraController::StartTransition(const Transform &targetTransform,
                                            int laneCount,
                                            StageSettings *stageSettings) {
-  if (stageSettings) {
-    if (laneCount == 1) {
-      // 1レーン移行時はスポーンを止めず、奥から自然に流れてくるようにする
-      stageSettings->SetSpawningPaused(false);
-    } else {
-      stageSettings->SetSpawningPaused(true);
-    }
+  transitionPolicy_ = ResolveTransitionPolicy(laneCount);
+  if (stageSettings && transitionPolicy_) {
+    stageSettings->SetSpawningPaused(
+        transitionPolicy_->ShouldPauseSpawningOnStart());
     stageSettings->SetLaneCount(laneCount);
   }
   isCameraTransitioning_ = false;
@@ -79,62 +145,14 @@ void GameCameraController::UpdateTransition(
   if (isCameraTransitionPending_ && stageSettings) {
     pendingTransitionTimer_ += Engine::kDefaultDeltaTime;
 
-    bool canStartTransition = false;
-
-    if (pendingLaneCount_ == 1) {
-      // --- 1レーンへの移行演出 ---
-      // 1. プレイヤー位置〜直前（Z=0m〜12m）の床が実際に 1 レーンに切り替わるまで待機する
-      //    （カメラ移動に1.0秒かかるため、Z=12m付近に1レーン床が来た時点で移動を開始すると足元到達とぴったりのタイミングで完了する）
-      // 2. プレイヤー直近（Z <= 12m）の危険障害物（IsRegularObstacle）が通り過ぎるのを待つ
-      // ※ エディター停止中（スクロール速度0）の場合は即時開始する
-      bool isOneLaneAtPlayer =
-          (stageSettings->GetLaneCountAtZ(0.0f) == 1 ||
-           stageSettings->GetLaneCountAtZ(5.0f) == 1 ||
-           stageSettings->GetLaneCountAtZ(12.0f) == 1 ||
-           stageSettings->GetScrollSpeed() <= 0.0001f ||
-           !EditorManager::IsPlaying());
-
-      bool hasNearObstacles = false;
-      for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
-        Obstacle *obstacle = stageSettings->GetObstacle(i);
-        if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit() &&
-            obstacle->IsRegularObstacle()) {
-          float z = obstacle->GetTransform().translate.z;
-          if (z > 0.0f && z <= 12.0f) {
-            hasNearObstacles = true;
-            break;
-          }
-        }
-      }
-
-      // 床が実際に1レーンになり、かつ直近の危険障害物が通過したらカメラ移動を開始
-      // （安全のためのフォールバック: 最大4.5秒経過でも開始）
-      if ((!hasNearObstacles && isOneLaneAtPlayer) ||
-          pendingTransitionTimer_ >= 4.5f) {
-        canStartTransition = true;
-      }
-    } else {
-      // --- ボス戦や通常3レーン移行の場合 ---
-      // 画面内の直近の危険障害物が消えるのを待つ（最大2.5秒でフォールバック開始）
-      bool hasActiveObstacles = false;
-      for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
-        Obstacle *obstacle = stageSettings->GetObstacle(i);
-        if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit() &&
-            obstacle->IsRegularObstacle()) {
-          float z = obstacle->GetTransform().translate.z;
-          if (z > 0.0f && z <= 25.0f) {
-            hasActiveObstacles = true;
-            break;
-          }
-        }
-      }
-
-      if (!hasActiveObstacles || pendingTransitionTimer_ >= 2.5f ||
-          stageSettings->GetScrollSpeed() <= 0.0001f ||
-          !EditorManager::IsPlaying()) {
-        canStartTransition = true;
-      }
+    if (!transitionPolicy_) {
+      transitionPolicy_ = ResolveTransitionPolicy(pendingLaneCount_);
     }
+
+    bool canStartTransition =
+        transitionPolicy_ &&
+        transitionPolicy_->CanStartTransition(stageSettings,
+                                              pendingTransitionTimer_);
 
     if (canStartTransition) {
       isCameraTransitionPending_ = false;

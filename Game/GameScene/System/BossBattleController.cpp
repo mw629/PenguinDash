@@ -12,6 +12,138 @@
 #include <cstdlib>
 #include <imgui.h>
 
+// =========================================================================
+// IBossAttackPattern（Strategyパターンによる攻撃パターン分離）
+// =========================================================================
+
+class IBossAttackPattern {
+public:
+  virtual ~IBossAttackPattern() = default;
+  virtual BossBattleController::PatternType GetType() const = 0;
+  virtual void
+  BuildAttacks(std::vector<BossBattleController::QueuedAttack> &outQueue,
+               int laneCount) const = 0;
+};
+
+class StandardBossAttackPattern final : public IBossAttackPattern {
+public:
+  BossBattleController::PatternType GetType() const override {
+    return BossBattleController::PatternType::Standard;
+  }
+  void BuildAttacks(std::vector<BossBattleController::QueuedAttack> &outQueue,
+                    int laneCount) const override {
+    // 3レーンのうち、1つを安全地帯、1つを白(通常)、1つを緑(跳ね返し)にする
+    int safeLane = rand() % laneCount;
+    int greenLane = (safeLane + 1 + rand() % (laneCount - 1)) % laneCount;
+
+    for (int i = 0; i < laneCount; i++) {
+      if (i == safeLane)
+        continue;
+      Obstacle::Type type = (i == greenLane)
+                                ? Obstacle::Type::BossAttackReflectable
+                                : Obstacle::Type::BossAttack;
+      outQueue.push_back({0.0f, i, type});
+    }
+  }
+};
+
+class JumpActionBossAttackPattern final : public IBossAttackPattern {
+public:
+  BossBattleController::PatternType GetType() const override {
+    return BossBattleController::PatternType::JumpAction;
+  }
+  void BuildAttacks(std::vector<BossBattleController::QueuedAttack> &outQueue,
+                    int laneCount) const override {
+    // 全レーンに低空障害物（ジャンプ回避）＋ 追撃の緑反射弾
+    for (int i = 0; i < laneCount; i++) {
+      outQueue.push_back({0.0f, i, Obstacle::Type::BossAttackLow});
+    }
+    int greenLane = rand() % laneCount;
+    outQueue.push_back(
+        {40.0f, greenLane, Obstacle::Type::BossAttackReflectable});
+  }
+};
+
+class SlideActionBossAttackPattern final : public IBossAttackPattern {
+public:
+  BossBattleController::PatternType GetType() const override {
+    return BossBattleController::PatternType::SlideAction;
+  }
+  void BuildAttacks(std::vector<BossBattleController::QueuedAttack> &outQueue,
+                    int laneCount) const override {
+    // 全レーンに高空アーチ（スライディング回避）＋ 追撃の緑反射弾
+    for (int i = 0; i < laneCount; i++) {
+      outQueue.push_back({0.0f, i, Obstacle::Type::BossAttackHigh});
+    }
+    int greenLane = rand() % laneCount;
+    outQueue.push_back(
+        {40.0f, greenLane, Obstacle::Type::BossAttackReflectable});
+  }
+};
+
+class SequentialWaveBossAttackPattern final : public IBossAttackPattern {
+public:
+  BossBattleController::PatternType GetType() const override {
+    return BossBattleController::PatternType::SequentialWave;
+  }
+  void BuildAttacks(std::vector<BossBattleController::QueuedAttack> &outQueue,
+                    int /*laneCount*/) const override {
+    // 左→中→右 または 右→中→左 の時間差ウェーブ連続落下
+    bool leftToRight = (rand() % 2 == 0);
+    int lanes[3] = {0, 1, 2};
+    if (!leftToRight) {
+      lanes[0] = 2;
+      lanes[2] = 0;
+    }
+    constexpr float kStepDelay = 16.0f;
+    outQueue.push_back({0.0f, lanes[0], Obstacle::Type::BossAttack});
+    outQueue.push_back({kStepDelay, lanes[1], Obstacle::Type::BossAttack});
+    outQueue.push_back(
+        {kStepDelay * 2.0f, lanes[2], Obstacle::Type::BossAttackReflectable});
+  }
+};
+
+class DoubleWaveBossAttackPattern final : public IBossAttackPattern {
+public:
+  BossBattleController::PatternType GetType() const override {
+    return BossBattleController::PatternType::DoubleWave;
+  }
+  void BuildAttacks(std::vector<BossBattleController::QueuedAttack> &outQueue,
+                    int /*laneCount*/) const override {
+    // 2連波状攻撃（第1波: 左右通常、第2波: 中央通常＋左右どちらかに反射弾）
+    outQueue.push_back({0.0f, 0, Obstacle::Type::BossAttack});
+    outQueue.push_back({0.0f, 2, Obstacle::Type::BossAttack});
+    int greenLane = (rand() % 2 == 0) ? 0 : 2;
+    outQueue.push_back({32.0f, 1, Obstacle::Type::BossAttack});
+    outQueue.push_back(
+        {32.0f, greenLane, Obstacle::Type::BossAttackReflectable});
+  }
+};
+
+const IBossAttackPattern *
+BossBattleController::ResolvePattern(PatternType pattern) {
+  static const StandardBossAttackPattern kStandard;
+  static const JumpActionBossAttackPattern kJumpAction;
+  static const SlideActionBossAttackPattern kSlideAction;
+  static const SequentialWaveBossAttackPattern kSequentialWave;
+  static const DoubleWaveBossAttackPattern kDoubleWave;
+
+  switch (pattern) {
+  case PatternType::Standard:
+    return &kStandard;
+  case PatternType::JumpAction:
+    return &kJumpAction;
+  case PatternType::SlideAction:
+    return &kSlideAction;
+  case PatternType::SequentialWave:
+    return &kSequentialWave;
+  case PatternType::DoubleWave:
+    return &kDoubleWave;
+  default:
+    return &kStandard;
+  }
+}
+
 void BossBattleController::Reset() {
   bossAttackTimer_ = 0.0f;
   currentReflectLane_ = kNoReflectLane;
@@ -53,80 +185,14 @@ void BossBattleController::SpawnAttack(StageSettings *stageSettings, int lane,
 }
 
 void BossBattleController::EnqueuePattern(PatternType pattern) {
-  currentPattern_ = pattern;
-
-  switch (pattern) {
-  case PatternType::Standard: {
-    // 3レーンのうち、1つを安全地帯、1つを白(通常)、1つを緑(跳ね返し)にする
-    int safeLane = rand() % kLaneCount;
-    int greenLane = (safeLane + 1 + rand() % (kLaneCount - 1)) % kLaneCount;
-
-    for (int i = 0; i < kLaneCount; i++) {
-      if (i == safeLane)
-        continue;
-
-      Obstacle::Type type = Obstacle::Type::BossAttack;
-      if (i == greenLane) {
-        type = Obstacle::Type::BossAttackReflectable;
-      }
-      attackQueue_.push_back({0.0f, i, type});
-    }
-    break;
+  if (const IBossAttackPattern *strategy = ResolvePattern(pattern)) {
+    EnqueuePattern(*strategy);
   }
+}
 
-  case PatternType::JumpAction: {
-    // アクション強制：全レーンに低空障害物（ジャンプで飛び越える！）
-    for (int i = 0; i < kLaneCount; i++) {
-      attackQueue_.push_back({0.0f, i, Obstacle::Type::BossAttackLow});
-    }
-    // ジャンプ直後に緑の反射弾が追撃（約40フレーム遅延）
-    int greenLane = rand() % kLaneCount;
-    attackQueue_.push_back({40.0f, greenLane, Obstacle::Type::BossAttackReflectable});
-    break;
-  }
-
-  case PatternType::SlideAction: {
-    // アクション強制：全レーンに高空アーチ（スライディング/ロールでくぐる！）
-    for (int i = 0; i < kLaneCount; i++) {
-      attackQueue_.push_back({0.0f, i, Obstacle::Type::BossAttackHigh});
-    }
-    // スライディング直後に緑の反射弾が追撃（約40フレーム遅延）
-    int greenLane = rand() % kLaneCount;
-    attackQueue_.push_back({40.0f, greenLane, Obstacle::Type::BossAttackReflectable});
-    break;
-  }
-
-  case PatternType::SequentialWave: {
-    // 時間差・ウェーブ連続落下（メテオストーム）
-    // 左→中→右 または 右→中→左 へ連続して着地！
-    bool leftToRight = (rand() % 2 == 0);
-    int lanes[3] = {0, 1, 2};
-    if (!leftToRight) {
-      lanes[0] = 2;
-      lanes[2] = 0;
-    }
-    float stepDelay = 16.0f; // 約0.27秒ごとの時間差
-    attackQueue_.push_back({0.0f, lanes[0], Obstacle::Type::BossAttack});
-    attackQueue_.push_back({stepDelay, lanes[1], Obstacle::Type::BossAttack});
-    attackQueue_.push_back({stepDelay * 2.0f, lanes[2], Obstacle::Type::BossAttackReflectable});
-    break;
-  }
-
-  case PatternType::DoubleWave: {
-    // 2連波状攻撃
-    // 第1波: 左右に通常爆弾（中央が安全）
-    attackQueue_.push_back({0.0f, 0, Obstacle::Type::BossAttack});
-    attackQueue_.push_back({0.0f, 2, Obstacle::Type::BossAttack});
-    // 第2波: 約32フレーム後に中央に通常爆弾、左右どちらかに緑反射爆弾
-    int greenLane = (rand() % 2 == 0) ? 0 : 2;
-    attackQueue_.push_back({32.0f, 1, Obstacle::Type::BossAttack});
-    attackQueue_.push_back({32.0f, greenLane, Obstacle::Type::BossAttackReflectable});
-    break;
-  }
-
-  default:
-    break;
-  }
+void BossBattleController::EnqueuePattern(const IBossAttackPattern &pattern) {
+  currentPattern_ = pattern.GetType();
+  pattern.BuildAttacks(attackQueue_, kLaneCount);
 }
 
 BossBattleController::PatternType

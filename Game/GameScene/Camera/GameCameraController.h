@@ -7,6 +7,7 @@
 
 class StageSettings;
 class Player;
+class ICameraTransitionPolicy;
 
 class GameCameraController {
 public:
@@ -40,6 +41,9 @@ private:
   float pendingTransitionTimer_ = 0.0f;
   Transform pendingCameraTargetTransform_;
   int pendingLaneCount_ = kDefaultLaneCount;
+  const ICameraTransitionPolicy *transitionPolicy_ = nullptr;
+
+  static const ICameraTransitionPolicy *ResolveTransitionPolicy(int laneCount);
 
   bool isCameraTransitioning_ = false;
   float cameraTransitionTimer_ = 0.0f;

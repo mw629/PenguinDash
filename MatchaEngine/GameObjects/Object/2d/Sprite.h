@@ -155,7 +155,7 @@ public:
 	/// </summary>
 	void SetCustomTriangleVertices(const Vector2 positions[3], const Vector2 uvs[3]);
 
-	void SetTransform(Transform transform);
+	void SetTransform(const Transform& transform) override;
 	void SetSize(Vector2 size);
 	void SetTextureArea(Vector2 textureArea[2]);
 	void SetPivot(Vector2 pivot);

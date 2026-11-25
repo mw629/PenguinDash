@@ -293,25 +293,18 @@ void StageSettings::SetRoadColor(const Vector4 &color) {
   for (auto &row : roadChunks_) {
     for (auto &chunk : row) {
       if (chunk) {
-        if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
-          model->SetColor(roadColor_);
-        }
+        chunk->SetColor(roadColor_);
       }
     }
   }
   for (auto &fc : fallingChunks_) {
     if (fc.renderObj) {
-      if (auto model =
-              dynamic_cast<Model *>(fc.renderObj->GetObjectBase().get())) {
-        model->SetColor(roadColor_);
-      }
+      fc.renderObj->SetColor(roadColor_);
     }
   }
   for (auto &chunk : chunkPool_) {
     if (chunk) {
-      if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
-        model->SetColor(roadColor_);
-      }
+      chunk->SetColor(roadColor_);
     }
   }
 }
@@ -372,25 +365,18 @@ void StageSettings::SetRoadLighting(bool enabled) {
   for (auto &row : roadChunks_) {
     for (auto &chunk : row) {
       if (chunk) {
-        if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
-          model->SetLighting(roadLighting_);
-        }
+        chunk->SetLighting(roadLighting_);
       }
     }
   }
   for (auto &fc : fallingChunks_) {
     if (fc.renderObj) {
-      if (auto model =
-              dynamic_cast<Model *>(fc.renderObj->GetObjectBase().get())) {
-        model->SetLighting(roadLighting_);
-      }
+      fc.renderObj->SetLighting(roadLighting_);
     }
   }
   for (auto &chunk : chunkPool_) {
     if (chunk) {
-      if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
-        model->SetLighting(roadLighting_);
-      }
+      chunk->SetLighting(roadLighting_);
     }
   }
 }
@@ -431,13 +417,121 @@ void StageSettings::SetWaterLighting(bool enabled) {
   }
 }
 
+// =========================================================================
+// IDriftIceBehavior（流氷 / アザラシのポリモーフィックな振る舞い分離）
+// =========================================================================
+
+class StageSettings::IDriftIceBehavior {
+public:
+  virtual ~IDriftIceBehavior() = default;
+  virtual const ModelData &GetModelData(const StageSettings &stage) const = 0;
+  virtual std::shared_ptr<Model>
+  GetModel(const StageSettings::DriftIce &ice) const = 0;
+  virtual void RollDimensions(float &outW, float &outD, float &outH,
+                              float &outFloat) const = 0;
+  virtual float RollRotSpeed(float babySealSpinSpeed) const = 0;
+  virtual void
+  OnBabySealSpinSpeedChanged(StageSettings::DriftIce & /*ice*/,
+                             float /*babySealSpinSpeed*/) const {}
+};
+
+class StandardDriftIceBehavior final : public StageSettings::IDriftIceBehavior {
+public:
+  const ModelData &GetModelData(const StageSettings &stage) const override {
+    return stage.driftIceModelData_;
+  }
+  std::shared_ptr<Model>
+  GetModel(const StageSettings::DriftIce &ice) const override {
+    return ice.iceModel;
+  }
+  void RollDimensions(float &outW, float &outD, float &outH,
+                      float &outFloat) const override {
+    int sizeCategory = std::rand() % 100;
+    if (sizeCategory < StageSettings::kIceSmallCategoryChance) {
+      outW = StageSettings::kIceSmallWidth +
+             static_cast<float>(std::rand() % 11) / 10.0f;
+      outD = StageSettings::kIceSmallDepth +
+             static_cast<float>(std::rand() % 13) / 10.0f;
+      outH = StageSettings::kIceSmallHeight +
+             static_cast<float>(std::rand() % 31) / 100.0f;
+      outFloat = StageSettings::kIceSmallFloat +
+                 static_cast<float>(std::rand() % 11) / 100.0f;
+    } else if (sizeCategory < StageSettings::kIceMediumCategoryChance) {
+      outW = StageSettings::kIceMediumWidth +
+             static_cast<float>(std::rand() % 17) / 10.0f;
+      outD = StageSettings::kIceMediumDepth +
+             static_cast<float>(std::rand() % 21) / 10.0f;
+      outH = StageSettings::kIceMediumHeight +
+             static_cast<float>(std::rand() % 41) / 100.0f;
+      outFloat = StageSettings::kIceMediumFloat +
+                 static_cast<float>(std::rand() % 16) / 100.0f;
+    } else {
+      outW = StageSettings::kIceLargeWidth +
+             static_cast<float>(std::rand() % 31) / 10.0f;
+      outD = StageSettings::kIceLargeDepth +
+             static_cast<float>(std::rand() % 36) / 10.0f;
+      outH = StageSettings::kIceLargeHeight +
+             static_cast<float>(std::rand() % 61) / 100.0f;
+      outFloat = StageSettings::kIceLargeFloat +
+                 static_cast<float>(std::rand() % 21) / 100.0f;
+    }
+  }
+  float RollRotSpeed(float /*babySealSpinSpeed*/) const override {
+    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
+    return dir * (StageSettings::kIceRotSpeedBase +
+                  static_cast<float>(std::rand() % 120) / 1000.0f);
+  }
+};
+
+class BabySealDriftIceBehavior final : public StageSettings::IDriftIceBehavior {
+public:
+  const ModelData &GetModelData(const StageSettings &stage) const override {
+    return stage.babySealModelData_;
+  }
+  std::shared_ptr<Model>
+  GetModel(const StageSettings::DriftIce &ice) const override {
+    return ice.sealModel;
+  }
+  void RollDimensions(float &outW, float &outD, float &outH,
+                      float &outFloat) const override {
+    outW = StageSettings::kSealIceBaseWidth +
+           static_cast<float>(std::rand() % 12) / 10.0f;
+    outD = StageSettings::kSealIceBaseDepth +
+           static_cast<float>(std::rand() % 14) / 10.0f;
+    outH = StageSettings::kSealIceBaseHeight +
+           static_cast<float>(std::rand() % 41) / 100.0f;
+    outFloat = StageSettings::kSealIceBaseFloat +
+               static_cast<float>(std::rand() % 15) / 100.0f;
+  }
+  float RollRotSpeed(float babySealSpinSpeed) const override {
+    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
+    float speedVariation = StageSettings::kIceSealSpinVariationBase +
+                           static_cast<float>(std::rand() % 31) / 100.0f;
+    return dir * babySealSpinSpeed * speedVariation;
+  }
+  void OnBabySealSpinSpeedChanged(StageSettings::DriftIce &ice,
+                                  float babySealSpinSpeed) const override {
+    float sign = (ice.rotSpeed >= 0.0f) ? 1.0f : -1.0f;
+    float speedVariation =
+        0.85f + static_cast<float>(std::rand() % 31) / 100.0f;
+    ice.rotSpeed = sign * babySealSpinSpeed * speedVariation;
+  }
+};
+
+const StageSettings::IDriftIceBehavior *
+StageSettings::ResolveDriftIceBehavior(DriftIce::Type type) {
+  static const StandardDriftIceBehavior kStandard;
+  static const BabySealDriftIceBehavior kBabySeal;
+  return (type == DriftIce::Type::BabySeal)
+             ? static_cast<const IDriftIceBehavior *>(&kBabySeal)
+             : static_cast<const IDriftIceBehavior *>(&kStandard);
+}
+
 void StageSettings::SetBabySealSpinSpeed(float speed) {
   babySealSpinSpeed_ = speed;
   for (auto &ice : driftIces_) {
-    if (ice.type == DriftIce::Type::BabySeal) {
-      float sign = (ice.rotSpeed >= 0.0f) ? 1.0f : -1.0f;
-      float speedVariation = 0.85f + static_cast<float>(std::rand() % 31) / 100.0f;
-      ice.rotSpeed = sign * babySealSpinSpeed_ * speedVariation;
+    if (ice.behavior) {
+      ice.behavior->OnBabySealSpinSpeedChanged(ice, babySealSpinSpeed_);
     }
   }
 }
@@ -578,10 +672,8 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
         renderObj = chunkPool_.back();
         chunkPool_.pop_back();
         if (renderObj) {
-          if (auto model = dynamic_cast<Model *>(renderObj->GetObjectBase().get())) {
-            model->SetColor(roadColor_);
-            model->SetLighting(roadLighting_);
-          }
+          renderObj->SetColor(roadColor_);
+          renderObj->SetLighting(roadLighting_);
         }
       } else {
         auto roadModel = std::make_shared<Model>();
@@ -809,9 +901,10 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   // アザラシの出現確率（約15%：およそ6〜7個に1個の割合で時々アザラシが流れてくる）
   bool isSeal = (std::rand() % 100 < kBabySealSpawnChancePercent);
   ice.type = isSeal ? DriftIce::Type::BabySeal : DriftIce::Type::DriftIce;
+  ice.behavior = ResolveDriftIceBehavior(ice.type);
 
-  const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
-  auto currentModel = (ice.type == DriftIce::Type::BabySeal) ? ice.sealModel : ice.iceModel;
+  const auto &modelData = ice.behavior->GetModelData(*this);
+  auto currentModel = ice.behavior->GetModel(ice);
   if (ice.renderObj && currentModel) {
     ice.renderObj->SetObjectBase(currentModel);
   }
@@ -841,32 +934,8 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   float targetHeight = DriftIce::kDefaultTargetHeight;
   float floatingHeight = DriftIce::kDefaultFloatingHeight;
 
-  if (ice.type == DriftIce::Type::BabySeal) {
-    // 流氷に乗ったアザラシのサイズ感
-    targetWidth = kSealIceBaseWidth + static_cast<float>(std::rand() % 12) / 10.0f;
-    targetDepth = kSealIceBaseDepth + static_cast<float>(std::rand() % 14) / 10.0f;
-    targetHeight = kSealIceBaseHeight + static_cast<float>(std::rand() % 41) / 100.0f;
-    floatingHeight = kSealIceBaseFloat + static_cast<float>(std::rand() % 15) / 100.0f;
-  } else {
-    // 通常の流氷のサイズ設計 (極小 45%, 小〜中 35%, 中〜大型 20%)
-    int sizeCategory = std::rand() % 100;
-    if (sizeCategory < kIceSmallCategoryChance) {
-      targetWidth = kIceSmallWidth + static_cast<float>(std::rand() % 11) / 10.0f;
-      targetDepth = kIceSmallDepth + static_cast<float>(std::rand() % 13) / 10.0f;
-      targetHeight = kIceSmallHeight + static_cast<float>(std::rand() % 31) / 100.0f;
-      floatingHeight = kIceSmallFloat + static_cast<float>(std::rand() % 11) / 100.0f;
-    } else if (sizeCategory < kIceMediumCategoryChance) {
-      targetWidth = kIceMediumWidth + static_cast<float>(std::rand() % 17) / 10.0f;
-      targetDepth = kIceMediumDepth + static_cast<float>(std::rand() % 21) / 10.0f;
-      targetHeight = kIceMediumHeight + static_cast<float>(std::rand() % 41) / 100.0f;
-      floatingHeight = kIceMediumFloat + static_cast<float>(std::rand() % 16) / 100.0f;
-    } else {
-      targetWidth = kIceLargeWidth + static_cast<float>(std::rand() % 31) / 10.0f;
-      targetDepth = kIceLargeDepth + static_cast<float>(std::rand() % 36) / 10.0f;
-      targetHeight = kIceLargeHeight + static_cast<float>(std::rand() % 61) / 100.0f;
-      floatingHeight = kIceLargeFloat + static_cast<float>(std::rand() % 21) / 100.0f;
-    }
-  }
+  ice.behavior->RollDimensions(targetWidth, targetDepth, targetHeight,
+                               floatingHeight);
 
   // 全体サイズ倍率 & 厚み倍率を適用
   targetWidth *= driftIceSizeScale_;
@@ -911,16 +980,7 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   // 【流れる向きなどのバラバラ化】
   // 初期の向き（回転角度Y）：0〜360度ランダム
   ice.rotY = static_cast<float>(std::rand() % 628) / 100.0f;
-  if (ice.type == DriftIce::Type::BabySeal) {
-    // アザラシは水面をくるくるとスピン（自転）しながら流れる
-    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
-    float speedVariation = kIceSealSpinVariationBase + static_cast<float>(std::rand() % 31) / 100.0f;
-    ice.rotSpeed = dir * babySealSpinSpeed_ * speedVariation;
-  } else {
-    // 通常の流氷も右回り・左回り、回転速度にバリエーションを持たせて向きの変化を豊かに
-    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
-    ice.rotSpeed = dir * (kIceRotSpeedBase + static_cast<float>(std::rand() % 120) / 1000.0f);
-  }
+  ice.rotSpeed = ice.behavior->RollRotSpeed(babySealSpinSpeed_);
 
   // 上下の揺れ（ボビング）
   ice.bobbingPhase = static_cast<float>(std::rand() % 628) / 100.0f;
@@ -942,7 +1002,10 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
     auto &ice = driftIces_[i];
     if (!ice.renderObj) continue;
 
-    const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
+    if (!ice.behavior) {
+      ice.behavior = ResolveDriftIceBehavior(ice.type);
+    }
+    const auto &modelData = ice.behavior->GetModelData(*this);
     float modelWidth = modelData.localAABB.max.x - modelData.localAABB.min.x;
     float modelHeight = modelData.localAABB.max.y - modelData.localAABB.min.y;
     float modelDepth = modelData.localAABB.max.z - modelData.localAABB.min.z;
@@ -1969,53 +2032,9 @@ void StageSettings::ImGui() {
             ImGui::Text("#%d", i);
 
             ImGui::TableSetColumnIndex(1);
-            const char *typeName = "不明";
-            ImVec4 typeColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-            switch (obs->GetType()) {
-            case Obstacle::Type::Low:
-              typeName = "Low (木/ジャンプ)";
-              typeColor = ImVec4(0.2f, 1.0f, 0.3f, 1.0f);
-              break;
-            case Obstacle::Type::High:
-              typeName = "High (アーチ/潜り)";
-              typeColor = ImVec4(1.0f, 0.9f, 0.2f, 1.0f);
-              break;
-            case Obstacle::Type::Wall:
-              typeName = "Wall (氷壁/レーン)";
-              typeColor = ImVec4(1.0f, 0.4f, 0.1f, 1.0f);
-              break;
-            case Obstacle::Type::Bonus:
-              typeName = "Bonus (ボーナス)";
-              typeColor = ImVec4(0.9f, 0.4f, 1.0f, 1.0f);
-              break;
-            case Obstacle::Type::GuideFloor:
-              typeName = "Guide (誘導床)";
-              typeColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f);
-              break;
-            case Obstacle::Type::BarrierItem:
-              typeName = "Item: Barrier";
-              typeColor = ImVec4(0.2f, 0.8f, 1.0f, 1.0f);
-              break;
-            case Obstacle::Type::ClearItem:
-              typeName = "Item: Bomb";
-              typeColor = ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
-              break;
-            case Obstacle::Type::CameraItem:
-              typeName = "Item: 1Lane";
-              typeColor = ImVec4(0.3f, 1.0f, 0.6f, 1.0f);
-              break;
-            case Obstacle::Type::BossItem:
-              typeName = "Item: Boss";
-              typeColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
-              break;
-            case Obstacle::Type::BossAttack:
-            case Obstacle::Type::BossAttackReflectable:
-            case Obstacle::Type::BossAttackLow:
-            case Obstacle::Type::BossAttackHigh:
-              typeName = "Boss Attack";
-              typeColor = ImVec4(1.0f, 0.3f, 0.6f, 1.0f);
-              break;
-            }
+            const char *typeName = obs->GetDebugTypeName();
+            Vector4 col = obs->GetDebugTypeColor();
+            ImVec4 typeColor(col.x, col.y, col.z, col.w);
             ImGui::TextColored(typeColor, "%s", typeName);
 
             ImGui::TableSetColumnIndex(2);
