@@ -314,7 +314,10 @@ void BossBattleController::ImGui(Boss *boss,
   if (boss && boss->GetIsActive()) {
     if (ImGui::TreeNode("ボス情報")) {
       ImGui::Text("HP: %d / %d", boss->GetHP(), boss->GetMaxHP());
-      ImGui::DragFloat3("ボス目標位置", &boss->GetTargetPosRef().x, 0.1f);
+      Vector3 targetPos = boss->GetTargetPos();
+      if (ImGui::DragFloat3("ボス目標位置", &targetPos.x, 0.1f)) {
+        boss->SetTargetPos(targetPos);
+      }
       ImGui::DragFloat("攻撃生成距離 Z", &bossAttackSpawnZ_, 0.5f, -100.0f,
                        0.0f, "%.1f m");
       ImGui::DragFloat("攻撃落下開始高度", &bossAttackDropHeight_, 0.5f,

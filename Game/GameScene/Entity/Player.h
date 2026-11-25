@@ -549,21 +549,14 @@ public:
   /// <param name="duration">移動完了までのフレーム数</param>
   void StartForceToCenter(float duration);
 
-  // ステートクラス向けのアクセサ
-  Transform &GetTransformRef() { return transform_; }
   CharacterAnimator *GetModel() { return model_.get(); }
-  float &GetVelocityYRef() { return velocityY_; }
-  float &GetRollTimerRef() { return rollTimer_; }
   bool GetKeepRolling() const { return keepRolling_; }
   float GetRollTransitionDuration() const { return rollTransitionDuration_; }
   float GetWalkTransitionDuration() const { return walkTransitionDuration_; }
-  float &GetCurrentRecoveryTimerRef() { return currentRecoveryTimer_; }
   float GetJumpRecovery() const { return jumpRecovery_; }
   float GetRollRecovery() const { return rollRecovery_; }
   float GetLaneChangeRecovery() const { return laneChangeRecovery_; }
-  float &GetHitTimerRef() { return hitTimer_; }
   float GetHitDuration() const { return hitDuration_; }
-  Vector3 &GetKnockbackVelocityRef() { return knockbackVelocity_; }
   bool GetIsTrip() const { return isTrip_; }
   void SetIsTrip(bool trip) { isTrip_ = trip; }
 
@@ -576,19 +569,14 @@ public:
   void SetSnowballScale(float scale) { snowballScale_ = scale; }
   float GetSnowballRotationX() const { return snowballRotationX_; }
   void SetSnowballRotationX(float rot) { snowballRotationX_ = rot; }
-  float &GetSnowballRotationXRef() { return snowballRotationX_; }
   const Transform &GetSnowballTransform() const { return snowballTransform_; }
   void SetSnowballTransform(const Transform &trans) { snowballTransform_ = trans; }
   const Transform &GetModelOffset() const { return modelOffset_; }
 
-  float &GetForcedCenterTimerRef() { return forcedCenterTimer_; }
   float GetForcedCenterDuration() const { return forcedCenterDuration_; }
   void SetForcedCenterDuration(float d) { forcedCenterDuration_ = d; }
-  float &GetForcedCenterStartXRef() { return forcedCenterStartX_; }
   void SetLaneIndex(int lane) { laneIndex_ = lane; }
   void SetTargetLaneIndex(int lane) { targetLaneIndex_ = lane; }
-  float &GetStartXRef() { return startX_; }
-  float &GetLerpTimeRef() { return lerpTime_; }
   int GetMinLane() const { return minLane_; }
   int GetMaxLane() const { return maxLane_; }
   float GetLaneWidth() const { return laneWidth_; }

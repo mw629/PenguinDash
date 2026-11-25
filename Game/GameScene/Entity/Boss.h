@@ -189,16 +189,14 @@ public:
   /// <param name="nextState">ステートポインタ</param>
   void ChangeState(std::unique_ptr<IBossState> nextState);
 
-  Transform &GetTransformRef() { return transform_; }
-
   Vector3 GetTargetPos() const { return targetPos_; }
   void SetTargetPos(const Vector3 &targetPos) { targetPos_ = targetPos; }
-  Vector3 &GetTargetPosRef() { return targetPos_; }
 
   const Vector3 &GetStartPos() const { return startPos_; }
   void SetStartPos(const Vector3 &startPos) { startPos_ = startPos; }
 
-  float &GetBattleAnimTimerRef() { return battleAnimTimer_; }
+  float GetBattleAnimTimer() const { return battleAnimTimer_; }
+  void SetBattleAnimTimer(float timer) { battleAnimTimer_ = timer; }
 
   void SetLighting(bool enabled);
   bool GetLighting() const { return lightingEnabled_; }

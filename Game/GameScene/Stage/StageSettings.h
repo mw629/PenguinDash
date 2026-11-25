@@ -141,7 +141,7 @@ private:
       kDefaultWaterWidthScale; // 波の横幅スケール（片側、m）
 
   // 海に浮かべる流氷・アザラシ（Drift Ice / Baby Seal）
-public:
+private:
   struct DriftIce {
     static constexpr float kDefaultBaseY = 0.3f;
     static constexpr float kDefaultFloatingHeight = 0.25f;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Engine.h>
 #include <GameObjects/Object/2d/Sprite.h>
 #include <Math/Calculation.h>
@@ -24,6 +24,7 @@ public:
     Double    // スコア＆走行距離ダブル1位（究極記録）
   };
 
+private:
   struct ShardParticle {
     Vector2 pos;
     Vector2 velocity;
@@ -36,7 +37,6 @@ public:
     float floatPhase = 0.0f;
   };
 
-private:
   static constexpr float kDefaultTotalDuration = 2.10f;
   static constexpr float kFlashDuration = 0.20f;
   static constexpr float kSlideInDuration = 0.30f;

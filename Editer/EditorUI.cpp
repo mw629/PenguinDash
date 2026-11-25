@@ -1,4 +1,4 @@
-﻿#include "EditorUI.h"
+#include "EditorUI.h"
 #include "../MatchaEngine/Input/Input.h"
 
 #ifdef _USE_IMGUI
@@ -44,8 +44,8 @@ void EditorUI::ProcessMousePicking(GameObjectManager* gameObjectManager, const M
     float my = mousePos.y;
 
     // Sceneウィンドウの実際の描画領域（レターボックス等を考慮した絶対座標）
-    ImVec2 scenePos = EditorManager::s_sceneImagePos;
-    ImVec2 sceneSize = EditorManager::s_sceneImageSize;
+    ImVec2 scenePos = EditorManager::GetSceneImagePos();
+    ImVec2 sceneSize = EditorManager::GetSceneImageSize();
 
     // NDC変換 (Sceneウィンドウ内を-1〜1にマッピング)
     float ndcX = (2.0f * (mx - scenePos.x)) / sceneSize.x - 1.0f;
@@ -126,8 +126,8 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
     ImVec2 windowPos = ImGui::GetWindowPos();
 
     // Sceneウィンドウの実際の描画領域
-    ImVec2 scenePos = EditorManager::s_sceneImagePos;
-    ImVec2 sceneSize = EditorManager::s_sceneImageSize;
+    ImVec2 scenePos = EditorManager::GetSceneImagePos();
+    ImVec2 sceneSize = EditorManager::GetSceneImageSize();
 
     ImGuizmo::SetOrthographic(false);
     ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
@@ -139,8 +139,8 @@ void EditorUI::DrawGizmo(const Matrix4x4& view, const Matrix4x4& projection) {
     Matrix4x4 world = MakeAffineMatrix(t.translate, {1.0f, 1.0f, 1.0f}, t.rotate);
 
     ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
-    if (EditorManager::s_gizmoOp == 1) op = ImGuizmo::ROTATE;
-    else if (EditorManager::s_gizmoOp == 2) op = ImGuizmo::SCALE;
+    if (EditorManager::GetGizmoOp() == 1) op = ImGuizmo::ROTATE;
+    else if (EditorManager::GetGizmoOp() == 2) op = ImGuizmo::SCALE;
 
     ImGuizmo::Manipulate(
         &view.m[0][0],

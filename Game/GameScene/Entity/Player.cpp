@@ -91,8 +91,9 @@ void Player::Initialize(ModelData modelData) {
 
 // --- PlayerRunState ---
 void PlayerRunState::Enter(Player &player) {
-  player.GetTransformRef().scale.y = 1.0f;
-  player.GetTransformRef().translate.y = player.GetBaseHeight();
+  player.transform_.scale.y = 1.0f;
+  player.transform_.translate.y = player.GetBaseHeight();
+  player.MarkDirty();
   if (player.GetModel()) {
     player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
   }
@@ -135,7 +136,7 @@ void PlayerJumpState::Enter(Player &player) {
   float mult = player.GetCurrentSpeedMultiplier() > 0.0f
                    ? player.GetCurrentSpeedMultiplier()
                    : 1.0f;
-  player.GetVelocityYRef() = player.GetJumpPower() * mult;
+  player.velocityY_ = player.GetJumpPower() * mult;
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
 }
 
@@ -149,16 +150,18 @@ void PlayerJumpState::Update(Player &player, float speedMultiplier) {
   player.UpdateLaneMovement(speedMultiplier);
 
   // 垂直ジャンプ物理
-  Transform &t = player.GetTransformRef();
-  t.translate.y += player.GetVelocityYRef();
-  player.GetVelocityYRef() -=
+  Transform &t = player.transform_;
+  t.translate.y += player.velocityY_;
+  player.velocityY_ -=
       player.GetGravity() * (speedMultiplier * speedMultiplier);
+  player.MarkDirty();
 
   // 地面に着地
   if (t.translate.y <= player.GetBaseHeight()) {
     t.translate.y = player.GetBaseHeight();
-    player.GetVelocityYRef() = 0.0f;
-    player.GetCurrentRecoveryTimerRef() = player.GetJumpRecovery();
+    player.velocityY_ = 0.0f;
+    player.currentRecoveryTimer_ = player.GetJumpRecovery();
+    player.MarkDirty();
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
 
     // 着地時カメラシェイク演出コールバック
@@ -190,14 +193,15 @@ void PlayerJumpState::Update(Player &player, float speedMultiplier) {
 
 // --- PlayerRollState ---
 void PlayerRollState::Enter(Player &player) {
-  player.GetRollTimerRef() = player.GetRollDuration();
+  player.rollTimer_ = player.GetRollDuration();
   SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
   if (player.GetModel()) {
     player.GetModel()->SetAnimation("sneakWalk",
                                     player.GetRollTransitionDuration());
   }
-  player.GetTransformRef().translate.y =
+  player.transform_.translate.y =
       player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
+  player.MarkDirty();
 }
 
 void PlayerRollState::Update(Player &player, float speedMultiplier) {
@@ -230,9 +234,9 @@ void PlayerRollState::Update(Player &player, float speedMultiplier) {
   player.UpdateLaneMovement(speedMultiplier);
 
   // 転がりタイマー減算
-  player.GetRollTimerRef() -= speedMultiplier;
-  if (player.GetRollTimerRef() <= 0.0f && !player.GetKeepRolling()) {
-    player.GetCurrentRecoveryTimerRef() = player.GetRollRecovery();
+  player.rollTimer_ -= speedMultiplier;
+  if (player.rollTimer_ <= 0.0f && !player.GetKeepRolling()) {
+    player.currentRecoveryTimer_ = player.GetRollRecovery();
 
     // ロール終了時の先行入力判定
     if (!player.GetAutoPilot()) {
@@ -257,8 +261,9 @@ void PlayerRollState::Update(Player &player, float speedMultiplier) {
 }
 
 void PlayerRollState::Exit(Player &player) {
-  player.GetTransformRef().scale.y = 1.0f;
-  player.GetTransformRef().translate.y = player.GetBaseHeight();
+  player.transform_.scale.y = 1.0f;
+  player.transform_.translate.y = player.GetBaseHeight();
+  player.MarkDirty();
   if (player.GetModel()) {
     player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
   }
@@ -266,9 +271,10 @@ void PlayerRollState::Exit(Player &player) {
 
 // --- PlayerHitState ---
 void PlayerHitState::Enter(Player &player) {
-  player.GetTransformRef().scale = {1.0f, 1.0f, 1.0f};
-  player.GetCurrentRecoveryTimerRef() = 0.0f;
-  player.GetHitTimerRef() = 0.0f;
+  player.transform_.scale = {1.0f, 1.0f, 1.0f};
+  player.MarkDirty();
+  player.currentRecoveryTimer_ = 0.0f;
+  player.hitTimer_ = 0.0f;
 
   if (player.GetIsCameraSlam()) {
     if (player.GetModel()) {
@@ -289,7 +295,7 @@ void PlayerHitState::Enter(Player &player) {
     vel.y =
         (targetPos.y - startPos.y) / frames +
         0.5f * (player.GetGravity() * Player::kHitGravityMultiplier) * frames;
-    player.GetKnockbackVelocityRef() = vel;
+    player.knockbackVelocity_ = vel;
   } else if (player.GetIsTrip()) {
     // === 腹滑り雪玉化（Belly Slide & Snowball Roll）演出の開始 ===
     player.SetSnowballActive(true);
@@ -304,12 +310,13 @@ void PlayerHitState::Enter(Player &player) {
     SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
 
     // お腹が地面に接地する高さに設定し、前方に滑り出す初速を与える
-    player.GetTransformRef().translate.y =
+    player.transform_.translate.y =
         player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
-    player.GetTransformRef().rotate.x = 0.05f;
-    player.GetTransformRef().rotate.z = 0.08f;
-    player.GetKnockbackVelocityRef() = {0.0f, 0.0f,
-                                        Player::kSnowballInitialSpeedZ};
+    player.transform_.rotate.x = 0.05f;
+    player.transform_.rotate.z = 0.08f;
+    player.MarkDirty();
+    player.knockbackVelocity_ = {0.0f, 0.0f,
+                                 Player::kSnowballInitialSpeedZ};
   } else {
     // 通常被弾
     if (player.GetModel()) {
@@ -319,8 +326,8 @@ void PlayerHitState::Enter(Player &player) {
     float randX =
         ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) *
         Player::kKnockbackRandXScale;
-    player.GetKnockbackVelocityRef() = {randX, Player::kHitKnockbackVelocity.y,
-                                        Player::kHitKnockbackVelocity.z};
+    player.knockbackVelocity_ = {randX, Player::kHitKnockbackVelocity.y,
+                                 Player::kHitKnockbackVelocity.z};
   }
 }
 
@@ -329,9 +336,9 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
     return;
   }
 
-  player.GetHitTimerRef() += 1.0f;
-  Transform &transform = player.GetTransformRef();
-  Vector3 &knockback = player.GetKnockbackVelocityRef();
+  player.hitTimer_ += 1.0f;
+  Transform &transform = player.transform_;
+  Vector3 &knockback = player.knockbackVelocity_;
 
   if (player.GetIsCameraSlam()) {
     if (!player.GetHasHitCamera()) {
@@ -351,7 +358,7 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
           (knockback.z < 0.0f && transform.translate.z <= targetPos.z) ||
           (knockback.z > 0.0f && transform.translate.z >= targetPos.z);
       if (reachedZ ||
-          player.GetHitTimerRef() >= Player::kCameraSlamDurationFrames) {
+          player.hitTimer_ >= Player::kCameraSlamDurationFrames) {
         // カメラ画面にドカンと激突！
         player.SetHasHitCamera(true);
         transform.translate.z = targetPos.z;
@@ -376,7 +383,7 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
     }
   } else if (player.GetIsTrip()) {
     // === 腹滑り雪玉化の毎フレーム更新 ===
-    float timer = player.GetHitTimerRef();
+    float timer = player.hitTimer_;
 
     // 1. 前方（奥側+Z）への滑走速度：初期滑走から徐々に雪玉の勢いがついて加速
     float speedT = std::clamp(timer / 60.0f, 0.0f, 1.0f);
@@ -403,7 +410,7 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
       player.SetSnowballScale(scale);
 
       // 雪玉の回転（前方にゴロゴロ転がる）
-      player.GetSnowballRotationXRef() +=
+      player.snowballRotationX_ +=
           Player::kSnowballRollSpeed *
           (currentSpeedZ / Player::kSnowballInitialSpeedZ);
 
@@ -448,14 +455,16 @@ void PlayerHitState::Update(Player &player, float speedMultiplier) {
       knockback.x *= Player::kHitLandingFriction;
       knockback.z *= Player::kHitLandingFriction;
     }
+    player.MarkDirty();
   }
 }
 
 void PlayerHitState::Exit(Player &player) {
-  player.GetTransformRef().rotate.x = 0.0f;
-  player.GetTransformRef().rotate.y = 0.0f;
-  player.GetTransformRef().rotate.z = 0.0f;
-  player.GetKnockbackVelocityRef() = {0.0f, 0.0f, 0.0f};
+  player.transform_.rotate.x = 0.0f;
+  player.transform_.rotate.y = 0.0f;
+  player.transform_.rotate.z = 0.0f;
+  player.MarkDirty();
+  player.knockbackVelocity_ = {0.0f, 0.0f, 0.0f};
   player.SetIsCameraSlam(false);
   player.SetHasHitCamera(false);
   player.SetSnowballActive(false);
@@ -468,8 +477,8 @@ void PlayerHitState::Exit(Player &player) {
 
 // --- PlayerForcedCenterState ---
 void PlayerForcedCenterState::Enter(Player &player) {
-  player.GetForcedCenterTimerRef() = 0.0f;
-  player.GetForcedCenterStartXRef() = player.GetTransformRef().translate.x;
+  player.forcedCenterTimer_ = 0.0f;
+  player.forcedCenterStartX_ = player.transform_.translate.x;
 }
 
 void PlayerForcedCenterState::Update(Player &player, float speedMultiplier) {
@@ -477,15 +486,16 @@ void PlayerForcedCenterState::Update(Player &player, float speedMultiplier) {
     return;
   }
 
-  player.GetForcedCenterTimerRef() += speedMultiplier;
-  float t = player.GetForcedCenterTimerRef() / player.GetForcedCenterDuration();
+  player.forcedCenterTimer_ += speedMultiplier;
+  float t = player.forcedCenterTimer_ / player.GetForcedCenterDuration();
   if (t > 1.0f) {
     t = 1.0f;
   }
 
   float easeT = t * t * (3.0f - 2.0f * t);
-  player.GetTransformRef().translate.x =
-      Lerp(player.GetForcedCenterStartXRef(), 0.0f, easeT);
+  player.transform_.translate.x =
+      Lerp(player.forcedCenterStartX_, 0.0f, easeT);
+  player.MarkDirty();
 
   if (t >= 1.0f) {
     player.SetLaneIndex(0);

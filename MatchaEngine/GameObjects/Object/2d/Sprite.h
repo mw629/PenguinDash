@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <wrl.h>
 #include <d3d12.h>
 #include <memory>
@@ -189,8 +189,6 @@ public:
 	ID3D12Resource* GetVertexResource() { return wvpResource_.Get(); }
 	D3D12_INDEX_BUFFER_VIEW* GetIndexBufferView() { return &indexBufferView_; }
 
-	Transform& GetTransform() { return transform_; }
-	
 	MaterialFactory* GetMaterial() { 
 		auto matComp = GetComponent<MaterialComponent>();
 		return matComp ? matComp->GetMaterialFactory() : nullptr;

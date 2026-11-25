@@ -78,8 +78,11 @@ struct FieldData {
 	Vector3 position = { 0.0f, 0.0f, 0.0f };
 };
 
+class EditorManager;
+
 class Emitter
 {
+	friend class EditorManager;
 private:
 	static constexpr float kDefaultGravity = 0.01f;
 	static constexpr float kFireUpwardSpeed = 0.01f / 60.0f;
@@ -557,7 +560,6 @@ public:
 	/// パーティクル形状データを取得します。
 	/// </summary>
 	EffectShapeData GetShapeData() const { return shapeData_; }
-	EffectShapeData& GetShapeDataRef() { return shapeData_; }
 
 	/// <summary>
 	/// ブレンドモード（加算、半透明等）を設定します。
@@ -607,6 +609,10 @@ public:
 	/// 基準パーティクル設定データを取得します。
 	/// </summary>
 	const EffectDefinitionData& GetBaseParticleData() const { return SetEffectDefinitionData_; }
+
+private:
+	// エディタ（EditorManager）専用の内部パラメータ参照
+	EffectShapeData& GetShapeDataRef() { return shapeData_; }
 	EffectDefinitionData& GetBaseParticleDataRef() { return SetEffectDefinitionData_; }
 	ParticleMovementData& GetMovementDataRef() { return movementData_; }
 	FieldData& GetFieldDataRef() { return fieldData_; }
@@ -624,6 +630,7 @@ public:
 	bool& GetAlignToVelocityRef() { return alignToVelocity_; }
 	bool& GetIsHitRef() { return isHit_; }
 
+public:
 	/// <summary>
 	/// 生存中の全パーティクルデータリストを取得します。
 	/// </summary>

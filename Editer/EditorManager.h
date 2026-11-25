@@ -163,11 +163,23 @@ public:
 	/// </summary>
 	static std::string GetCurrentFileName() { return s_currentFileName_; }
 
-	static int s_gizmoOp; // 0: Translate, 1: Rotate, 2: Scale
+private:
+	static int s_gizmoOp_; // 0: Translate, 1: Rotate, 2: Scale
 
 #ifdef _USE_IMGUI
-	static ImVec2 s_sceneImagePos;
-	static ImVec2 s_sceneImageSize;
+	static ImVec2 s_sceneImagePos_;
+	static ImVec2 s_sceneImageSize_;
+#endif // _USE_IMGUI
+
+public:
+	static int GetGizmoOp() { return s_gizmoOp_; }
+	static void SetGizmoOp(int op) { s_gizmoOp_ = op; }
+
+#ifdef _USE_IMGUI
+	static ImVec2 GetSceneImagePos() { return s_sceneImagePos_; }
+	static ImVec2 GetSceneImageSize() { return s_sceneImageSize_; }
+	static void SetSceneImagePos(const ImVec2& pos) { s_sceneImagePos_ = pos; }
+	static void SetSceneImageSize(const ImVec2& size) { s_sceneImageSize_ = size; }
 #endif // _USE_IMGUI
 
 	/// <summary>

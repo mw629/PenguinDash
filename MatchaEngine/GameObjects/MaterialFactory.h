@@ -31,6 +31,9 @@ public:
 	float GetEnvironmentCoefficient() const { return materialData_ ? materialData_->environmentCoefficient : 0.0f; }
 	void SetUVTransform(const Matrix4x4& uvTransform) { materialData_->uvTransform = uvTransform; }
 
+	bool IsMaterialLightingEnabled() const { return materialData_ ? (materialData_->enableLighting != 0) : false; }
+
 	ID3D12Resource* GetMaterialResource() { return materialResource_.Get(); }
 	Material* GetMaterialData() { return materialData_; }
+	const Material* GetMaterialData() const { return materialData_; }
 };

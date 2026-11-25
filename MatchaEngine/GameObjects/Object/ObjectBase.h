@@ -70,8 +70,8 @@ public:
 	}
 	bool GetLighting() const {
 		auto matComp = GetComponent<MaterialComponent>();
-		if (matComp && matComp->GetMaterialFactory() && matComp->GetMaterialFactory()->GetMaterialData()) {
-			return matComp->GetMaterialFactory()->GetMaterialData()->enableLighting != 0;
+		if (matComp && matComp->GetMaterialFactory()) {
+			return matComp->GetMaterialFactory()->IsMaterialLightingEnabled();
 		}
 		return false;
 	}

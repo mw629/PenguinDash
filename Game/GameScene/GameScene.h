@@ -347,10 +347,6 @@ public:
   /// </summary>
   void ResetSettingsToDefault();
 
-  char settingsFileName_[128] = "GameSceneSettings";
-  std::string settingsStatusMessage_ = "";
-  float settingsStatusTimer_ = 0.0f;
-
 public:
   enum class TitleMenuItem {
     PlayerName = 0,
@@ -371,6 +367,11 @@ private:
   int titleAchievementPage_ = 0;
   std::string titlePlayerName_ = "Player";
   bool isEditingTitlePlayerName_ = false;
+
+  // 設定ファイル（JSON）用
+  char settingsFileName_[128] = "GameSceneSettings";
+  std::string settingsStatusMessage_ = "";
+  float settingsStatusTimer_ = 0.0f;
 
   // 設定画面（音量調整）用
   bool isPauseSettingsOpen_ = false;

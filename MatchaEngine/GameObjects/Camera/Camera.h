@@ -7,8 +7,11 @@
 #include <vector>
 #include <string>
 
+class EditorManager;
+
 class Camera
 {
+	friend class EditorManager;
 public:
 	// シェイク設定パラメータ
 	struct ShakeParams {
@@ -96,6 +99,9 @@ private:
 	float dollyTimer_ = 0.0f;
 	float dollyTargetFrustumHeight_ = 0.0f;
 
+	// エディタ（EditorManager）専用デバッグカメラ参照
+	DebugCamera& GetDebugCameraRef() { return debugCamera_; }
+
 public:
 	Camera();
 	~Camera();
@@ -168,11 +174,6 @@ public:
 	const Transform& GetTransform() const { return transform_; }
 
 	/// <summary>
-	/// 基準Transformへの参照を取得します。
-	/// </summary>
-	Transform& GetTransformRef() { return transform_; }
-
-	/// <summary>
 	/// ゲーム本来のTransformを取得します。
 	/// </summary>
 	const Transform& GetGameTransform() const { return gameTransform_; }
@@ -227,11 +228,6 @@ public:
 	/// </summary>
 	/// <param name="transform">リセット基準となるTransform</param>
 	void ResetDebugCamera(const Transform& transform);
-
-	/// <summary>
-	/// デバッグカメラインスタンスへの参照を取得します。
-	/// </summary>
-	DebugCamera& GetDebugCameraRef() { return debugCamera_; }
 
 	/// <summary>
 	/// デバッグカメラの注視点ターゲットを設定します。

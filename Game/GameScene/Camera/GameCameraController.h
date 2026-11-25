@@ -129,7 +129,6 @@ public:
   /// <param name="transform">設定する姿勢</param>
   void SetTransform(const Transform &transform);
   const Transform &GetTransform() const { return cameraTransform_; }
-  Transform &GetTransformRef() { return cameraTransform_; }
 
   Camera *GetCamera() const { return camera_.get(); }
   Camera *GetGameCamera() const { return gameCamera_.get(); }

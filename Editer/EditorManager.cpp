@@ -43,7 +43,7 @@ static float s_layoutNoticeTimer = 0.0f;
 static std::string s_layoutNoticeMsg = "";
 static const std::string s_layoutFilePath = "Resources/Layout/saved_layout.ini";
 
-int EditorManager::s_gizmoOp = 0;
+int EditorManager::s_gizmoOp_ = 0;
 
 void DrawDirectoryTree(const std::filesystem::path& dirPath) {
 	try {
@@ -205,8 +205,8 @@ float EditorManager::playSpeed_ = 1.0f;
 #endif
 
 #ifdef _USE_IMGUI
-ImVec2 EditorManager::s_sceneImagePos = ImVec2(0, 0);
-ImVec2 EditorManager::s_sceneImageSize = ImVec2(0, 0);
+ImVec2 EditorManager::s_sceneImagePos_ = ImVec2(0, 0);
+ImVec2 EditorManager::s_sceneImageSize_ = ImVec2(0, 0);
 #endif
 
 EditorManager::SceneOverlayCallback EditorManager::s_sceneOverlayCallback_ = nullptr;
@@ -913,18 +913,18 @@ void EditorManager::Update(Engine* engine)
 	ImVec4 activeCol = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
 	ImVec4 defaultCol = ImGui::GetStyleColorVec4(ImGuiCol_Button);
 	
-	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp == 0 ? activeCol : defaultCol);
-	if (ImGui::Button("T")) s_gizmoOp = 0;
+	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp_ == 0 ? activeCol : defaultCol);
+	if (ImGui::Button("T")) s_gizmoOp_ = 0;
 	ImGui::PopStyleColor();
 	ImGui::SameLine();
 	
-	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp == 1 ? activeCol : defaultCol);
-	if (ImGui::Button("R")) s_gizmoOp = 1;
+	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp_ == 1 ? activeCol : defaultCol);
+	if (ImGui::Button("R")) s_gizmoOp_ = 1;
 	ImGui::PopStyleColor();
 	ImGui::SameLine();
 	
-	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp == 2 ? activeCol : defaultCol);
-	if (ImGui::Button("S")) s_gizmoOp = 2;
+	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp_ == 2 ? activeCol : defaultCol);
+	if (ImGui::Button("S")) s_gizmoOp_ = 2;
 	ImGui::PopStyleColor();
 	
 	ImGui::PopStyleVar();
@@ -978,8 +978,8 @@ void EditorManager::Update(Engine* engine)
 		ImGui::SetCursorPos(ImVec2(cursorStart.x + offsetX, cursorStart.y + offsetY));
 	}
 
-	s_sceneImagePos = ImGui::GetCursorScreenPos();
-	s_sceneImageSize = imageSize;
+	s_sceneImagePos_ = ImGui::GetCursorScreenPos();
+	s_sceneImageSize_ = imageSize;
 
 	if (engine->GetFinalRenderTexture()) {
 		ImGui::Image((ImTextureID)engine->GetFinalRenderTexture()->GetSrvHandleGPU().ptr, imageSize);

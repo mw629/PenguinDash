@@ -9,7 +9,7 @@
 
 class ComputePipeline
 {
-public:
+private:
 	struct PipelineData {
 		D3D12_COMPUTE_PIPELINE_STATE_DESC computePipelineStateDesc = {};
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineState = nullptr;
@@ -17,7 +17,6 @@ public:
 		std::map<std::string, UINT> rootParameterIndexMap;
 	};
 
-private:
 	std::map<std::string, std::shared_ptr<PipelineData>> pipelines_;
 	std::string defaultPipelineName_ = "";
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc_ = {};
