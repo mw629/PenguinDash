@@ -4,6 +4,8 @@
 #include "AssetManager.h"
 #include "Collision.h"
 #include "Graphics/Render/Draw.h"
+#include "State/PlayerStates.h"
+#include <algorithm>
 
 #ifdef _USE_IMGUI
 #include <imgui.h>
@@ -22,11 +24,12 @@ void Player::UpdateDrawTransform(float speedMultiplier) {
   drawTransform.scale = modelOffset_.scale;
 
   // 平行移動オフセットの適用
+  const bool needsRollingOffset =
+      currentState_ && currentState_->NeedsRollingHeightOffset();
   drawTransform.translate.x += modelOffset_.translate.x;
   drawTransform.translate.y +=
-      modelOffset_.translate.y + ((GetIsRolling() || (GetIsHit() && isTrip_))
-                                      ? kDefaultRollingHeightOffset
-                                      : 0.0f);
+      modelOffset_.translate.y +
+      (needsRollingOffset ? kDefaultRollingHeightOffset : 0.0f);
   drawTransform.translate.z += modelOffset_.translate.z;
 
   // 回転オフセットの適用
@@ -81,437 +84,17 @@ void Player::Initialize(ModelData modelData) {
   if (snowballModel_->GetMaterial()) {
     snowballModel_->GetMaterial()->SetColor({0.96f, 0.98f, 1.0f, 1.0f});
   }
+  // 雪玉用スフィアコライダーを初期化（Double Dispatchによる異種形状判定用）
+  snowballModel_->AddComponent<SphereColliderComponent>();
 
   UpdateDrawTransform(0.0f);
 }
-
-// ==========================================
-// Player States Implementation
-// ==========================================
-
-// --- PlayerRunState ---
-void PlayerRunState::Enter(Player &player) {
-  player.transform_.scale.y = 1.0f;
-  player.transform_.translate.y = player.GetBaseHeight();
-  player.MarkDirty();
-  if (player.GetModel()) {
-    player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
-  }
-}
-
-void PlayerRunState::Update(Player &player, float speedMultiplier) {
-  if (speedMultiplier <= 0.0f) {
-    return;
-  }
-
-  // レーン入力処理
-  player.ProcessLaneInput();
-
-  // アクション判定 (先行入力バッファまたはキー押下)
-  if (player.CanAct() && !player.GetAutoPilot()) {
-    if (player.ConsumeBufferedJump() ||
-        GameSceneManager::GetInstance()->IsPushJump()) {
-      player.ChangeActionState(PlayerActionType::Jump);
-      if (player.GetCurrentActionState()) {
-        player.GetCurrentActionState()->Update(player, speedMultiplier);
-      }
-      return;
-    }
-    if (player.ConsumeBufferedRoll() ||
-        GameSceneManager::GetInstance()->IsPushRoll()) {
-      player.ChangeActionState(PlayerActionType::Roll);
-      if (player.GetCurrentActionState()) {
-        player.GetCurrentActionState()->Update(player, speedMultiplier);
-      }
-      return;
-    }
-  }
-
-  // 通常レーン移動更新
-  player.UpdateLaneMovement(speedMultiplier);
-}
-
-// --- PlayerJumpState ---
-void PlayerJumpState::Enter(Player &player) {
-  float mult = player.GetCurrentSpeedMultiplier() > 0.0f
-                   ? player.GetCurrentSpeedMultiplier()
-                   : 1.0f;
-  player.velocityY_ = player.GetJumpPower() * mult;
-  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Jump);
-}
-
-void PlayerJumpState::Update(Player &player, float speedMultiplier) {
-  if (speedMultiplier <= 0.0f) {
-    return;
-  }
-
-  // 空中でもレーン移動入力・更新は有効
-  player.ProcessLaneInput();
-  player.UpdateLaneMovement(speedMultiplier);
-
-  // 垂直ジャンプ物理
-  Transform &t = player.transform_;
-  t.translate.y += player.velocityY_;
-  player.velocityY_ -=
-      player.GetGravity() * (speedMultiplier * speedMultiplier);
-  player.MarkDirty();
-
-  // 地面に着地
-  if (t.translate.y <= player.GetBaseHeight()) {
-    t.translate.y = player.GetBaseHeight();
-    player.velocityY_ = 0.0f;
-    player.currentRecoveryTimer_ = player.GetJumpRecovery();
-    player.MarkDirty();
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land);
-
-    // 着地時カメラシェイク演出コールバック
-    if (player.GetOnLandCallback()) {
-      player.GetOnLandCallback()();
-    }
-
-    // 先行入力バッファ判定（着地直後の連続ジャンプまたはスライディング）
-    if (!player.GetAutoPilot()) {
-      if (player.ConsumeBufferedJump()) {
-        player.ChangeActionState(PlayerActionType::Jump);
-        if (player.GetCurrentActionState()) {
-          player.GetCurrentActionState()->Update(player, speedMultiplier);
-        }
-        return;
-      }
-      if (player.ConsumeBufferedRoll()) {
-        player.ChangeActionState(PlayerActionType::Roll);
-        if (player.GetCurrentActionState()) {
-          player.GetCurrentActionState()->Update(player, speedMultiplier);
-        }
-        return;
-      }
-    }
-
-    player.ChangeActionState(PlayerActionType::Run);
-  }
-}
-
-// --- PlayerRollState ---
-void PlayerRollState::Enter(Player &player) {
-  player.rollTimer_ = player.GetRollDuration();
-  SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
-  if (player.GetModel()) {
-    player.GetModel()->SetAnimation("sneakWalk",
-                                    player.GetRollTransitionDuration());
-  }
-  player.transform_.translate.y =
-      player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
-  player.MarkDirty();
-}
-
-void PlayerRollState::Update(Player &player, float speedMultiplier) {
-  if (speedMultiplier <= 0.0f) {
-    return;
-  }
-
-  // 転がり中でもジャンプでキャンセル可能（先行入力バッファまたはキー押下）
-  if (player.CanAct() && !player.GetAutoPilot()) {
-    if (player.ConsumeBufferedJump() ||
-        GameSceneManager::GetInstance()->IsPushJump()) {
-      if (!player.GetKeepRolling()) {
-        player.ChangeActionState(PlayerActionType::Jump);
-        if (player.GetCurrentActionState()) {
-          player.GetCurrentActionState()->Update(player, speedMultiplier);
-        }
-        return;
-      }
-    }
-  }
-
-  // レーン入力処理（横移動が開始されたら転がりを解除）
-  int prevTarget = player.GetTargetLaneIndex();
-  player.ProcessLaneInput();
-  if (player.GetTargetLaneIndex() != prevTarget && !player.GetKeepRolling()) {
-    player.ChangeActionState(PlayerActionType::Run);
-    player.UpdateLaneMovement(speedMultiplier);
-    return;
-  }
-  player.UpdateLaneMovement(speedMultiplier);
-
-  // 転がりタイマー減算
-  player.rollTimer_ -= speedMultiplier;
-  if (player.rollTimer_ <= 0.0f && !player.GetKeepRolling()) {
-    player.currentRecoveryTimer_ = player.GetRollRecovery();
-
-    // ロール終了時の先行入力判定
-    if (!player.GetAutoPilot()) {
-      if (player.ConsumeBufferedJump()) {
-        player.ChangeActionState(PlayerActionType::Jump);
-        if (player.GetCurrentActionState()) {
-          player.GetCurrentActionState()->Update(player, speedMultiplier);
-        }
-        return;
-      }
-      if (player.ConsumeBufferedRoll()) {
-        player.ChangeActionState(PlayerActionType::Roll);
-        if (player.GetCurrentActionState()) {
-          player.GetCurrentActionState()->Update(player, speedMultiplier);
-        }
-        return;
-      }
-    }
-
-    player.ChangeActionState(PlayerActionType::Run);
-  }
-}
-
-void PlayerRollState::Exit(Player &player) {
-  player.transform_.scale.y = 1.0f;
-  player.transform_.translate.y = player.GetBaseHeight();
-  player.MarkDirty();
-  if (player.GetModel()) {
-    player.GetModel()->SetAnimation("walk", player.GetWalkTransitionDuration());
-  }
-}
-
-// --- PlayerHitState ---
-void PlayerHitState::Enter(Player &player) {
-  player.transform_.scale = {1.0f, 1.0f, 1.0f};
-  player.MarkDirty();
-  player.currentRecoveryTimer_ = 0.0f;
-  player.hitTimer_ = 0.0f;
-
-  if (player.GetIsCameraSlam()) {
-    if (player.GetModel()) {
-      player.GetModel()->SetAnimation("walk",
-                                      player.GetWalkTransitionDuration());
-    }
-    player.SetHasHitCamera(false);
-    Vector3 startPos = player.GetTransform().translate;
-    Vector3 targetPos = player.GetCameraTargetPos();
-    float frames = Player::kCameraSlamDurationFrames;
-    if (frames <= 0.0f)
-      frames = 20.0f;
-
-    Vector3 vel;
-    vel.x = (targetPos.x - startPos.x) / frames;
-    vel.z = (targetPos.z - startPos.z) / frames;
-    // 重力を考慮して目標Yへ到達する放物線初速
-    vel.y =
-        (targetPos.y - startPos.y) / frames +
-        0.5f * (player.GetGravity() * Player::kHitGravityMultiplier) * frames;
-    player.knockbackVelocity_ = vel;
-  } else if (player.GetIsTrip()) {
-    // === 腹滑り雪玉化（Belly Slide & Snowball Roll）演出の開始 ===
-    player.SetSnowballActive(true);
-    player.SetSnowballHidingPenguin(false);
-    player.SetSnowballScale(0.0f);
-    player.SetSnowballRotationX(0.0f);
-
-    // お腹ばいスライディング姿勢（sneakWalk）に素早く遷移
-    if (player.GetModel()) {
-      player.GetModel()->SetAnimation("sneakWalk", 0.04f);
-    }
-    SoundManager::GetInstance()->PlaySE(SoundManager::SE::Slide);
-
-    // お腹が地面に接地する高さに設定し、前方に滑り出す初速を与える
-    player.transform_.translate.y =
-        player.GetBaseHeight() - Player::kDefaultRollingHeightOffset;
-    player.transform_.rotate.x = 0.05f;
-    player.transform_.rotate.z = 0.08f;
-    player.MarkDirty();
-    player.knockbackVelocity_ = {0.0f, 0.0f,
-                                 Player::kSnowballInitialSpeedZ};
-  } else {
-    // 通常被弾
-    if (player.GetModel()) {
-      player.GetModel()->SetAnimation("walk",
-                                      player.GetWalkTransitionDuration());
-    }
-    float randX =
-        ((float)rand() / RAND_MAX - Player::kKnockbackRandCenterOffset) *
-        Player::kKnockbackRandXScale;
-    player.knockbackVelocity_ = {randX, Player::kHitKnockbackVelocity.y,
-                                 Player::kHitKnockbackVelocity.z};
-  }
-}
-
-void PlayerHitState::Update(Player &player, float speedMultiplier) {
-  if (speedMultiplier == 0.0f) {
-    return;
-  }
-
-  player.hitTimer_ += 1.0f;
-  Transform &transform = player.transform_;
-  Vector3 &knockback = player.knockbackVelocity_;
-
-  if (player.GetIsCameraSlam()) {
-    if (!player.GetHasHitCamera()) {
-      // カメラに向かって吹き飛び中
-      transform.translate.x += knockback.x;
-      transform.translate.y += knockback.y;
-      transform.translate.z += knockback.z;
-
-      knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
-
-      // コミカルにきりもみ回転
-      transform.rotate.x += Player::kCameraSlamSpinSpeedX;
-      transform.rotate.z += Player::kCameraSlamSpinSpeedZ;
-
-      Vector3 targetPos = player.GetCameraTargetPos();
-      bool reachedZ =
-          (knockback.z < 0.0f && transform.translate.z <= targetPos.z) ||
-          (knockback.z > 0.0f && transform.translate.z >= targetPos.z);
-      if (reachedZ ||
-          player.hitTimer_ >= Player::kCameraSlamDurationFrames) {
-        // カメラ画面にドカンと激突！
-        player.SetHasHitCamera(true);
-        transform.translate.z = targetPos.z;
-        transform.translate.x = targetPos.x;
-        knockback.x = 0.0f;
-        knockback.z = 0.0f;
-        knockback.y =
-            Player::kCameraStickSlideSpeedY; // 画面をゆっくり滑り落ちる
-
-        // カメラ（正面）を向いて画面にペタッと張り付く姿勢
-        transform.rotate.x = 0.0f;
-        transform.rotate.y = 3.14159f;
-        transform.rotate.z = 0.12f;
-
-        // 激突コールバック実行（激突シェイク・SE・振動）
-        player.ExecuteCameraHitCallback();
-      }
-    } else {
-      // カメラ画面に張り付いて滑り落ち中（床判定を無視して画面下へ滑り落ちる）
-      transform.translate.y += knockback.y;
-      transform.rotate.z += 0.002f;
-    }
-  } else if (player.GetIsTrip()) {
-    // === 腹滑り雪玉化の毎フレーム更新 ===
-    float timer = player.hitTimer_;
-
-    // 1. 前方（奥側+Z）への滑走速度：初期滑走から徐々に雪玉の勢いがついて加速
-    float speedT = std::clamp(timer / 60.0f, 0.0f, 1.0f);
-    float currentSpeedZ = Lerp(Player::kSnowballInitialSpeedZ,
-                               Player::kSnowballMaxSpeedZ, speedT);
-    transform.translate.z += currentSpeedZ;
-
-    // 2.
-    // 腹ばいスライディング時のコミカルなおっとっと揺れ（雪玉に完全に包まれる前）
-    if (timer < Player::kSnowballFullFormFrames) {
-      transform.rotate.z = std::sin(timer * 0.35f) * 0.12f;
-      transform.rotate.x = 0.05f;
-    }
-
-    // 3. 雪玉の生成・成長・転がり処理
-    if (timer >= Player::kSnowballFormDelay) {
-      float formProgress =
-          (timer - Player::kSnowballFormDelay) /
-          (Player::kSnowballFullFormFrames - Player::kSnowballFormDelay);
-      formProgress = std::clamp(formProgress, 0.0f, 1.0f);
-
-      // 雪玉がモコモコッと膨らむ
-      float scale = formProgress * Player::kSnowballMaxScale;
-      player.SetSnowballScale(scale);
-
-      // 雪玉の回転（前方にゴロゴロ転がる）
-      player.snowballRotationX_ +=
-          Player::kSnowballRollSpeed *
-          (currentSpeedZ / Player::kSnowballInitialSpeedZ);
-
-      // 地面高さ（baseHeight_ + modelOffset_.translate.y = 約2.0m）
-      float groundY =
-          player.GetBaseHeight() + player.GetModelOffset().translate.y;
-
-      // 雪玉Transform（底面が地面に接地するように設定）
-      Transform sbTrans;
-      sbTrans.scale = {scale, scale, scale};
-      sbTrans.rotate = {player.GetSnowballRotationX(), 0.0f,
-                        std::sin(timer * 0.25f) * 0.08f};
-      sbTrans.translate = {transform.translate.x, groundY + scale,
-                           transform.translate.z};
-      player.SetSnowballTransform(sbTrans);
-
-      // ペンギンを雪玉の中央に追従
-      transform.translate.y = groundY + scale * 0.5f;
-
-      // 雪玉が最大サイズに達したらペンギンを雪玉の中に包み込む（ペンギン描画を非表示にして雪玉だけにする）
-      if (timer >= Player::kSnowballFullFormFrames) {
-        player.SetSnowballHidingPenguin(true);
-      }
-    } else {
-      player.SetSnowballScale(0.0f);
-      Transform sbTrans = transform;
-      sbTrans.scale = {0.0f, 0.0f, 0.0f};
-      player.SetSnowballTransform(sbTrans);
-    }
-  } else {
-    // 通常被弾
-    transform.translate.x += knockback.x;
-    transform.translate.y += knockback.y;
-    transform.translate.z += knockback.z;
-
-    knockback.y -= player.GetGravity() * Player::kHitGravityMultiplier;
-    transform.rotate.x -= Player::kHitRotationSpeed;
-
-    if (transform.translate.y <= player.GetBaseHeight() && knockback.y < 0.0f) {
-      transform.translate.y = player.GetBaseHeight();
-      knockback.y = 0.0f;
-      knockback.x *= Player::kHitLandingFriction;
-      knockback.z *= Player::kHitLandingFriction;
-    }
-    player.MarkDirty();
-  }
-}
-
-void PlayerHitState::Exit(Player &player) {
-  player.transform_.rotate.x = 0.0f;
-  player.transform_.rotate.y = 0.0f;
-  player.transform_.rotate.z = 0.0f;
-  player.MarkDirty();
-  player.knockbackVelocity_ = {0.0f, 0.0f, 0.0f};
-  player.SetIsCameraSlam(false);
-  player.SetHasHitCamera(false);
-  player.SetSnowballActive(false);
-  player.SetSnowballHidingPenguin(false);
-  player.SetSnowballScale(0.0f);
-  Transform sbTrans{};
-  sbTrans.scale = {0.0f, 0.0f, 0.0f};
-  player.SetSnowballTransform(sbTrans);
-}
-
-// --- PlayerForcedCenterState ---
-void PlayerForcedCenterState::Enter(Player &player) {
-  player.forcedCenterTimer_ = 0.0f;
-  player.forcedCenterStartX_ = player.transform_.translate.x;
-}
-
-void PlayerForcedCenterState::Update(Player &player, float speedMultiplier) {
-  if (speedMultiplier <= 0.0f) {
-    return;
-  }
-
-  player.forcedCenterTimer_ += speedMultiplier;
-  float t = player.forcedCenterTimer_ / player.GetForcedCenterDuration();
-  if (t > 1.0f) {
-    t = 1.0f;
-  }
-
-  float easeT = t * t * (3.0f - 2.0f * t);
-  player.transform_.translate.x =
-      Lerp(player.forcedCenterStartX_, 0.0f, easeT);
-  player.MarkDirty();
-
-  if (t >= 1.0f) {
-    player.SetLaneIndex(0);
-    player.SetTargetLaneIndex(0);
-    player.ChangeActionState(PlayerActionType::Run);
-  }
-}
-
-// ==========================================
-// Player Implementation
-// ==========================================
 
 void Player::Reset() {
   transform_.scale = {1.0f, 1.0f, 1.0f};
   transform_.rotate = {0.0f, 0.0f, 0.0f};
   transform_.translate = {0.0f, baseHeight_, 0.0f};
+  MarkDirty();
 
   laneIndex_ = 0;
   targetLaneIndex_ = 0;
@@ -519,25 +102,13 @@ void Player::Reset() {
   startX_ = 0.0f;
   moveDirection_ = MoveDirection::None;
 
-  velocityY_ = 0.0f;
-  rollTimer_ = 0.0f;
   keepRolling_ = false;
   currentRecoveryTimer_ = 0.0f;
-
-  isTrip_ = false;
-  hitTimer_ = 0.0f;
-  hitDuration_ = kDefaultHitDuration;
-  knockbackVelocity_ = {0.0f, 0.0f, 0.0f};
 
   isSnowballActive_ = false;
   isSnowballHidingPenguin_ = false;
   snowballScale_ = 0.0f;
-  snowballRotationX_ = 0.0f;
   snowballTransform_.scale = {0.0f, 0.0f, 0.0f};
-
-  forcedCenterTimer_ = 0.0f;
-  forcedCenterDuration_ = kDefaultForcedCenterDuration;
-  forcedCenterStartX_ = 0.0f;
 
   ClearInputBuffer();
 
@@ -557,23 +128,7 @@ void Player::Reset() {
 }
 
 void Player::ChangeActionState(PlayerActionType nextType) {
-  switch (nextType) {
-  case PlayerActionType::Run:
-    ChangeActionState(std::make_unique<PlayerRunState>());
-    break;
-  case PlayerActionType::Jump:
-    ChangeActionState(std::make_unique<PlayerJumpState>());
-    break;
-  case PlayerActionType::Roll:
-    ChangeActionState(std::make_unique<PlayerRollState>());
-    break;
-  case PlayerActionType::Hit:
-    ChangeActionState(std::make_unique<PlayerHitState>());
-    break;
-  case PlayerActionType::ForcedCenter:
-    ChangeActionState(std::make_unique<PlayerForcedCenterState>());
-    break;
-  }
+  ChangeActionState(CreatePlayerState(nextType));
 }
 
 void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
@@ -583,6 +138,22 @@ void Player::ChangeActionState(std::unique_ptr<IPlayerState> newState) {
   currentState_ = std::move(newState);
   if (currentState_) {
     currentState_->Enter(*this);
+  }
+}
+
+void Player::StepActionState(float speedMultiplier) {
+  for (int i = 0; i < kMaxStateTransitionsPerFrame && currentState_; ++i) {
+    const float effectiveSpeed =
+        currentState_->UsesFixedTimeScale() ? 1.0f : speedMultiplier;
+    PlayerStateTransition transition =
+        currentState_->Update(*this, effectiveSpeed);
+    if (!transition.nextState) {
+      break;
+    }
+    ChangeActionState(std::move(transition.nextState));
+    if (!transition.updateImmediately) {
+      break;
+    }
   }
 }
 
@@ -644,40 +215,31 @@ void Player::ProcessLaneInput() {
     return;
   }
 
-  // 1. レーン移動中 (逆方向入力時のクイック切り返しのみ受付)
+  // 1. レーン移動中（逆方向入力時のクイック切り返しのみ受付）
   if (laneIndex_ != targetLaneIndex_) {
     int currentDir = (targetLaneIndex_ > laneIndex_) ? 1 : -1;
     if (inputDir == -currentDir) {
-      // === クイック切り返し (Quick Reverse) ===
-      // 移動途中で逆方向の入力があった場合、即座に反転して元のレーンへ戻る
       int oldTarget = targetLaneIndex_;
       int oldOrigin = laneIndex_;
       targetLaneIndex_ = oldOrigin;
       laneIndex_ = oldTarget;
 
       startX_ = static_cast<float>(laneIndex_) * laneWidth_;
-      lerpTime_ = 1.0f - lerpTime_;
-      if (lerpTime_ < 0.0f)
-        lerpTime_ = 0.0f;
-      if (lerpTime_ > 1.0f)
-        lerpTime_ = 1.0f;
+      lerpTime_ = std::clamp(1.0f - lerpTime_, 0.0f, 1.0f);
 
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
 
       bufferedLaneTimer_ = 0.0f;
       bufferedLaneDirection_ = 0;
     }
-    // 移動中の同方向入力は先行入力せず無視（誤爆・連続移動を防止）
     return;
   }
 
-  // 2. 停止中 (通常入力によるレーン移動開始)
+  // 2. 停止中（通常入力によるレーン移動開始）
   bufferedLaneTimer_ = 0.0f;
   bufferedLaneDirection_ = 0;
 
-  int nextTarget = laneIndex_ + inputDir;
-  nextTarget = std::clamp(nextTarget, minLane_, maxLane_);
-
+  int nextTarget = std::clamp(laneIndex_ + inputDir, minLane_, maxLane_);
   if (nextTarget != laneIndex_) {
     targetLaneIndex_ = nextTarget;
     startX_ = transform_.translate.x;
@@ -698,20 +260,19 @@ void Player::UpdateLaneMovement(float speedMultiplier) {
     transform_.translate.x = static_cast<float>(laneIndex_) * laneWidth_;
     currentRecoveryTimer_ = laneChangeRecovery_;
 
-    // 到着時は確実にバッファをクリアして連続移動を防止
     bufferedLaneTimer_ = 0.0f;
     bufferedLaneDirection_ = 0;
   } else {
     float targetX = static_cast<float>(targetLaneIndex_) * laneWidth_;
     transform_.translate.x = Lerp(startX_, targetX, lerpTime_);
   }
+  MarkDirty();
 }
 
 void Player::Update(Matrix4x4 view, float speedMultiplier) {
   currentSpeedMultiplier_ = speedMultiplier;
 
-  // ゲーム一時停止中または描画専用パス（speedMultiplier <=
-  // 0.0f）では論理更新を行わない
+  // ゲーム一時停止中または描画専用パス（speedMultiplier <= 0.0f）では論理更新を行わない
   if (speedMultiplier > 0.0f) {
     // 先行入力バッファの更新
     UpdateInputBuffer(speedMultiplier);
@@ -724,20 +285,16 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
       }
     }
 
-    // ステート更新
-    if (currentState_) {
-      if (GetIsHit()) {
-        currentState_->Update(*this, 1.0f);
-      } else {
-        currentState_->Update(*this, speedMultiplier);
-      }
-    }
+    // ステート更新（遷移と即時更新を安全にステップ実行）
+    StepActionState(speedMultiplier);
+    // ステート内でのTransform更新を子オブジェクト（HexBarrier等）へDirty伝播
+    MarkDirty();
   }
 
   // モデルの配置更新
   UpdateDrawTransform(speedMultiplier);
 
-  // アニメーション更新（走っている際）
+  // アニメーション更新
   if (speedMultiplier > 0.0f) {
     model_->UpdateWithDelta(view, speedMultiplier * kAnimationSpeedFactor);
   } else {
@@ -746,10 +303,13 @@ void Player::Update(Matrix4x4 view, float speedMultiplier) {
 
   model_->SettingWvp(view);
 
-  // 雪玉モデルのTransform設定とWVP更新
+  // 雪玉モデルのTransform設定とWVP・コライダー半径更新
   if (snowballModel_) {
     snowballModel_->SetTransform(snowballTransform_);
     snowballModel_->SettingWvp(view);
+    if (auto sphereCol = snowballModel_->GetComponent<SphereColliderComponent>()) {
+      sphereCol->SetRadius((std::max)(snowballScale_ * 1.15f, 1.2f));
+    }
   }
 
   // コライダーサイズ設定
@@ -772,7 +332,7 @@ void Player::Draw(class Draw &draw) {
     draw.DrawAnimation(model_.get());
   }
   // 雪玉がアクティブな場合は雪玉を描画
-  if (isTrip_ && isSnowballActive_ && snowballModel_ &&
+  if (GetIsTrip() && isSnowballActive_ && snowballModel_ &&
       snowballScale_ > 0.01f) {
     draw.DrawModel(snowballModel_.get());
   }
@@ -836,23 +396,15 @@ void Player::ImGuiInnerComponents() {
 
 void Player::OnHit(bool isTrip, bool isLargeObstacle,
                    const Vector3 &cameraPos) {
-  isTrip_ = isTrip;
-  isCameraSlam_ = (!isTrip && isLargeObstacle);
-  cameraTargetPos_ = cameraPos;
-  hitDuration_ = isTrip ? kTripSnowballDuration : kDefaultHitDuration;
-  ChangeActionState(PlayerActionType::Hit);
-}
-
-bool Player::IsHitAnimationFinished() const {
-  return GetIsHit() && hitTimer_ >= hitDuration_;
+  ChangeActionState(
+      std::make_unique<PlayerHitState>(isTrip, isLargeObstacle, cameraPos));
 }
 
 void Player::StartForceToCenter(float duration) {
   if (GetIsForcedCentering() || targetLaneIndex_ == 0) {
     return;
   }
-  forcedCenterDuration_ = duration;
-  ChangeActionState(PlayerActionType::ForcedCenter);
+  ChangeActionState(std::make_unique<PlayerForcedCenterState>(duration));
 }
 
 void Player::SetLighting(bool enabled) {
@@ -869,9 +421,9 @@ void Player::SetHasBarrier(bool hasBarrier) {
   hasBarrier_ = hasBarrier;
   if (model_) {
     if (hasBarrier_) {
-      model_->SetColor(kBarrierColor); // シアン
+      model_->SetColor(kBarrierColor);
     } else {
-      model_->SetColor(kDefaultPlayerColor); // 白（デフォルト）
+      model_->SetColor(kDefaultPlayerColor);
     }
   }
 }
@@ -879,11 +431,8 @@ void Player::SetHasBarrier(bool hasBarrier) {
 bool Player::TriggerJump() {
   if (CanAct() && !(GetIsRolling() && keepRolling_)) {
     ChangeActionState(PlayerActionType::Jump);
-    if (currentState_) {
-      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f
-                                       ? currentSpeedMultiplier_
-                                       : 1.0f);
-    }
+    StepActionState(currentSpeedMultiplier_ > 0.0f ? currentSpeedMultiplier_
+                                                   : 1.0f);
     return true;
   }
   return false;
@@ -892,11 +441,8 @@ bool Player::TriggerJump() {
 bool Player::TriggerRoll() {
   if (CanAct() && !GetIsRolling() && !GetIsJumping()) {
     ChangeActionState(PlayerActionType::Roll);
-    if (currentState_) {
-      currentState_->Update(*this, currentSpeedMultiplier_ > 0.0f
-                                       ? currentSpeedMultiplier_
-                                       : 1.0f);
-    }
+    StepActionState(currentSpeedMultiplier_ > 0.0f ? currentSpeedMultiplier_
+                                                   : 1.0f);
     return true;
   }
   return false;
@@ -914,11 +460,7 @@ bool Player::TriggerMoveLeft() {
       targetLaneIndex_ = oldOrigin;
       laneIndex_ = oldTarget;
       startX_ = static_cast<float>(laneIndex_) * laneWidth_;
-      lerpTime_ = 1.0f - lerpTime_;
-      if (lerpTime_ < 0.0f)
-        lerpTime_ = 0.0f;
-      if (lerpTime_ > 1.0f)
-        lerpTime_ = 1.0f;
+      lerpTime_ = std::clamp(1.0f - lerpTime_, 0.0f, 1.0f);
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
       if (GetIsRolling() && !keepRolling_) {
         ChangeActionState(PlayerActionType::Run);
@@ -955,11 +497,7 @@ bool Player::TriggerMoveRight() {
       targetLaneIndex_ = oldOrigin;
       laneIndex_ = oldTarget;
       startX_ = static_cast<float>(laneIndex_) * laneWidth_;
-      lerpTime_ = 1.0f - lerpTime_;
-      if (lerpTime_ < 0.0f)
-        lerpTime_ = 0.0f;
-      if (lerpTime_ > 1.0f)
-        lerpTime_ = 1.0f;
+      lerpTime_ = std::clamp(1.0f - lerpTime_, 0.0f, 1.0f);
       SoundManager::GetInstance()->PlaySE(SoundManager::SE::LaneChange);
       if (GetIsRolling() && !keepRolling_) {
         ChangeActionState(PlayerActionType::Run);

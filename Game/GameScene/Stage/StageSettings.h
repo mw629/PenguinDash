@@ -269,8 +269,21 @@ private:
     float initialY = 0.0f;
     float velocityY = 0.0f;
     float delayTimer = 0.0f;
+
+    /// <summary>
+    /// ObjectPool 返却時の状態リセット（HasResetMethod コンセプト対応）
+    /// </summary>
+    void Reset() {
+      renderObj.reset();
+      transform = {};
+      initialY = 0.0f;
+      velocityY = 0.0f;
+      delayTimer = 0.0f;
+    }
   };
-  std::vector<FallingChunk> fallingChunks_;
+  static constexpr size_t kInitialFallingChunkPoolSize = 32;
+  Matcha::ObjectPool<FallingChunk> fallingChunkPool_{kInitialFallingChunkPoolSize};
+  std::vector<FallingChunk *> fallingChunks_;
 
   void GenerateRoadChunks(Matrix4x4 view = IdentityMatrix());
   void RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,

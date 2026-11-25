@@ -445,6 +445,8 @@ Obstacle::Obstacle() {
   name_ = "Obstacle";
   isActive_ = false;
   behavior_ = ResolveBehavior(type_);
+  auto collider = AddComponent<BoxColliderComponent>();
+  collider->SetSize({collisionWidth_, collisionHeight_, collisionDepth_});
 }
 
 Obstacle::~Obstacle() {}
@@ -606,8 +608,12 @@ void Obstacle::ApplyProfile(Model *model, const ObstacleProfile &profile,
   collisionWidth_ = profile.collisionSize.x;
   collisionHeight_ = profile.collisionSize.y;
   collisionDepth_ = profile.collisionSize.z;
+  if (auto collider = GetComponent<ColliderComponent>()) {
+    collider->SetSize(profile.collisionSize);
+  }
   transform_.scale = profile.scale;
   transform_.rotate = profile.rotate;
+  MarkDirty();
 }
 
 void Obstacle::SetType(Type type) {

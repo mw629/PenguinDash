@@ -44,24 +44,6 @@ BoundingSphere ColliderComponent::GetWorldSphere() const
 	return sphere;
 }
 
-bool ColliderComponent::IntersectsWith(const ColliderComponent* other) const
-{
-	if (!other) return false;
-	return other->IntersectsBox(reinterpret_cast<const BoxColliderComponent*>(this));
-}
-
-bool ColliderComponent::IntersectsBox(const BoxColliderComponent* other) const
-{
-	if (!other) return false;
-	return Collision::CheckAABB(GetWorldAABB(), other->GetWorldAABB());
-}
-
-bool ColliderComponent::IntersectsSphere(const SphereColliderComponent* other) const
-{
-	if (!other) return false;
-	return Collision::CheckAABBSphere(GetWorldAABB(), other->GetWorldSphere());
-}
-
 // ==========================================
 // BoxColliderComponent
 // ==========================================
