@@ -1,4 +1,4 @@
-#include "TcpNetworkClient.h"
+﻿#include "TcpNetworkClient.h"
 #include "Core/LogHandler.h"
 
 #ifdef _USE_IMGUI
@@ -11,7 +11,6 @@ TcpNetworkClient::TcpNetworkClient() {
 	if (result != 0) {
 		LOG_ERROR(std::format("TcpNetworkClient: WSAStartup failed with error code: {}", result));
 	}
-	
 }
 
 TcpNetworkClient::~TcpNetworkClient() {
@@ -23,8 +22,7 @@ TcpNetworkClient::~TcpNetworkClient() {
 
 void TcpNetworkClient::ImGuiConnectWindow(bool* p_open) {
 #ifdef _USE_IMGUI
-	ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_FirstUseEver);
 	ImGui::Begin("TCP Connection", p_open);
 	ImGui::BeginDisabled(connected);
 	ImGui::InputText("Host", host, sizeof(host));
@@ -47,11 +45,10 @@ void TcpNetworkClient::ImGuiConnectWindow(bool* p_open) {
 
 void TcpNetworkClient::Connect() {
 	// 文字列を接続先情報にする
-	hints.ai_family = AF_INET;       // IPv4（今後変更予定）
+	hints.ai_family = AF_INET;       // IPv4
 	hints.ai_socktype = SOCK_STREAM; // TCP
 
 	if (getaddrinfo(host, port, &hints, &address) == 0) {
-
 		// TCPソケットを作る
 		clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -65,14 +62,13 @@ void TcpNetworkClient::Connect() {
 			clientSocket = INVALID_SOCKET;
 		}
 	}
-	
 }
 
 void TcpNetworkClient::Disconnect() {
-	// TODO 3: ソケットを閉じ、未接続の状態へ戻す。
 	closesocket(clientSocket);
 	clientSocket = INVALID_SOCKET;
 	connected = false;
 }
+
 
 

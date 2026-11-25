@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 
 class GameSceneManager
@@ -44,10 +44,24 @@ public:
 
 	const KeyConfig& GetKeyConfig() const { return keyConfig_; }
 
-	// 入力判定
+	/// <summary>
+	/// 左移動入力の判定（キーボード/ゲームパッド）
+	/// </summary>
 	bool IsPushLeft() const;
+
+	/// <summary>
+	/// 右移動入力の判定（キーボード/ゲームパッド）
+	/// </summary>
 	bool IsPushRight() const;
+
+	/// <summary>
+	/// ジャンプ入力の判定（キーボード/ゲームパッド）
+	/// </summary>
 	bool IsPushJump() const;
+
+	/// <summary>
+	/// スライディング（ロール）入力の判定（キーボード/ゲームパッド）
+	/// </summary>
 	bool IsPushRoll() const;
 
 

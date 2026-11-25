@@ -1,0 +1,248 @@
+{
+    "barrierEffect": {
+        "baseColor": [
+            0.25,
+            0.800000011920929,
+            1.0,
+            0.8500000238418579
+        ],
+        "baseScale": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
+        ],
+        "flashColor": [
+            1.0,
+            1.0,
+            1.0,
+            0.949999988079071
+        ],
+        "offset": [
+            0.0,
+            0.0,
+            1.2000000476837158
+        ],
+        "pointyTopped": false,
+        "radius": 0.5,
+        "shape": 1
+    },
+    "boss": {
+        "attackDropHeight": 18.0,
+        "attackFallDuration": 28.0,
+        "attackReflectMinZ": -15.0,
+        "attackSpawnZ": -35.0,
+        "cameraRotate": [
+            0.23999999463558197,
+            3.25,
+            0.0
+        ],
+        "cameraTranslate": [
+            0.0,
+            7.0,
+            14.0
+        ],
+        "lighting": true,
+        "reflectArcHeight": 7.0,
+        "reflectDuration": 36.0
+    },
+    "camera": {
+        "bankRollMultiplier": 0.0,
+        "followSmoothSpeed": 10.0,
+        "followWeightX": 0.44999998807907104,
+        "followWeightY": 0.25,
+        "isFollowPlayer": true,
+        "transform": {
+            "rotate": [
+                0.2782996594905853,
+                3.0514986515045166,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "translate": [
+                -1.2596094608306885,
+                8.199999809265137,
+                13.943220138549805
+            ]
+        }
+    },
+    "crashEffect": {
+        "baseSize": [
+            580.0,
+            322.25
+        ],
+        "position": [
+            640.0,
+            320.0
+        ],
+        "scaleDuration": 0.3499999940395355
+    },
+    "font": {
+        "boldness": 0.07000000029802322
+    },
+    "lights": {
+        "bossPoint": {
+            "active": true,
+            "color": [
+                0.8799999952316284,
+                0.949999988079071,
+                1.0,
+                1.0
+            ],
+            "decay": 1.600000023841858,
+            "intensity": 0.5,
+            "radius": 45.0,
+            "translate": [
+                0.0,
+                10.0,
+                -14.0
+            ]
+        },
+        "coursePoint": {
+            "active": true,
+            "color": [
+                0.75,
+                0.9200000166893005,
+                1.0,
+                1.0
+            ],
+            "decay": 1.600000023841858,
+            "intensity": 0.550000011920929,
+            "radius": 45.0,
+            "translate": [
+                0.0,
+                9.0,
+                12.0
+            ]
+        },
+        "mainDir": {
+            "active": true,
+            "color": [
+                1.0,
+                0.6627583503723145,
+                0.6171754598617554,
+                1.0
+            ],
+            "intensity": 0.9279431700706482,
+            "rotate": [
+                0.8901730179786682,
+                2.307997226715088,
+                0.0
+            ],
+            "translate": [
+                21.704465866088867,
+                25.737260818481445,
+                -19.70700454711914
+            ]
+        },
+        "subDir": {
+            "active": true,
+            "color": [
+                0.6805213093757629,
+                0.5656114816665649,
+                0.707819938659668,
+                1.0
+            ],
+            "intensity": 0.3526066541671753,
+            "rotate": [
+                1.0975184440612793,
+                -0.6496526002883911,
+                0.0
+            ],
+            "translate": [
+                -15.193126678466797,
+                14.861995697021484,
+                20.0
+            ]
+        },
+        "sunOrbit": {
+            "angle": 0.6689053773880005,
+            "colorTransition": true,
+            "cycleDuration": 24.0,
+            "enabled": true,
+            "maxElevation": 28.0,
+            "minElevation": 7.0,
+            "radius": 35.0
+        }
+    },
+    "player": {
+        "gravity": 0.014000000432133675,
+        "jumpPower": 0.20999999344348907,
+        "laneChangeSpeed": 0.20000000298023224,
+        "lighting": true,
+        "rollDuration": 50.0
+    },
+    "sound": {
+        "bgmVolume": 0.3499999940395355,
+        "masterVolume": 0.5,
+        "seVolume": 1.0
+    },
+    "stage": {
+        "baseActionFrames": 30.0,
+        "baseScrollSpeed": 0.2199999988079071,
+        "driftIce": {
+            "babySealSpinSpeed": 3.5,
+            "bobbingScale": 1.0,
+            "bobbingSpeedScale": 1.0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "distanceOffset": 0.0,
+            "enabled": true,
+            "heightOffset": 0.0,
+            "lighting": true,
+            "sizeScale": 1.0,
+            "thicknessScale": 1.0
+        },
+        "items": {
+            "cooldowns": {
+                "barrier": 15.0,
+                "bonus": 5.0,
+                "boss": 45.0,
+                "camera": 30.0,
+                "clear": 20.0
+            },
+            "spawnChance": 0.0
+        },
+        "laneCount": 3,
+        "laneWidth": 2.0,
+        "maxGraceFrames": 15.0,
+        "maxObstacleDistance": 45.0,
+        "maxScrollSpeed": 1.0,
+        "minGraceFrames": 5.0,
+        "minObstacleDistance": 6.0,
+        "noSpawnChance": 0.05000000074505806,
+        "obstacleEnvironmentCoefficient": 1.0,
+        "obstacleEnvironmentReflection": true,
+        "obstacleLighting": true,
+        "oneLaneWidthMultiplier": 1.0,
+        "roadColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "roadLighting": true,
+        "scrollAcceleration": 0.0,
+        "showActionGuideLines": true,
+        "spawnObstacleZ": 50.0,
+        "water": {
+            "backwardExtension": 200.0,
+            "forwardExtension": 500.0,
+            "widthScale": 120.0
+        }
+    },
+    "title": {
+        "isTitleOrbitCamera": true,
+        "titleCameraHeight": 4.0,
+        "titleCameraRadius": 14.0,
+        "titleCameraSpeed": 0.3499999940395355,
+        "titleTargetOffsetY": 1.2000000476837158
+    }
+}

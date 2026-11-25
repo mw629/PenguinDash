@@ -14,7 +14,15 @@ Boss::~Boss() {}
 void Boss::Initialize(ModelData modelData) {
   model_->Initialize(modelData);
   model_->SetShader("ObjectShader");
+  model_->SetLighting(lightingEnabled_);
   Reset();
+}
+
+void Boss::SetLighting(bool enabled) {
+  lightingEnabled_ = enabled;
+  if (model_) {
+    model_->SetLighting(enabled);
+  }
 }
 
 // ==========================================
@@ -22,7 +30,8 @@ void Boss::Initialize(ModelData modelData) {
 // ==========================================
 
 void BossAppearanceState::Enter(Boss &boss) {
-  boss.GetTransformRef().rotate = {0.0f, 0.0f, 0.0f};
+  boss.transform_.rotate = {0.0f, 0.0f, 0.0f};
+  boss.MarkDirty();
 }
 
 void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
@@ -36,7 +45,7 @@ void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
   float easeT = 1.0f - (1.0f - t) * (1.0f - t);
   const Vector3 &startPos = boss.GetStartPos();
   const Vector3 &targetPos = boss.GetTargetPos();
-  Transform &transform = boss.GetTransformRef();
+  Transform &transform = boss.transform_;
 
   transform.translate.x = startPos.x + (targetPos.x - startPos.x) * easeT;
   transform.translate.y = startPos.y + (targetPos.y - startPos.y) * easeT;
@@ -50,24 +59,28 @@ void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
   transform.translate.x += std::sin(stateTimer * Boss::kShakeFreqX) * shakeIntensity;
   transform.translate.y += std::cos(stateTimer * Boss::kShakeFreqY) * shakeIntensity;
   transform.translate.z += std::sin(stateTimer * Boss::kShakeFreqZ) * shakeIntensity;
+  boss.MarkDirty();
 
   if (stateTimer > Boss::kAppearanceDuration) {
     transform.rotate.y = 0.0f;
+    boss.MarkDirty();
     boss.ChangeState(BossState::Battle);
   }
 }
 
 void BossBattleState::Enter(Boss &boss) {
-  boss.GetTransformRef().rotate.y = 0.0f;
+  boss.transform_.rotate.y = 0.0f;
+  boss.MarkDirty();
 }
 
 void BossBattleState::Update(Boss &boss, float speedMultiplier) {
-  boss.GetBattleAnimTimerRef() += Boss::kBattleAnimSpeed * speedMultiplier;
+  boss.battleAnimTimer_ += Boss::kBattleAnimSpeed * speedMultiplier;
   const Vector3 &targetPos = boss.GetTargetPos();
-  Transform &transform = boss.GetTransformRef();
+  Transform &transform = boss.transform_;
   transform.translate.x = targetPos.x;
   transform.translate.z = targetPos.z;
-  transform.translate.y = targetPos.y + std::sin(boss.GetBattleAnimTimerRef()) * Boss::kBattleBobbingAmplitude;
+  transform.translate.y = targetPos.y + std::sin(boss.battleAnimTimer_) * Boss::kBattleBobbingAmplitude;
+  boss.MarkDirty();
 }
 
 void BossDefeatState::Enter(Boss &boss) {
@@ -75,7 +88,8 @@ void BossDefeatState::Enter(Boss &boss) {
 }
 
 void BossDefeatState::Update(Boss &boss, float speedMultiplier) {
-  boss.GetTransformRef().translate.y -= Boss::kSinkSpeed * speedMultiplier;
+  boss.transform_.translate.y -= Boss::kSinkSpeed * speedMultiplier;
+  boss.MarkDirty();
   if (boss.GetStateTimer() > Boss::kDefeatDuration) {
     boss.SetIsActive(false);
   }
@@ -86,7 +100,8 @@ void BossVictoryState::Enter(Boss &boss) {
 }
 
 void BossVictoryState::Update(Boss &boss, float speedMultiplier) {
-  boss.GetTransformRef().translate.y += Boss::kSinkSpeed * speedMultiplier;
+  boss.transform_.translate.y += Boss::kSinkSpeed * speedMultiplier;
+  boss.MarkDirty();
 }
 
 // ==========================================
@@ -234,3 +249,4 @@ void Boss::OnDamage() {
     ChangeState(BossState::Defeat);
   }
 }
+

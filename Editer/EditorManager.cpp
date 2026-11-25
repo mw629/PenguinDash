@@ -22,6 +22,7 @@
 #include "../MatchaEngine/Graphics/RenderTexture.h"
 #include "../MatchaEngine/Graphics/DepthStencil.h"
 #include "../MatchaEngine/GameObjects/Effect/Emitter.h"
+#include "../MatchaEngine/GameObjects/Effect/EffectDefinition.h"
 #include "../MatchaEngine/GameObjects/Camera/Camera.h"
 #include "../MatchaEngine/GameObjects/Line/Grid.h"
 #include "../MatchaEngine/Graphics/DescriptorHeap.h"
@@ -42,7 +43,7 @@ static float s_layoutNoticeTimer = 0.0f;
 static std::string s_layoutNoticeMsg = "";
 static const std::string s_layoutFilePath = "Resources/Layout/saved_layout.ini";
 
-int EditorManager::s_gizmoOp = 0;
+int EditorManager::s_gizmoOp_ = 0;
 
 void DrawDirectoryTree(const std::filesystem::path& dirPath) {
 	try {
@@ -204,8 +205,8 @@ float EditorManager::playSpeed_ = 1.0f;
 #endif
 
 #ifdef _USE_IMGUI
-ImVec2 EditorManager::s_sceneImagePos = ImVec2(0, 0);
-ImVec2 EditorManager::s_sceneImageSize = ImVec2(0, 0);
+ImVec2 EditorManager::s_sceneImagePos_ = ImVec2(0, 0);
+ImVec2 EditorManager::s_sceneImageSize_ = ImVec2(0, 0);
 #endif
 
 EditorManager::SceneOverlayCallback EditorManager::s_sceneOverlayCallback_ = nullptr;
@@ -359,7 +360,7 @@ void EditorManager::Update(Engine* engine)
 			ImGui::MenuItem(LanguageManager::Tr("Logs"), nullptr, &showLogsWindow_);
 			ImGui::MenuItem(LanguageManager::Tr("Particle Editor"), nullptr, &showParticleViewer_);
 			ImGui::MenuItem(LanguageManager::Tr("Object Editor"), nullptr, &showModelViewer_);
-			ImGui::MenuItem(LanguageManager::Tr("Game View"), nullptr, &showGameViewWindow_);
+			ImGui::MenuItem(LanguageManager::Tr("Game"), nullptr, &showGameViewWindow_);
 			ImGui::Separator();
 			if (ImGui::BeginMenu(LanguageManager::Tr("Layout"))) {
 				if (ImGui::MenuItem(LanguageManager::Tr("Save Layout"))) {
@@ -532,7 +533,9 @@ void EditorManager::Update(Engine* engine)
 		ImGui::DockBuilderDockWindow("ログ", dock_down);
 		ImGui::DockBuilderDockWindow("Scene", dock_main_id);
 		ImGui::DockBuilderDockWindow("シーン", dock_main_id);
+		ImGui::DockBuilderDockWindow("Game", dock_main_id);
 		ImGui::DockBuilderDockWindow("Game View", dock_main_id);
+		ImGui::DockBuilderDockWindow("ゲーム", dock_main_id);
 		ImGui::DockBuilderDockWindow("GameScene", dock_main_id);
 		ImGui::DockBuilderFinish(dockspace_id);
 
@@ -910,18 +913,18 @@ void EditorManager::Update(Engine* engine)
 	ImVec4 activeCol = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
 	ImVec4 defaultCol = ImGui::GetStyleColorVec4(ImGuiCol_Button);
 	
-	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp == 0 ? activeCol : defaultCol);
-	if (ImGui::Button("T")) s_gizmoOp = 0;
+	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp_ == 0 ? activeCol : defaultCol);
+	if (ImGui::Button("T")) s_gizmoOp_ = 0;
 	ImGui::PopStyleColor();
 	ImGui::SameLine();
 	
-	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp == 1 ? activeCol : defaultCol);
-	if (ImGui::Button("R")) s_gizmoOp = 1;
+	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp_ == 1 ? activeCol : defaultCol);
+	if (ImGui::Button("R")) s_gizmoOp_ = 1;
 	ImGui::PopStyleColor();
 	ImGui::SameLine();
 	
-	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp == 2 ? activeCol : defaultCol);
-	if (ImGui::Button("S")) s_gizmoOp = 2;
+	ImGui::PushStyleColor(ImGuiCol_Button, s_gizmoOp_ == 2 ? activeCol : defaultCol);
+	if (ImGui::Button("S")) s_gizmoOp_ = 2;
 	ImGui::PopStyleColor();
 	
 	ImGui::PopStyleVar();
@@ -932,6 +935,23 @@ void EditorManager::Update(Engine* engine)
 	const char* aspectLabels[] = { "Free", "16:9", "4:3", "1:1", "21:9" };
 	const float aspectRatios[] = { 0.0f, 16.0f / 9.0f, 4.0f / 3.0f, 1.0f, 21.0f / 9.0f };
 	ImGui::Combo(LanguageManager::Tr("Aspect Ratio"), &sceneAspectRatioIndex_, aspectLabels, IM_ARRAYSIZE(aspectLabels));
+
+	ImGui::SameLine();
+	// --- デバッグカメラ操作 ---
+	Camera *sceneCamera = engine->GetDraw()->GetCamera();
+	if (sceneCamera) {
+		bool isDebug = sceneCamera->GetDebugCamera();
+		if (ImGui::Checkbox(LanguageManager::Tr("Debug Camera"), &isDebug)) {
+			sceneCamera->SetDebugCamera(isDebug);
+		}
+		if (isDebug) {
+			ImGui::SameLine();
+			if (ImGui::Button(LanguageManager::Tr("Reset View"))) {
+				sceneCamera->ResetDebugCameraToGameCamera();
+			}
+		}
+	}
+
 	ImGui::Separator();
 
 	ImVec2 availSize = ImGui::GetContentRegionAvail();
@@ -958,12 +978,41 @@ void EditorManager::Update(Engine* engine)
 		ImGui::SetCursorPos(ImVec2(cursorStart.x + offsetX, cursorStart.y + offsetY));
 	}
 
-	s_sceneImagePos = ImGui::GetCursorScreenPos();
-	s_sceneImageSize = imageSize;
+	s_sceneImagePos_ = ImGui::GetCursorScreenPos();
+	s_sceneImageSize_ = imageSize;
 
 	if (engine->GetFinalRenderTexture()) {
 		ImGui::Image((ImTextureID)engine->GetFinalRenderTexture()->GetSrvHandleGPU().ptr, imageSize);
-		
+		bool isSceneHovered = ImGui::IsItemHovered();
+
+		// Sceneウィンドウ上での直感的なデバッグカメラ操作 (Orbit / Pan / Zoom)
+		if (sceneCamera) {
+			sceneCamera->GetDebugCameraRef().SetEnableInput(false); // エディタ内ではImGuiマウス操作に専念
+			if (sceneCamera->GetDebugCamera() && isSceneHovered && !ImGuizmo::IsUsing()) {
+				ImGuiIO &io = ImGui::GetIO();
+				if (io.MouseWheel != 0.0f) {
+					sceneCamera->GetDebugCameraRef().Zoom(io.MouseWheel * 2.0f);
+				}
+				// 右ドラッグ または Alt+左ドラッグ で Orbit (視点回転)
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) || (io.KeyAlt && ImGui::IsMouseDragging(ImGuiMouseButton_Left))) {
+					ImGuiMouseButton btn = ImGui::IsMouseDragging(ImGuiMouseButton_Right) ? ImGuiMouseButton_Right : ImGuiMouseButton_Left;
+					ImVec2 dragDelta = ImGui::GetMouseDragDelta(btn);
+					ImGui::ResetMouseDragDelta(btn);
+					if (io.KeyShift) {
+						sceneCamera->GetDebugCameraRef().Pan(dragDelta.x, dragDelta.y);
+					} else {
+						sceneCamera->GetDebugCameraRef().Orbit(dragDelta.x, dragDelta.y);
+					}
+				}
+				// 中ボタンドラッグ で Pan (平行移動)
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+					ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
+					ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
+					sceneCamera->GetDebugCameraRef().Pan(dragDelta.x, dragDelta.y);
+				}
+			}
+		}
+
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("RESOURCE_FILE")) {
 				const char* dropPath = (const char*)payload->Data;
@@ -1085,7 +1134,7 @@ void EditorManager::Update(Engine* engine)
 				center = ped.transform.translate + pBasePos;
 				maxDim = (std::max)({ ped.transform.scale.x, ped.transform.scale.y, ped.transform.scale.z, 3.0f });
 			}
-			float distance = (std::clamp)(maxDim * 1.2f, 5.0f, 25.0f);
+			float distance = (std::clamp)(maxDim * 1.5f, 5.0f, 150.0f);
 			previewCamera_->Focus(center, distance);
 		};
 
@@ -1109,22 +1158,56 @@ void EditorManager::Update(Engine* engine)
 
 			previewCamera_->GetDebugCameraRef().SetEnableInput(false);
 			previewCamera_->SetAspectRatio(1.0f);
+			previewCamera_->SetDebugCamera(true);
 			FocusParticleCamera();
 			previewCamera_->Update();
 
 			isParticleViewerInitialized_ = true;
 		}
 
+		if (!isSingleParticleViewerInitialized_) {
+			singleParticleRenderTexture_ = std::make_unique<RenderTexture>();
+			singleParticleDepthStencil_ = std::make_unique<DepthStencil>();
+			singleParticleCamera_ = std::make_unique<Camera>();
+			singleParticleEffectDef_ = std::make_unique<EffectDefinition>();
+
+			singleParticleRenderTexture_->Initialize(engine->GetGraphics()->GetDevice(), 256, 256, engine->GetDescriptorHeap()->GetSrvDescriptorHeap(), engine->GetDescriptorHeap()->GetDescriptorSizeSRV());
+			singleParticleDepthStencil_->CreateDepthStencil(engine->GetGraphics()->GetDevice(), 256, 256);
+
+			singleParticleCamera_->GetDebugCameraRef().SetEnableInput(false);
+			singleParticleCamera_->SetAspectRatio(1.0f);
+			singleParticleCamera_->SetDebugCamera(true);
+			singleParticleCamera_->Focus(Vector3{ 0.0f, 0.0f, 0.0f }, 2.5f);
+			singleParticleCamera_->Update();
+
+			singleParticleEffectDef_->Initialize(EffectShape::Plane);
+			isSingleParticleViewerInitialized_ = true;
+		}
+
+		if (previewCamera_ && !previewCamera_->GetDebugCamera()) {
+			previewCamera_->SetDebugCamera(true);
+			FocusParticleCamera();
+		}
+
 		// Draw the ImGui window FIRST so any resource recreations happen BEFORE recording draw calls
-		ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(960, 800), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(LanguageManager::Tr("Particle Editor"), &showParticleViewer_)) {
-			ImGui::Columns(2, "ParticleEditorColumns", true);
-			ImGui::SetColumnWidth(0, 532.0f); // Make sure image fits + padding
+			// 左カラム: プレビュー表示エリア
+			ImGui::BeginGroup();
 
 			ImGui::Text(LanguageManager::Tr("Preview:"));
 			ImVec2 vMin = ImGui::GetCursorScreenPos();
 			ImGui::Image((ImTextureID)particleRenderTexture_->GetSrvHandleGPU().ptr, ImVec2(512, 512));
 			bool isPreviewHovered = ImGui::IsItemHovered();
+
+			// プレビュー画像の下に出ているパーティクル1個の見た目を表示
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Text("%s", LanguageManager::Tr("Single Particle View:"));
+
+			if (singleParticleRenderTexture_) {
+				ImGui::Image((ImTextureID)singleParticleRenderTexture_->GetSrvHandleGPU().ptr, ImVec2(200, 200));
+			}
 
 			// プレビュー画像上での直感的なカメラ操作（Orbit / Pan / Zoom）
 			if (isPreviewHovered && !ImGuizmo::IsUsing()) {
@@ -1329,19 +1412,72 @@ void EditorManager::Update(Engine* engine)
 				}
 			}
 
-			ImGui::NextColumn();
+			ImGui::EndGroup(); // 左カラム終了
 
-			// 右側の設定項目をChildウィンドウにして、スクロール時に左側のプレビュー画像が一緒に移動（スクロールアウト）しないように位置を固定する
+			ImGui::SameLine(0.0f, 16.0f); // 右上から開始！
+
+			// 右カラム: 操作・設定エリア（右上からウィンドウ下端まで）
+			ImGui::BeginGroup();
 			ImGui::BeginChild("ParticleControls", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-			ImGui::Text(LanguageManager::Tr("Controls:"));
-			ImGui::Checkbox(LanguageManager::Tr("Show Grid"), &showGridInViewer_);
-			ImGui::SameLine();
-			ImGui::Checkbox(LanguageManager::Tr("Show Emitter Cube"), &showEmitterCube_);
+			// ========================================================
+			// 1. プリセット / ファイル管理 (常に最上部で一目で操作可能)
+			// ========================================================
+			if (ImGui::CollapsingHeader(LanguageManager::Tr("Presets & File"), ImGuiTreeNodeFlags_DefaultOpen)) {
+				std::filesystem::path dir = "Resources/Json/Particle";
+				std::vector<std::string> jsonFiles;
+				if (std::filesystem::exists(dir)) {
+					for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+						if (entry.path().extension() == ".json") {
+							jsonFiles.push_back(entry.path().filename().string());
+						}
+					}
+				}
 
-			// プレビュー再生コントロール
+				char* saveBuf = previewParticle_->GetSaveFileNameBuffer();
+				size_t bufSize = previewParticle_->GetSaveFileNameBufferSize();
+
+				if (ImGui::BeginCombo(LanguageManager::Tr("Saved Particles"), saveBuf)) {
+					for (const auto& file : jsonFiles) {
+						std::string nameWithoutExt = file;
+						size_t extPos = nameWithoutExt.find(".json");
+						if (extPos != std::string::npos) {
+							nameWithoutExt = nameWithoutExt.substr(0, extPos);
+						}
+
+						bool is_selected = (std::string(saveBuf) == nameWithoutExt);
+						if (ImGui::Selectable(file.c_str(), is_selected)) {
+							previewParticle_->SetSaveFileName(nameWithoutExt);
+							previewParticle_->LoadFromJson(nameWithoutExt);
+							FocusParticleCamera();
+						}
+						if (is_selected) {
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				ImGui::InputText(LanguageManager::Tr("File Name"), saveBuf, bufSize);
+				if (ImGui::Button(LanguageManager::Tr("Load JSON"))) {
+					previewParticle_->LoadFromJson(saveBuf);
+					FocusParticleCamera();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button(LanguageManager::Tr("Save JSON"))) {
+					previewParticle_->SaveToJson(saveBuf);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button(LanguageManager::Tr("Clear Particles"))) {
+					previewParticle_->ClearParticles();
+				}
+			}
+
+			// ========================================================
+			// 2. プレビュー再生コントロール (クイックアクセス)
+			// ========================================================
 			ImGui::Separator();
-			ImGui::Text(LanguageManager::Tr("Playback:"));
+			ImGui::Text("%s:", LanguageManager::Tr("Playback"));
 			if (ImGui::Button(LanguageManager::Tr("Restart / Emit"))) {
 				previewParticle_->ClearParticles();
 				if (previewParticle_->GetLoop()) {
@@ -1351,10 +1487,20 @@ void EditorManager::Update(Engine* engine)
 				}
 			}
 			ImGui::SameLine();
-			static bool autoReplayOneShot = true;
-			static float oneShotTimer = 0.0f;
-			if (!previewParticle_->GetLoop()) {
-				ImGui::Checkbox(LanguageManager::Tr("Auto Replay (One-Shot)"), &autoReplayOneShot);
+			bool isLoop = previewParticle_->GetLoop();
+			if (ImGui::Checkbox(LanguageManager::Tr("Loop Emission"), &isLoop)) {
+				previewParticle_->SetLoop(isLoop);
+			}
+			ImGui::SameLine();
+			if (isLoop) {
+				bool isStop = previewParticle_->GetStop();
+				if (ImGui::Checkbox(LanguageManager::Tr("Pause Emission"), &isStop)) {
+					previewParticle_->SetStop(isStop);
+				}
+			} else {
+				static bool autoReplayOneShot = true;
+				static float oneShotTimer = 0.0f;
+				ImGui::Checkbox(LanguageManager::Tr("Auto Replay"), &autoReplayOneShot);
 				if (autoReplayOneShot) {
 					oneShotTimer += Engine::kDefaultDeltaTime;
 					if (previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() == 0 || oneShotTimer >= kOneShotReplayInterval) {
@@ -1362,62 +1508,299 @@ void EditorManager::Update(Engine* engine)
 						oneShotTimer = 0.0f;
 					}
 				}
-			} else {
-				bool isStop = previewParticle_->GetStop();
-				if (ImGui::Checkbox(LanguageManager::Tr("Pause Emission"), &isStop)) {
-					previewParticle_->SetStop(isStop);
+			}
+			ImGui::SameLine();
+			ImGui::TextDisabled("| %s: %d", LanguageManager::Tr("Active Particles"), previewParticle_->GetEffectDefinition() ? previewParticle_->GetEffectDefinition()->GetEffectDefinitionNum() : 0);
+
+			// ========================================================
+			// 3. カテゴリ別タブバー (直感的なパラメータ編集)
+			// ========================================================
+			ImGui::Separator();
+			if (ImGui::BeginTabBar("ParticleEditorTabs", ImGuiTabBarFlags_None)) {
+				// ----------------------------------------------------
+				// TAB 1: 見た目・マテリアル (Visual & Material)
+				// ----------------------------------------------------
+				if (ImGui::BeginTabItem(LanguageManager::Tr("Visual & Material"))) {
+					ImGui::Spacing();
+
+					const char* shapes[] = { "Plane", "Cylinder", "Ring", "Cube" };
+					int curShape = static_cast<int>(previewParticle_->GetShape());
+					if (ImGui::Combo(LanguageManager::Tr("Shape"), &curShape, shapes, IM_ARRAYSIZE(shapes))) {
+						previewParticle_->SetShape(static_cast<EffectShape>(curShape));
+					}
+
+					bool isBillboard = previewParticle_->GetBillboard();
+					if (ImGui::Checkbox(LanguageManager::Tr("Billboard"), &isBillboard)) {
+						previewParticle_->SetBillboard(isBillboard);
+					}
+
+					EffectShapeData& shapeData = previewParticle_->GetShapeDataRef();
+					bool shapeChanged = false;
+					if (previewParticle_->GetShape() == EffectShape::Plane) {
+						shapeChanged |= ImGui::DragFloat2(LanguageManager::Tr("Plane Size"), &shapeData.planeSize.x, 0.05f, 0.01f, 100.0f, "%.2f");
+						const char* pivotItems[] = { "Center", "Bottom", "Top" };
+						shapeChanged |= ImGui::Combo(LanguageManager::Tr("Plane Pivot"), &shapeData.planePivot, pivotItems, IM_ARRAYSIZE(pivotItems));
+						shapeChanged |= ImGui::DragFloat2(LanguageManager::Tr("Plane Offset"), &shapeData.planeOffset.x, 0.05f, -50.0f, 50.0f, "%.2f");
+					} else if (previewParticle_->GetShape() == EffectShape::Cylinder) {
+						shapeChanged |= ImGui::DragInt(LanguageManager::Tr("Cylinder Divide"), &shapeData.cylinderDivide, 1.0f, 3, 128);
+						shapeChanged |= ImGui::DragFloat(LanguageManager::Tr("Cylinder Top Radius"), &shapeData.cylinderTopRadius, 0.05f, 0.0f, 100.0f);
+						shapeChanged |= ImGui::DragFloat(LanguageManager::Tr("Cylinder Bottom Radius"), &shapeData.cylinderBottomRadius, 0.05f, 0.0f, 100.0f);
+						shapeChanged |= ImGui::DragFloat(LanguageManager::Tr("Cylinder Height"), &shapeData.cylinderHeight, 0.05f, 0.0f, 100.0f);
+					} else if (previewParticle_->GetShape() == EffectShape::Ring) {
+						shapeChanged |= ImGui::DragInt(LanguageManager::Tr("Ring Divide"), &shapeData.ringDivide, 1.0f, 3, 128);
+						shapeChanged |= ImGui::DragFloat(LanguageManager::Tr("Ring Outer Radius"), &shapeData.ringOuterRadius, 0.05f, 0.0f, 100.0f);
+						shapeChanged |= ImGui::DragFloat(LanguageManager::Tr("Ring Inner Radius"), &shapeData.ringInnerRadius, 0.05f, 0.0f, 100.0f);
+					} else if (previewParticle_->GetShape() == EffectShape::Cube) {
+						shapeChanged |= ImGui::DragFloat3(LanguageManager::Tr("Cube Size"), &shapeData.cubeSize.x, 0.05f, 0.0f, 100.0f);
+					}
+					if (shapeChanged) {
+						previewParticle_->SetShapeData(shapeData);
+						if (singleParticleEffectDef_) {
+							singleParticleEffectDef_->SetShapeData(shapeData);
+						}
+					}
+
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Texture"));
+					std::string curTexPath = previewParticle_->GetTexturePath();
+					std::filesystem::path tp(curTexPath);
+					std::string texButtonLabel = tp.empty() ? "(None) Drop Image Here" : tp.filename().string();
+					if (previewParticle_->GetEffectDefinition()) {
+						D3D12_GPU_DESCRIPTOR_HANDLE texH = previewParticle_->GetEffectDefinition()->GetTextureSrvHandleGPU();
+						if (texH.ptr != 0) {
+							Vector4 curColor = previewParticle_->GetEnableColorOverLifetime() ? previewParticle_->GetStartColor() : previewParticle_->GetBaseParticleData().color;
+							ImGui::Image((ImTextureID)texH.ptr, ImVec2(40, 40), ImVec2(0,0), ImVec2(1,1), ImVec4(curColor.x, curColor.y, curColor.z, 1.0f), ImVec4(1,1,1,0.5f));
+							ImGui::SameLine();
+						}
+					}
+					ImGui::Button(texButtonLabel.c_str(), ImVec2(-FLT_MIN, 40));
+					if (ImGui::BeginDragDropTarget()) {
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("RESOURCE_FILE")) {
+							std::string path((const char*)payload->Data, payload->DataSize - 1);
+							if (path.find(".png") != std::string::npos || path.find(".jpg") != std::string::npos || path.find(".dds") != std::string::npos) {
+								previewParticle_->SetTexturePath(path);
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+					ImGui::TextDisabled(LanguageManager::Tr("(Drag and drop an image from the Resources window)"));
+
+					ImGui::Text("%s:", LanguageManager::Tr("Quick Textures"));
+					if (ImGui::SmallButton("circle.png")) {
+						previewParticle_->SetTexturePath("Resources/Texture/circle.png");
+					}
+					ImGui::SameLine();
+					if (ImGui::SmallButton("uvChecker.png")) {
+						previewParticle_->SetTexturePath("Resources/Texture/uvChecker.png");
+					}
+
+					ImGui::Separator();
+					EffectDefinitionData& baseData = previewParticle_->GetBaseParticleDataRef();
+					ImGui::ColorEdit4(LanguageManager::Tr("Base Color"), &baseData.color.x);
+
+					bool& enableColOverLifetime = previewParticle_->GetEnableColorOverLifetimeRef();
+					ImGui::Checkbox(LanguageManager::Tr("Enable Color Over Lifetime"), &enableColOverLifetime);
+					if (enableColOverLifetime) {
+						Vector4& startCol = previewParticle_->GetStartColorRef();
+						Vector4& endCol = previewParticle_->GetEndColorRef();
+						ImGui::ColorEdit4(LanguageManager::Tr("Start Color"), &startCol.x);
+						ImGui::ColorEdit4(LanguageManager::Tr("End Color"), &endCol.x);
+					}
+
+					ImGui::Separator();
+					const char* blendModes[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
+					int curBlend = static_cast<int>(previewParticle_->GetBlend());
+					if (ImGui::Combo(LanguageManager::Tr("Blend Mode"), &curBlend, blendModes, IM_ARRAYSIZE(blendModes))) {
+						previewParticle_->SetBlend(static_cast<BlendMode>(curBlend));
+					}
+
+					std::vector<std::string> shaderNames;
+					std::filesystem::path shaderDir = "Resources/Shader/ParticleShader";
+					if (std::filesystem::exists(shaderDir)) {
+						for (const auto& entry : std::filesystem::directory_iterator(shaderDir)) {
+							std::string filename = entry.path().filename().string();
+							if (filename.find(".PS.hlsl") != std::string::npos) {
+								std::string sName = filename.substr(0, filename.find(".PS.hlsl")) + "Shader";
+								shaderNames.push_back(sName);
+							}
+						}
+					}
+					std::string curShader = previewParticle_->GetShader();
+					if (ImGui::BeginCombo(LanguageManager::Tr("Shader"), curShader.c_str())) {
+						for (const auto& shader : shaderNames) {
+							bool is_selected = (curShader == shader);
+							if (ImGui::Selectable(shader.c_str(), is_selected)) {
+								previewParticle_->SetShader(shader);
+							}
+							if (is_selected) ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+
+					ImGui::EndTabItem();
 				}
-			}
-			
-			ImGui::Separator();
-			ImGui::Text(LanguageManager::Tr("Gizmo Operation:"));
-			if (ImGui::RadioButton(LanguageManager::Tr("Translate"), currentOp == ImGuizmo::TRANSLATE)) currentOp = ImGuizmo::TRANSLATE;
-			ImGui::SameLine();
-			if (ImGui::RadioButton(LanguageManager::Tr("Rotate"), currentOp == ImGuizmo::ROTATE)) currentOp = ImGuizmo::ROTATE;
-			ImGui::SameLine();
-			if (ImGui::RadioButton(LanguageManager::Tr("Scale"), currentOp == ImGuizmo::SCALE)) currentOp = ImGuizmo::SCALE;
 
-			ImGui::Separator();
-			ImGui::Text(LanguageManager::Tr("Camera:"));
-			if (ImGui::Button(LanguageManager::Tr("Focus Emitter"))) {
-				FocusParticleCamera();
-			}
-			ImGui::SameLine();
-			if (ImGui::Button(LanguageManager::Tr("Reset to Origin"))) {
-				previewCamera_->Focus({ 0.0f, 0.0f, 0.0f }, 15.0f);
-			}
+				// ----------------------------------------------------
+				// TAB 2: 発生・エリア (Spawn & Emitter)
+				// ----------------------------------------------------
+				if (ImGui::BeginTabItem(LanguageManager::Tr("Spawn & Emitter"))) {
+					ImGui::Spacing();
 
-			Vector3 camTarget = previewCamera_->GetTarget();
-			if (ImGui::DragFloat3(LanguageManager::Tr("Camera Target"), &camTarget.x, 0.1f)) {
-				previewCamera_->SetTarget(camTarget);
-			}
-			Transform& camT = const_cast<Transform&>(previewCamera_->GetTransform());
-			if (ImGui::DragFloat3(LanguageManager::Tr("Camera Pos"), &camT.translate.x, 0.1f)) {
-				previewCamera_->SetTransform(camT);
-			}
-			ImGui::TextDisabled(LanguageManager::Tr("(Preview: RMB: Orbit, Shift+RMB/MMB: Pan, Wheel: Zoom)"));
+					const char* emitterTypes[] = { "Box", "Sphere", "Circle", "Cone" };
+					int currentType = static_cast<int>(previewParticle_->GetEmitterType());
+					if (ImGui::Combo(LanguageManager::Tr("Emitter Type"), &currentType, emitterTypes, IM_ARRAYSIZE(emitterTypes))) {
+						previewParticle_->SetEmitterType(static_cast<EmitterType>(currentType));
+						FocusParticleCamera();
+					}
 
-			ImGui::Separator();
-			Vector3 prevPos = previewParticle_->GetPosition();
-			float prevScale = previewParticle_->GetEmitterData().transform.scale.x;
-			EmitterType prevType = previewParticle_->GetEmitterType();
+					if (previewParticle_->GetEmitterType() == EmitterType::Box) {
+						EmitterData& ed = previewParticle_->GetEmitterDataRef();
+						ImGui::DragFloat3(LanguageManager::Tr("Position"), &ed.transform.translate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat3(LanguageManager::Tr("Rotation"), &ed.transform.rotate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat3(LanguageManager::Tr("Spawn Area Scale"), &ed.transform.scale.x, 0.05f, 0.01f, 500.0f, "%.2f");
+						ImGui::DragInt(LanguageManager::Tr("Count"), reinterpret_cast<int*>(&ed.count), 1, 1, 1000);
+						ImGui::DragFloat(LanguageManager::Tr("Frequency"), &ed.frequency, 0.01f, 0.001f, 10.0f, "%.3f");
+					} else if (previewParticle_->GetEmitterType() == EmitterType::Sphere) {
+						EmitterSphere& es = previewParticle_->GetEmitterSphereRef();
+						ImGui::DragFloat3(LanguageManager::Tr("Position"), &es.translate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat(LanguageManager::Tr("Radius"), &es.radius, 0.05f, 0.01f, 500.0f, "%.2f");
+						ImGui::DragInt(LanguageManager::Tr("Count"), reinterpret_cast<int*>(&es.count), 1, 1, 1000);
+						ImGui::DragFloat(LanguageManager::Tr("Frequency"), &es.frequency, 0.01f, 0.001f, 10.0f, "%.3f");
+					} else if (previewParticle_->GetEmitterType() == EmitterType::Circle) {
+						EmitterCircle& ec = previewParticle_->GetEmitterCircleRef();
+						ImGui::DragFloat3(LanguageManager::Tr("Position"), &ec.translate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat3(LanguageManager::Tr("Rotation"), &ec.rotate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat(LanguageManager::Tr("Outer Radius"), &ec.outerRadius, 0.05f, 0.01f, 500.0f, "%.2f");
+						ImGui::DragFloat(LanguageManager::Tr("Inner Radius"), &ec.innerRadius, 0.05f, 0.0f, ec.outerRadius, "%.2f");
+						ImGui::DragFloat(LanguageManager::Tr("Radial Velocity"), &ec.radialVelocity, 0.01f, -100.0f, 100.0f, "%.2f");
+						ImGui::DragInt(LanguageManager::Tr("Count"), reinterpret_cast<int*>(&ec.count), 1, 1, 1000);
+						ImGui::DragFloat(LanguageManager::Tr("Frequency"), &ec.frequency, 0.01f, 0.001f, 10.0f, "%.3f");
+					} else if (previewParticle_->GetEmitterType() == EmitterType::Cone) {
+						EmitterCone& econe = previewParticle_->GetEmitterConeRef();
+						ImGui::DragFloat3(LanguageManager::Tr("Position"), &econe.translate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat3(LanguageManager::Tr("Rotation"), &econe.rotate.x, 0.05f, -FLT_MAX, FLT_MAX, "%.2f");
+						ImGui::DragFloat(LanguageManager::Tr("Radius"), &econe.radius, 0.05f, 0.01f, 500.0f, "%.2f");
+						ImGui::SliderAngle(LanguageManager::Tr("Spread Angle"), &econe.angle, 0.0f, 90.0f);
+						ImGui::DragFloat(LanguageManager::Tr("Speed"), &econe.speed, 0.01f, -100.0f, 100.0f, "%.2f");
+						ImGui::DragInt(LanguageManager::Tr("Count"), reinterpret_cast<int*>(&econe.count), 1, 1, 1000);
+						ImGui::DragFloat(LanguageManager::Tr("Frequency"), &econe.frequency, 0.01f, 0.001f, 10.0f, "%.3f");
+					}
 
-			previewParticle_->ImGui();
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Burst Settings"));
+					uint32_t burstCount = previewParticle_->GetBurstCount();
+					if (ImGui::DragInt(LanguageManager::Tr("Burst Count"), reinterpret_cast<int*>(&burstCount), 1, 1, 10000)) {
+						previewParticle_->SetBurstCount(burstCount);
+					}
+					if (ImGui::Button(LanguageManager::Tr("Trigger Burst"))) {
+						previewParticle_->TriggerBurst();
+					}
 
-			Vector3 newPos = previewParticle_->GetPosition();
-			float newScale = previewParticle_->GetEmitterData().transform.scale.x;
-			EmitterType newType = previewParticle_->GetEmitterType();
-			if ((std::abs(prevPos.x - newPos.x) > 0.01f ||
-				 std::abs(prevPos.y - newPos.y) > 0.01f ||
-				 std::abs(prevPos.z - newPos.z) > 0.01f ||
-				 std::abs(prevScale - newScale) > 0.01f ||
-				 prevType != newType) && !ImGuizmo::IsUsing()) {
-				FocusParticleCamera();
+					ImGui::EndTabItem();
+				}
+
+				// ----------------------------------------------------
+				// TAB 3: 動き・寿命 (Movement & Lifetime)
+				// ----------------------------------------------------
+				if (ImGui::BeginTabItem(LanguageManager::Tr("Movement & Lifetime"))) {
+					ImGui::Spacing();
+
+					EffectDefinitionData& baseData = previewParticle_->GetBaseParticleDataRef();
+					ImGui::DragFloat(LanguageManager::Tr("LifeTime"), &baseData.lifeTime, 0.05f, 0.01f, 60.0f, "%.2f");
+					ImGui::DragFloat3(LanguageManager::Tr("Base Size (Scale)"), &baseData.transform.scale.x, 0.01f, 0.001f, 100.0f, "%.2f");
+					ImGui::DragFloat3(LanguageManager::Tr("Base Rotation"), &baseData.transform.rotate.x, 0.01f, -FLT_MAX, FLT_MAX, "%.2f");
+
+					bool& alignToVel = previewParticle_->GetAlignToVelocityRef();
+					ImGui::Checkbox(LanguageManager::Tr("Align to Velocity"), &alignToVel);
+
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Particle Movement Settings"));
+					ParticleMovementData& mv = previewParticle_->GetMovementDataRef();
+					ImGui::DragFloat3(LanguageManager::Tr("Base Velocity"), &mv.baseVelocity.x, 0.001f, -50.0f, 50.0f, "%.3f");
+					ImGui::DragFloat3(LanguageManager::Tr("Velocity Variance"), &mv.velocityVariance.x, 0.001f, 0.0f, 50.0f, "%.3f");
+					ImGui::DragFloat3(LanguageManager::Tr("Acceleration (Gravity)"), &mv.acceleration.x, 0.0001f, -5.0f, 5.0f, "%.4f");
+					ImGui::DragFloat(LanguageManager::Tr("Radial Speed"), &mv.radialSpeed, 0.001f, -50.0f, 50.0f, "%.3f");
+					ImGui::DragFloat(LanguageManager::Tr("Radial Speed Variance"), &mv.radialSpeedVariance, 0.001f, 0.0f, 50.0f, "%.3f");
+
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Scale Over Lifetime"));
+					bool& enableScaleLifetime = previewParticle_->GetEnableScaleOverLifetimeRef();
+					ImGui::Checkbox(LanguageManager::Tr("Enable Scale Over Lifetime"), &enableScaleLifetime);
+					if (enableScaleLifetime) {
+						const char* curves[] = { "Linear", "BellCurve (0 -> 1 -> 0)" };
+						int& curveType = previewParticle_->GetScaleCurveTypeRef();
+						ImGui::Combo(LanguageManager::Tr("Curve Type"), &curveType, curves, IM_ARRAYSIZE(curves));
+
+						Vector3& startScale = previewParticle_->GetStartScaleRef();
+						Vector3& endScale = previewParticle_->GetEndScaleRef();
+						if (curveType == 0) {
+							ImGui::DragFloat3(LanguageManager::Tr("Start Scale"), &startScale.x, 0.01f, 0.0f, 100.0f, "%.2f");
+							ImGui::DragFloat3(LanguageManager::Tr("End Scale"), &endScale.x, 0.01f, 0.0f, 100.0f, "%.2f");
+						} else {
+							ImGui::DragFloat3(LanguageManager::Tr("Peak Scale"), &startScale.x, 0.01f, 0.0f, 100.0f, "%.2f");
+						}
+					}
+					ImGui::DragFloat3(LanguageManager::Tr("Size Variance"), &mv.sizeVariance.x, 0.01f, 0.0f, 10.0f, "%.2f");
+
+					ImGui::EndTabItem();
+				}
+
+				// ----------------------------------------------------
+				// TAB 4: ツール・環境 (Tools & Camera)
+				// ----------------------------------------------------
+				if (ImGui::BeginTabItem(LanguageManager::Tr("Tools & Camera"))) {
+					ImGui::Spacing();
+
+					ImGui::Text("%s:", LanguageManager::Tr("Display Options"));
+					ImGui::Checkbox(LanguageManager::Tr("Show Grid"), &showGridInViewer_);
+					ImGui::SameLine();
+					ImGui::Checkbox(LanguageManager::Tr("Show Emitter Cube"), &showEmitterCube_);
+
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Gizmo Operation"));
+					if (ImGui::RadioButton(LanguageManager::Tr("Translate"), currentOp == ImGuizmo::TRANSLATE)) currentOp = ImGuizmo::TRANSLATE;
+					ImGui::SameLine();
+					if (ImGui::RadioButton(LanguageManager::Tr("Rotate"), currentOp == ImGuizmo::ROTATE)) currentOp = ImGuizmo::ROTATE;
+					ImGui::SameLine();
+					if (ImGui::RadioButton(LanguageManager::Tr("Scale"), currentOp == ImGuizmo::SCALE)) currentOp = ImGuizmo::SCALE;
+
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Camera Controls"));
+					if (ImGui::Button(LanguageManager::Tr("Focus Emitter"))) {
+						FocusParticleCamera();
+					}
+					ImGui::SameLine();
+					if (ImGui::Button(LanguageManager::Tr("Reset to Origin"))) {
+						previewCamera_->Focus({ 0.0f, 0.0f, 0.0f }, 15.0f);
+					}
+
+					Vector3 camTarget = previewCamera_->GetTarget();
+					if (ImGui::DragFloat3(LanguageManager::Tr("Camera Target"), &camTarget.x, 0.1f)) {
+						previewCamera_->SetTarget(camTarget);
+					}
+					Vector3 camEye = previewCamera_->GetDebugCameraRef().GetEye();
+					if (ImGui::DragFloat3(LanguageManager::Tr("Camera Pos"), &camEye.x, 0.1f)) {
+						previewCamera_->GetDebugCameraRef().SetEye(camEye);
+					}
+					ImGui::TextDisabled(LanguageManager::Tr("(Preview: RMB: Orbit, Shift+RMB/MMB: Pan, Wheel: Zoom)"));
+
+					ImGui::Separator();
+					ImGui::Text("%s:", LanguageManager::Tr("Engine Features"));
+					bool useGpu = previewParticle_->GetUseGpuParticle();
+					if (ImGui::Checkbox(LanguageManager::Tr("Use GPU Particle (Compute Shader)"), &useGpu)) {
+						previewParticle_->SetUseGpuParticle(useGpu);
+					}
+					bool& isHit = previewParticle_->GetIsHitRef();
+					ImGui::Checkbox(LanguageManager::Tr("IsHit"), &isHit);
+
+					ImGui::EndTabItem();
+				}
+
+				ImGui::EndTabBar();
 			}
 
 			ImGui::EndChild();
-
-			ImGui::Columns(1);
+			ImGui::EndGroup(); // 右カラム終了
 		}
 		ImGui::End();
 
@@ -1443,6 +1826,7 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
+		Camera* prevCamera = engine->GetDraw()->GetCamera();
 		engine->GetDraw()->SetCamera(previewCamera_.get());
 		if (showGridInViewer_) {
 			previewGrid_->SettingWvp(previewCamera_->GetViewMatrix(), &projMat);
@@ -1464,11 +1848,65 @@ void EditorManager::Update(Engine* engine)
 
 		particleRenderTexture_->TransitionToShaderResource(cmdList);
 
+		// Render Single Particle Preview
+		if (singleParticleEffectDef_ && singleParticleRenderTexture_) {
+			static std::string s_lastSingleParticleTexPath = "";
+			if (s_lastSingleParticleTexPath != previewParticle_->GetTexturePath() && !previewParticle_->GetTexturePath().empty()) {
+				s_lastSingleParticleTexPath = previewParticle_->GetTexturePath();
+				singleParticleEffectDef_->SetTexturePath(s_lastSingleParticleTexPath);
+			}
+
+			static EffectShape s_lastShape = EffectShape::Plane;
+			if (s_lastShape != previewParticle_->GetShape()) {
+				s_lastShape = previewParticle_->GetShape();
+				singleParticleEffectDef_->SetShape(s_lastShape, previewParticle_->GetShapeData());
+			}
+
+			singleParticleEffectDef_->SetShader(previewParticle_->GetShader());
+			singleParticleEffectDef_->SetBlend(previewParticle_->GetBlend());
+			singleParticleEffectDef_->SetBillboard(previewParticle_->GetBillboard());
+
+			singleParticleTurntableAngle_ += 0.02f;
+			singleParticleCamera_->Update();
+			Matrix4x4 singleProj = singleParticleCamera_->GetProjectionMatrix();
+			singleParticleEffectDef_->SetCustomProjectionMatrix(singleProj);
+
+			std::list<EffectDefinitionData> singleList;
+			EffectDefinitionData pData = previewParticle_->GetBaseParticleData();
+			pData.transform.translate = { 0.0f, 0.0f, 0.0f };
+			pData.transform.scale = { 1.0f, 1.0f, 1.0f };
+			pData.transform.rotate = { 0.0f, singleParticleTurntableAngle_, 0.0f };
+			pData.lifeTime = 999999.0f;
+			pData.currentTime = 0.0f;
+			if (previewParticle_->GetEnableColorOverLifetime()) {
+				pData.color = previewParticle_->GetStartColor();
+			}
+			singleList.push_back(pData);
+			singleParticleEffectDef_->Update(singleParticleCamera_->GetViewMatrix(), singleList);
+
+			singleParticleRenderTexture_->TransitionToRenderTarget(cmdList);
+			singleParticleRenderTexture_->Clear(cmdList);
+			singleParticleDepthStencil_->TransitionToDepthWrite(cmdList);
+			D3D12_CPU_DESCRIPTOR_HANDLE singleRtv = singleParticleRenderTexture_->GetRtvHandle();
+			singleParticleDepthStencil_->SetDSV(cmdList, &singleRtv);
+
+			D3D12_VIEWPORT singleVp = { 0.0f, 0.0f, 256.0f, 256.0f, 0.0f, 1.0f };
+			D3D12_RECT singleScissor = { 0, 0, 256, 256 };
+			cmdList->RSSetViewports(1, &singleVp);
+			cmdList->RSSetScissorRects(1, &singleScissor);
+
+			engine->GetDraw()->SetCamera(singleParticleCamera_.get());
+			engine->GetDraw()->DrawParticle(singleParticleEffectDef_.get());
+
+			singleParticleRenderTexture_->TransitionToShaderResource(cmdList);
+		}
+
 		// Restore engine's main render target
 		D3D12_CPU_DESCRIPTOR_HANDLE mainRtv = engine->GetRenderTexture()->GetRtvHandle();
 		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
 		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
 		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
+		engine->GetDraw()->SetCamera(prevCamera);
 	}
 
 	// Model Viewer Window
@@ -1605,6 +2043,7 @@ void EditorManager::Update(Engine* engine)
 		cmdList->RSSetViewports(1, &vp);
 		cmdList->RSSetScissorRects(1, &scissor);
 
+		Camera* prevModelCamera = engine->GetDraw()->GetCamera();
 		engine->GetDraw()->SetCamera(modelCamera_.get());
 		if (showGridInModelViewer_) {
 			modelGrid_->SettingWvp(modelCamera_->GetViewMatrix(), &modelProjMat);
@@ -1621,6 +2060,7 @@ void EditorManager::Update(Engine* engine)
 		engine->GetDepthStencil()->SetDSV(cmdList, &mainRtv);
 		cmdList->RSSetViewports(1, engine->GetViewportScissor()->GetViewport());
 		cmdList->RSSetScissorRects(1, engine->GetViewportScissor()->GetScissorRect());
+		engine->GetDraw()->SetCamera(prevModelCamera);
 	}
 
 	// Game View Window
@@ -1644,7 +2084,7 @@ void EditorManager::Update(Engine* engine)
 		}
 
 		ImGui::SetNextWindowSize(ImVec2(800, 450), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin(LanguageManager::Tr("Game View"), &showGameViewWindow_)) {
+		if (ImGui::Begin(LanguageManager::Tr("Game"), &showGameViewWindow_)) {
 			ImVec2 availSize = ImGui::GetContentRegionAvail();
 			ImVec2 imageSize = availSize;
 			ImVec2 cursorStart = ImGui::GetCursorPos();

@@ -1,4 +1,4 @@
-#include "GameSceneManager.h"
+﻿#include "GameSceneManager.h"
 #include <Engine.h>
 #include <dinput.h>
 #include <Xinput.h>
@@ -68,3 +68,4 @@ bool GameSceneManager::IsPushRoll() const {
 	if (GamePadInput::PushLeftStickDown()) return true;
 	return false;
 }
+

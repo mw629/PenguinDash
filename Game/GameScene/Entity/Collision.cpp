@@ -1,4 +1,4 @@
-#include "Collision.h"
+﻿#include "Collision.h"
 
 bool Collision::CheckAABB(const AABB& a, const AABB& b)
 {
@@ -54,3 +54,4 @@ bool Collision::CheckAABBSphere(const AABB& aabb, const BoundingSphere& sphere)
 	float distSquared = dx * dx + dy * dy + dz * dz;
 	return distSquared <= (sphere.radius * sphere.radius);
 }
+

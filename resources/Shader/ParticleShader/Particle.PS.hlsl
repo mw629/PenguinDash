@@ -17,8 +17,16 @@ PixelShaderOutput main(VertexShaderOutput input)
     output.color = gMaterial.color * textureColor * input.color;
     
     // テクスチャの輝度またはアルファ値を考慮して透過処理を行う
-    float32_t mask = max(textureColor.a, max(textureColor.r, max(textureColor.g, textureColor.b)));
+    // 黒背景画像（A=1.0）でもアルファPNGでも正しく四角が抜けるように輝度とアルファを併用
+    float32_t rgbLuma = max(textureColor.r, max(textureColor.g, textureColor.b));
+    float32_t mask = (textureColor.a < 0.999f) ? textureColor.a : rgbLuma;
     output.color.a *= mask;
+
+    // UV中心からの距離による円形ソフト減衰（クアッドの四角い角・輪郭を完全にカット）
+    float2 centerOffset = input.texcoord - float2(0.5f, 0.5f);
+    float dist = length(centerOffset) * 2.0f;
+    float circularFade = smoothstep(1.0f, 0.7f, dist);
+    output.color.a *= circularFade;
 
     if (output.color.a <= 0.001f)
     {

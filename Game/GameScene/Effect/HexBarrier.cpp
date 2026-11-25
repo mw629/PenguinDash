@@ -1,4 +1,4 @@
-#include "HexBarrier.h"
+﻿#include "HexBarrier.h"
 #include "Graphics/GraphicsDevice.h"
 #include <cmath>
 
@@ -193,3 +193,4 @@ void HexBarrier::SetShape(HexBarrierShape shape)
 		RebuildMesh();
 	}
 }
+

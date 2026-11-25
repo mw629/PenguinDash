@@ -163,3 +163,4 @@ void JsonScene::Draw(class Draw& draw)
 	draw.SetCamera(camera_.get());
 	gameObjectManager_->DrawAll(draw);
 }
+

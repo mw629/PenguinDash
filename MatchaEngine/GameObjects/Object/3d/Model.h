@@ -22,22 +22,45 @@ private:
 	bool isBillboard_ = false;
 
 public:
-	
-	~Model()override;
+	/// <summary>
+	/// デストラクタ
+	/// </summary>
+	~Model() override;
 
-
+	/// <summary>
+	/// モデルデータの初期化
+	/// </summary>
+	/// <param name="modelData">読み込んだ3Dモデルデータ</param>
 	void Initialize(ModelData modelData);
 
+	/// <summary>
+	/// WVP定数バッファの更新
+	/// </summary>
+	/// <param name="viewMatrix">ビュー行列</param>
 	void SettingWvp(Matrix4x4 viewMatrix) override;
+
+	/// <summary>
+	/// カスタムプロジェクション行列を用いたWVP更新
+	/// </summary>
+	/// <param name="viewMatrix">ビュー行列</param>
+	/// <param name="customProjection">プロジェクション行列</param>
 	void SettingWvp(Matrix4x4 viewMatrix, const Matrix4x4* customProjection);
 	
-	void CreateObject()override;
+	/// <summary>
+	/// モデルのメッシュ・マテリアルリソース生成
+	/// </summary>
+	void CreateObject() override;
+
+	/// <summary>
+	/// モデルの描画実行
+	/// </summary>
+	/// <param name="draw">描画マネージャ</param>
 	void Render(class Draw& draw) override;
 
 	void SetBillboard(bool isBillboard) { isBillboard_ = isBillboard; }
 	bool GetBillboard() const { return isBillboard_; }
 
-	void SetLighting(bool isActive) {
+	void SetLighting(bool isActive) override {
 		ObjectBase::SetLighting(isActive);
 		for (auto& mat : subMeshMaterials_) {
 			if (mat.materialFactory) {
@@ -46,14 +69,23 @@ public:
 		}
 	}
 
-	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
+	void SetEnvironmentCoefficient(float coefficient) override {
+		ObjectBase::SetEnvironmentCoefficient(coefficient);
+		for (auto& mat : subMeshMaterials_) {
+			if (mat.materialFactory) {
+				mat.materialFactory->SetEnvironmentCoefficient(coefficient);
+			}
+		}
+	}
+
+	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) override {
 		ObjectBase::SetTexture(textureSrvHandleGPU);
 		for (auto& mat : subMeshMaterials_) {
 			mat.textureSrvHandleGPU = textureSrvHandleGPU;
 		}
 	}
 
-	void SetColor(Vector4 color) {
+	void SetColor(const Vector4& color) override {
 		if (auto matComp = GetComponent<MaterialComponent>()) {
 			if (matComp->GetMaterialFactory()) {
 				matComp->GetMaterialFactory()->SetColor(color);
@@ -72,7 +104,7 @@ public:
 
 	const std::vector<ModelSubMeshMaterial>& GetSubMeshMaterials() const { return subMeshMaterials_; }
 
-	AABB GetWorldAABB() const;
-	BoundingSphere GetWorldBoundingSphere() const;
+	AABB GetWorldAABB() const override;
+	BoundingSphere GetWorldBoundingSphere() const override;
 };
 

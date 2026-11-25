@@ -1,0 +1,95 @@
+{
+    "colorOverLifetime": {
+        "enable": true,
+        "endColor": [1.0, 0.8, 0.5, 0.0],
+        "startColor": [1.0, 0.5, 0.3, 1.0]
+    },
+    "emitter": {
+        "circle": {
+            "count": 35,
+            "frequency": 9999.0,
+            "innerRadius": 0.0,
+            "outerRadius": 1.0,
+            "radialVelocity": 0.0,
+            "rotate": [0.0, 0.0, 0.0],
+            "translate": [0.0, 0.0, 0.0]
+        },
+        "cone": {
+            "angle": 0.5,
+            "count": 35,
+            "frequency": 9999.0,
+            "radius": 1.0,
+            "rotate": [0.0, 0.0, 0.0],
+            "speed": 1.0,
+            "translate": [0.0, 0.0, 0.0]
+        },
+        "count": 35,
+        "frequency": 9999.0,
+        "sphere": {
+            "count": 35,
+            "frequency": 9999.0,
+            "radius": 0.4,
+            "translate": [0.0, 0.0, 0.0]
+        },
+        "transform": {
+            "rotate": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "translate": [0.0, 0.0, 0.0]
+        },
+        "type": 1
+    },
+    "field": {
+        "position": [0.0, 0.0, 0.0],
+        "strength": 0.0,
+        "type": 0
+    },
+    "movement": {
+        "acceleration": [0.0, -0.007, 0.0],
+        "baseVelocity": [0.0, 0.12, -0.1],
+        "radialSpeed": 0.0,
+        "radialSpeedVariance": 0.0,
+        "sizeDelta": [1.0, 1.0, 1.0],
+        "sizeVariance": [0.0, 0.0, 0.0],
+        "velocityVariance": [0.24, 0.18, 0.24]
+    },
+    "particle": {
+        "alignToVelocity": false,
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "lifeTime": 0.55,
+        "transform": {
+            "rotate": [0.0, 0.0, 0.0],
+            "scale": [0.28, 0.28, 0.28],
+            "translate": [0.0, 0.0, 0.0]
+        }
+    },
+    "scaleOverLifetime": {
+        "curveType": 0,
+        "enable": true,
+        "endScale": [0.0, 0.0, 0.0],
+        "startScale": [0.3, 0.3, 0.3]
+    },
+    "spawn": {
+        "burstCount": 35,
+        "isLoop": false
+    },
+    "visual": {
+        "blendMode": 2,
+        "cubeSize": [1.0, 1.0, 1.0],
+        "cylinderBottomRadius": 1.0,
+        "cylinderDivide": 32,
+        "cylinderHeight": 3.0,
+        "cylinderTopRadius": 1.0,
+        "isBillboard": true,
+        "planeOffset": [0.0, 0.0],
+        "planePivot": 0,
+        "planeSize": [1.0, 1.0],
+        "ringDivide": 32,
+        "ringInnerRadius": 0.8,
+        "ringOuterRadius": 1.0,
+        "shader": "ParticleShader",
+        "shape": 0,
+        "texturePath": "Resources/Texture/circle.png",
+        "useGpuParticle": false
+    }
+}
+

@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Development|x64">
+      <Configuration>Development</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{057fb3cc-91ac-462b-9998-27ecafe4ad1d}</ProjectGuid>
+    <RootNamespace>CG</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)..\generated\outputs\MyEngine\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\generated\$CG\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
+    <IntDir>$(SolutionDir)..\generated\$CG\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)..\generated\outputs\MyEngine\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IntDir>$(SolutionDir)..\generated\$CG\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)..\generated\outputs\MyEngine\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)Editer;$(ProjectDir)MatchaEngine\System;$(ProjectDir)externals;$(ProjectDir)Game/Direction;$(ProjectDir)Game/GameScene;$(ProjectDir)Game/TestScene;$(ProjectDir)externals\assimp\include;$(ProjectDir)MatchaEngine;$(ProjectDir)externals\imgui;$(ProjectDir)externals\DirectXTex;$(ProjectDir)MatchaEngine\Common;$(ProjectDir)MatchaEngine\Core;$(ProjectDir)MatchaEngine\GameObjects;$(ProjectDir)MatchaEngine\GameObjects\Light;$(ProjectDir)MatchaEngine\GameObjects\Effect;$(ProjectDir)MatchaEngine\GameObjects\Camera;$(ProjectDir)MatchaEngine\GameObjects\Object;$(ProjectDir)MatchaEngine\GameObjects\Object\2d;$(ProjectDir)MatchaEngine\GameObjects\Object\3d;$(ProjectDir)MatchaEngine\GameObjects\Object\Animation;$(ProjectDir)MatchaEngine\GameObjects\Line;$(ProjectDir)MatchaEngine\Graphics;$(ProjectDir)MatchaEngine\Graphics\Render;$(ProjectDir)MatchaEngine\Input;$(ProjectDir)MatchaEngine\Math;$(ProjectDir)MatchaEngine\PSO;$(ProjectDir)MatchaEngine\Resource;$(ProjectDir)Shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4049 /ignore:4098 /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
+robocopy "$(ProjectDir)Resources" "$(TargetDir)Resources" /E /XO /NDL /NFL /NJH /NJS
+if %ERRORLEVEL% LSS 8 exit /b 0</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)Editer;$(ProjectDir)MatchaEngine\System;$(ProjectDir)externals;$(ProjectDir)Game/Direction;$(ProjectDir)Game/GameScene;$(ProjectDir)Game/TestScene;$(ProjectDir)externals\assimp\include;$(ProjectDir)MatchaEngine;$(ProjectDir)externals\imgui;$(ProjectDir)externals\DirectXTex;$(ProjectDir)MatchaEngine\Common;$(ProjectDir)MatchaEngine\Core;$(ProjectDir)MatchaEngine\GameObjects;$(ProjectDir)MatchaEngine\GameObjects\Light;$(ProjectDir)MatchaEngine\GameObjects\Effect;$(ProjectDir)MatchaEngine\GameObjects\Camera;$(ProjectDir)MatchaEngine\GameObjects\Object;$(ProjectDir)MatchaEngine\GameObjects\Object\2d;$(ProjectDir)MatchaEngine\GameObjects\Object\3d;$(ProjectDir)MatchaEngine\GameObjects\Object\Animation;$(ProjectDir)MatchaEngine\GameObjects\Line;$(ProjectDir)MatchaEngine\Graphics;$(ProjectDir)MatchaEngine\Graphics\Render;$(ProjectDir)MatchaEngine\Input;$(ProjectDir)MatchaEngine\Math;$(ProjectDir)MatchaEngine\PSO;$(ProjectDir)MatchaEngine\Resource;$(ProjectDir)Shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
+robocopy "$(ProjectDir)Resources" "$(TargetDir)Resources" /E /XO /NDL /NFL /NJH /NJS
+if %ERRORLEVEL% LSS 8 exit /b 0</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)Editer;$(ProjectDir)MatchaEngine\System;$(ProjectDir)externals;$(ProjectDir)Game/Direction;$(ProjectDir)Game/GameScene;$(ProjectDir)Game/TestScene;$(ProjectDir)externals\assimp\include;$(ProjectDir)MatchaEngine;$(ProjectDir)externals\imgui;$(ProjectDir)externals\DirectXTex;$(ProjectDir)MatchaEngine\Common;$(ProjectDir)MatchaEngine\Core;$(ProjectDir)MatchaEngine\GameObjects;$(ProjectDir)MatchaEngine\GameObjects\Light;$(ProjectDir)MatchaEngine\GameObjects\Effect;$(ProjectDir)MatchaEngine\GameObjects\Camera;$(ProjectDir)MatchaEngine\GameObjects\Object;$(ProjectDir)MatchaEngine\GameObjects\Object\2d;$(ProjectDir)MatchaEngine\GameObjects\Object\3d;$(ProjectDir)MatchaEngine\GameObjects\Object\Animation;$(ProjectDir)MatchaEngine\GameObjects\Line;$(ProjectDir)MatchaEngine\Graphics;$(ProjectDir)MatchaEngine\Graphics\Render;$(ProjectDir)MatchaEngine\Input;$(ProjectDir)MatchaEngine\Math;$(ProjectDir)MatchaEngine\PSO;$(ProjectDir)MatchaEngine\Resource;$(ProjectDir)Shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Disabled</Optimization>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration />
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
+robocopy "$(ProjectDir)Resources" "$(TargetDir)Resources" /E /XO /NDL /NFL /NJH /NJS
+if %ERRORLEVEL% LSS 8 exit /b 0</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Game\GameScene\Entity\Boss.cpp" />
+    <ClCompile Include="Editer\EditorUI.cpp" />
+    <ClCompile Include="Editer\EditorManager.cpp" />
+    <ClCompile Include="Editer\Command\CommandManager.cpp" />
+    <ClCompile Include="Editer\LanguageManager.cpp" />
+    <ClCompile Include="Game\GameScene\GameSceneManager.cpp" />
+    <ClCompile Include="Game\JsonScene\JsonScene.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\Render\LineRenderer.cpp" />
+    <ClCompile Include="MatchaEngine\System\GameObjectManager.cpp" />
+    <ClCompile Include="MatchaEngine\System\CollisionManager.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Component\MaterialComponent.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Component\ColliderComponent.cpp" />
+    <ClCompile Include="MatchaEngine\Resource\AssetManager.cpp" />
+    <ClCompile Include="Game\GameScene\Entity\Player.cpp" />
+    <ClCompile Include="Game\GameScene\Entity\Collision.cpp" />
+    <ClCompile Include="Game\GameScene\Entity\Obstacle.cpp" />
+    <ClCompile Include="Game\GameScene\Stage\StageSettings.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Cylinder.cpp" />
+    <ClCompile Include="Game\GameApplication.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Cube.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Sphere.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Triangle.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Light\LightManager.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Light\PointLight.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\ObjectBase.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\RenderTexture.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Ring.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Effect\Emitter.cpp" />
+    <ClCompile Include="Game\Direction\FreezeTransition.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Camera\Camera.cpp" />
+    <ClCompile Include="Game\GameScene\GameScene.cpp" />
+    <ClCompile Include="Game\GameScene\Effect\GameSceneEffect.cpp" />
+    <ClCompile Include="Game\GameScene\Effect\HexBarrier.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\Render\PostEffect.cpp" />
+    <ClCompile Include="MatchaEngine\Input\GamePadInput.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Line\Line.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Line\Grid.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\DepthStencil.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\DescriptorHeap.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Light\DirectionalLight.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\GpuSyncManager.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\GpuProfiler.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Camera\DebugCamera.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\2d\Sprite.cpp" />
+    <ClCompile Include="MatchaEngine\PSO\ComputePipeline.cpp" />
+    <ClCompile Include="MatchaEngine\PSO\PipelineState.cpp" />
+    <ClCompile Include="MatchaEngine\PSO\ShaderCompiler.cpp" />
+    <ClCompile Include="MatchaEngine\Resource\Audio.cpp" />
+    <ClCompile Include="MatchaEngine\Input\Input.cpp" />
+    <ClCompile Include="MatchaEngine\Engine.cpp" />
+    <ClCompile Include="MatchaEngine\Math\Calculation.cpp" />
+    <ClCompile Include="MatchaEngine\Common\CommandContext.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\Render\Draw.cpp" />
+    <ClCompile Include="externals\imgui\imgui.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\ImGuizmo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_demo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_draw.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_tables.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_widgets.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\Graphics\GraphicsDevice.cpp" />
+    <ClCompile Include="MatchaEngine\PSO\GraphicsPipelineState.cpp" />
+    <ClCompile Include="MatchaEngine\Core\LogHandler.cpp" />
+    <ClCompile Include="main.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="MatchaEngine\PSO\RootSignature.cpp" />
+    <ClCompile Include="MatchaEngine\Core\WindowConfig.cpp" />
+    <ClCompile Include="MatchaEngine\Core\ImGuiManager.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\MaterialFactory.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Model.cpp" />
+    <ClCompile Include="MatchaEngine\Resource\Load.cpp" />
+    <ClCompile Include="MatchaEngine\Resource\TextureLoader.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\RenderTargetView.cpp" />
+    <ClCompile Include="MatchaEngine\PSO\Sampler.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\ResourceBarrierHelper.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\SwapChain.cpp" />
+    <ClCompile Include="MatchaEngine\Resource\Texture.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\ViewportScissor.cpp" />
+    <ClCompile Include="Game\SceneManager.cpp" />
+    <ClCompile Include="MatchaEngine\Resource\ModelManager.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Effect\EffectDefinition.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Light\SpotLight.cpp" />
+    <ClCompile Include="MatchaEngine\GameObjects\Object\Animation\TransformAnimation.cpp" />
+    <ClCompile Include="Game\TestScene\TestScene.cpp" />
+    <ClCompile Include="Game\GameScene\System\PauseSystem.cpp" />
+    <ClCompile Include="Game\GameScene\System\SoundManager.cpp" />
+    <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp" />
+    <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp" />
+    <ClCompile Include="Game\GameScene\Effect\RankingCutinEffect.cpp" />
+    <ClCompile Include="Game\GameScene\System\Achievement.cpp" />
+    <ClCompile Include="Game\GameScene\System\AchievementManager.cpp" />
+    <ClCompile Include="Game\GameScene\System\BossBattleController.cpp" />
+    <ClCompile Include="Game\GameScene\System\ScoreManager.cpp" />
+    <ClCompile Include="Game\GameScene\System\TitleDirector.cpp" />
+    <ClCompile Include="Game\GameScene\UI\GameHUD.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\Font\MsdfGenerator.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp" />
+    <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp" />
+    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.cpp" />
+    <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.cpp" />
+    <ClCompile Include="MatchaEngine\Network\Firebase\EnvLoader.cpp" />
+    <ClCompile Include="MatchaEngine\Network\Firebase\HttpClient.cpp" />
+    <ClCompile Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Resources\Shader\ComputeShader\Particle.CS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\Particle.PS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\Particle.VS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\Line.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\Line.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\Object3d.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\Object3d.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\SkinningObject3d.CS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\SkinningObject3d.PS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\SkinningObject3d.VS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="resources\Shader\SkyBox.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Game\GameScene\Effect\HexBarrier.h" />
+    <ClInclude Include="Game\GameScene\Entity\Boss.h" />
+    <ClInclude Include="Editer\EditorUI.h" />
+    <ClInclude Include="Editer\EditorManager.h" />
+    <ClInclude Include="Editer\Command\ICommand.h" />
+    <ClInclude Include="Editer\Command\CommandManager.h" />
+    <ClInclude Include="Editer\Command\EditorCommands.h" />
+    <ClInclude Include="Editer\LanguageManager.h" />
+    <ClInclude Include="MatchaEngine\Common\ObjectPool.h" />
+    <ClInclude Include="Game\GameScene\GameSceneManager.h" />
+    <ClInclude Include="Game\JsonScene\JsonScene.h" />
+    <ClInclude Include="MatchaEngine\Graphics\Render\LineRenderer.h" />
+    <ClInclude Include="MatchaEngine\System\GameObjectManager.h" />
+    <ClInclude Include="MatchaEngine\System\GameObjectFactory.h" />
+    <ClInclude Include="MatchaEngine\System\CollisionManager.h" />
+    <ClInclude Include="MatchaEngine\Resource\AssetManager.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\GameObject.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Component\Component.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Component\MaterialComponent.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Component\ColliderComponent.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\RenderObject.h" />
+    <ClInclude Include="Game\GameScene\Entity\Player.h" />
+    <ClInclude Include="Game\GameScene\Entity\Collision.h" />
+    <ClInclude Include="Game\GameScene\Entity\Obstacle.h" />
+    <ClInclude Include="Game\GameScene\Stage\StageSettings.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Cylinder.h" />
+    <ClInclude Include="Game\GameApplication.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Cube.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Sphere.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Triangle.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Light\LightManager.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Light\PointLight.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\ObjectBase.h" />
+    <ClInclude Include="MatchaEngine\Graphics\RenderTexture.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Ring.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Effect\Emitter.h" />
+    <ClInclude Include="Game\Direction\FreezeTransition.h" />
+    <ClInclude Include="Game\IScene.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h" />
+    <ClInclude Include="Game\GameScene\GameScene.h" />
+    <ClInclude Include="Game\GameScene\Camera\GameCameraController.h" />
+    <ClInclude Include="Game\GameScene\Effect\CrashEffect.h" />
+    <ClInclude Include="Game\GameScene\Effect\RankingCutinEffect.h" />
+    <ClInclude Include="Game\GameScene\System\Achievement.h" />
+    <ClInclude Include="Game\GameScene\System\AchievementManager.h" />
+    <ClInclude Include="Game\GameScene\System\BossBattleController.h" />
+    <ClInclude Include="Game\GameScene\System\ScoreManager.h" />
+    <ClInclude Include="Game\GameScene\System\TitleDirector.h" />
+    <ClInclude Include="Game\GameScene\UI\GameHUD.h" />
+    <ClInclude Include="Game\GameScene\Effect\GameSceneEffect.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Matrix4x4.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector3.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector2Int.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector3Int.h" />
+    <ClInclude Include="MatchaEngine\Graphics\Render\PostEffect.h" />
+    <ClInclude Include="MatchaEngine\Input\GamePadInput.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Line\Line.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Line\Grid.h" />
+    <ClInclude Include="MatchaEngine\Graphics\DepthStencil.h" />
+    <ClInclude Include="MatchaEngine\Graphics\DescriptorHeap.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Light\BaseLight.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Light\DirectionalLight.h" />
+    <ClInclude Include="MatchaEngine\Graphics\GpuSyncManager.h" />
+    <ClInclude Include="MatchaEngine\Graphics\GpuProfiler.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\2d\Sprite.h" />
+    <ClInclude Include="MatchaEngine\PSO\ComputePipeline.h" />
+    <ClInclude Include="MatchaEngine\PSO\PipelineState.h" />
+    <ClInclude Include="MatchaEngine\PSO\ShaderCompiler.h" />
+    <ClInclude Include="MatchaEngine\Resource\Load.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Camera\DebugCamera.h" />
+    <ClInclude Include="MatchaEngine\Resource\Audio.h" />
+    <ClInclude Include="MatchaEngine\Input\Input.h" />
+    <ClInclude Include="MatchaEngine\Engine.h" />
+    <ClInclude Include="MatchaEngine\Math\Calculation.h" />
+    <ClInclude Include="MatchaEngine\Common\CommandContext.h" />
+    <ClInclude Include="MatchaEngine\Graphics\Render\Draw.h" />
+    <ClInclude Include="externals\imgui\imconfig.h" />
+    <ClInclude Include="externals\imgui\imgui.h" />
+    <ClInclude Include="externals\imgui\ImGuizmo.h" />
+    <ClInclude Include="externals\imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="externals\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="externals\imgui\imgui_internal.h" />
+    <ClInclude Include="externals\imgui\imstb_rectpack.h" />
+    <ClInclude Include="externals\imgui\imstb_textedit.h" />
+    <ClInclude Include="externals\imgui\imstb_truetype.h" />
+    <ClInclude Include="MatchaEngine\Graphics\GraphicsDevice.h" />
+    <ClInclude Include="MatchaEngine\PSO\GraphicsPipelineState.h" />
+    <ClInclude Include="MatchaEngine\Core\LogHandler.h" />
+    <ClInclude Include="MatchaEngine\PSO\RootSignature.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes.h" />
+    <ClInclude Include="MatchaEngine\Core\WindowConfig.h" />
+    <ClInclude Include="MatchaEngine\Core\ImGuiManager.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\MaterialFactory.h" />
+    <ClInclude Include="MatchaEngine\Graphics\Font\MsdfGenerator.h" />
+    <ClInclude Include="MatchaEngine\Graphics\Font\DynamicFontAtlas.h" />
+    <ClInclude Include="MatchaEngine\Graphics\Font\TextRenderer.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Model.h" />
+    <ClInclude Include="MatchaEngine\Resource\TextureLoader.h" />
+    <ClInclude Include="MatchaEngine\Graphics\RenderTargetView.h" />
+    <ClInclude Include="MatchaEngine\PSO\Sampler.h" />
+    <ClInclude Include="MatchaEngine\Graphics\ResourceBarrierHelper.h" />
+    <ClInclude Include="MatchaEngine\Graphics\SwapChain.h" />
+    <ClInclude Include="MatchaEngine\Resource\Texture.h" />
+    <ClInclude Include="MatchaEngine\Graphics\ViewportScissor.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector2.h" />
+    <ClInclude Include="Game\SceneManager.h" />
+    <ClInclude Include="MatchaEngine\Resource\ModelManager.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Effect\EffectDefinition.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Light\SpotLight.h" />
+    <ClInclude Include="MatchaEngine\GameObjects\Object\Animation\TransformAnimation.h" />
+    <ClInclude Include="Game\TestScene\TestScene.h" />
+    <ClInclude Include="Game\GameScene\System\PauseSystem.h" />
+    <ClInclude Include="Game\GameScene\System\SoundManager.h" />
+    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.h" />
+    <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\EnvLoader.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\EmbeddedEnv.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\HttpClient.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="externals\imgui\LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
+      <Project>{371b9fa9-4c90-4ac6-a123-aced756d6c77}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
+    <None Include="resources\Shader\Line.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\Shader\Object3d.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\Shader\Particle.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\Shader\PostEffect\PostEffect.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\Shader\SkinningObject3d.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\Shader\SkyBox.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\Shader\SkyBox.PS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

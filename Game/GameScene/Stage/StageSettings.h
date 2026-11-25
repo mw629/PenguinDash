@@ -12,7 +12,7 @@
 /// </summary>
 struct ItemCoolDownSetting {
   static constexpr float kDefaultDuration = 10.0f;
-  float duration = kDefaultDuration;    // クールタイム（秒）
+  float duration = kDefaultDuration; // クールタイム（秒）
   float currentTimer = 0.0f; // 現在の残りクールタイム（秒、0以下で出現可能）
 };
 
@@ -58,7 +58,7 @@ private:
   static constexpr int kDefaultMaxConsecutiveNoSpawn = 1;
   static constexpr float kDefaultItemSpawnChance = 0.15f;
   static constexpr float kDefaultCameraItemInterval = 500.0f;
-  static constexpr float kLaneChangeHorizonZ = 70.0f;
+  static constexpr float kLaneChangeHorizonZ = 45.0f;
   static constexpr float kResetSpawnLeadDistance = 3.0f;
   static constexpr float kMinEffectiveSpeed = 0.05f;
   static constexpr int kInitialObstacleTypeCount = 3;
@@ -75,7 +75,8 @@ private:
   static constexpr float kGuideFloorSpawnY = 2.0f;
   static constexpr float kItemSpawnY = 2.5f;
   static constexpr float kItemSpawnZOffset = -5.0f;
-  static constexpr float kSpawnObstacleZ = 45.0f;
+  static constexpr float kDefaultSpawnObstacleZ = 105.0f;
+  static constexpr float kSpawnObstacleZ = kDefaultSpawnObstacleZ;
 
   static constexpr Vector4 kDefaultRoadColor = {1.0f, 1.0f, 1.0f, 1.0f};
   static constexpr Vector4 kDefaultDriftIceColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -94,20 +95,25 @@ private:
   int laneCount_ = kDefaultLaneCount;
   int minLaneIndex_ = kDefaultMinLaneIndex;
   int maxLaneIndex_ = kDefaultMaxLaneIndex;
-  float laneWidth_ = kDefaultLaneWidth;              // 1レーンの床の幅（元の2.0fの2倍）
-  float oneLaneWidthMultiplier_ = kDefaultOneLaneWidthMultiplier; // 1レーン時の追加倍率
+  float laneWidth_ = kDefaultLaneWidth; // 1レーンの床の幅（元の2.0fの2倍）
+  float oneLaneWidthMultiplier_ =
+      kDefaultOneLaneWidthMultiplier; // 1レーン時の追加倍率
 
   // スクロール速度
-  float scrollSpeed_ = kDefaultBaseScrollSpeed;           // 現在のスクロール速度
-  float baseScrollSpeed_ = kDefaultBaseScrollSpeed;       // 初期スクロール速度
-  float maxScrollSpeed_ = kDefaultMaxScrollSpeed;        // 最大スクロール速度
+  float scrollSpeed_ = kDefaultBaseScrollSpeed;     // 現在のスクロール速度
+  float baseScrollSpeed_ = kDefaultBaseScrollSpeed; // 初期スクロール速度
+  float maxScrollSpeed_ = kDefaultMaxScrollSpeed;   // 最大スクロール速度
   float scrollAcceleration_ = kDefaultScrollAcceleration; // 毎フレームの加速量
 
   // 道路チャンク
-  static constexpr int kBackwardChunks_ = 20; // プレイヤーより手前（カメラ側・背後）のチャンク数（従来の6から20に拡張）
-  static constexpr int kForwardChunks_ = 14; // プレイヤーより奥（進行方向）のチャンク数
-  static constexpr int kChunkCount_ = kBackwardChunks_ + kForwardChunks_; // チャンクの総数 (34)
-  float chunkLength_ = kDefaultChunkLength; // 1チャンクの奥行き（Z軸方向のサイズ）
+  static constexpr int kBackwardChunks_ =
+      20; // プレイヤーより手前（カメラ側・背後）のチャンク数（従来の6から20に拡張）
+  static constexpr int kForwardChunks_ =
+      16; // プレイヤーより奥（進行方向）のチャンク数（奥100m+からの出現に対応し160mに拡張）
+  static constexpr int kChunkCount_ =
+      kBackwardChunks_ + kForwardChunks_; // チャンクの総数 (34)
+  float chunkLength_ =
+      kDefaultChunkLength; // 1チャンクの奥行き（Z軸方向のサイズ）
 
 public:
   struct ChunkRowInfo {
@@ -127,12 +133,19 @@ private:
   // サイドプレーン用
   std::shared_ptr<RenderObject> sidePlanes_[2];
   ModelData planeModelData_;
-  float waterForwardExtension_ = kDefaultWaterForwardExtension;  // 道路奥端からさらに奥への波の拡張距離（m）
-  float waterBackwardExtension_ = kDefaultWaterBackwardExtension; // 道路手前端からさらに手前への波の拡張距離（m）
-  float waterWidthScale_ = kDefaultWaterWidthScale;        // 波の横幅スケール（片側、m）
+  float waterForwardExtension_ =
+      kDefaultWaterForwardExtension; // 道路奥端からさらに奥への波の拡張距離（m）
+  float waterBackwardExtension_ =
+      kDefaultWaterBackwardExtension; // 道路手前端からさらに手前への波の拡張距離（m）
+  float waterWidthScale_ =
+      kDefaultWaterWidthScale; // 波の横幅スケール（片側、m）
 
   // 海に浮かべる流氷・アザラシ（Drift Ice / Baby Seal）
-public:
+private:
+  class IDriftIceBehavior;
+  friend class StandardDriftIceBehavior;
+  friend class BabySealDriftIceBehavior;
+
   struct DriftIce {
     static constexpr float kDefaultBaseY = 0.3f;
     static constexpr float kDefaultFloatingHeight = 0.25f;
@@ -144,11 +157,9 @@ public:
     static constexpr float kDefaultTargetDepth = 1.5f;
     static constexpr float kDefaultTargetHeight = 1.0f;
 
-    enum class Type {
-      DriftIce,
-      BabySeal
-    };
+    enum class Type { DriftIce, BabySeal };
     Type type = Type::DriftIce;
+    const IDriftIceBehavior *behavior = nullptr;
 
     std::shared_ptr<RenderObject> renderObj;
     std::shared_ptr<Model> iceModel;
@@ -160,11 +171,11 @@ public:
     Vector3 scale = {1.0f, 1.0f, 1.0f};
     float floatingHeight = kDefaultFloatingHeight;
     float rotY = 0.0f;
-    float rotSpeed = 0.0f;             // ゆっくりとした自転ドリフト (rad/s)
-    float driftAmount = 0.0f;          // 潮流・波による横方向の揺らぎ振幅 (m)
-    float driftSpeed = 0.0f;           // 横方向の揺らぎ周期速度 (rad/s)
-    float driftPhase = 0.0f;           // 横方向の揺らぎ初期位相
-    float driftVelocityX = 0.0f;       // 斜め方向への緩やかな潮流移動速度 (m/s)
+    float rotSpeed = 0.0f;       // ゆっくりとした自転ドリフト (rad/s)
+    float driftAmount = 0.0f;    // 潮流・波による横方向の揺らぎ振幅 (m)
+    float driftSpeed = 0.0f;     // 横方向の揺らぎ周期速度 (rad/s)
+    float driftPhase = 0.0f;     // 横方向の揺らぎ初期位相
+    float driftVelocityX = 0.0f; // 斜め方向への緩やかな潮流移動速度 (m/s)
     float bobbingPhase = 0.0f;
     float bobbingSpeed = kDefaultBobbingSpeed;
     float bobbingAmount = kDefaultBobbingAmount;
@@ -208,10 +219,14 @@ private:
   static constexpr float kIceBobbingBaseAmount = 0.05f;
   static constexpr float kIceRollPitchBaseMultiplier = 0.012f;
   static constexpr float kIceSealSpinVariationBase = 0.85f;
+  static constexpr float kDefaultDriftIceFlowSpeed =
+      0.20f; // 停止時・潮流による流氷の基本流速 (m/frame)
 
   static constexpr int kDriftIceCount_ = 72;
   std::vector<DriftIce> driftIces_;
   bool driftIceEnabled_ = true;
+  bool isDriftIceFlowingWhenStopped_ =
+      true; // 道路が停止中（カウントダウン時等）も流氷を潮流で流すフラグ
   Vector4 driftIceColor_ = kDefaultDriftIceColor;
   float driftIceBobbingScale_ = kDefaultScale;
   float driftIceBobbingSpeedScale_ = kDefaultScale;
@@ -219,38 +234,66 @@ private:
   float driftIceThicknessScale_ = kDefaultScale; // size.y（縦の厚み）倍率
   float driftIceHeightOffset_ = 0.0f;
   float driftIceDistanceOffset_ = 0.0f;
-  bool driftIceLighting_ = false;
+  bool driftIceLighting_ = true;
+  bool roadLighting_ = true;
+  bool obstacleLighting_ = true;
+  bool obstacleEnvironmentReflection_ = true; // 障害物の鏡面反射（環境反射）フラグ
+  float obstacleEnvironmentCoefficient_ = 1.0f;
+  bool waterLighting_ = true;
   float waterTime_ = 0.0f;
   ModelData driftIceModelData_;
   ModelData babySealModelData_;
-  float babySealSpinSpeed_ = kDefaultBabySealSpinSpeed; // アザラシが水面をスピンする速度 (rad/s)
+  float babySealSpinSpeed_ =
+      kDefaultBabySealSpinSpeed; // アザラシが水面をスピンする速度 (rad/s)
 
   float CalculateWaterHeight(float x, float z, float time) const;
+  static const IDriftIceBehavior *ResolveDriftIceBehavior(DriftIce::Type type);
   void GenerateDriftIce(Matrix4x4 view = IdentityMatrix());
   void UpdateDriftIce(Matrix4x4 view, float currentScroll, float timeScale);
   void ResetDriftIce();
   void SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int index);
+
+  static constexpr float kDefaultRoadChunkFallInitialSpeed = 2.0f;
+  static constexpr float kDefaultRoadChunkFallGravity = 35.0f;
+  static constexpr float kDefaultRoadChunkFallDelayPerMeter = 0.012f;
+  static constexpr float kDefaultRoadChunkFallDespawnDrop = 60.0f;
 
   ModelData roadModelData_;
   Vector4 roadColor_ = kDefaultRoadColor;
   class GameObjectManager *manager_ = nullptr;
   std::vector<std::shared_ptr<RenderObject>> chunkPool_;
 
+  struct FallingChunk {
+    std::shared_ptr<RenderObject> renderObj;
+    Transform transform;
+    float initialY = 0.0f;
+    float velocityY = 0.0f;
+    float delayTimer = 0.0f;
+  };
+  std::vector<FallingChunk> fallingChunks_;
+
   void GenerateRoadChunks(Matrix4x4 view = IdentityMatrix());
-  void RebuildChunkRow(int rowIndex, int newLaneCount, float newZ, Matrix4x4 view = IdentityMatrix());
+  void RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
+                       Matrix4x4 view = IdentityMatrix(),
+                       bool fallRemovedLanes = false);
+  void UpdateFallingChunks(Matrix4x4 view, float currentScroll, float dt);
+  void ClearFallingChunks();
 
   // テクスチャ
   std::unique_ptr<Texture> texture_ = std::make_unique<Texture>();
 
   // 障害物管理
-  static constexpr int kMaxObstacles_ = 20; // 障害物の最大保持数
+  static constexpr int kMaxObstacles_ =
+      128; // 障害物の最大保持数（長距離化に伴い20から128に拡張）
   std::shared_ptr<Obstacle>
       obstacles_[kMaxObstacles_]; // 障害物インスタンス配列
   int nextObstacleIndex_ = 0;     // 次に使用する障害物のインデックス
 
   float obstacleInterval_ =
       kDefaultObstacleInterval; // 次回生成までの距離（動的計算値・さらに狭めた設定）
-  float distanceSinceLastSpawn_ = 0.0f; // 前回生成からの移動距離
+  float distanceSinceLastSpawn_ = 0.0f;           // 前回生成からの移動距離
+  float spawnObstacleZ_ = kDefaultSpawnObstacleZ; // 障害物・アイテムの生成Z距離
+  bool showSpawnGizmo_ = false; // スポーン地点の3Dギズモ描画フラグ
 
   float baseActionFrames_ =
       kDefaultBaseActionFrames; // 回避アクション所要フレーム数（ジャンプ・しゃがみ完了所要フレーム）
@@ -266,7 +309,8 @@ private:
   float noSpawnChance_ =
       kDefaultNoSpawnChance; // 障害物が出現しない空ウェーブの発生確率（密度を保つためさらに控えめに設定）
   int consecutiveNoSpawnCount_ = 0; // 連続して空ウェーブが発生した回数
-  int maxConsecutiveNoSpawn_ = kDefaultMaxConsecutiveNoSpawn;   // 連続空ウェーブの最大許容回数
+  int maxConsecutiveNoSpawn_ =
+      kDefaultMaxConsecutiveNoSpawn; // 連続空ウェーブの最大許容回数
 
   float cameraItemInterval_ =
       kDefaultCameraItemInterval; // カメラアイテムの生成間隔（旧・互換性用）
@@ -275,7 +319,8 @@ private:
 
   // アイテムクールタイム管理（秒単位）
   std::map<Obstacle::Type, ItemCoolDownSetting> itemCoolDowns_;
-  float itemSpawnChance_ = kDefaultItemSpawnChance; // アイテムが出現するウェーブの確率（15%）
+  float itemSpawnChance_ =
+      kDefaultItemSpawnChance; // アイテムが出現するウェーブの確率（15%）
 
   // ゲームオーバーフラグ
   bool isGameOver_ = false;
@@ -297,18 +342,48 @@ private:
   void CalculateNextObstacleInterval();
 
 public:
+  /// <summary>
+  /// ステージおよび全障害物・アイテムモデルの初期化
+  /// </summary>
   void Initialize(ModelData roadModelData, ModelData fallenTreeModelData,
                   ModelData iceArchwayModelData, ModelData iceWallModelData,
                   ModelData bonusModelData, ModelData iceBomModelData,
                   ModelData reflectingAttackModelData,
                   class GameObjectManager *manager);
+
+  /// <summary>
+  /// ステージモデル・障害物モデルの初期化（簡易版）
+  /// </summary>
   void Initialize(ModelData roadModelData, ModelData fallenTreeModelData,
                   ModelData iceArchwayModelData, ModelData iceWallModelData,
                   ModelData bonusModelData, class GameObjectManager *manager);
+
+  /// <summary>
+  /// ステージモデル・障害物モデルの初期化（最小版）
+  /// </summary>
   void Initialize(ModelData roadModelData, ModelData obstacleModelData,
                   ModelData bonusModelData, class GameObjectManager *manager);
-  void Update(Matrix4x4 view, float timeScale = kDefaultTimeScale, float waterTime = kAutoWaterTime);
+
+  /// <summary>
+  /// ステージの毎フレーム更新（道路スクロール、障害物スポーン、流氷アニメーション等）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="timeScale">時間スケール</param>
+  /// <param name="waterTime">海面アニメーション時間</param>
+  void Update(Matrix4x4 view, float timeScale = kDefaultTimeScale,
+              float waterTime = kAutoWaterTime);
+
+  /// <summary>
+  /// エディターモード時のステージ更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="waterTime">海面アニメーション時間</param>
   void EditorUpdate(Matrix4x4 view, float waterTime = kAutoWaterTime);
+
+  /// <summary>
+  /// ステージ内オブジェクト（道路、流氷、海面）の描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw);
 
   // ゲッター
@@ -325,7 +400,7 @@ public:
   float GetChunkLength() const { return chunkLength_; }
 
   // 任意Z座標におけるレーン情報の取得
-  const ChunkRowInfo& GetChunkRowInfoAtZ(float z) const;
+  const ChunkRowInfo &GetChunkRowInfoAtZ(float z) const;
   int GetLaneCountAtZ(float z) const;
   int GetMinLaneIndexAtZ(float z) const;
   int GetMaxLaneIndexAtZ(float z) const;
@@ -334,11 +409,24 @@ public:
   const Vector4 &GetRoadColor() const { return roadColor_; }
   void SetRoadColor(const Vector4 &color);
 
-  // セッター
-  // レーン数変更（奥から新しく出現する床から変化させる）
+  /// <summary>
+  /// レーン数の変更（奥から新しく出現する床から徐々に切り替え）
+  /// </summary>
+  /// <param name="count">目標レーン数</param>
   void SetLaneCount(int count);
-  // 全チャンク即時変更用（リセット等）
+
+  /// <summary>
+  /// 全チャンクのレーン数を即時変更（リセット・初期化等）
+  /// </summary>
+  /// <param name="count">目標レーン数</param>
+  /// <param name="view">ビュー行列</param>
   void SetLaneCountImmediate(int count, Matrix4x4 view = IdentityMatrix());
+
+  /// <summary>
+  /// 1レーンモード突入時にプレイヤー前方へ障害物を初期配置する
+  /// （奥からの到達待ち時間を解消し、切り替え直後からテンポよく障害物を出現させる）
+  /// </summary>
+  void SetupOneLaneInitialObstacles();
 
   void SetLaneWidth(float width) {
     if (laneWidth_ == width)
@@ -421,6 +509,14 @@ public:
 
   // 生成の一時停止設定
   void SetSpawningPaused(bool paused) { isSpawningPaused_ = paused; }
+  bool GetIsSpawningPaused() const { return isSpawningPaused_; }
+
+  // スポーン地点（Z距離）および3Dギズモ設定
+  float GetSpawnObstacleZ() const { return spawnObstacleZ_; }
+  void SetSpawnObstacleZ(float z) { spawnObstacleZ_ = z; }
+  float GetDistanceSinceLastSpawn() const { return distanceSinceLastSpawn_; }
+  bool GetShowSpawnGizmo() const { return showSpawnGizmo_; }
+  void SetShowSpawnGizmo(bool show) { showSpawnGizmo_ = show; }
 
   // 狭まる区間の設定
   void SetNarrowingSection(bool isNarrowing) {
@@ -441,7 +537,10 @@ public:
   float GetItemSpawnChance() const { return itemSpawnChance_; }
   void SetItemSpawnChance(float chance) { itemSpawnChance_ = chance; }
 
-  // 障害物を一掃する（ゲーム開始時用）
+  /// <summary>
+  /// 画面内の障害物を一掃消去（ゲーム開始・リスタート時用）
+  /// </summary>
+  /// <param name="safeDistance">プレイヤー手前で安全に残す距離</param>
   void ClearObstacles(float safeDistance = kDefaultClearObstacleSafeDistance);
 
   // 流氷（Drift Ice）の設定・取得
@@ -451,8 +550,12 @@ public:
   void SetDriftIceColor(const Vector4 &color);
   float GetDriftIceBobbingScale() const { return driftIceBobbingScale_; }
   void SetDriftIceBobbingScale(float scale) { driftIceBobbingScale_ = scale; }
-  float GetDriftIceBobbingSpeedScale() const { return driftIceBobbingSpeedScale_; }
-  void SetDriftIceBobbingSpeedScale(float scale) { driftIceBobbingSpeedScale_ = scale; }
+  float GetDriftIceBobbingSpeedScale() const {
+    return driftIceBobbingSpeedScale_;
+  }
+  void SetDriftIceBobbingSpeedScale(float scale) {
+    driftIceBobbingSpeedScale_ = scale;
+  }
   float GetDriftIceSizeScale() const { return driftIceSizeScale_; }
   void SetDriftIceSizeScale(float scale);
   float GetDriftIceThicknessScale() const { return driftIceThicknessScale_; }
@@ -460,11 +563,29 @@ public:
   float GetDriftIceHeightOffset() const { return driftIceHeightOffset_; }
   void SetDriftIceHeightOffset(float offset) { driftIceHeightOffset_ = offset; }
   float GetDriftIceDistanceOffset() const { return driftIceDistanceOffset_; }
-  void SetDriftIceDistanceOffset(float offset) { driftIceDistanceOffset_ = offset; }
+  void SetDriftIceDistanceOffset(float offset) {
+    driftIceDistanceOffset_ = offset;
+  }
   bool GetDriftIceLighting() const { return driftIceLighting_; }
   void SetDriftIceLighting(bool enabled);
+  bool GetRoadLighting() const { return roadLighting_; }
+  void SetRoadLighting(bool enabled);
+  bool GetObstacleLighting() const { return obstacleLighting_; }
+  void SetObstacleLighting(bool enabled);
+  bool GetObstacleEnvironmentReflection() const { return obstacleEnvironmentReflection_; }
+  void SetObstacleEnvironmentReflection(bool enabled);
+  float GetObstacleEnvironmentCoefficient() const { return obstacleEnvironmentCoefficient_; }
+  void SetObstacleEnvironmentCoefficient(float coeff);
+  bool GetWaterLighting() const { return waterLighting_; }
+  void SetWaterLighting(bool enabled);
   float GetBabySealSpinSpeed() const { return babySealSpinSpeed_; }
   void SetBabySealSpinSpeed(float speed);
+  bool GetDriftIceFlowingWhenStopped() const {
+    return isDriftIceFlowingWhenStopped_;
+  }
+  void SetDriftIceFlowingWhenStopped(bool flowing) {
+    isDriftIceFlowingWhenStopped_ = flowing;
+  }
 
   float GetWaterTime() const { return waterTime_; }
   void SetWaterTime(float time) { waterTime_ = time; }
@@ -478,6 +599,13 @@ public:
   void SetWaterWidthScale(float scale);
   void UpdateSidePlanesTransform(Matrix4x4 view = IdentityMatrix());
 
-  // リセット
+  /// <summary>
+  /// ステージ状態（速度、スクロール、流氷、障害物）のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// ImGuiによるステージパラメータ調整UI
+  /// </summary>
+  void ImGui();
 };

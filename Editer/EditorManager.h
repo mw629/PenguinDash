@@ -16,6 +16,7 @@ class Grid;
 class Model;
 
 class Draw;
+class EffectDefinition;
 
 class EditorManager {
 public:
@@ -57,6 +58,13 @@ private:
 	bool showGridInViewer_ = true;
 	bool showEmitterCube_ = true;
 
+	std::unique_ptr<RenderTexture> singleParticleRenderTexture_;
+	std::unique_ptr<DepthStencil> singleParticleDepthStencil_;
+	std::unique_ptr<Camera> singleParticleCamera_;
+	std::unique_ptr<EffectDefinition> singleParticleEffectDef_;
+	bool isSingleParticleViewerInitialized_ = false;
+	float singleParticleTurntableAngle_ = 0.0f;
+
 	std::unique_ptr<RenderTexture> gameViewRenderTextures_[2];
 	std::unique_ptr<DepthStencil> gameViewDepthStencil_;
 	bool isGameViewInitialized_ = false;
@@ -73,39 +81,110 @@ private:
 	std::string currentModelPath_ = "";
 
 public:
+	/// <summary>
+	/// デストラクタ
+	/// </summary>
 	~EditorManager();
 
+	/// <summary>
+	/// 再生中フラグの設定
+	/// </summary>
+	/// <param name="playing">true: 再生中, false: 停止中</param>
 	static void SetPlaying(bool playing) { isPlaying_ = playing; }
+
+	/// <summary>
+	/// エディタが再生中かどうかを取得
+	/// </summary>
+	/// <returns>再生中ならtrue</returns>
 	static bool IsPlaying() { return isPlaying_; }
 
+	/// <summary>
+	/// 再生速度スケールの設定
+	/// </summary>
+	/// <param name="speed">速度スケール（1.0fが等速）</param>
 	static void SetPlaySpeed(float speed) { playSpeed_ = speed; }
+
+	/// <summary>
+	/// 再生速度スケールの取得
+	/// </summary>
+	/// <returns>速度スケール</returns>
 	static float GetPlaySpeed() { return playSpeed_; }
 
+	/// <summary>
+	/// Sceneウィンドウ上のオーバーレイ描画コールバック設定
+	/// </summary>
 	static void SetSceneOverlayCallback(SceneOverlayCallback cb) { s_sceneOverlayCallback_ = cb; }
+
+	/// <summary>
+	/// Sceneウィンドウ上のオーバーレイ描画コールバック解除
+	/// </summary>
 	static void ClearSceneOverlayCallback() { s_sceneOverlayCallback_ = nullptr; }
 
+	/// <summary>
+	/// シーン保存コールバックの設定
+	/// </summary>
 	static void SetSaveCallback(EditorCallback cb) { s_saveCallback_ = cb; }
+
+	/// <summary>
+	/// シーン読み込みコールバックの設定
+	/// </summary>
 	static void SetLoadCallback(EditorCallback cb) { s_loadCallback_ = cb; }
+
+	/// <summary>
+	/// ファイルドロップコールバックの設定
+	/// </summary>
 	static void SetFileDropCallback(FileDropCallback cb) { s_fileDropCallback_ = cb; }
 
+	/// <summary>
+	/// GameViewウィンドウの描画コールバック設定
+	/// </summary>
+	/// <param name="cb">3D描画コールバック</param>
+	/// <param name="uiCb">2D UI描画コールバック</param>
 	static void SetGameViewDrawCallback(GameViewDrawCallback cb, GameViewUIDrawCallback uiCb = nullptr) {
 		s_gameViewDrawCallback_ = cb;
 		s_gameViewUIDrawCallback_ = uiCb;
 	}
+
+	/// <summary>
+	/// GameViewウィンドウの2D UI描画コールバック設定
+	/// </summary>
+	/// <param name="uiCb">UI描画コールバック</param>
 	static void SetGameViewUIDrawCallback(GameViewUIDrawCallback uiCb) {
 		s_gameViewUIDrawCallback_ = uiCb;
 	}
 
+	/// <summary>
+	/// 現在編集中のファイル名を設定
+	/// </summary>
 	static void SetCurrentFileName(const std::string& name) { s_currentFileName_ = name; }
+
+	/// <summary>
+	/// 現在編集中のファイル名を取得
+	/// </summary>
 	static std::string GetCurrentFileName() { return s_currentFileName_; }
 
-	static int s_gizmoOp; // 0: Translate, 1: Rotate, 2: Scale
+private:
+	static int s_gizmoOp_; // 0: Translate, 1: Rotate, 2: Scale
 
 #ifdef _USE_IMGUI
-	static ImVec2 s_sceneImagePos;
-	static ImVec2 s_sceneImageSize;
+	static ImVec2 s_sceneImagePos_;
+	static ImVec2 s_sceneImageSize_;
 #endif // _USE_IMGUI
 
-	// 毎フレーム呼ばれるエディタUIの更新処理
+public:
+	static int GetGizmoOp() { return s_gizmoOp_; }
+	static void SetGizmoOp(int op) { s_gizmoOp_ = op; }
+
+#ifdef _USE_IMGUI
+	static ImVec2 GetSceneImagePos() { return s_sceneImagePos_; }
+	static ImVec2 GetSceneImageSize() { return s_sceneImageSize_; }
+	static void SetSceneImagePos(const ImVec2& pos) { s_sceneImagePos_ = pos; }
+	static void SetSceneImageSize(const ImVec2& size) { s_sceneImageSize_ = size; }
+#endif // _USE_IMGUI
+
+	/// <summary>
+	/// エディタ全体のImGui描画およびGameViewの描画更新
+	/// </summary>
+	/// <param name="engine">エンジンインスタンスポインタ</param>
 	void Update(Engine* engine);
 };

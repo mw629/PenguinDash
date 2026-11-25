@@ -92,7 +92,29 @@ public:
 
   void SettingWvp(Matrix4x4 viewMatrix) override;
 
-  void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) {
+  void SetLighting(bool isActive) override {
+    ObjectBase::SetLighting(isActive);
+    for (auto &mat : subMeshMaterials_) {
+      if (mat.materialFactory) {
+        mat.materialFactory->SetMaterialLighting(isActive);
+      }
+    }
+  }
+
+  void SetColor(const Vector4 &color) override {
+    if (auto matComp = GetComponent<MaterialComponent>()) {
+      if (matComp->GetMaterialFactory()) {
+        matComp->GetMaterialFactory()->SetColor(color);
+      }
+    }
+    for (auto &mat : subMeshMaterials_) {
+      if (mat.materialFactory) {
+        mat.materialFactory->SetColor(color);
+      }
+    }
+  }
+
+  void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) override {
     ObjectBase::SetTexture(textureSrvHandleGPU);
     for (auto &mat : subMeshMaterials_) {
       mat.textureSrvHandleGPU = textureSrvHandleGPU;
@@ -110,6 +132,10 @@ public:
   void SkinClusterUpdate(int instanceIndex);
 
   void noUpdate(Matrix4x4 viewMatrix);
+  void Update(Matrix4x4 viewMatrix, float speedMultiplier) override {
+    (void)speedMultiplier;
+    Update(viewMatrix);
+  }
   void Update(Matrix4x4 viewMatrix);
   void UpdateWithDelta(Matrix4x4 viewMatrix, float deltaAnimationTime);
 
@@ -200,8 +226,9 @@ public:
     return skinCluster_.paletteSrvHandle.second;
   }
 
-  // 追加: スキンパレット SRV の GPU ハンドル
-  // (インスタンス対応であればGPUのVADDRになるがDrawでGetPaletteResourceGPUを呼ぶように変更済)
+  /// <summary>
+  /// スキンパレットSRVのGPUリソースを取得
+  /// </summary>
   ID3D12Resource *GetPaletteResourceGPU() const {
     return skinCluster_.paletteResource.Get();
   }

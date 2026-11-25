@@ -1,6 +1,10 @@
 #include "GameApplication.h"
+#include "Network/Firebase/FirebaseRankingManager.h"
 
 GameApplication::GameApplication(int32_t kClientWidth, int32_t kClientHeight) {
+  // Firebase オンラインランキングの初期化 (My.env から設定読み込み)
+  FirebaseRankingManager::GetInstance()->Initialize("My.env");
+
   engine = std::make_unique<Engine>(kClientWidth, kClientHeight);
   engine.get()->Setting();
   sceneManager = std::make_unique<SceneManager>();
@@ -22,10 +26,18 @@ void GameApplication::Run() {
 
     engine.get()->NewFrame();
 
+    // Firebase 通信コールバックのメインスレッドディスパッチ
+    FirebaseRankingManager::GetInstance()->Update();
+
     sceneManager.get()->PreUpdate();
 
     // 1. まずシーンの更新を実行（入力、オブジェクト・パーティクルの更新、emitフラグ確定）
     sceneManager.get()->Update();
+
+    // シーンのカメラ（Sceneウィンドウ用デバッグカメラ）を描画システムに同期
+    if (sceneManager->GetCamera()) {
+      engine->GetDraw()->SetCamera(sceneManager->GetCamera());
+    }
 
 #ifdef _USE_IMGUI
     // 2. エディタ全体のImGuiおよびGameView描画（メインメニューバー、DockSpace、各種エディタウィンドウ）
@@ -38,15 +50,24 @@ void GameApplication::Run() {
     // 4. Engine固有のImGui（ネットワーク接続等）
     engine.get()->ImGui();
 
-    // 5. メインシーン描画
+    // 5. Firebase オンラインランキング用 ImGui デバッグウィンドウ
+    FirebaseRankingManager::GetInstance()->ImGui();
+
+    // 6. メインシーン描画
     sceneManager.get()->Draw(*engine->GetDraw());
 #else
     // Release/Developmentでは直接シーンを描画
     sceneManager.get()->Draw(*engine->GetDraw());
 #endif
 
+#ifdef _USE_IMGUI
+    // Sceneウィンドウ（デバッグカメラ）には2DゲームHUDを描画せず純粋な3Dシーンを表示。
+    // ゲームHUDはGameウィンドウ側のs_gameViewUIDrawCallback_で描画される。
+    engine.get()->EndFrame(nullptr);
+#else
     engine.get()->EndFrame(
         [&]() { sceneManager.get()->DrawUI(*engine->GetDraw()); });
+#endif
   }
   engine.get()->End();
 }

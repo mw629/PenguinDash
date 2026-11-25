@@ -1,16 +1,30 @@
 #include "GameHUD.h"
-#include "../../Direction/Fade.h"
 #include "Graphics/Font/TextRenderer.h"
 #include "Graphics/Render/Draw.h"
 #include "Input/GamePadInput.h"
 #include <Core/WindowConfig.h>
 #include <Entity/Boss.h>
 #include <GameObjects/Object/2d/Sprite.h>
+#include <Resource/Texture.h>
 #include <Stage/StageSettings.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include "Network/Firebase/FirebaseRankingManager.h"
+#include "../System/AchievementManager.h"
+#include "../System/SoundManager.h"
+
+void GameHUD::Initialize(Texture *texture) {
+  if (!texture) return;
+
+  // ボスHPバーのアニメーション状態をリセット
+  lastKnownBossHp_ = -1;
+  bossDamageLagHp_ = 5.0f;
+  bossDamageFlashTimer_ = 0.0f;
+  bossDamageShakeTimer_ = 0.0f;
+  lastUiTimer_ = 0.0f;
+}
 
 // GameState values matching GameScene
 enum GameStateEnum {
@@ -18,9 +32,10 @@ enum GameStateEnum {
   State_Playing = 1,
   State_Paused = 2,
   State_PlayerHit = 3,
-  State_GameClear = 4,
-  State_GameOver = 5,
-  State_Editor = 6
+  State_FirstPlaceCutIn = 4,
+  State_GameClear = 5,
+  State_GameOver = 6,
+  State_Editor = 7
 };
 
 // PlayingState values matching GameScene
@@ -44,56 +59,218 @@ void GameHUD::PreloadFontStrings(Draw &draw) {
         "ろゎわゐゑをん"
         "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモ"
         "ヤユヨラリルレロワヲンッャュョー"
+        "ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポヴ"
         "一二三四五六七八九十百千万到達距離スコア速度最高記録ベストゲームオーバ"
         "ーリスタートリザルトへ戻る一時停止中現在獲得順位反撃チャンス左中央右打"
         "ち返せ跳ね返しボーナス敵撃破モードシールドバリアアクティブジャンプスラ"
         "イディング走るポーズキーもう一度遊ぶプレイメニュー"
         "ペンギンダッシュ―—"
         "操作方法十字説明攻略倒し方緑赤色迫る直撃減少命中削切回避手前当てろ避け"
-        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続");
+        "ろ戦指令障害物魚押飛進残移動来固定再開初終体視替人称接続生"
+        "行圏外以成通最新取得設定送信功失敗未判更冠両"
+        "実績一覧条件報酬達成解除済全種頁切替上下散歩俊足氷原覇者南極点突吹"
+        "累計職人高速不動精神秒間留石像境地雪王対峙討伐名前（）件〜"
+        "主効果音量調整直枠戻保存初期化");
+  }
+}
+
+// =========================================================================
+// IHUDStateRenderer / ITitleSubViewRenderer（ポリモーフィズムによる描画分離）
+// =========================================================================
+
+class IHUDStateRenderer {
+public:
+  virtual ~IHUDStateRenderer() = default;
+  virtual void Render(GameHUD &hud, Draw &draw,
+                      const GameHUDContext &ctx) const = 0;
+  virtual bool ShouldResetResultSe() const { return true; }
+  virtual bool CanShowFPVBadge() const { return true; }
+};
+
+class TitleHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleHUD(draw, ctx);
+  }
+};
+
+class PlayingHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawPlayingHUD(draw, ctx);
+    if (ctx.playingState == PlayState_Boss && ctx.boss &&
+        ctx.boss->GetIsActive()) {
+      hud.DrawBossHUD(draw, ctx);
+    }
+    hud.DrawControlsGuide(draw, ctx);
+    if (ctx.isTitleExiting) {
+      hud.DrawTitleHUD(draw, ctx);
+    }
+  }
+};
+
+class PausedHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawPlayingHUD(draw, ctx);
+    hud.DrawPauseHUD(draw, ctx);
+    if (ctx.isSettingsOpen) {
+      hud.DrawSettingsModal(draw, ctx);
+    }
+  }
+};
+
+class PlayerHitHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawPlayingHUD(draw, ctx);
+    if (ctx.crashSprite) {
+      draw.DrawSprite(ctx.crashSprite);
+    }
+  }
+};
+
+class FirstPlaceCutInHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD & /*hud*/, Draw & /*draw*/,
+              const GameHUDContext & /*ctx*/) const override {}
+  bool CanShowFPVBadge() const override { return false; }
+};
+
+class GameOverHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawResultHUD(draw, ctx);
+  }
+  bool ShouldResetResultSe() const override { return false; }
+};
+
+class EditorHUDRenderer final : public IHUDStateRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawEditorHUD(draw, ctx);
+  }
+  bool CanShowFPVBadge() const override { return false; }
+};
+
+class ITitleSubViewRenderer {
+public:
+  virtual ~ITitleSubViewRenderer() = default;
+  virtual void Render(GameHUD &hud, Draw &draw,
+                      const GameHUDContext &ctx) const = 0;
+};
+
+class RankingTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleRankingModal(draw, ctx);
+  }
+};
+
+class HowToPlayTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleHowToPlayModal(draw, ctx);
+  }
+};
+
+class AchievementsTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawTitleAchievementsModal(draw, ctx);
+  }
+};
+
+class SettingsTitleSubViewRenderer final : public ITitleSubViewRenderer {
+public:
+  void Render(GameHUD &hud, Draw &draw,
+              const GameHUDContext &ctx) const override {
+    hud.DrawSettingsModal(draw, ctx);
+  }
+};
+
+const IHUDStateRenderer *GameHUD::ResolveStateRenderer(int gameState) {
+  static const TitleHUDRenderer kTitle;
+  static const PlayingHUDRenderer kPlaying;
+  static const PausedHUDRenderer kPaused;
+  static const PlayerHitHUDRenderer kPlayerHit;
+  static const FirstPlaceCutInHUDRenderer kFirstPlaceCutIn;
+  static const GameOverHUDRenderer kGameOver;
+  static const EditorHUDRenderer kEditor;
+
+  switch (gameState) {
+  case State_Title:
+    return &kTitle;
+  case State_Playing:
+    return &kPlaying;
+  case State_Paused:
+    return &kPaused;
+  case State_PlayerHit:
+    return &kPlayerHit;
+  case State_FirstPlaceCutIn:
+    return &kFirstPlaceCutIn;
+  case State_GameOver:
+    return &kGameOver;
+  case State_Editor:
+    return &kEditor;
+  default:
+    return nullptr;
+  }
+}
+
+const ITitleSubViewRenderer *
+GameHUD::ResolveTitleSubViewRenderer(int titleSubView, bool isSettingsOpen) {
+  static const RankingTitleSubViewRenderer kRanking;
+  static const HowToPlayTitleSubViewRenderer kHowToPlay;
+  static const AchievementsTitleSubViewRenderer kAchievements;
+  static const SettingsTitleSubViewRenderer kSettings;
+
+  switch (titleSubView) {
+  case 1:
+    return &kRanking;
+  case 2:
+    return &kHowToPlay;
+  case 3:
+    return &kAchievements;
+  case 4:
+    return &kSettings;
+  default:
+    return isSettingsOpen ? &kSettings : nullptr;
   }
 }
 
 void GameHUD::DrawHUD(Draw &draw, const GameHUDContext &ctx) {
   PreloadFontStrings(draw);
 
-  if (ctx.gameState == State_Title) {
-    DrawTitleHUD(draw, ctx);
-  } else if (ctx.gameState == State_GameOver) {
-    DrawGameOverHUD(draw, ctx);
-  } else if (ctx.gameState == State_Paused) {
-    DrawPlayingHUD(draw, ctx);
-    DrawPauseHUD(draw, ctx);
-  } else if (ctx.gameState == State_PlayerHit) {
-    DrawPlayingHUD(draw, ctx);
-    if (ctx.crashSprite) {
-      draw.DrawSprite(ctx.crashSprite);
-    }
-  } else if (ctx.gameState == State_Playing) {
-    DrawPlayingHUD(draw, ctx);
-    if (ctx.playingState == PlayState_Boss && ctx.boss && ctx.boss->GetIsActive()) {
-      DrawBossHUD(draw, ctx);
-    }
-    DrawControlsGuide(draw, ctx);
-    if (ctx.isTitleExiting) {
-      DrawTitleHUD(draw, ctx);
-    }
-  } else if (ctx.gameState == State_Editor) {
-    DrawEditorHUD(draw, ctx);
+  const IHUDStateRenderer *renderer = ResolveStateRenderer(ctx.gameState);
+  if (!renderer || renderer->ShouldResetResultSe()) {
+    resultSePlayed_ = false;
+  }
+  if (renderer) {
+    renderer->Render(*this, draw, ctx);
   }
 
   // 一人称視点バッジ
-  if (ctx.isFirstPersonView && ctx.gameState != State_Editor) {
+  if (ctx.isFirstPersonView && (!renderer || renderer->CanShowFPVBadge())) {
     DrawBadgeFPV(draw);
-  }
-
-  // フェード描画
-  if (ctx.fade) {
-    ctx.fade->Draw(draw);
   }
 }
 
 void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
+  // ボス戦中は走行ステータス（距離、スコア、速度、ベスト）や1レーン表示を出さない
+  if (ctx.playingState == PlayState_Boss) {
+    return;
+  }
+
   // 左上: メインステータスパネル
   const float panelX = kStatusPanelPos.x;
   const float panelY = kStatusPanelPos.y;
@@ -191,62 +368,160 @@ void GameHUD::DrawPlayingHUD(Draw &draw, const GameHUDContext &ctx) {
 void GameHUD::DrawBossHUD(Draw &draw, const GameHUDContext &ctx) {
   if (!ctx.boss) return;
 
-  const float panelX = kBossPanelPos.x;
-  const float panelY = kBossPanelPos.y;
-  const float panelW = kBossPanelSize.x;
-  const float panelH = kBossPanelSize.y;
-
-  draw.DrawFillRect(Vector2(panelX, panelY), Vector2(panelW, panelH),
-                    Vector4(0.10f, 0.03f, 0.03f, 0.85f));
-  draw.DrawFillRect(Vector2(panelX, panelY), Vector2(panelW, kPanelBorderHeight),
-                    Vector4(0.9f, 0.2f, 0.2f, 0.9f));
-
   auto *tr = draw.GetTextRenderer();
+  bool isPad = GamePadInput::IsConnected();
 
-  // ボスヘッダー
-  const char *titleStr = "=== BOSS: ICE KING ===";
-  const float titleSize = kBossTitleFontSize;
-  float titleW = tr ? tr->MeasureString(titleStr, titleSize).x : 307.0f;
-  float titleX = panelX + (panelW - titleW) * 0.5f;
-  draw.DrawMSDFString(titleStr, Vector2(titleX, kBossTitleY), titleSize,
-                      Vector4(0.8f, 0.95f, 1.0f, 1.0f), true,
-                      Vector4(0.0f, 0.2f, 0.5f, 1.0f), 0.08f);
+  // デルタタイムの計算（アニメーション用）
+  float dt = 0.0166f;
+  if (lastUiTimer_ > 0.0f && ctx.uiTimer > lastUiTimer_) {
+    dt = ctx.uiTimer - lastUiTimer_;
+    if (dt > 0.1f) dt = 0.1f;
+  }
+  lastUiTimer_ = ctx.uiTimer;
 
-  // ボスHPゲージ
+  // ボスHPとダメージ演出計算
   int maxHp = ctx.boss->GetMaxHP();
   int hp = ctx.boss->GetHP();
   if (hp < 0) hp = 0;
   if (hp > maxHp) hp = maxHp;
 
-  std::string hpGauge = "[";
-  for (int i = 0; i < maxHp; i++) {
-    if (i < hp)
-      hpGauge += "■";
-    else
-      hpGauge += "░";
+  if (lastKnownBossHp_ < 0) {
+    // 初回初期化
+    lastKnownBossHp_ = hp;
+    bossDamageLagHp_ = static_cast<float>(hp);
+  } else if (hp < lastKnownBossHp_) {
+    // ダメージヒット！フラッシュ＆激しいシェイク
+    bossDamageFlashTimer_ = 0.35f;
+    bossDamageShakeTimer_ = 0.30f;
+    lastKnownBossHp_ = hp;
+  } else if (hp > lastKnownBossHp_) {
+    bossDamageLagHp_ = static_cast<float>(hp);
+    lastKnownBossHp_ = hp;
   }
-  hpGauge += "]";
 
-  char hpText[128];
-  snprintf(hpText, sizeof(hpText), "HP %s  %d / %d", hpGauge.c_str(), hp, maxHp);
-  const float hpSize = kBossHpFontSize;
-  float hpW = tr ? tr->MeasureString(hpText, hpSize).x : 567.0f;
-  float hpX = panelX + (panelW - hpW) * 0.5f;
-  draw.DrawMSDFString(hpText, Vector2(hpX, kBossHpY), hpSize,
-                      Vector4(1.0f, 0.45f, 0.45f, 1.0f), true,
-                      Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.07f);
+  // タイマー更新
+  if (bossDamageFlashTimer_ > 0.0f) {
+    bossDamageFlashTimer_ = (std::max)(0.0f, bossDamageFlashTimer_ - dt);
+  }
+  if (bossDamageShakeTimer_ > 0.0f) {
+    bossDamageShakeTimer_ = (std::max)(0.0f, bossDamageShakeTimer_ - dt);
+  }
 
-  // 反撃ガイド
-  bool isPad = GamePadInput::IsConnected();
-  const char *guideStr = isPad
-      ? "[X] 左レーン  |  [Y] 中央レーン  |  [B] 右レーン (魚を押して敵へ飛ばす)"
-      : "[1] 左レーン  |  [2] 中央レーン  |  [3] 右レーン (魚を押して敵へ飛ばす)";
-  const float guideSize = kBossGuideFontSize;
-  float subGuideW = tr ? tr->MeasureString(guideStr, guideSize).x : 680.0f;
-  float subGuideX = panelX + (panelW - subGuideW) * 0.5f;
-  draw.DrawMSDFString(guideStr, Vector2(subGuideX, kBossGuideY), guideSize,
-                      Vector4(0.8f, 0.95f, 0.5f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  // 赤色遅延バーの追従更新（被弾フラッシュが落ち着いたらスムーズに現在HPへ追従）
+  if (bossDamageFlashTimer_ <= 0.08f) {
+    if (bossDamageLagHp_ > static_cast<float>(hp)) {
+      bossDamageLagHp_ -= dt * 1.8f;
+      if (bossDamageLagHp_ < static_cast<float>(hp)) {
+        bossDamageLagHp_ = static_cast<float>(hp);
+      }
+    }
+  }
+
+  // 被弾シェイク
+  float shakeX = 0.0f;
+  float shakeY = 0.0f;
+  if (bossDamageShakeTimer_ > 0.0f) {
+    float shakeAmp = (bossDamageShakeTimer_ / 0.30f) * 4.0f;
+    shakeX = std::sin(ctx.uiTimer * 70.0f) * shakeAmp;
+    shakeY = std::cos(ctx.uiTimer * 85.0f) * (shakeAmp * 0.5f);
+  }
+
+  // ボスパネル背景（画面上部中央、氷のダークフロストパネル）
+  draw.DrawFillRect(kBossPanelPos, kBossPanelSize,
+                    Vector4(0.02f, 0.05f, 0.12f, 0.85f));
+  // 上部＆下部の氷のアクセントライン
+  draw.DrawFillRect(kBossPanelPos, Vector2(kBossPanelSize.x, 2.0f),
+                    Vector4(0.35f, 0.85f, 1.0f, 0.90f));
+  draw.DrawFillRect(Vector2(kBossPanelPos.x, kBossPanelPos.y + kBossPanelSize.y - 2.0f),
+                    Vector2(kBossPanelSize.x, 2.0f),
+                    Vector4(0.12f, 0.35f, 0.65f, 0.60f));
+
+  // ボスヘッダー（ボスの名前）
+  const char *titleStr = "=== BOSS: ICE KING ===";
+  const float titleSize = kBossTitleFontSize;
+  float titleW = tr ? tr->MeasureString(titleStr, titleSize).x : 280.0f;
+  float titleX = 640.0f - titleW * 0.5f;
+  draw.DrawMSDFString(titleStr, Vector2(titleX, kBossTitleY), titleSize,
+                      Vector4(0.90f, 0.97f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.20f, 0.50f, 1.0f), 0.12f, 0.06f);
+
+  // ボスHPバー（ライフゲージ）
+  const float barX = kBossHpBarPos.x + shakeX;
+  const float barY = kBossHpBarPos.y + shakeY;
+  const float barW = kBossHpBarSize.x;
+  const float barH = kBossHpBarSize.y;
+
+  // ① 外枠（氷のブルーアクセント + 黒いインナー枠）
+  draw.DrawFillRect(Vector2(barX - 3.0f, barY - 3.0f), Vector2(barW + 6.0f, barH + 6.0f),
+                    Vector4(0.15f, 0.35f, 0.60f, 0.95f));
+  draw.DrawFillRect(Vector2(barX - 1.0f, barY - 1.0f), Vector2(barW + 2.0f, barH + 2.0f),
+                    Vector4(0.02f, 0.04f, 0.08f, 1.0f));
+
+  // ② ゲージ背景溝（ロストHPスロット：失われたHPが暗い溝としてクッキリ見える）
+  draw.DrawFillRect(Vector2(barX, barY), Vector2(barW, barH),
+                    Vector4(0.06f, 0.08f, 0.13f, 0.95f));
+
+  // ③ 遅延ダメージバー（赤色：ダメージを受けた直前の位置が赤く残り、スーッと縮む）
+  float lagRatio = (maxHp > 0) ? (bossDamageLagHp_ / static_cast<float>(maxHp)) : 0.0f;
+  lagRatio = std::clamp(lagRatio, 0.0f, 1.0f);
+  if (lagRatio > 0.001f) {
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * lagRatio, barH),
+                      Vector4(0.95f, 0.22f, 0.18f, 0.95f));
+  }
+
+  // ④ 現在のHPバー（鮮やかなアイスブルー＆クリスタルハイライト）
+  float currentRatio = (maxHp > 0) ? (static_cast<float>(hp) / static_cast<float>(maxHp)) : 0.0f;
+  currentRatio = std::clamp(currentRatio, 0.0f, 1.0f);
+  if (currentRatio > 0.001f) {
+    // 残りHP 1 のときは危険パルス点滅
+    Vector4 baseColor = (hp == 1)
+        ? Lerp(Vector4(0.2f, 0.75f, 1.0f, 1.0f), Vector4(1.0f, 0.25f, 0.2f, 1.0f),
+               0.5f + 0.5f * std::sin(ctx.uiTimer * 10.0f))
+        : Vector4(0.15f, 0.70f, 1.0f, 1.0f);
+
+    // バー本体
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * currentRatio, barH), baseColor);
+
+    // 上半分ハイライト（クリスタルの光沢）
+    float hlHeight = barH * 0.45f;
+    Vector4 hlColor = (hp == 1)
+        ? Vector4(1.0f, 0.85f, 0.85f, 0.65f)
+        : Vector4(0.75f, 0.95f, 1.0f, 0.75f);
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * currentRatio, hlHeight), hlColor);
+
+    // 下部シャドウライン
+    draw.DrawFillRect(Vector2(barX, barY + barH - 3.0f), Vector2(barW * currentRatio, 3.0f),
+                      Vector4(0.04f, 0.32f, 0.60f, 0.85f));
+
+    // 被弾フラッシュ（白フラッシュ）
+    if (bossDamageFlashTimer_ > 0.0f) {
+      float flashAlpha = (bossDamageFlashTimer_ / 0.35f) * 0.85f;
+      draw.DrawFillRect(Vector2(barX, barY), Vector2(barW * currentRatio, barH),
+                        Vector4(1.0f, 1.0f, 1.0f, flashAlpha));
+    }
+  }
+
+  // ⑤ 5分割セグメント区切り線（目盛り）
+  // ゲージを5個の独立したクリスタルブロックに分割し、1ブロック減少を極めて直感的に可視化
+  for (int i = 1; i < maxHp; ++i) {
+    float splitX = barX + (barW / static_cast<float>(maxHp)) * static_cast<float>(i);
+    // 暗い溝スリット
+    draw.DrawFillRect(Vector2(splitX - 1.5f, barY), Vector2(3.0f, barH),
+                      Vector4(0.02f, 0.04f, 0.08f, 0.95f));
+    // 氷のセパレーターライン（青白い光）
+    draw.DrawFillRect(Vector2(splitX - 0.5f, barY), Vector2(1.0f, barH),
+                      Vector4(0.40f, 0.75f, 1.0f, 0.70f));
+  }
+
+  // ⑥ HPテキスト（バー中央にアウトライン付き白文字で大きく表示）
+  char hpText[32];
+  snprintf(hpText, sizeof(hpText), "HP  %d / %d", hp, maxHp);
+  float hpTextW = tr ? tr->MeasureString(hpText, kBossHpTextFontSize).x : 90.0f;
+  float hpTextX = barX + (barW - hpTextW) * 0.5f;
+  float hpTextY = barY + (barH - kBossHpTextFontSize) * 0.5f - 1.0f;
+  draw.DrawMSDFString(hpText, Vector2(hpTextX, hpTextY), kBossHpTextFontSize,
+                      Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                      Vector4(0.02f, 0.06f, 0.16f, 1.0f), 0.12f, 0.06f);
 
   // 反撃チャンスのアラート点滅表示
   if (ctx.reflectLane != -1) {
@@ -279,62 +554,6 @@ void GameHUD::DrawBossHUD(Draw &draw, const GameHUDContext &ctx) {
     draw.DrawMSDFString(alertBuf, Vector2(alertTextX, kBossAlertTextY), kBossAlertFontSize,
                         Vector4(1.0f, 0.95f, 0.15f, pulseScale), true,
                         Vector4(0.5f, 0.1f, 0.0f, 1.0f), 0.09f);
-  }
-
-  // 右下: ボス倒し方（攻略ガイド）パネル
-  {
-    const float guideX = kBossHowToPanelPos.x;
-    const float guideY = kBossHowToPanelPos.y;
-    const float guideW = kBossHowToPanelSize.x;
-    const float guideH = kBossHowToPanelSize.y;
-
-    draw.DrawFillRect(Vector2(guideX, guideY), Vector2(guideW, guideH),
-                      Vector4(0.08f, 0.03f, 0.04f, 0.88f));
-    draw.DrawFillRect(Vector2(guideX, guideY), Vector2(guideW, kPanelBorderHeight),
-                      Vector4(1.0f, 0.45f, 0.2f, 0.95f));
-
-    draw.DrawMSDFString("【 ボスの倒し方 】",
-                        Vector2(guideX + 16.0f, guideY + 12.0f), 22.0f,
-                        Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
-                        Vector4(0.3f, 0.05f, 0.0f, 1.0f), 0.12f, 0.08f);
-    draw.DrawMSDFString("HOW TO DEFEAT",
-                        Vector2(guideX + 225.0f, guideY + 16.0f), 15.0f,
-                        Vector4(0.85f, 0.65f, 0.5f, 0.85f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
-
-    draw.DrawFillRect(Vector2(guideX + 14.0f, guideY + 42.0f),
-                      Vector2(guideW - 28.0f, 1.0f),
-                      Vector4(0.5f, 0.25f, 0.2f, 0.65f));
-
-    draw.DrawMSDFString("① 障害物をよけて進め！",
-                        Vector2(guideX + 16.0f, guideY + 52.0f), 19.0f,
-                        Vector4(1.0f, 0.5f, 0.5f, 1.0f), true,
-                        Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
-    draw.DrawMSDFString("   移動で回避",
-                        Vector2(guideX + 16.0f, guideY + 77.0f), 16.0f,
-                        Vector4(0.9f, 0.9f, 0.9f, 0.9f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
-
-    draw.DrawMSDFString("② 魚がいるレーンを押せ！",
-                        Vector2(guideX + 16.0f, guideY + 104.0f), 19.0f,
-                        Vector4(0.3f, 1.0f, 0.6f, 1.0f), true,
-                        Vector4(0.0f, 0.2f, 0.1f, 1.0f), 0.10f, 0.06f);
-    const char *step2Str = isPad
-        ? "   魚が手前に来たら [X]左 / [Y]中 / [B]右"
-        : "   魚が手前に来たら [1]左 / [2]中 / [3]右";
-    draw.DrawMSDFString(step2Str,
-                        Vector2(guideX + 16.0f, guideY + 129.0f), 16.0f,
-                        Vector4(1.0f, 0.95f, 0.65f, 0.95f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
-
-    draw.DrawMSDFString("③ 魚を敵に飛ばして撃破！",
-                        Vector2(guideX + 16.0f, guideY + 156.0f), 19.0f,
-                        Vector4(1.0f, 0.8f, 0.25f, 1.0f), true,
-                        Vector4(0.2f, 0.1f, 0.0f, 1.0f), 0.10f, 0.06f);
-    draw.DrawMSDFString("   飛ばした魚を当ててHPを削り切れ！",
-                        Vector2(guideX + 16.0f, guideY + 181.0f), 16.0f,
-                        Vector4(0.95f, 0.95f, 0.95f, 0.9f), true,
-                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
   }
 
   // ボス登場時作戦指令バナー
@@ -412,7 +631,13 @@ void GameHUD::DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alp
 
   const char *guideText = "";
   if (isPad) {
-    if (ctx.playingState == PlayState_ThreeLane || ctx.gameState == State_Title) {
+    if (ctx.gameState == State_Title) {
+      if (ctx.isEditingTitlePlayerName) {
+        guideText = "名前決定: [Aボタン / START]";
+      } else {
+        guideText = "メニュー選択: [Lスティック / 十字キー]    決定: [Aボタン]";
+      }
+    } else if (ctx.playingState == PlayState_ThreeLane) {
       guideText = "移動: [Lスティック / 十字]    ジャンプ: [Aボタン]    スライド: [Bボタン]    ポーズ: [START]";
     } else if (ctx.playingState == PlayState_OneLane) {
       guideText = "ジャンプ: [Aボタン]    スライド: [Bボタン]    ポーズ: [START]    (※1レーン固定中)";
@@ -420,7 +645,13 @@ void GameHUD::DrawControlsGuide(Draw &draw, const GameHUDContext &ctx, float alp
       guideText = "【ボス反撃】 魚跳ね返し: [X]左  [Y]中  [B]右    |    移動: [Lスティック]    |    ポーズ: [START]";
     }
   } else {
-    if (ctx.playingState == PlayState_ThreeLane || ctx.gameState == State_Title) {
+    if (ctx.gameState == State_Title) {
+      if (ctx.isEditingTitlePlayerName) {
+        guideText = "名前入力: [キーボード入力]    決定: [ENTER]    削除: [BACKSPACE]";
+      } else {
+        guideText = "メニュー選択: [W / S] or [↑ / ↓]    決定: [ENTER / SPACE]";
+      }
+    } else if (ctx.playingState == PlayState_ThreeLane) {
       guideText = "移動: [A/D / ← →]    ジャンプ: [SPACE / W]    スライド: [S / ↓]    ポーズ: [ESC]";
     } else if (ctx.playingState == PlayState_OneLane) {
       guideText = "ジャンプ: [SPACE / W]    スライド: [S / ↓]    ポーズ: [ESC]    (※1レーン固定中)";
@@ -440,6 +671,12 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
                                static_cast<float>(WindowConfig::kDefaultClientHeight));
   draw.DrawFillRect(Vector2(0.0f, 0.0f), fullScreenSize,
                     Vector4(0.0f, 0.0f, 0.0f, kPauseDimAlpha));
+
+  // ボス戦時はボス戦専用ポーズ画面（移動距離は非表示、ボスの倒し方を表示）
+  if (ctx.playingState == PlayState_Boss) {
+    DrawBossPauseHUD(draw, ctx);
+    return;
+  }
 
   draw.DrawFillRect(kPausePanelPos, kPausePanelSize,
                     Vector4(0.06f, 0.08f, 0.12f, 0.94f));
@@ -477,6 +714,9 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
     draw.DrawMSDFString("[ START ] ゲームを再開 (RESUME)", kPauseBtnResumePos,
                         kPauseBtnFontSize, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Xボタン ] 音量設定 (SETTINGS)", kPauseBtnSettingsPos,
+                        kPauseBtnFontSize, Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[ Aボタン ] 最初からリスタート (RESTART)",
                         kPauseBtnRestartPos, kPauseBtnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
@@ -488,6 +728,9 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
     draw.DrawMSDFString("[ ESC ] ゲームを再開 (RESUME)", kPauseBtnResumePos,
                         kPauseBtnFontSize, Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  3  ] 音量設定 (SETTINGS)", kPauseBtnSettingsPos,
+                        kPauseBtnFontSize, Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
     draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
                         kPauseBtnRestartPos, kPauseBtnFontSize,
                         Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
@@ -498,20 +741,214 @@ void GameHUD::DrawPauseHUD(Draw &draw, const GameHUDContext &ctx) {
   }
 }
 
-void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
+void GameHUD::DrawBossPauseHUD(Draw &draw, const GameHUDContext &ctx) {
+  auto *tr = draw.GetTextRenderer();
+  bool isPad = GamePadInput::IsConnected();
+
+  const Vector2 panelPos = kPauseBossPanelPos;
+  const Vector2 panelSize = kPauseBossPanelSize;
+  const float panelX = panelPos.x;
+  const float panelY = panelPos.y;
+  const float panelW = panelSize.x;
+
+  // メインパネル背景 & アクセントバー
+  draw.DrawFillRect(panelPos, panelSize,
+                    Vector4(0.06f, 0.08f, 0.12f, 0.95f));
+  draw.DrawFillRect(panelPos, Vector2(panelW, kPauseAccentHeight),
+                    Vector4(1.0f, 0.8f, 0.2f, 0.95f));
+
+  // タイトル "=== PAUSE ==="
+  const char *titleStr = "=== PAUSE ===";
+  const float titleSize = 46.0f;
+  float titleW = tr ? tr->MeasureString(titleStr, titleSize).x : 280.0f;
+  draw.DrawMSDFString(titleStr, Vector2(panelX + (panelW - titleW) * 0.5f, panelY + 20.0f),
+                      titleSize, Vector4(1.0f, 0.9f, 0.2f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  // サブタイトル "ゲーム一時停止中 (ボス戦)"
+  const char *subTitleStr = "ゲーム一時停止中 (ボス戦)";
+  const float subTitleSize = 20.0f;
+  float subTitleW = tr ? tr->MeasureString(subTitleStr, subTitleSize).x : 220.0f;
+  draw.DrawMSDFString(subTitleStr, Vector2(panelX + (panelW - subTitleW) * 0.5f, panelY + 70.0f),
+                      subTitleSize, Vector4(0.85f, 0.85f, 0.85f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+
+  // ボスHP表示
+  if (ctx.boss) {
+    int maxHp = ctx.boss->GetMaxHP();
+    int hp = ctx.boss->GetHP();
+    if (hp < 0) hp = 0;
+    if (hp > maxHp) hp = maxHp;
+    std::string hpGauge = "[";
+    for (int i = 0; i < maxHp; i++) {
+      if (i < hp) hpGauge += "■";
+      else hpGauge += "░";
+    }
+    hpGauge += "]";
+    char bossHpBuf[128];
+    snprintf(bossHpBuf, sizeof(bossHpBuf), "BOSS: ICE KING    HP %s  %d / %d",
+             hpGauge.c_str(), hp, maxHp);
+    const float hpSize = 20.0f;
+    float hpW = tr ? tr->MeasureString(bossHpBuf, hpSize).x : 360.0f;
+    draw.DrawMSDFString(bossHpBuf, Vector2(panelX + (panelW - hpW) * 0.5f, panelY + 98.0f),
+                        hpSize, Vector4(1.0f, 0.45f, 0.45f, 1.0f), true,
+                        Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // 仕切り線 1
+  const float dividerX = panelX + 30.0f;
+  const float dividerW = panelW - 60.0f;
+  draw.DrawFillRect(Vector2(dividerX, panelY + 128.0f), Vector2(dividerW, 2.0f),
+                    Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+  // 攻略ガイド内側背景ボックス
+  const float boxX = panelX + 30.0f;
+  const float boxY = panelY + 138.0f;
+  const float boxW = panelW - 60.0f;
+  const float boxH = 196.0f;
+  draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, boxH),
+                    Vector4(0.08f, 0.03f, 0.04f, 0.85f));
+  draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, 2.0f),
+                    Vector4(1.0f, 0.45f, 0.2f, 0.95f));
+
+  // 見出し
+  draw.DrawMSDFString("【 ボスの倒し方 】",
+                      Vector2(boxX + 18.0f, boxY + 12.0f), 22.0f,
+                      Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
+                      Vector4(0.3f, 0.05f, 0.0f, 1.0f), 0.12f, 0.08f);
+  draw.DrawMSDFString("HOW TO DEFEAT",
+                      Vector2(boxX + 240.0f, boxY + 16.0f), 15.0f,
+                      Vector4(0.85f, 0.65f, 0.5f, 0.85f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  draw.DrawFillRect(Vector2(boxX + 16.0f, boxY + 40.0f), Vector2(boxW - 32.0f, 1.0f),
+                    Vector4(0.5f, 0.25f, 0.2f, 0.65f));
+
+  // ①
+  draw.DrawMSDFString("① 障害物をよけて進め！",
+                      Vector2(boxX + 18.0f, boxY + 48.0f), 18.0f,
+                      Vector4(1.0f, 0.55f, 0.55f, 1.0f), true,
+                      Vector4(0.2f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
+  draw.DrawMSDFString("   移動で回避して生き残れ！",
+                      Vector2(boxX + 18.0f, boxY + 71.0f), 15.0f,
+                      Vector4(0.9f, 0.9f, 0.9f, 0.9f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  // ②
+  draw.DrawMSDFString("② 魚がいるレーンを押せ！",
+                      Vector2(boxX + 18.0f, boxY + 95.0f), 18.0f,
+                      Vector4(0.35f, 1.0f, 0.65f, 1.0f), true,
+                      Vector4(0.0f, 0.2f, 0.1f, 1.0f), 0.10f, 0.06f);
+  const char *step2Str = isPad
+      ? "   魚が手前に来たら [X]左 / [Y]中 / [B]右 ボタンで跳ね返せ！"
+      : "   魚が手前に来たら [1]左 / [2]中 / [3]右 キーで跳ね返せ！";
+  draw.DrawMSDFString(step2Str,
+                      Vector2(boxX + 18.0f, boxY + 118.0f), 15.0f,
+                      Vector4(1.0f, 0.95f, 0.65f, 0.95f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  // ③
+  draw.DrawMSDFString("③ 魚を敵に飛ばして撃破！",
+                      Vector2(boxX + 18.0f, boxY + 142.0f), 18.0f,
+                      Vector4(1.0f, 0.8f, 0.25f, 1.0f), true,
+                      Vector4(0.2f, 0.1f, 0.0f, 1.0f), 0.10f, 0.06f);
+  draw.DrawMSDFString("   飛ばした魚を当ててボスのHPを削り切れ！",
+                      Vector2(boxX + 18.0f, boxY + 165.0f), 15.0f,
+                      Vector4(0.95f, 0.95f, 0.95f, 0.9f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f, 0.05f);
+
+  // 仕切り線 2
+  draw.DrawFillRect(Vector2(dividerX, panelY + 346.0f), Vector2(dividerW, 2.0f),
+                    Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+  // 操作ボタン
+  const float btnX = panelX + 50.0f;
+  const float btnFontSize = 21.0f;
+  if (isPad) {
+    draw.DrawMSDFString("[ START ] ゲームを再開 (RESUME)",
+                        Vector2(btnX, panelY + 360.0f), btnFontSize,
+                        Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Xボタン ] 音量設定 (SETTINGS)",
+                        Vector2(btnX, panelY + 398.0f), btnFontSize,
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Aボタン ] 最初からリスタート (RESTART)",
+                        Vector2(btnX, panelY + 436.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[ Bボタン ] タイトルへ戻る (TITLE)",
+                        Vector2(btnX, panelY + 474.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  } else {
+    draw.DrawMSDFString("[ ESC ] ゲームを再開 (RESUME)",
+                        Vector2(btnX, panelY + 360.0f), btnFontSize,
+                        Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  3  ] 音量設定 (SETTINGS)",
+                        Vector2(btnX, panelY + 398.0f), btnFontSize,
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  1  ] 最初からリスタート (RESTART)",
+                        Vector2(btnX, panelY + 436.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    draw.DrawMSDFString("[  2  ] タイトルへ戻る (TITLE)",
+                        Vector2(btnX, panelY + 474.0f), btnFontSize,
+                        Vector4(0.9f, 0.9f, 0.9f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+}
+
+void GameHUD::DrawResultHUD(Draw &draw, const GameHUDContext &ctx) {
   const Vector2 fullScreenSize(static_cast<float>(WindowConfig::kDefaultClientWidth),
                                static_cast<float>(WindowConfig::kDefaultClientHeight));
+
+  // --- 落下イン演出（EaseOutBack による軽快なバウンス着地） ---
+  float t = std::clamp(ctx.resultTimer / kResultDropDuration, 0.0f, 1.0f);
+  constexpr float c1 = 1.35f;
+  constexpr float c3 = c1 + 1.0f;
+  float p = t - 1.0f;
+  float ease = 1.0f + c3 * p * p * p + c1 * p * p;
+  float currentDropOffsetY = (1.0f - ease) * kResultDropStartY;
+  Vector2 dropOffset(kResultMainPanelOffsetX, currentDropOffsetY);
+
+  // 暗幕（Dim）フェードイン（背景を徐々に暗く）
+  float dimProgress = std::clamp(ctx.resultTimer / 0.35f, 0.0f, 1.0f);
   draw.DrawFillRect(Vector2(0.0f, 0.0f), fullScreenSize,
-                    Vector4(0.0f, 0.0f, 0.0f, kGameOverDimAlpha));
+                    Vector4(0.0f, 0.0f, 0.0f, kGameOverDimAlpha * dimProgress));
 
-  draw.DrawFillRect(kGameOverPanelPos, kGameOverPanelSize,
-                    Vector4(0.06f, 0.08f, 0.12f, 0.95f));
-  draw.DrawFillRect(kGameOverPanelPos, Vector2(kGameOverPanelSize.x, kGameOverAccentHeight),
-                    Vector4(0.9f, 0.2f, 0.2f, 0.95f));
+  // 着地時のSE再生
+  if (ctx.resultTimer > 0.0f) {
+    if (!resultSePlayed_ && t >= 0.75f) {
+      SoundManager::GetInstance()->PlaySE(SoundManager::SE::Land, 1.1f);
+      resultSePlayed_ = true;
+    }
+  } else {
+    resultSePlayed_ = false;
+  }
 
-  draw.DrawMSDFString("GAME OVER", kGameOverTitlePos, kGameOverTitleFontSize,
-                      Vector4(1.0f, 0.25f, 0.25f, 1.0f), true,
-                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+  // --- リザルトパネル本体 ---
+  Vector2 panelPos = kGameOverPanelPos + dropOffset;
+  draw.DrawFillRect(panelPos, kGameOverPanelSize,
+                    Vector4(0.06f, 0.08f, 0.13f, 0.95f));
+
+  // 上部アクセントバー（ゴールド）
+  draw.DrawFillRect(panelPos, Vector2(kGameOverPanelSize.x, kGameOverAccentHeight),
+                    Vector4(1.0f, 0.78f, 0.25f, 0.95f));
+
+  // タイトル左右のアクセントライン
+  float lineY = kGameOverTitlePos.y + dropOffset.y + 26.0f;
+  draw.DrawFillRect(Vector2(260.0f + dropOffset.x, lineY), Vector2(250.0f, 2.0f),
+                    Vector4(1.0f, 0.82f, 0.3f, 0.65f));
+  draw.DrawFillRect(Vector2(770.0f + dropOffset.x, lineY), Vector2(250.0f, 2.0f),
+                    Vector4(1.0f, 0.82f, 0.3f, 0.65f));
+
+  // タイトル "RESULT"
+  draw.DrawMSDFString("RESULT", kGameOverTitlePos + dropOffset, kGameOverTitleFontSize,
+                      Vector4(1.0f, 0.88f, 0.32f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.12f, 0.08f);
 
   float topDist0 = ctx.topRankings ? ctx.topRankings[0] : 0.0f;
   float topScore0 = ctx.topScoreRankings ? ctx.topScoreRankings[0] : 0.0f;
@@ -521,7 +958,7 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   char distBuf[96];
   snprintf(distBuf, sizeof(distBuf), "到達距離: %.1f m  %s", ctx.currentDistance,
            isNewDistRecord ? "★ NEW RECORD! ★" : "");
-  draw.DrawMSDFString(distBuf, kGameOverDistPos, kGameOverDistFontSize,
+  draw.DrawMSDFString(distBuf, kGameOverDistPos + dropOffset, kGameOverDistFontSize,
                       isNewDistRecord ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
                                       : Vector4(1.0f, 1.0f, 1.0f, 1.0f),
                       true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
@@ -529,119 +966,529 @@ void GameHUD::DrawGameOverHUD(Draw &draw, const GameHUDContext &ctx) {
   char scoreBuf[96];
   snprintf(scoreBuf, sizeof(scoreBuf), "最終スコア: %.0f pt  %s", ctx.currentScore,
            isNewScoreRecord ? "★ NEW RECORD! ★" : "");
-  draw.DrawMSDFString(scoreBuf, kGameOverScorePos, kGameOverScoreFontSize,
+  draw.DrawMSDFString(scoreBuf, kGameOverScorePos + dropOffset, kGameOverScoreFontSize,
                       Vector4(1.0f, 0.9f, 0.2f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
 
   char bonusBuf[64];
   snprintf(bonusBuf, sizeof(bonusBuf), "ボーナス敵撃破: %d 体",
            ctx.bonusEnemyHitCount);
-  draw.DrawMSDFString(bonusBuf, kGameOverBonusPos, kGameOverBonusFontSize,
+  draw.DrawMSDFString(bonusBuf, kGameOverBonusPos + dropOffset, kGameOverBonusFontSize,
                       Vector4(0.6f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
 
-  draw.DrawFillRect(kGameOverDividerPos1, kGameOverDividerSize,
+  draw.DrawFillRect(kGameOverDividerPos1 + dropOffset, kGameOverDividerSize,
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
-  // 左カラム: 距離ランキング TOP 3
-  draw.DrawMSDFString("【 距離ランキング TOP 3 】", kGameOverRankHeaderDistPos,
+  // ==========================================
+  // ランキング表示アイテム構造体 & リスト構築
+  // ==========================================
+  struct DisplayRankItem {
+    int rank = 0;
+    std::string playerName;
+    float value = 0.0f;
+    bool isCurrentPlay = false;
+  };
+
+  // 走行距離リストの統合構築
+  auto buildDistanceList = [&]() {
+    std::vector<DisplayRankItem> list;
+    bool alreadyInList = false;
+    const std::string myName = (ctx.playerName && !ctx.playerName->empty()) ? *ctx.playerName : "Player";
+    const std::string myDocId = (ctx.lastSubmittedDocId) ? *ctx.lastSubmittedDocId : "";
+
+    if (ctx.onlineDistanceRankings && !ctx.onlineDistanceRankings->empty()) {
+      for (const auto& e : *ctx.onlineDistanceRankings) {
+        DisplayRankItem item;
+        item.playerName = e.playerName;
+        item.value = e.distance;
+        bool isMe = (!myDocId.empty() && e.documentId == myDocId) ||
+                    (e.playerName == myName && std::abs(e.distance - ctx.currentDistance) < 0.05f);
+        if (isMe && !alreadyInList) {
+          item.isCurrentPlay = true;
+          alreadyInList = true;
+        }
+        list.push_back(item);
+      }
+    } else if (ctx.topRankings) {
+      for (int i = 0; i < 3; i++) {
+        float d = ctx.topRankings[i];
+        if (d > 0.0f) {
+          DisplayRankItem item;
+          item.playerName = myName;
+          item.value = d;
+          if (!alreadyInList && (i + 1 == ctx.localDistanceRank) && std::abs(d - ctx.currentDistance) < 0.05f) {
+            item.isCurrentPlay = true;
+            alreadyInList = true;
+          }
+          list.push_back(item);
+        }
+      }
+    }
+
+    // クラウド反映待ちや未反映の場合、今回のプレイ記録を統合して即時反映
+    if (!alreadyInList && ctx.currentDistance > 0.0f) {
+      DisplayRankItem myItem;
+      myItem.playerName = myName;
+      myItem.value = ctx.currentDistance;
+      myItem.isCurrentPlay = true;
+      list.push_back(myItem);
+    }
+
+    // 降順ソート
+    std::stable_sort(list.begin(), list.end(), [](const DisplayRankItem& a, const DisplayRankItem& b) {
+      return a.value > b.value;
+    });
+
+    for (size_t i = 0; i < list.size(); i++) {
+      list[i].rank = static_cast<int>(i + 1);
+    }
+    return list;
+  };
+
+  // スコアリストの統合構築
+  auto buildScoreList = [&]() {
+    std::vector<DisplayRankItem> list;
+    bool alreadyInList = false;
+    const std::string myName = (ctx.playerName && !ctx.playerName->empty()) ? *ctx.playerName : "Player";
+    const std::string myDocId = (ctx.lastSubmittedDocId) ? *ctx.lastSubmittedDocId : "";
+
+    if (ctx.onlineScoreRankings && !ctx.onlineScoreRankings->empty()) {
+      for (const auto& e : *ctx.onlineScoreRankings) {
+        DisplayRankItem item;
+        item.playerName = e.playerName;
+        item.value = e.score;
+        bool isMe = (!myDocId.empty() && e.documentId == myDocId) ||
+                    (e.playerName == myName && std::abs(e.score - ctx.currentScore) < 0.5f);
+        if (isMe && !alreadyInList) {
+          item.isCurrentPlay = true;
+          alreadyInList = true;
+        }
+        list.push_back(item);
+      }
+    } else if (ctx.topScoreRankings) {
+      for (int i = 0; i < 3; i++) {
+        float s = ctx.topScoreRankings[i];
+        if (s > 0.0f) {
+          DisplayRankItem item;
+          item.playerName = myName;
+          item.value = s;
+          if (!alreadyInList && (i + 1 == ctx.localScoreRank) && std::abs(s - ctx.currentScore) < 0.5f) {
+            item.isCurrentPlay = true;
+            alreadyInList = true;
+          }
+          list.push_back(item);
+        }
+      }
+    }
+
+    // クラウド反映待ちや未反映の場合、今回のプレイ記録を統合して即時反映
+    if (!alreadyInList && ctx.currentScore > 0.0f) {
+      DisplayRankItem myItem;
+      myItem.playerName = myName;
+      myItem.value = ctx.currentScore;
+      myItem.isCurrentPlay = true;
+      list.push_back(myItem);
+    }
+
+    // 降順ソート
+    std::stable_sort(list.begin(), list.end(), [](const DisplayRankItem& a, const DisplayRankItem& b) {
+      return a.value > b.value;
+    });
+
+    for (size_t i = 0; i < list.size(); i++) {
+      list[i].rank = static_cast<int>(i + 1);
+    }
+    return list;
+  };
+
+  // ==========================================
+  // 左カラム: 走行距離ランキング TOP 3
+  // ==========================================
+  bool isDistLoading = ctx.isOnlineRankingConfigured && (ctx.isOnlineRankingSending || ctx.isOnlineRankingFetching);
+  char distHeader[96];
+  if (isDistLoading) {
+    snprintf(distHeader, sizeof(distHeader), "【 走行距離ランキング (通信中...) 】");
+  } else {
+    snprintf(distHeader, sizeof(distHeader), "【 走行距離ランキング TOP 3 】");
+  }
+  draw.DrawMSDFString(distHeader, kGameOverRankHeaderDistPos + dropOffset,
                       kGameOverRankHeaderFontSize, Vector4(0.4f, 0.85f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-  for (int i = 0; i < 3; i++) {
-    char rBuf[64];
-    float r = ctx.topRankings ? ctx.topRankings[i] : 0.0f;
-    if (r > 0.0f) {
-      snprintf(rBuf, sizeof(rBuf), " %d位: %.1f m", i + 1, r);
-    } else {
-      snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+
+  auto distList = buildDistanceList();
+  int distMyRank = -1;
+  bool isDistRankIn = false;
+  for (const auto& item : distList) {
+    if (item.isCurrentPlay) {
+      distMyRank = item.rank;
+      if (distMyRank <= 3) {
+        isDistRankIn = true;
+      }
+      break;
     }
-    Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
-                        : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
-                                   : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
-                        kGameOverRankItemFontSize,
-                        rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                        0.06f);
   }
 
+  // 走行距離 TOP 3 リスト描画
+  int distDisplayCount = std::min(3, static_cast<int>(distList.size()));
+  for (int i = 0; i < distDisplayCount; i++) {
+    const auto& item = distList[i];
+    char rBuf[96];
+    if (item.isCurrentPlay) {
+      snprintf(rBuf, sizeof(rBuf), "★%d位: %-8s  %.1f m", item.rank, item.playerName.c_str(), item.value);
+    } else {
+      snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.1f m", item.rank, item.playerName.c_str(), item.value);
+    }
+
+    Vector2 itemPos(kGameOverRankItemDistX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
+    if (item.isCurrentPlay) {
+      draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
+                        Vector4(0.2f, 0.45f, 0.8f, 0.28f));
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize + 1.5f,
+                          Vector4(1.0f, 0.95f, 0.25f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.16f, 0.14f);
+    } else {
+      Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
+                          : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
+                                     : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize,
+                          rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+                          0.06f, 0.0f);
+    }
+  }
+  for (int i = distDisplayCount; i < 3; i++) {
+    char rBuf[64];
+    snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemDistX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
+                        kGameOverRankItemFontSize,
+                        Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
+  }
+
+  // 走行距離ランキング下の表示
+  {
+    Vector2 boxPos(kGameOverRankItemDistX - 6.0f + dropOffset.x, kGameOverMyRankBoxY + dropOffset.y);
+    draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
+    draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(0.3f, 0.7f, 1.0f, 0.9f));
+
+    char myDistBuf[96];
+    if (isDistRankIn) {
+      snprintf(myDistBuf, sizeof(myDistBuf), "★ 走行距離 %d位 ランクイン達成！", distMyRank);
+      draw.DrawMSDFString(myDistBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.3f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.10f);
+    } else {
+      if (distMyRank > 3 && distMyRank < 10) {
+        snprintf(myDistBuf, sizeof(myDistBuf), "あなたの順位:  %d位  (%.1f m)", distMyRank, ctx.currentDistance);
+      } else {
+        snprintf(myDistBuf, sizeof(myDistBuf), "あなたの順位:  圏外  (%.1f m)", ctx.currentDistance);
+      }
+      draw.DrawMSDFString(myDistBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(0.75f, 0.88f, 1.0f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f, 0.04f);
+    }
+  }
+
+  // ==========================================
   // 右カラム: スコアランキング TOP 3
-  draw.DrawMSDFString("【 スコアランキング TOP 3 】", kGameOverRankHeaderScorePos,
+  // ==========================================
+  bool isScoreLoading = ctx.isOnlineRankingConfigured && (ctx.isOnlineRankingSending || ctx.isOnlineRankingFetching);
+  char scoreHeader[96];
+  if (isScoreLoading) {
+    snprintf(scoreHeader, sizeof(scoreHeader), "【 スコアランキング (通信中...) 】");
+  } else {
+    snprintf(scoreHeader, sizeof(scoreHeader), "【 スコアランキング TOP 3 】");
+  }
+  draw.DrawMSDFString(scoreHeader, kGameOverRankHeaderScorePos + dropOffset,
                       kGameOverRankHeaderFontSize, Vector4(1.0f, 0.85f, 0.3f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
-  for (int i = 0; i < 3; i++) {
-    char rBuf[64];
-    float sr = ctx.topScoreRankings ? ctx.topScoreRankings[i] : 0.0f;
-    if (sr > 0.0f) {
-      snprintf(rBuf, sizeof(rBuf), " %d位: %.0f pt", i + 1, sr);
-    } else {
-      snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+
+  auto scoreList = buildScoreList();
+  int scoreMyRank = -1;
+  bool isScoreRankIn = false;
+  for (const auto& item : scoreList) {
+    if (item.isCurrentPlay) {
+      scoreMyRank = item.rank;
+      if (scoreMyRank <= 3) {
+        isScoreRankIn = true;
+      }
+      break;
     }
-    Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
-                        : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
-                                   : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
-    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX, kGameOverRankItemBaseY + i * kGameOverRankItemStepY),
-                        kGameOverRankItemFontSize,
-                        rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
-                        0.06f);
   }
 
-  draw.DrawFillRect(kGameOverDividerPos2, kGameOverDividerSize,
+  // スコア TOP 3 リスト描画
+  int scoreDisplayCount = std::min(3, static_cast<int>(scoreList.size()));
+  for (int i = 0; i < scoreDisplayCount; i++) {
+    const auto& item = scoreList[i];
+    char rBuf[96];
+    if (item.isCurrentPlay) {
+      snprintf(rBuf, sizeof(rBuf), "★%d位: %-8s  %.0f pt", item.rank, item.playerName.c_str(), item.value);
+    } else {
+      snprintf(rBuf, sizeof(rBuf), " %d位: %-8s  %.0f pt", item.rank, item.playerName.c_str(), item.value);
+    }
+
+    Vector2 itemPos(kGameOverRankItemScoreX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y);
+    if (item.isCurrentPlay) {
+      draw.DrawFillRect(Vector2(itemPos.x - 6.0f, itemPos.y - 2.0f), Vector2(365.0f, 30.0f),
+                        Vector4(0.8f, 0.45f, 0.1f, 0.28f));
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize + 1.5f,
+                          Vector4(1.0f, 0.95f, 0.25f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.16f, 0.14f);
+    } else {
+      Vector4 rankColor = (i == 0)   ? Vector4(1.0f, 0.9f, 0.2f, 1.0f)
+                          : (i == 1) ? Vector4(0.85f, 0.85f, 0.9f, 1.0f)
+                                     : Vector4(0.85f, 0.65f, 0.45f, 1.0f);
+      draw.DrawMSDFString(rBuf, itemPos, kGameOverRankItemFontSize,
+                          rankColor, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+                          0.06f, 0.0f);
+    }
+  }
+  for (int i = scoreDisplayCount; i < 3; i++) {
+    char rBuf[64];
+    snprintf(rBuf, sizeof(rBuf), " %d位: ---", i + 1);
+    draw.DrawMSDFString(rBuf, Vector2(kGameOverRankItemScoreX + dropOffset.x, kGameOverRankItemBaseY + i * kGameOverRankItemStepY + dropOffset.y),
+                        kGameOverRankItemFontSize,
+                        Vector4(0.6f, 0.6f, 0.6f, 1.0f), true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f, 0.0f);
+  }
+
+  // スコアランキング下の表示
+  {
+    Vector2 boxPos(kGameOverRankItemScoreX - 6.0f + dropOffset.x, kGameOverMyRankBoxY + dropOffset.y);
+    draw.DrawFillRect(boxPos, kGameOverMyRankBoxSize, Vector4(0.04f, 0.07f, 0.13f, 0.85f));
+    draw.DrawFillRect(boxPos, Vector2(3.0f, kGameOverMyRankBoxSize.y), Vector4(1.0f, 0.75f, 0.2f, 0.9f));
+
+    char myScoreBuf[96];
+    if (isScoreRankIn) {
+      snprintf(myScoreBuf, sizeof(myScoreBuf), "★ スコア %d位 ランクイン達成！", scoreMyRank);
+      draw.DrawMSDFString(myScoreBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.3f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.10f);
+    } else {
+      if (scoreMyRank > 3 && scoreMyRank < 10) {
+        snprintf(myScoreBuf, sizeof(myScoreBuf), "あなたの順位:  %d位  (%.0f pt)", scoreMyRank, ctx.currentScore);
+      } else {
+        snprintf(myScoreBuf, sizeof(myScoreBuf), "あなたの順位:  圏外  (%.0f pt)", ctx.currentScore);
+      }
+      draw.DrawMSDFString(myScoreBuf, Vector2(boxPos.x + 12.0f, boxPos.y + kGameOverMyRankTextOffsetY),
+                          kGameOverMyRankFontSize, Vector4(1.0f, 0.92f, 0.75f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f, 0.04f);
+    }
+  }
+
+  draw.DrawFillRect(kGameOverDividerPos2 + dropOffset, kGameOverDividerSize,
                     Vector4(0.3f, 0.4f, 0.5f, 0.7f));
 
   bool isOverPad = GamePadInput::IsConnected();
   if (isOverPad) {
     draw.DrawMSDFString("[ Aボタン ] もう一度プレイ (RESTART)   |   [ Bボタン ] "
                         "タイトルへ戻る (TITLE)",
-                        kGameOverBottomBtnPos, kGameOverBottomBtnFontSize,
+                        kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
                         Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
   } else {
     draw.DrawMSDFString("[ 1キー ] もう一度プレイ (RESTART)   |   [ 2キー ] "
                         "タイトルへ戻る (TITLE)",
-                        kGameOverBottomBtnPos, kGameOverBottomBtnFontSize,
+                        kGameOverBottomBtnPos + dropOffset, kGameOverBottomBtnFontSize,
                         Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
                         Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // ==========================================
+  // 右側サブパネル: 獲得実績（名前のみ一覧表示）
+  // ==========================================
+  Vector2 achPanelPos(kResultAchPanelPos.x, kResultAchPanelPos.y + currentDropOffsetY);
+  draw.DrawFillRect(achPanelPos, kResultAchPanelSize,
+                    Vector4(0.06f, 0.08f, 0.13f, 0.95f));
+  draw.DrawFillRect(achPanelPos, Vector2(kResultAchPanelSize.x, kGameOverAccentHeight),
+                    Vector4(1.0f, 0.78f, 0.25f, 0.95f));
+
+  // 見出し "獲得実績"
+  auto *tr = draw.GetTextRenderer();
+  const char *achHeaderStr = "獲得実績";
+  const float achHeaderSize = 24.0f;
+  float achHeaderW = tr ? tr->MeasureString(achHeaderStr, achHeaderSize).x : 96.0f;
+  draw.DrawMSDFString(achHeaderStr,
+                      Vector2(achPanelPos.x + (kResultAchPanelSize.x - achHeaderW) * 0.5f, achPanelPos.y + 20.0f),
+                      achHeaderSize, Vector4(1.0f, 0.88f, 0.32f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f, 0.06f);
+
+  // 見出し下の区切り線
+  draw.DrawFillRect(Vector2(achPanelPos.x + 16.0f, achPanelPos.y + 56.0f),
+                    Vector2(kResultAchPanelSize.x - 32.0f, 2.0f),
+                    Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+  if (ctx.achievementManager) {
+    const auto &achievements = ctx.achievementManager->GetAchievements();
+
+    // 初回描画時に実績タイトル文字のグリフをキャッシュ登録
+    static size_t s_cachedResultAchCount = 0;
+    if (s_cachedResultAchCount != achievements.size() && tr && tr->GetAtlas()) {
+      s_cachedResultAchCount = achievements.size();
+      std::string allTitleChars;
+      for (const auto &ach : achievements) {
+        if (ach) {
+          allTitleChars += ach->GetTitle();
+        }
+      }
+      tr->GetAtlas()->PreloadString(allTitleChars);
+    }
+
+    std::vector<const Achievement *> unlockedList;
+    unlockedList.reserve(achievements.size());
+    for (const auto &ach : achievements) {
+      if (ach && ach->IsUnlocked()) {
+        unlockedList.push_back(ach.get());
+      }
+    }
+
+    const int totalUnlocked = static_cast<int>(unlockedList.size());
+    const bool canScroll = (totalUnlocked > kResultAchMaxVisibleItems);
+    const int maxScroll = (std::max)(0, totalUnlocked - kResultAchMaxVisibleItems);
+    const int scrollOffset = std::clamp(ctx.resultAchievementScroll, 0, maxScroll);
+    const int endIdx = (std::min)(totalUnlocked, scrollOffset + kResultAchMaxVisibleItems);
+
+    const float listStartY = achPanelPos.y + 72.0f;
+    const float listStepY = 29.0f;
+    const float itemFontSize = 18.0f;
+    const float boxH = 25.0f;
+
+    for (int i = scrollOffset; i < endIdx; ++i) {
+      const Achievement *ach = unlockedList[i];
+      int visibleRow = i - scrollOffset;
+
+      float itemY = listStartY + visibleRow * listStepY;
+      float boxX = achPanelPos.x + 12.0f;
+      float boxY = itemY - 2.0f;
+      float boxW = kResultAchPanelSize.x - (canScroll ? 34.0f : 24.0f);
+
+      // レア度に応じた枠色（コモン: 白 / レア: 緑 / スーパーレア: 紫 / シークレット: 金）
+      Vector4 frameColor = Vector4(1.0f, 1.0f, 1.0f, 0.90f);
+      if (ach->GetRarity() == AchievementRarity::Rare) {
+        frameColor = Vector4(0.20f, 0.95f, 0.35f, 0.90f);
+      } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
+        frameColor = Vector4(0.75f, 0.30f, 1.0f, 0.90f);
+      } else if (ach->GetRarity() == AchievementRarity::Secret) {
+        frameColor = Vector4(1.0f, 0.84f, 0.0f, 0.95f);
+      }
+
+      // 背景と枠線
+      draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, boxH),
+                        Vector4(0.08f, 0.12f, 0.20f, 0.85f));
+      draw.DrawFillRect(Vector2(boxX, boxY), Vector2(3.5f, boxH), frameColor);
+      draw.DrawFillRect(Vector2(boxX, boxY), Vector2(boxW, 1.5f), frameColor);
+      draw.DrawFillRect(Vector2(boxX, boxY + boxH - 1.5f), Vector2(boxW, 1.5f), frameColor);
+      draw.DrawFillRect(Vector2(boxX + boxW - 1.5f, boxY), Vector2(1.5f, boxH), frameColor);
+
+      // 実績名テキスト（枠幅を超える場合は自動でフォントサイズを縮小して枠内に収める）
+      float drawFontSize = itemFontSize;
+      float maxTextW = boxW - 16.0f;
+      if (tr) {
+        float measuredW = tr->MeasureString(ach->GetTitle(), itemFontSize).x;
+        if (measuredW > maxTextW && measuredW > 0.0f) {
+          drawFontSize = itemFontSize * (maxTextW / measuredW);
+        }
+      }
+      float textY = itemY + (itemFontSize - drawFontSize) * 0.5f;
+      draw.DrawMSDFString(ach->GetTitle(), Vector2(boxX + 10.0f, textY),
+                          drawFontSize, Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    }
+
+    // 枠を超える場合のスクロールバー＆下部スクロール案内描画
+    if (canScroll) {
+      float trackX = achPanelPos.x + kResultAchPanelSize.x - 15.0f;
+      float trackY = listStartY - 2.0f;
+      float trackW = 5.0f;
+      float trackH = (kResultAchMaxVisibleItems - 1) * listStepY + boxH;
+
+      // スクロールバートラック背景
+      draw.DrawFillRect(Vector2(trackX, trackY), Vector2(trackW, trackH),
+                        Vector4(0.12f, 0.18f, 0.28f, 0.90f));
+
+      // スクロールバーつまみ（Thumb）
+      float thumbRatio = static_cast<float>(kResultAchMaxVisibleItems) /
+                         static_cast<float>(totalUnlocked);
+      float thumbH = (std::max)(24.0f, trackH * thumbRatio);
+      float scrollRatio = (maxScroll > 0)
+                              ? (static_cast<float>(scrollOffset) /
+                                 static_cast<float>(maxScroll))
+                              : 0.0f;
+      float thumbY = trackY + (trackH - thumbH) * scrollRatio;
+      draw.DrawFillRect(Vector2(trackX, thumbY), Vector2(trackW, thumbH),
+                        Vector4(1.0f, 0.82f, 0.30f, 0.95f));
+
+      // 下部区切り線
+      draw.DrawFillRect(Vector2(achPanelPos.x + 16.0f, achPanelPos.y + 538.0f),
+                        Vector2(kResultAchPanelSize.x - 32.0f, 1.5f),
+                        Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+      // 表示範囲・上下矢印インジケーター
+      char rangeBuf[64];
+      snprintf(rangeBuf, sizeof(rangeBuf), "%s %d〜%d / %d 件 %s",
+               (scrollOffset > 0) ? "▲" : " ", scrollOffset + 1, endIdx,
+               totalUnlocked, (scrollOffset < maxScroll) ? "▼" : " ");
+      float rangeFontSize = 15.5f;
+      float rangeW = tr ? tr->MeasureString(rangeBuf, rangeFontSize).x : 130.0f;
+      draw.DrawMSDFString(
+          rangeBuf,
+          Vector2(achPanelPos.x + (kResultAchPanelSize.x - rangeW) * 0.5f,
+                  achPanelPos.y + 545.0f),
+          rangeFontSize, Vector4(1.0f, 0.90f, 0.35f, 1.0f), true,
+          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+
+      // スクロール操作ガイド
+      const char *scrollGuide = isOverPad ? "[十字 / スティック] スクロール"
+                                          : "[↑↓ / W S] スクロール";
+      float guideFontSize = 14.0f;
+      float guideW = tr ? tr->MeasureString(scrollGuide, guideFontSize).x : 170.0f;
+      draw.DrawMSDFString(
+          scrollGuide,
+          Vector2(achPanelPos.x + (kResultAchPanelSize.x - guideW) * 0.5f,
+                  achPanelPos.y + 569.0f),
+          guideFontSize, Vector4(0.75f, 0.88f, 1.0f, 0.95f), true,
+          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    }
+
+    if (totalUnlocked == 0) {
+      const char *noneStr = "なし";
+      float noneW = tr ? tr->MeasureString(noneStr, 18.0f).x : 36.0f;
+      draw.DrawMSDFString(noneStr,
+                          Vector2(achPanelPos.x + (kResultAchPanelSize.x - noneW) * 0.5f, listStartY + 12.0f),
+                          18.0f, Vector4(0.6f, 0.65f, 0.7f, 0.85f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    }
   }
 }
 
 void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
   const std::string titleText = "ペンギンダッシュ";
   const std::string subTitleText = "― PENGUIN DASH ―";
-  bool isTitlePad = GamePadInput::IsConnected();
-  const std::string startText = isTitlePad ? "PRESS [A] BUTTON TO START" : "PRESS SPACE TO START";
 
-  const float fontSize = kTitleMainFontSize;
-  const float subFontSize = kTitleSubFontSize;
-  const float startFontSize = kTitleStartFontSize;
+  const float fontSize = 92.0f;
+  const float subFontSize = 26.0f;
 
   float titleWidth = 0.0f;
   float subWidth = 0.0f;
-  float startWidth = 0.0f;
   if (draw.GetTextRenderer()) {
     titleWidth = draw.GetTextRenderer()->MeasureString(titleText, fontSize).x;
     subWidth = draw.GetTextRenderer()->MeasureString(subTitleText, subFontSize).x;
-    startWidth = draw.GetTextRenderer()->MeasureString(startText, startFontSize).x;
   }
-  if (titleWidth <= 0.0f) titleWidth = kTitleDefaultWidth;
-  if (subWidth <= 0.0f) subWidth = kTitleDefaultSubWidth;
-  if (startWidth <= 0.0f) startWidth = kTitleDefaultStartWidth;
+  if (titleWidth <= 0.0f) titleWidth = 620.0f;
+  if (subWidth <= 0.0f) subWidth = 300.0f;
 
   const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
   float titleX = (screenWidth - titleWidth) * 0.5f;
   float subX = (screenWidth - subWidth) * 0.5f;
-  float startX = (screenWidth - startWidth) * 0.5f;
 
-  const float baseTitleY = kTitleBaseY;
-  const float baseSubY = baseTitleY + kTitleSubOffsetY;
-  const float baseStartY = kTitleStartBaseY;
+  const float baseTitleY = 70.0f;
+  const float baseSubY = baseTitleY + 98.0f;
 
   float currentTitleY = baseTitleY;
   float currentSubY = baseSubY;
-  float currentStartY = baseStartY;
+  float elementsOffsetY = 0.0f;
 
   float mainAlpha = 1.0f;
   float subAlpha = 0.95f;
-  float startAlpha = 1.0f;
+  float menuAlpha = 1.0f;
 
   if (ctx.isTitleExiting) {
     float progress =
@@ -651,20 +1498,18 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
 
     currentTitleY = baseTitleY - flyOffset;
     currentSubY = baseSubY - flyOffset;
-    currentStartY = baseStartY - ease * kTitleStartFlyOffset;
+    elementsOffsetY = -flyOffset;
 
     mainAlpha = (progress < kTitleMainFadeStart) ? 1.0f : std::clamp(1.0f - (progress - kTitleMainFadeStart) / kTitleMainFadeSpan, 0.0f, 1.0f);
     subAlpha = (progress < kTitleSubFadeStart) ? 0.95f : std::clamp(0.95f - (progress - kTitleSubFadeStart) / kTitleSubFadeSpan, 0.0f, 1.0f);
-    startAlpha = std::clamp(1.0f - progress * kTitleStartFadeRate, 0.0f, 1.0f);
+    menuAlpha = std::clamp(1.0f - progress * kTitleStartFadeRate, 0.0f, 1.0f);
   } else {
     float hover = sinf(ctx.uiTimer * kTitleHoverFreq) * kTitleHoverAmp;
     currentTitleY = baseTitleY + hover;
     currentSubY = baseSubY + hover;
-
-    float blink = sinf(ctx.uiTimer * kTitleBlinkFreq);
-    startAlpha = (blink > kTitleBlinkThreshold) ? 1.0f : 0.0f;
   }
 
+  // タイトルロゴ描画
   if (mainAlpha > 0.01f) {
     Vector4 shadowColor = Vector4(0.01f, 0.04f, 0.12f, 0.8f * mainAlpha);
     draw.DrawMSDFString(titleText, Vector2(titleX + kTitleShadowOffset.x, currentTitleY + kTitleShadowOffset.y),
@@ -677,6 +1522,7 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
                         textColor, true, outlineColor, 0.22f, 0.15f);
   }
 
+  // サブタイトル描画
   if (subAlpha > 0.01f) {
     Vector4 subColor = Vector4(0.65f, 0.88f, 1.0f, subAlpha);
     Vector4 subOutline = Vector4(0.04f, 0.1f, 0.24f, subAlpha);
@@ -684,17 +1530,495 @@ void GameHUD::DrawTitleHUD(Draw &draw, const GameHUDContext &ctx) {
                         subColor, true, subOutline, 0.18f, 0.08f);
   }
 
-  if (startAlpha > 0.02f) {
-    draw.DrawMSDFString(startText, Vector2(startX, currentStartY),
-                        startFontSize, Vector4(1.0f, 1.0f, 1.0f, startAlpha),
-                        true, Vector4(0.0f, 0.0f, 0.0f, startAlpha), 0.15f,
-                        0.08f);
+  // ==========================================================
+  // 1. 名前登録バー＆選択式メニュー（画面左下・スリムレイアウト）
+  // ==========================================================
+  if (menuAlpha > 0.02f) {
+    const float menuLeftX = 70.0f;
+    const float menuPanelW = 230.0f;
+
+    // 1-1. 名前登録バー（プレイヤーネーム入力バー）
+    const float inputBarW = menuPanelW;
+    const float inputBarH = 44.0f;
+    const float inputBarX = menuLeftX;
+    const float inputBarY = 352.0f + elementsOffsetY;
+    const bool isNameSelected = (ctx.titleMenuIndex == 0);
+    const bool isEditing = isNameSelected && ctx.isEditingTitlePlayerName;
+
+    // 見出しラベル
+    const char *nameLabel = isEditing ? "プレイヤー名 [ ENTER決定 ]"
+                                      : (isNameSelected ? "プレイヤー名 [ SPACE編集 ]"
+                                                        : "プレイヤー名");
+    draw.DrawMSDFString(nameLabel, Vector2(inputBarX + 4.0f, inputBarY - 18.0f), 12.5f,
+                        isEditing ? Vector4(1.0f, 0.85f, 0.2f, menuAlpha)
+                                  : (isNameSelected ? Vector4(0.4f, 0.95f, 1.0f, menuAlpha)
+                                                    : Vector4(0.65f, 0.75f, 0.85f, 0.8f * menuAlpha)),
+                        true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.08f);
+
+    // 外枠（選択時はシアンパルス発光、編集中はゴールドパルス発光）
+    float pulse = 0.5f + 0.5f * sinf(ctx.uiTimer * 4.0f);
+    Vector4 borderColor = isEditing
+        ? Vector4(1.0f, 0.8f + 0.2f * pulse, 0.2f, menuAlpha)
+        : (isNameSelected
+            ? Vector4(0.2f + 0.2f * pulse, 0.85f + 0.15f * pulse, 1.0f, menuAlpha)
+            : Vector4(0.25f, 0.35f, 0.45f, 0.7f * menuAlpha));
+
+    draw.DrawFillRect(Vector2(inputBarX - 2.0f, inputBarY - 2.0f),
+                      Vector2(inputBarW + 4.0f, inputBarH + 4.0f),
+                      borderColor);
+
+    // 内側背景
+    Vector4 innerBgColor = isEditing
+        ? Vector4(0.08f, 0.15f, 0.25f, 0.98f * menuAlpha)
+        : (isNameSelected
+            ? Vector4(0.06f, 0.12f, 0.22f, 0.95f * menuAlpha)
+            : Vector4(0.04f, 0.06f, 0.10f, 0.85f * menuAlpha));
+    draw.DrawFillRect(Vector2(inputBarX, inputBarY), Vector2(inputBarW, inputBarH), innerBgColor);
+
+    // プレイヤー名文字列と点滅カーソル
+    std::string displayName = (ctx.titlePlayerName && !ctx.titlePlayerName->empty())
+                                  ? *ctx.titlePlayerName
+                                  : "Player";
+    bool cursorBlink = fmodf(ctx.uiTimer, 0.8f) < 0.4f;
+    std::string textWithCursor = displayName;
+    if (isEditing && cursorBlink) {
+      textWithCursor += "|";
+    }
+
+    // "名前:" プレフィックス
+    draw.DrawMSDFString("名前:", Vector2(inputBarX + 10.0f, inputBarY + 12.0f), 15.0f,
+                        isEditing ? Vector4(1.0f, 0.85f, 0.2f, menuAlpha)
+                                  : (isNameSelected ? Vector4(0.3f, 0.9f, 1.0f, menuAlpha)
+                                                    : Vector4(0.6f, 0.7f, 0.8f, 0.8f * menuAlpha)),
+                        true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.07f);
+
+    // プレイヤー名
+    draw.DrawMSDFString(textWithCursor, Vector2(inputBarX + 56.0f, inputBarY + 10.0f), 19.0f,
+                        isEditing ? Vector4(1.0f, 0.98f, 0.6f, menuAlpha)
+                                  : (isNameSelected ? Vector4(1.0f, 1.0f, 1.0f, menuAlpha)
+                                                    : Vector4(0.85f, 0.9f, 0.95f, 0.9f * menuAlpha)),
+                        true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.09f);
+
+    // 選択時に右側に日本語補足ガイドを表示
+    if (isNameSelected) {
+      const char *nameSub = isEditing ? "キーボード直接入力" : "プレイヤー名登録";
+      draw.DrawMSDFString(nameSub, Vector2(inputBarX + inputBarW + 12.0f, inputBarY + 13.0f), 14.0f,
+                          isEditing ? Vector4(1.0f, 0.85f, 0.25f, 0.95f * menuAlpha)
+                                    : Vector4(0.45f, 0.92f, 1.0f, 0.9f * menuAlpha),
+                          true, Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.07f);
+    }
+
+    // ==========================================================
+    // 1-2. 選択式メニュー一覧
+    // ==========================================================
+    const char *menuLabels[] = {
+        "1. ゲームスタート",
+        "2. ランキング確認",
+        "3. 実績一覧",
+        "4. あそびかた",
+        "5. 設定",
+        "6. ゲーム終了"
+    };
+    constexpr int kMenuCount = 6;
+    const float menuStartY = 410.0f + elementsOffsetY;
+    const float menuRowH = 41.0f;
+    const float menuPanelX = menuLeftX;
+
+    for (int i = 0; i < kMenuCount; i++) {
+      int itemIndex = i + 1; // 0 は PlayerName
+      bool isSelected = (ctx.titleMenuIndex == itemIndex);
+      float rowY = menuStartY + i * menuRowH;
+
+      if (isSelected) {
+        // 選択中ハイライト背景
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 38.0f),
+                          Vector4(0.10f, 0.28f, 0.55f, 0.88f * menuAlpha));
+        // 左アクセントバー
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(5.0f, 38.0f),
+                          Vector4(1.0f, 0.85f, 0.2f, menuAlpha));
+        // 上下ボーダー
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 1.5f),
+                          Vector4(0.3f, 0.8f, 1.0f, 0.7f * menuAlpha));
+        draw.DrawFillRect(Vector2(menuPanelX, rowY + 36.5f), Vector2(menuPanelW, 1.5f),
+                          Vector4(0.3f, 0.8f, 1.0f, 0.7f * menuAlpha));
+
+        // カーソル記号
+        draw.DrawMSDFString("▶", Vector2(menuPanelX + 10.0f, rowY + 7.0f), 18.5f,
+                            Vector4(1.0f, 0.85f, 0.2f, menuAlpha), true,
+                            Vector4(0.0f, 0.0f, 0.0f, menuAlpha), 0.10f);
+
+        // テキスト
+        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 7.0f), 18.5f,
+                            Vector4(1.0f, 0.96f, 0.5f, menuAlpha), true,
+                            Vector4(0.05f, 0.15f, 0.3f, menuAlpha), 0.12f);
+      } else {
+        // 非選択行背景（うっすら）
+        draw.DrawFillRect(Vector2(menuPanelX, rowY), Vector2(menuPanelW, 38.0f),
+                          Vector4(0.03f, 0.05f, 0.09f, 0.45f * menuAlpha));
+
+        // テキスト
+        draw.DrawMSDFString(menuLabels[i], Vector2(menuPanelX + 28.0f, rowY + 8.0f), 17.5f,
+                            Vector4(0.75f, 0.85f, 0.95f, 0.75f * menuAlpha), true,
+                            Vector4(0.0f, 0.0f, 0.0f, 0.75f * menuAlpha), 0.08f);
+      }
+    }
   }
 
-  float guideAlpha = ctx.isTitleExiting
-                         ? std::clamp(1.0f - (ctx.titleExitTimer / kTitleExitGuideDuration), 0.0f, 1.0f)
-                         : mainAlpha;
-  DrawControlsGuide(draw, ctx, guideAlpha);
+  // ==========================================================
+  // 2. サブモーダル表示（ランキング / 操作説明 / 実績一覧 / 設定）
+  // ==========================================================
+  if (const ITitleSubViewRenderer *subView =
+          ResolveTitleSubViewRenderer(ctx.titleSubView, ctx.isSettingsOpen)) {
+    subView->Render(*this, draw, ctx);
+  }
+}
+
+void GameHUD::DrawTitleRankingModal(Draw &draw, const GameHUDContext &ctx) {
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
+
+  // 全画面ディム（暗転）
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(screenWidth, screenHeight),
+                    Vector4(0.0f, 0.0f, 0.0f, 0.80f));
+
+  // メインパネル
+  const Vector2 panelPos = {160.0f, 50.0f};
+  const Vector2 panelSize = {960.0f, 580.0f};
+  draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
+  // トップアクセントバー (ゴールド)
+  draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+  // パネル外枠
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 2.0f), Vector2(panelSize.x, 2.0f),
+                    Vector4(0.2f, 0.4f, 0.6f, 0.8f));
+
+  // モーダルタイトル
+  const char *headerTitle = "★ オンラインランキング TOP 5 ★";
+  draw.DrawMSDFString(headerTitle, Vector2(panelPos.x + 30.0f, panelPos.y + 24.0f), 28.0f,
+                      Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  // ステータス表示
+  if (ctx.isOnlineRankingFetching) {
+    draw.DrawMSDFString("[ 最新ランキング取得中... ]", Vector2(panelPos.x + panelSize.x - 260.0f, panelPos.y + 28.0f), 16.0f,
+                        Vector4(0.4f, 0.9f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // 区切り線
+  draw.DrawFillRect(Vector2(panelPos.x + 20.0f, panelPos.y + 68.0f),
+                    Vector2(panelSize.x - 40.0f, 1.5f),
+                    Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+  // 左列: 走行距離ランキング TOP 5
+  const float col1X = panelPos.x + 40.0f;
+  draw.DrawMSDFString("【 走行距離 TOP 5 (m) 】", Vector2(col1X, panelPos.y + 85.0f), 22.0f,
+                      Vector4(0.4f, 0.9f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+  if (ctx.onlineDistanceRankings && !ctx.onlineDistanceRankings->empty()) {
+    int count = (std::min)(5, static_cast<int>(ctx.onlineDistanceRankings->size()));
+    for (int i = 0; i < count; i++) {
+      const auto &entry = (*ctx.onlineDistanceRankings)[i];
+      char rBuf[128];
+      snprintf(rBuf, sizeof(rBuf), "%d位: %-10s  %.1f m",
+               i + 1, entry.playerName.c_str(), entry.distance);
+      float rowY = panelPos.y + 130.0f + i * 54.0f;
+      Vector4 rowColor = (i == 0) ? Vector4(1.0f, 0.85f, 0.2f, 1.0f)
+                                  : Vector4(0.85f, 0.92f, 1.0f, 0.9f);
+      draw.DrawFillRect(Vector2(col1X - 8.0f, rowY - 4.0f), Vector2(420.0f, 40.0f),
+                        Vector4(0.08f, 0.12f, 0.20f, 0.7f));
+      draw.DrawMSDFString(rBuf, Vector2(col1X, rowY), 20.0f, rowColor, true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    }
+  } else {
+    draw.DrawMSDFString("ランキングデータを取得中...", Vector2(col1X, panelPos.y + 140.0f), 18.0f,
+                        Vector4(0.7f, 0.7f, 0.7f, 0.8f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+  }
+
+  // 右列: スコアランキング TOP 5
+  const float col2X = panelPos.x + 500.0f;
+  draw.DrawMSDFString("【 スコア TOP 5 (pt) 】", Vector2(col2X, panelPos.y + 85.0f), 22.0f,
+                      Vector4(0.4f, 0.9f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+  if (ctx.onlineScoreRankings && !ctx.onlineScoreRankings->empty()) {
+    int count = (std::min)(5, static_cast<int>(ctx.onlineScoreRankings->size()));
+    for (int i = 0; i < count; i++) {
+      const auto &entry = (*ctx.onlineScoreRankings)[i];
+      char rBuf[128];
+      snprintf(rBuf, sizeof(rBuf), "%d位: %-10s  %.0f pt",
+               i + 1, entry.playerName.c_str(), entry.score);
+      float rowY = panelPos.y + 130.0f + i * 54.0f;
+      Vector4 rowColor = (i == 0) ? Vector4(1.0f, 0.85f, 0.2f, 1.0f)
+                                  : Vector4(0.85f, 0.92f, 1.0f, 0.9f);
+      draw.DrawFillRect(Vector2(col2X - 8.0f, rowY - 4.0f), Vector2(420.0f, 40.0f),
+                        Vector4(0.08f, 0.12f, 0.20f, 0.7f));
+      draw.DrawMSDFString(rBuf, Vector2(col2X, rowY), 20.0f, rowColor, true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    }
+  } else {
+    draw.DrawMSDFString("ランキングデータを取得中...", Vector2(col2X, panelPos.y + 140.0f), 18.0f,
+                        Vector4(0.7f, 0.7f, 0.7f, 0.8f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+  }
+
+  // 下部フッター案内
+  bool isPad = GamePadInput::IsConnected();
+  const char *returnGuide = isPad ? "[ Bボタン / Aボタン ] タイトルへ戻る"
+                                  : "[ ESC / ENTER / SPACE ] タイトルへ戻る";
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 50.0f),
+                    Vector2(panelSize.x, 50.0f),
+                    Vector4(0.03f, 0.05f, 0.09f, 0.95f));
+  draw.DrawMSDFString(returnGuide, Vector2(panelPos.x + (panelSize.x - 360.0f) * 0.5f, panelPos.y + panelSize.y - 38.0f), 18.0f,
+                      Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+}
+
+void GameHUD::DrawTitleHowToPlayModal(Draw &draw, const GameHUDContext &ctx) {
+  (void)ctx;
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
+
+  // 全画面ディム
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(screenWidth, screenHeight),
+                    Vector4(0.0f, 0.0f, 0.0f, 0.80f));
+
+  // メインパネル
+  const Vector2 panelPos = {180.0f, 60.0f};
+  const Vector2 panelSize = {920.0f, 560.0f};
+  draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
+  // トップアクセントバー (シアン)
+  draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(0.3f, 0.85f, 1.0f, 1.0f));
+
+  // モーダルタイトル
+  draw.DrawMSDFString("=== あそびかた（ゲーム操作説明・ルール） ===",
+                      Vector2(panelPos.x + 30.0f, panelPos.y + 24.0f), 26.0f,
+                      Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  // 区切り線
+  draw.DrawFillRect(Vector2(panelPos.x + 20.0f, panelPos.y + 64.0f),
+                    Vector2(panelSize.x - 40.0f, 1.5f),
+                    Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+  // 説明コンテンツ
+  struct HelpRow {
+    const char *title;
+    const char *descKey;
+    const char *descPad;
+  };
+  HelpRow rows[] = {
+      {"レーン移動", "[ A / D ] または [ ← → ] キーで3つのレーンを瞬時に移動",
+                     "[ Lスティック / 十字キー ] でレーンを瞬時に移動"},
+      {"ジャンプ", "[ SPACE / W ] キーで低い障害物を飛び越える / ボーナス敵を踏む",
+                   "[ Aボタン ] で低い障害物を飛び越える / ボーナス敵を踏む"},
+      {"スライディング", "[ S / ↓ ] キーで高い倒木の下を滑り抜ける",
+                         "[ Bボタン ] で高い倒木の下を滑り抜ける"},
+      {"アイテム取得", "【氷のバリア】激突を1回無効化 / 【王冠】ボス戦へ突入！",
+                       "【氷のバリア】激突を1回無効化 / 【王冠】ボス戦へ突入！"},
+      {"ボスバトル", "飛来する氷弾のレーンでジャンプ/スライドしてカウンター弾を反射！",
+                     "飛来する氷弾のレーンでジャンプ/スライドしてカウンター弾を反射！"}
+  };
+
+  bool isPad = GamePadInput::IsConnected();
+  for (int i = 0; i < 5; i++) {
+    float rowY = panelPos.y + 90.0f + i * 80.0f;
+    // 見出しバッジ
+    draw.DrawFillRect(Vector2(panelPos.x + 35.0f, rowY), Vector2(170.0f, 32.0f),
+                      Vector4(0.12f, 0.24f, 0.42f, 0.85f));
+    draw.DrawMSDFString(rows[i].title, Vector2(panelPos.x + 45.0f, rowY + 5.0f), 19.0f,
+                        Vector4(1.0f, 0.9f, 0.3f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+    // 説明文
+    const char *desc = isPad ? rows[i].descPad : rows[i].descKey;
+    draw.DrawMSDFString(desc, Vector2(panelPos.x + 225.0f, rowY + 5.0f), 18.0f,
+                        Vector4(0.9f, 0.95f, 1.0f, 0.95f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+
+    // 行間下線
+    draw.DrawFillRect(Vector2(panelPos.x + 35.0f, rowY + 50.0f),
+                      Vector2(panelSize.x - 70.0f, 1.0f),
+                      Vector4(0.18f, 0.28f, 0.40f, 0.5f));
+  }
+
+  // 下部フッター案内
+  const char *returnGuide = isPad ? "[ Bボタン / Aボタン ] タイトルへ戻る"
+                                  : "[ ESC / ENTER / SPACE ] タイトルへ戻る";
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 50.0f),
+                    Vector2(panelSize.x, 50.0f),
+                    Vector4(0.03f, 0.05f, 0.09f, 0.95f));
+  draw.DrawMSDFString(returnGuide, Vector2(panelPos.x + (panelSize.x - 360.0f) * 0.5f, panelPos.y + panelSize.y - 38.0f), 18.0f,
+                      Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+}
+
+void GameHUD::DrawTitleAchievementsModal(Draw &draw, const GameHUDContext &ctx) {
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
+
+  // 全画面ディム（暗転）
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(screenWidth, screenHeight),
+                    Vector4(0.0f, 0.0f, 0.0f, 0.80f));
+
+  // メインパネル
+  const Vector2 panelPos = {120.0f, 45.0f};
+  const Vector2 panelSize = {1040.0f, 610.0f};
+  draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
+  // トップアクセントバー (ゴールド)
+  draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+  // パネル外枠
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 2.0f), Vector2(panelSize.x, 2.0f),
+                    Vector4(0.2f, 0.4f, 0.6f, 0.8f));
+
+  // モーダルタイトル
+  const char *headerTitle = "★ 実績リスト（達成条件一覧） ★";
+  draw.DrawMSDFString(headerTitle, Vector2(panelPos.x + 30.0f, panelPos.y + 20.0f), 26.0f,
+                      Vector4(1.0f, 0.88f, 0.25f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  if (!ctx.achievementManager) {
+    return;
+  }
+
+  const auto &achievements = ctx.achievementManager->GetAchievements();
+  // 実績一覧（モーダル）にはシークレットを除外した実績を表示
+  const auto displayAchievements = ctx.achievementManager->GetVisibleAchievements();
+  const int totalCount = static_cast<int>(displayAchievements.size());
+
+  // 初回描画時に全実績のタイトル・説明文のフォントグリフをキャッシュ登録
+  static size_t s_cachedAchCount = 0;
+  if (s_cachedAchCount != achievements.size() && draw.GetTextRenderer() &&
+      draw.GetTextRenderer()->GetAtlas()) {
+    s_cachedAchCount = achievements.size();
+    std::string allAchChars;
+    for (const auto &ach : achievements) {
+      if (ach) {
+        allAchChars += ach->GetTitle();
+        allAchChars += ach->GetDescription();
+      }
+    }
+    draw.GetTextRenderer()->GetAtlas()->PreloadString(allAchChars);
+  }
+
+  constexpr int kItemsPerPage = 10; // 2列 × 5行
+  const int totalPages = (std::max)(1, (totalCount + kItemsPerPage - 1) / kItemsPerPage);
+  const int currentPage = std::clamp(ctx.titleAchievementPage, 0, totalPages - 1);
+
+  // 右上: 総実績数・ページ番号表示
+  char pageHeaderBuf[96];
+  snprintf(pageHeaderBuf, sizeof(pageHeaderBuf), "全 %d 種   [ ページ %d / %d ]",
+           totalCount, currentPage + 1, totalPages);
+  draw.DrawMSDFString(pageHeaderBuf, Vector2(panelPos.x + panelSize.x - 275.0f, panelPos.y + 24.0f), 19.0f,
+                      Vector4(0.45f, 0.92f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+  // 区切り線
+  draw.DrawFillRect(Vector2(panelPos.x + 20.0f, panelPos.y + 62.0f),
+                    Vector2(panelSize.x - 40.0f, 1.5f),
+                    Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+  // 2カラム × 5行 カードグリッド描画
+  const float colWidth = 480.0f;
+  const float cardHeight = 78.0f;
+  const float rowStepY = 92.0f;
+  const float startXLeft = panelPos.x + 28.0f;
+  const float startXRight = panelPos.x + 532.0f;
+  const float startY = panelPos.y + 80.0f;
+
+  auto *tr = draw.GetTextRenderer();
+  const int startIdx = currentPage * kItemsPerPage;
+  const int endIdx = (std::min)(totalCount, startIdx + kItemsPerPage);
+
+  for (int idx = startIdx; idx < endIdx; ++idx) {
+    const auto *ach = displayAchievements[idx];
+    if (!ach) continue;
+
+    const int localIdx = idx - startIdx;
+    const int col = localIdx / 5; // 左列に5件、右列に5件
+    const int row = localIdx % 5;
+
+    const float cardX = (col == 0) ? startXLeft : startXRight;
+    const float cardY = startY + row * rowStepY;
+
+    // レア度に応じた枠の色（コモン: 白 / レア: 緑 / スーパーレア: 紫 / シークレット: 金）
+    Vector4 frameMainColor = Vector4(1.0f, 1.0f, 1.0f, 0.95f);
+    Vector4 frameSubColor = Vector4(0.90f, 0.92f, 0.95f, 0.85f);
+    Vector4 badgeBgColor = Vector4(0.18f, 0.22f, 0.30f, 0.90f);
+    if (ach->GetRarity() == AchievementRarity::Rare) {
+      frameMainColor = Vector4(0.20f, 0.95f, 0.35f, 0.95f);
+      frameSubColor = Vector4(0.18f, 0.85f, 0.30f, 0.85f);
+      badgeBgColor = Vector4(0.10f, 0.26f, 0.14f, 0.90f);
+    } else if (ach->GetRarity() == AchievementRarity::SuperRare) {
+      frameMainColor = Vector4(0.75f, 0.30f, 1.0f, 0.95f);
+      frameSubColor = Vector4(0.68f, 0.25f, 0.95f, 0.85f);
+      badgeBgColor = Vector4(0.22f, 0.10f, 0.32f, 0.90f);
+    } else if (ach->GetRarity() == AchievementRarity::Secret) {
+      frameMainColor = Vector4(1.0f, 0.84f, 0.0f, 0.95f);
+      frameSubColor = Vector4(1.0f, 0.65f, 0.15f, 0.85f);
+      badgeBgColor = Vector4(0.30f, 0.22f, 0.08f, 0.90f);
+    }
+
+    // カード背景
+    draw.DrawFillRect(Vector2(cardX, cardY), Vector2(colWidth, cardHeight),
+                      Vector4(0.08f, 0.13f, 0.22f, 0.88f));
+
+    // カード外枠（左アクセントバー + 上・下・右枠線）
+    draw.DrawFillRect(Vector2(cardX, cardY), Vector2(4.0f, cardHeight),
+                      frameMainColor);
+    draw.DrawFillRect(Vector2(cardX, cardY), Vector2(colWidth, 2.0f),
+                      frameSubColor);
+    draw.DrawFillRect(Vector2(cardX, cardY + cardHeight - 2.0f), Vector2(colWidth, 2.0f),
+                      frameSubColor);
+    draw.DrawFillRect(Vector2(cardX + colWidth - 2.0f, cardY), Vector2(2.0f, cardHeight),
+                      frameSubColor);
+
+    // 1行目左: 番号 + 実績タイトル（白文字）
+    char titleBuf[128];
+    snprintf(titleBuf, sizeof(titleBuf), "No.%02d  %s", idx + 1, ach->GetTitle().c_str());
+    draw.DrawMSDFString(titleBuf, Vector2(cardX + 16.0f, cardY + 11.0f), 20.0f,
+                        Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.09f);
+
+    // 1行目右: 獲得ボーナススコアバッジ（枠はレア度色、文字は白）
+    char rewardBuf[64];
+    snprintf(rewardBuf, sizeof(rewardBuf), "+%.0f pt", ach->GetScoreReward());
+    float rewardW = tr ? tr->MeasureString(rewardBuf, 17.0f).x : 80.0f;
+    float badgeW = rewardW + 20.0f;
+    float badgeX = cardX + colWidth - badgeW - 12.0f;
+    float badgeY = cardY + 9.0f;
+
+    draw.DrawFillRect(Vector2(badgeX, badgeY), Vector2(badgeW, 26.0f),
+                      badgeBgColor);
+    draw.DrawFillRect(Vector2(badgeX, badgeY), Vector2(badgeW, 1.5f),
+                      frameMainColor);
+    draw.DrawMSDFString(rewardBuf, Vector2(badgeX + 10.0f, badgeY + 4.0f), 17.0f,
+                        Vector4(1.0f, 1.0f, 1.0f, 1.0f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+
+    // 2行目: 達成条件（説明文・白文字）
+    char descBuf[160];
+    snprintf(descBuf, sizeof(descBuf), "条件: %s", ach->GetDescription().c_str());
+    draw.DrawMSDFString(descBuf, Vector2(cardX + 18.0f, cardY + 45.0f), 17.0f,
+                        Vector4(1.0f, 1.0f, 1.0f, 0.95f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+  }
+
+  // 下部フッター案内
+  bool isPad = GamePadInput::IsConnected();
+  const char *footerGuide = isPad
+      ? "[ 十字キー / Lスティック ] ページ切替      |      [ Bボタン / Aボタン ] タイトルへ戻る"
+      : "[ ← → / A D / ↑ ↓ / W S ] ページ切替      |      [ ESC / ENTER / SPACE ] タイトルへ戻る";
+
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 50.0f),
+                    Vector2(panelSize.x, 50.0f),
+                    Vector4(0.03f, 0.05f, 0.09f, 0.95f));
+  float guideW = tr ? tr->MeasureString(footerGuide, 17.5f).x : 680.0f;
+  draw.DrawMSDFString(footerGuide,
+                      Vector2(panelPos.x + (panelSize.x - guideW) * 0.5f, panelPos.y + panelSize.y - 36.0f),
+                      17.5f, Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 }
 
 void GameHUD::DrawEditorHUD(Draw &draw, const GameHUDContext &ctx) {
@@ -721,3 +2045,236 @@ void GameHUD::DrawBadgeFPV(Draw &draw) {
                       Vector4(0.4f, 0.9f, 1.0f, 1.0f), true,
                       Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
 }
+
+void GameHUD::DrawSettingsModal(Draw &draw, const GameHUDContext &ctx) {
+  auto *tr = draw.GetTextRenderer();
+  const float screenWidth = static_cast<float>(WindowConfig::kDefaultClientWidth);
+  const float screenHeight = static_cast<float>(WindowConfig::kDefaultClientHeight);
+
+  // 全画面ディム（暗転）
+  draw.DrawFillRect(Vector2(0.0f, 0.0f), Vector2(screenWidth, screenHeight),
+                    Vector4(0.0f, 0.0f, 0.0f, 0.82f));
+
+  // メインパネル
+  const Vector2 panelPos = {280.0f, 65.0f};
+  const Vector2 panelSize = {720.0f, 590.0f};
+  draw.DrawFillRect(panelPos, panelSize, Vector4(0.05f, 0.08f, 0.14f, 0.96f));
+  // トップアクセントバー (シアン)
+  draw.DrawFillRect(panelPos, Vector2(panelSize.x, 4.0f), Vector4(0.3f, 0.85f, 1.0f, 1.0f));
+  // ボトムボーダー
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 2.0f), Vector2(panelSize.x, 2.0f),
+                    Vector4(0.2f, 0.4f, 0.6f, 0.8f));
+
+  // モーダルタイトル
+  draw.DrawMSDFString("=== 設定 (SETTINGS) ===",
+                      Vector2(panelPos.x + 35.0f, panelPos.y + 24.0f), 26.0f,
+                      Vector4(0.3f, 0.9f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+
+  draw.DrawMSDFString("音量やアシスト表示をリアルタイムに調整できます",
+                      Vector2(panelPos.x + 35.0f, panelPos.y + 58.0f), 15.0f,
+                      Vector4(0.75f, 0.85f, 0.95f, 0.85f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+
+  // 区切り線
+  draw.DrawFillRect(Vector2(panelPos.x + 25.0f, panelPos.y + 82.0f),
+                    Vector2(panelSize.x - 50.0f, 1.5f),
+                    Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+  // 音量スライダー項目 (Master, BGM, SE)
+  struct SoundOption {
+    const char *label;
+    const char *desc;
+    float value;
+  };
+  SoundOption soundOptions[3] = {
+      {"主音量 (MASTER)", "全体のマスター音量を調整します", ctx.masterVolume},
+      {"BGM音量 (BGM)",   "タイトルや走行中の音楽音量を調整します", ctx.bgmVolume},
+      {"効果音音量 (SE)", "ジャンプ・アイテム取得・激突音などを調整します", ctx.seVolume}
+  };
+
+  const float itemStartY = panelPos.y + 95.0f;
+  const float rowH = 68.0f;
+  const float contentW = panelSize.x - 60.0f;
+  const float contentX = panelPos.x + 30.0f;
+
+  for (int i = 0; i < 3; i++) {
+    bool isSelected = (ctx.settingsMenuIndex == i);
+    float rowY = itemStartY + i * rowH;
+
+    // 行背景
+    if (isSelected) {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 60.0f),
+                        Vector4(0.10f, 0.25f, 0.48f, 0.88f));
+      // 左アクセントバー (ゴールド)
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 60.0f),
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+      // カーソル
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 11.0f), 18.0f,
+                          Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+    } else {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 60.0f),
+                        Vector4(0.04f, 0.07f, 0.12f, 0.50f));
+    }
+
+    // ラベル & 説明
+    draw.DrawMSDFString(soundOptions[i].label, Vector2(contentX + 32.0f, rowY + 9.0f), 18.0f,
+                        isSelected ? Vector4(1.0f, 0.95f, 0.4f, 1.0f)
+                                   : Vector4(0.9f, 0.95f, 1.0f, 0.9f),
+                        true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+    draw.DrawMSDFString(soundOptions[i].desc, Vector2(contentX + 32.0f, rowY + 34.0f), 13.5f,
+                        Vector4(0.65f, 0.75f, 0.85f, 0.75f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+
+    // スライダーゲージバー
+    const float barX = contentX + 380.0f;
+    const float barY = rowY + 20.0f;
+    const float barW = 180.0f;
+    const float barH = 18.0f;
+
+    // スライダー背景溝
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW, barH),
+                      Vector4(0.02f, 0.03f, 0.06f, 0.95f));
+    // スライダー枠
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(barW, 1.5f), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+    draw.DrawFillRect(Vector2(barX, barY + barH - 1.5f), Vector2(barW, 1.5f), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+    draw.DrawFillRect(Vector2(barX, barY), Vector2(1.5f, barH), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+    draw.DrawFillRect(Vector2(barX + barW - 1.5f, barY), Vector2(1.5f, barH), Vector4(0.3f, 0.45f, 0.65f, 0.7f));
+
+    // ゲージフィル
+    float fillW = barW * std::clamp(soundOptions[i].value, 0.0f, 1.0f);
+    if (fillW > 0.0f) {
+      Vector4 fillCol = isSelected ? Vector4(0.2f, 0.85f, 1.0f, 0.95f)
+                                   : Vector4(0.2f, 0.55f, 0.8f, 0.8f);
+      draw.DrawFillRect(Vector2(barX + 2.0f, barY + 2.0f), Vector2((std::max)(0.0f, fillW - 4.0f), barH - 4.0f),
+                        fillCol);
+    }
+
+    // パーセント数値表示 (例: ◀ 50% ▶)
+    char pctBuf[32];
+    int pct = static_cast<int>(std::round(soundOptions[i].value * 100.0f));
+    if (isSelected) {
+      snprintf(pctBuf, sizeof(pctBuf), "◀ %3d%% ▶", pct);
+    } else {
+      snprintf(pctBuf, sizeof(pctBuf), "  %3d%%  ", pct);
+    }
+    draw.DrawMSDFString(pctBuf, Vector2(barX + barW + 12.0f, rowY + 18.0f), 17.0f,
+                        isSelected ? Vector4(1.0f, 0.95f, 0.3f, 1.0f)
+                                   : Vector4(0.85f, 0.90f, 0.95f, 0.9f),
+                        true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+  }
+
+  // ガイド線ON/OFF切り替え項目 (Index: 3)
+  {
+    bool isGuideSelected = (ctx.settingsMenuIndex == 3);
+    float guideRowY = itemStartY + 3 * rowH;
+
+    if (isGuideSelected) {
+      draw.DrawFillRect(Vector2(contentX, guideRowY), Vector2(contentW, 60.0f),
+                        Vector4(0.10f, 0.25f, 0.48f, 0.88f));
+      draw.DrawFillRect(Vector2(contentX, guideRowY), Vector2(5.0f, 60.0f),
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, guideRowY + 11.0f), 18.0f,
+                          Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+    } else {
+      draw.DrawFillRect(Vector2(contentX, guideRowY), Vector2(contentW, 60.0f),
+                        Vector4(0.04f, 0.07f, 0.12f, 0.50f));
+    }
+
+    draw.DrawMSDFString("アクションガイド線 (GUIDE LINE)", Vector2(contentX + 32.0f, guideRowY + 9.0f), 18.0f,
+                        isGuideSelected ? Vector4(1.0f, 0.95f, 0.4f, 1.0f)
+                                        : Vector4(0.9f, 0.95f, 1.0f, 0.9f),
+                        true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+    draw.DrawMSDFString("ジャンプやしゃがみのタイミング線を表示します", Vector2(contentX + 32.0f, guideRowY + 34.0f), 13.5f,
+                        Vector4(0.65f, 0.75f, 0.85f, 0.75f), true,
+                        Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+
+    // ON/OFF切り替えスイッチボタン表示
+    const float btnX = contentX + 380.0f;
+    const float btnY = guideRowY + 16.0f;
+    const float btnW = 180.0f;
+    const float btnH = 26.0f;
+
+    // ボタン背景
+    Vector4 btnBgCol = ctx.showActionGuideLines
+        ? (isGuideSelected ? Vector4(0.08f, 0.42f, 0.22f, 0.95f) : Vector4(0.05f, 0.26f, 0.14f, 0.80f))
+        : (isGuideSelected ? Vector4(0.40f, 0.12f, 0.12f, 0.95f) : Vector4(0.24f, 0.08f, 0.08f, 0.80f));
+    draw.DrawFillRect(Vector2(btnX, btnY), Vector2(btnW, btnH), btnBgCol);
+
+    // 枠線
+    Vector4 borderCol = isGuideSelected ? Vector4(1.0f, 0.85f, 0.2f, 1.0f) : Vector4(0.3f, 0.45f, 0.65f, 0.7f);
+    draw.DrawFillRect(Vector2(btnX, btnY), Vector2(btnW, 1.5f), borderCol);
+    draw.DrawFillRect(Vector2(btnX, btnY + btnH - 1.5f), Vector2(btnW, 1.5f), borderCol);
+    draw.DrawFillRect(Vector2(btnX, btnY), Vector2(1.5f, btnH), borderCol);
+    draw.DrawFillRect(Vector2(btnX + btnW - 1.5f, btnY), Vector2(1.5f, btnH), borderCol);
+
+    // ON/OFF テキスト
+    const char *stateStr = isGuideSelected
+        ? (ctx.showActionGuideLines ? "◀   ON   ▶" : "◀  OFF  ▶")
+        : (ctx.showActionGuideLines ? "    ON     " : "   OFF    ");
+    Vector4 textCol = ctx.showActionGuideLines
+        ? (isGuideSelected ? Vector4(0.3f, 1.0f, 0.5f, 1.0f) : Vector4(0.2f, 0.85f, 0.4f, 0.9f))
+        : (isGuideSelected ? Vector4(1.0f, 0.45f, 0.45f, 1.0f) : Vector4(0.85f, 0.35f, 0.35f, 0.9f));
+    draw.DrawMSDFString(stateStr, Vector2(btnX + 38.0f, btnY + 4.0f), 17.0f,
+                        textCol, true, Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+  }
+
+  // その他オプション項目 (初期設定に戻す / 設定を保存して閉じる)
+  struct ActionOption {
+    const char *label;
+    const char *guide;
+  };
+  ActionOption actions[2] = {
+      {"初期設定に戻す (RESET DEFAULT)", "[ ENTER / Aボタン で初期値へ ]"},
+      {"設定を保存して閉じる (SAVE & CLOSE)", "[ ENTER / Aボタン で確定 ]"}
+  };
+
+  const float actionStartY = itemStartY + 4 * rowH + 8.0f;
+  const float actionRowH = 46.0f;
+
+  for (int i = 0; i < 2; i++) {
+    int itemIdx = 4 + i;
+    bool isSelected = (ctx.settingsMenuIndex == itemIdx);
+    float rowY = actionStartY + i * actionRowH;
+
+    if (isSelected) {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 40.0f),
+                        Vector4(0.10f, 0.25f, 0.48f, 0.88f));
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(5.0f, 40.0f),
+                        Vector4(1.0f, 0.85f, 0.2f, 1.0f));
+      draw.DrawMSDFString("▶", Vector2(contentX + 12.0f, rowY + 10.0f), 18.0f,
+                          Vector4(1.0f, 0.85f, 0.2f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.10f);
+      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 9.0f), 18.0f,
+                          Vector4(1.0f, 0.95f, 0.4f, 1.0f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+      draw.DrawMSDFString(actions[i].guide, Vector2(contentX + 410.0f, rowY + 10.0f), 15.0f,
+                          Vector4(0.4f, 0.95f, 1.0f, 0.95f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.07f);
+    } else {
+      draw.DrawFillRect(Vector2(contentX, rowY), Vector2(contentW, 40.0f),
+                        Vector4(0.04f, 0.07f, 0.12f, 0.50f));
+      draw.DrawMSDFString(actions[i].label, Vector2(contentX + 32.0f, rowY + 9.0f), 17.0f,
+                          Vector4(0.8f, 0.85f, 0.92f, 0.8f), true,
+                          Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.06f);
+    }
+  }
+
+  // 下部フッター案内
+  bool isPad = GamePadInput::IsConnected();
+  const char *footerGuide = isPad
+      ? "[ 十字キー / スティック ] 選択・変更    [ Aボタン ] 決定    [ Bボタン ] 保存して戻る"
+      : "[ W / S / ↑ ↓ ] 項目選択    [ A / D / ← → ] 設定変更    [ ENTER / SPACE ] 決定    [ ESC ] 保存して戻る";
+
+  draw.DrawFillRect(Vector2(panelPos.x, panelPos.y + panelSize.y - 48.0f),
+                    Vector2(panelSize.x, 48.0f),
+                    Vector4(0.03f, 0.05f, 0.09f, 0.95f));
+  float guideW = tr ? tr->MeasureString(footerGuide, 16.0f).x : 580.0f;
+  draw.DrawMSDFString(footerGuide,
+                      Vector2(panelPos.x + (panelSize.x - guideW) * 0.5f, panelPos.y + panelSize.y - 34.0f), 16.0f,
+                      Vector4(0.9f, 0.95f, 1.0f, 1.0f), true,
+                      Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.08f);
+}
+

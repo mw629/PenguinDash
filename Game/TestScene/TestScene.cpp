@@ -1,4 +1,4 @@
-#include "TestScene.h"
+﻿#include "TestScene.h"
 #include "Graphics/Render/Draw.h"
 #include "../../Editer/EditorManager.h"
 #include <imgui.h>
@@ -314,24 +314,10 @@ void TestScene::Update() {
 }
 
 void TestScene::Draw(class Draw& draw) {
-
 	draw.SetCamera(camera_.get());
-	// Set the SkyBox texture as environment map
 	draw.SetEnvironmentTexture(skyBoxTexture_);
 
-	//draw.DrawObj(ring_.get());
-	//draw.DrawObj(cylinder_.get());
-
 	draw.DrawObj(skyBox_.get());
-	//draw.DrawObj(model_.get());
-	//draw.DrawObj(floor.get());
-	//draw.DrawObj(nodeAnimation_.get());
 	draw.DrawAnimation(animation_.get());
 	draw.DrawModel(axe_.get());
-
-	//draw.DrawObj(sphere_.get());
-	for (int i = 0, n = static_cast<int>(particle_.size()); i < n; ++i) {
-	//	particle_[i].get()->Draw(draw);
-	}
-	//draw.DrawSprite(sprite_.get());
 }

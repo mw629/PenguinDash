@@ -25,7 +25,6 @@ namespace MatchaEngine {
 
 namespace {
 
-// UTF-8 文字列から次の Unicode コードポイントを抽出するヘルパー関数
 uint32_t DecodeUtf8(const char*& ptr, const char* end) {
     if (ptr >= end) return 0;
     unsigned char c = static_cast<unsigned char>(*ptr++);
@@ -53,7 +52,6 @@ uint32_t DecodeUtf8(const char*& ptr, const char* end) {
     return 0;
 }
 
-// 256バイト境界にアライメント
 inline UINT AlignTo256(UINT size) {
     return (size + 255) & ~255;
 }
@@ -330,3 +328,4 @@ void DynamicFontAtlas::UpdateGpu(ID3D12GraphicsCommandList* commandList) {
 }
 
 } // namespace MatchaEngine
+

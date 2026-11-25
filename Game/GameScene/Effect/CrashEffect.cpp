@@ -6,6 +6,7 @@
 
 void CrashEffect::Initialize(Texture *texture) {
   if (!texture) return;
+  isActive_ = false;
   crashTextureHandle_ = texture->CreateTexture("Resources/Texture/Crash.png");
   crashSpriteData_.transform.scale = {0.0f, 0.0f, 1.0f};
   crashSpriteData_.transform.translate = {crashPosition_.x, crashPosition_.y, 0.0f};
@@ -24,6 +25,7 @@ void CrashEffect::Initialize(Texture *texture) {
 }
 
 void CrashEffect::Trigger() {
+  isActive_ = true;
   crashTimer_ = 0.0f;
   if (crashSprite_) {
     Transform ct = crashSpriteData_.transform;
@@ -35,6 +37,7 @@ void CrashEffect::Trigger() {
 }
 
 void CrashEffect::Reset() {
+  isActive_ = false;
   crashTimer_ = 0.0f;
   if (crashSprite_) {
     Transform ct = crashSpriteData_.transform;
@@ -46,6 +49,10 @@ void CrashEffect::Reset() {
 }
 
 void CrashEffect::Update(float dt) {
+  if (!isActive_) {
+    return;
+  }
+
   crashTimer_ += dt;
   if (crashSprite_) {
     float t = std::clamp(crashTimer_ / crashScaleDuration_, 0.0f, 1.0f);
@@ -64,17 +71,17 @@ void CrashEffect::Update(float dt) {
 }
 
 void CrashEffect::Render(Draw &draw) {
-  if (crashSprite_) {
+  if (isActive_ && crashSprite_) {
     draw.DrawSprite(crashSprite_.get());
   }
 }
 
 void CrashEffect::ImGui() {
 #ifdef _USE_IMGUI
-  if (ImGui::TreeNode("Crash Effect Settings")) {
-    ImGui::DragFloat2("Position", &crashPosition_.x, 1.0f, 0.0f, 1280.0f);
-    ImGui::DragFloat("Scale Duration", &crashScaleDuration_, 0.02f, 0.05f, 2.0f);
-    if (ImGui::DragFloat2("Base Size", &crashBaseSize_.x, 1.0f, 50.0f, 1280.0f)) {
+  if (ImGui::TreeNode("クラッシュ演出設定")) {
+    ImGui::DragFloat2("画面位置", &crashPosition_.x, 1.0f, 0.0f, 1280.0f);
+    ImGui::DragFloat("拡大演出持続時間", &crashScaleDuration_, 0.02f, 0.05f, 2.0f);
+    if (ImGui::DragFloat2("基本サイズ", &crashBaseSize_.x, 1.0f, 50.0f, 1280.0f)) {
       if (crashSprite_) {
         crashSprite_->SetSize(crashBaseSize_);
         crashSprite_->UpdateVertexBuffer();
@@ -84,3 +91,4 @@ void CrashEffect::ImGui() {
   }
 #endif
 }
+

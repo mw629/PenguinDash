@@ -1,0 +1,406 @@
+2026/10/23 2:00:22 にビルドを開始しました。
+ログの詳細度は次のように設定されています: Normal。
+     1>ノード 1 上のプロジェクト "C:\Users\Masat\source\repos\MyEngine\CG.sln" (既定のターゲット)。
+     1>ValidateSolutionConfiguration:
+         ソリューション構成 "Debug|x64" をビルドしています。
+     1>プロジェクト "C:\Users\Masat\source\repos\MyEngine\CG.sln" (1) は、ノード 2 上に "C:\Users\Masat\source\repos\MyEngine\externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj" (3) をビルドしています (既定のターゲット)。
+     3>PrepareForBuild:
+         構造化出力が有効になっています。コンパイラ診断の書式設定にはエラー階層が反映されます。詳細については、https://aka.ms/cpp/structured-output を参照してください。
+       InitializeBuildStatus:
+         "AlwaysCreate" が指定されたため "Bin\Desktop_2022_Win10\x64\Debug\DirectXTex.tlog\unsuccessfulbuild" を作成しています。
+         "Bin\Desktop_2022_Win10\x64\Debug\DirectXTex.tlog\unsuccessfulbuild" のタッチ タスクを実行しています。
+       ClCompile:
+         すべての出力が最新のものです。
+         すべての出力が最新のものです。
+       Lib:
+         すべての出力が最新のものです。
+         DirectXTex_Desktop_2022_Win10.vcxproj -> C:\Users\Masat\source\repos\MyEngine\externals\DirectXTex\Bin\Desktop_2022_Win10\x64\Debug\DirectXTex.lib
+       FinalizeBuildStatus:
+         ファイル "Bin\Desktop_2022_Win10\x64\Debug\DirectXTex.tlog\unsuccessfulbuild" を削除しています。
+         "Bin\Desktop_2022_Win10\x64\Debug\DirectXTex.tlog\DirectXTex.lastbuildstate" のタッチ タスクを実行しています。
+     3>プロジェクト "C:\Users\Masat\source\repos\MyEngine\externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj" (既定のターゲット) のビルドが完了しました。
+     1>プロジェクト "C:\Users\Masat\source\repos\MyEngine\CG.sln" (1) は、ノード 1 上に "C:\Users\Masat\source\repos\MyEngine\CG.vcxproj" (2) をビルドしています (既定のターゲット)。
+     2>C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(550,5): warning MSB8028: 中間ディレクトリ (C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\) に別のプロジェクト (DirectXTex.vcxproj, TD2_02.vcxproj) と共有されているファイルが含まれています。これにより、クリーンしてリビルド動作が適切に行われない可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         構造化出力が有効になっています。コンパイラ診断の書式設定にはエラー階層が反映されます。詳細については、https://aka.ms/cpp/structured-output を参照してください。
+     2>InitializeBuildStatus:
+         "AlwaysCreate" が指定されたため "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CG.tlog\unsuccessfulbuild" を作成しています。
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CG.tlog\unsuccessfulbuild" のタッチ タスクを実行しています。
+       PreBuildEvent:
+         powershell -ExecutionPolicy Bypass -NoProfile -File "C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "C:\Users\Masat\source\repos\MyEngine\\."
+         :VCEnd
+         [GenerateEmbeddedEnv] EmbeddedEnv.h is up to date.
+       ComputeStdModulesCompileInputs:
+         ライブラリ 'microsoft/STL' のデータを提供するライブラリ マニフェスト ファイル 'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\modules\modules.json' を読み取っています。
+         このプロジェクトでビルドするライブラリ 'microsoft/STL' からモジュール ソース 'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\modules\std.ixx' を追加しています。
+         このプロジェクトでビルドするライブラリ 'microsoft/STL' からモジュール ソース 'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\modules\std.compat.ixx' を追加しています。
+       ClCompile:
+         C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x64\CL.exe /c /IC:\Users\Masat\source\repos\MyEngine\Editer /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\System /IC:\Users\Masat\source\repos\MyEngine\externals /IC:\Users\Masat\source\repos\MyEngine\Game/Direction /IC:\Users\Masat\source\repos\MyEngine\Game/GameScene /IC:\Users\Masat\source\repos\MyEngine\Game/TestScene /IC:\Users\Masat\source\repos\MyEngine\externals\assimp\include /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine /IC:\Users\Masat\source\repos\MyEngine\externals\imgui /IC:\Users\Masat\source\repos\MyEngine\externals\DirectXTex /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Common /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Core /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Light /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Effect /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Camera /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Object /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Object\2d /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Object\3d /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Object\Animation /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\GameObjects\Line /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Graphics /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Graphics\Render /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Input /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Math /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO /IC:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource /IC:\Users\Masat\source\repos\MyEngine\Shared /ZI /JMC /nologo /W4 /WX- /diagnostics:column /sdl /MP /Od /D _DEBUG /D _WINDOWS /D _USE_IMGUI /D _UNICODE /D UNICODE /Gm- /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++20 /permissive- /Fo"C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\\" /Fd"C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\vc145.pdb" /external:W4 /Gd /TP /FC /errorReport:queue /utf-8 Game\GameScene\Entity\Boss.cpp Editer\EditorUI.cpp Editer\EditorManager.cpp Editer\Command\CommandManager.cpp Editer\LanguageManager.cpp Game\GameScene\GameSceneManager.cpp Game\JsonScene\JsonScene.cpp MatchaEngine\Graphics\Render\LineRenderer.cpp MatchaEngine\System\GameObjectManager.cpp MatchaEngine\System\CollisionManager.cpp MatchaEngine\GameObjects\Component\MaterialComponent.cpp MatchaEngine\GameObjects\Component\ColliderComponent.cpp MatchaEngine\Resource\AssetManager.cpp Game\GameScene\Entity\Player.cpp Game\GameScene\Entity\Collision.cpp Game\GameScene\Entity\Obstacle.cpp Game\GameScene\Stage\StageSettings.cpp MatchaEngine\GameObjects\Object\3d\Cylinder.cpp Game\GameApplication.cpp MatchaEngine\GameObjects\Object\3d\Cube.cpp MatchaEngine\GameObjects\Object\3d\Sphere.cpp MatchaEngine\GameObjects\Object\3d\Triangle.cpp MatchaEngine\GameObjects\Object\Animation\CharacterAnimator.cpp MatchaEngine\GameObjects\Light\LightManager.cpp MatchaEngine\GameObjects\Light\PointLight.cpp MatchaEngine\GameObjects\Object\ObjectBase.cpp MatchaEngine\Graphics\RenderTexture.cpp MatchaEngine\GameObjects\Object\3d\Ring.cpp MatchaEngine\GameObjects\Effect\Emitter.cpp Game\Direction\FreezeTransition.cpp MatchaEngine\GameObjects\Camera\Camera.cpp Game\GameScene\GameScene.cpp Game\GameScene\Effect\GameSceneEffect.cpp Game\GameScene\Effect\HexBarrier.cpp MatchaEngine\Graphics\Render\PostEffect.cpp MatchaEngine\Input\GamePadInput.cpp MatchaEngine\GameObjects\Line\Line.cpp MatchaEngine\GameObjects\Line\Grid.cpp MatchaEngine\Graphics\DepthStencil.cpp MatchaEngine\Graphics\DescriptorHeap.cpp MatchaEngine\GameObjects\Light\DirectionalLight.cpp MatchaEngine\Graphics\GpuSyncManager.cpp MatchaEngine\Graphics\GpuProfiler.cpp MatchaEngine\GameObjects\Camera\DebugCamera.cpp MatchaEngine\GameObjects\Object\2d\Sprite.cpp MatchaEngine\PSO\ComputePipeline.cpp MatchaEngine\PSO\PipelineState.cpp MatchaEngine\PSO\ShaderCompiler.cpp MatchaEngine\Resource\Audio.cpp MatchaEngine\Input\Input.cpp MatchaEngine\Engine.cpp MatchaEngine\Math\Calculation.cpp MatchaEngine\Common\CommandContext.cpp MatchaEngine\Graphics\Render\Draw.cpp externals\imgui\imgui.cpp externals\imgui\ImGuizmo.cpp externals\imgui\imgui_demo.cpp externals\imgui\imgui_draw.cpp externals\imgui\imgui_impl_dx12.cpp externals\imgui\imgui_impl_win32.cpp externals\imgui\imgui_tables.cpp externals\imgui\imgui_widgets.cpp MatchaEngine\Graphics\GraphicsDevice.cpp MatchaEngine\PSO\GraphicsPipelineState.cpp MatchaEngine\Core\LogHandler.cpp main.cpp MatchaEngine\PSO\RootSignature.cpp MatchaEngine\Core\WindowConfig.cpp MatchaEngine\Core\ImGuiManager.cpp MatchaEngine\GameObjects\MaterialFactory.cpp MatchaEngine\GameObjects\Object\3d\Model.cpp MatchaEngine\Resource\Load.cpp MatchaEngine\Resource\TextureLoader.cpp MatchaEngine\Graphics\RenderTargetView.cpp MatchaEngine\PSO\Sampler.cpp MatchaEngine\Graphics\ResourceBarrierHelper.cpp MatchaEngine\Graphics\SwapChain.cpp MatchaEngine\Resource\Texture.cpp MatchaEngine\Graphics\ViewportScissor.cpp Game\SceneManager.cpp MatchaEngine\Resource\ModelManager.cpp MatchaEngine\GameObjects\Effect\EffectDefinition.cpp MatchaEngine\GameObjects\Light\SpotLight.cpp MatchaEngine\GameObjects\Object\Animation\TransformAnimation.cpp Game\TestScene\TestScene.cpp Game\GameScene\System\PauseSystem.cpp Game\GameScene\System\SoundManager.cpp Game\GameScene\Camera\GameCameraController.cpp Game\GameScene\Effect\CrashEffect.cpp Game\GameScene\Effect\RankingCutinEffect.cpp Game\GameScene\System\Achievement.cpp Game\GameScene\System\AchievementManager.cpp Game\GameScene\System\BossBattleController.cpp Game\GameScene\System\ScoreManager.cpp Game\GameScene\System\TitleDirector.cpp Game\GameScene\UI\GameHUD.cpp MatchaEngine\Graphics\Font\MsdfGenerator.cpp MatchaEngine\Graphics\Font\DynamicFontAtlas.cpp MatchaEngine\Graphics\Font\TextRenderer.cpp MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.cpp MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.cpp MatchaEngine\Network\Firebase\EnvLoader.cpp MatchaEngine\Network\Firebase\HttpClient.cpp MatchaEngine\Network\Firebase\FirebaseRankingManager.cpp
+         Boss.cpp
+         EditorUI.cpp
+         EditorManager.cpp
+         CommandManager.cpp
+         LanguageManager.cpp
+         GameSceneManager.cpp
+         JsonScene.cpp
+         LineRenderer.cpp
+         GameObjectManager.cpp
+         CollisionManager.cpp
+         MaterialComponent.cpp
+         ColliderComponent.cpp
+         AssetManager.cpp
+         Player.cpp
+         Collision.cpp
+         Obstacle.cpp
+         StageSettings.cpp
+         Cylinder.cpp
+         GameApplication.cpp
+         Cube.cpp
+         Sphere.cpp
+         Triangle.cpp
+         CharacterAnimator.cpp
+         LightManager.cpp
+         PointLight.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\Game\GameScene\Stage\StageSettings.cpp(185,64): warning C4100: 'view': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\Game\JsonScene\JsonScene.cpp(127,37): warning C4101: 'e': ローカル変数は 1 度も使われていません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: '=': 'int' から 'char' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         (ソース ファイル 'Game/JsonScene/JsonScene.cpp' をコンパイルしています)
+             C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24):
+             テンプレートインスタンス化コンテキスト (最初に最も古いもの) は
+                 C:\Users\Masat\source\repos\MyEngine\Game\JsonScene\JsonScene.cpp(115,10):
+                 コンパイル対象の関数 テンプレート インスタンス化 '_OutIt std::transform<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,int(__cdecl *)(int)>(const _InIt,const _InIt,_OutIt,_Fn)' のリファレンスを確認してください
+                 with
+                 [
+                     _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+                     _Elem=char,
+                     _InIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+                     _Fn=int (__cdecl *)(int)
+                 ]
+         
+     2>C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(1694,11): warning C4456: 'availSize' を宣言すると、以前のローカル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+             C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(954,9):
+             'availSize' の宣言を確認してください
+         
+     2>C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(1695,11): warning C4456: 'imageSize' を宣言すると、以前のローカル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+             C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(955,9):
+             'imageSize' の宣言を確認してください
+         
+     2>C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(1696,11): warning C4456: 'cursorStart' を宣言すると、以前のローカル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+             C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(956,9):
+             'cursorStart' の宣言を確認してください
+         
+     2>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: '=': 'int' から 'char' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         (ソース ファイル 'Editer/EditorManager.cpp' をコンパイルしています)
+             C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24):
+             テンプレートインスタンス化コンテキスト (最初に最も古いもの) は
+                 C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(88,9):
+                 コンパイル対象の関数 テンプレート インスタンス化 '_OutIt std::transform<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,int(__cdecl *)(int)>(const _InIt,const _InIt,_OutIt,_Fn)' のリファレンスを確認してください
+                 with
+                 [
+                     _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+                     _Elem=char,
+                     _InIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+                     _Fn=int (__cdecl *)(int)
+                 ]
+         
+         ObjectBase.cpp
+         RenderTexture.cpp
+         Ring.cpp
+         Emitter.cpp
+         FreezeTransition.cpp
+         Camera.cpp
+         GameScene.cpp
+         GameSceneEffect.cpp
+         HexBarrier.cpp
+         PostEffect.cpp
+         GamePadInput.cpp
+         Line.cpp
+         Grid.cpp
+         DepthStencil.cpp
+         DescriptorHeap.cpp
+         DirectionalLight.cpp
+         GpuSyncManager.cpp
+         GpuProfiler.cpp
+         DebugCamera.cpp
+         Sprite.cpp
+         ComputePipeline.cpp
+         PipelineState.cpp
+         ShaderCompiler.cpp
+         Audio.cpp
+         Input.cpp
+         Engine.cpp
+         Calculation.cpp
+         CommandContext.cpp
+         Draw.cpp
+         imgui.cpp
+         ImGuizmo.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(759,28): warning C4245: '初期化中': 'int' から 'ImGuiID' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245: '引数': 'int' から 'const T' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:         with [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:         [ [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:             T=ImU32 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:         ] [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(1989,35): warning C4245: '=': 'int' から 'ImGuiID' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2574,35): warning C4245: '=': 'int' から 'ImGuiID' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245: '引数': 'int' から 'const T' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:         with [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:         [ [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:             T=ImU32 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:         ] [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         imgui_demo.cpp
+         imgui_draw.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Input\Input.cpp(100,31): warning C4244: '初期化中': 'LONG' から 'float' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Input\Input.cpp(100,49): warning C4244: '初期化中': 'LONG' から 'float' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         imgui_impl_dx12.cpp
+         imgui_impl_win32.cpp
+         imgui_tables.cpp
+     2>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: '=': 'int' から 'char' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         (ソース ファイル 'Game/GameScene/GameScene.cpp' をコンパイルしています)
+             C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24):
+             テンプレートインスタンス化コンテキスト (最初に最も古いもの) は
+                 C:\Users\Masat\source\repos\MyEngine\Game\GameScene\GameScene.cpp(126,14):
+                 コンパイル対象の関数 テンプレート インスタンス化 '_OutIt std::transform<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,int(__cdecl *)(int)>(const _InIt,const _InIt,_OutIt,_Fn)' のリファレンスを確認してください
+                 with
+                 [
+                     _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+                     _Elem=char,
+                     _InIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+                     _Fn=int (__cdecl *)(int)
+                 ]
+         
+         imgui_widgets.cpp
+         GraphicsDevice.cpp
+         GraphicsPipelineState.cpp
+         LogHandler.cpp
+         main.cpp
+         RootSignature.cpp
+         WindowConfig.cpp
+         ImGuiManager.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(73,33): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(79,34): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(83,34): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(98,29): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         MaterialFactory.cpp
+         Model.cpp
+         Load.cpp
+         TextureLoader.cpp
+         RenderTargetView.cpp
+         Sampler.cpp
+         ResourceBarrierHelper.cpp
+         SwapChain.cpp
+         Texture.cpp
+         ViewportScissor.cpp
+         SceneManager.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Engine.cpp(284,27): warning C4458: 'descriptorHeaps' を宣言すると、クラス メンバーが隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+             C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Engine.h(247,24):
+             'Engine::descriptorHeaps' の宣言を確認してください
+         
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Engine.cpp(413,25): warning C4458: 'descriptorHeaps' を宣言すると、クラス メンバーが隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+             C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Engine.h(247,24):
+             'Engine::descriptorHeaps' の宣言を確認してください
+         
+         ModelManager.cpp
+         EffectDefinition.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO\GraphicsPipelineState.cpp(11,115): warning C4100: 'device': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO\GraphicsPipelineState.cpp(11,72): warning C4100: 'blendMode': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO\GraphicsPipelineState.cpp(11,50): warning C4100: 'shaderName': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         SpotLight.cpp
+         TransformAnimation.cpp
+         TestScene.cpp
+         PauseSystem.cpp
+         SoundManager.cpp
+         GameCameraController.cpp
+         CrashEffect.cpp
+         RankingCutinEffect.cpp
+         Achievement.cpp
+         AchievementManager.cpp
+         BossBattleController.cpp
+         ScoreManager.cpp
+         TitleDirector.cpp
+         GameHUD.cpp
+         MsdfGenerator.cpp
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\ModelManager.cpp(38,42): warning C4459: 'modelNumber' を宣言すると、グローバル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+             C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\ModelManager.cpp(7,6):
+             '`anonymous-namespace'::modelNumber' の宣言を確認してください
+         
+     2>C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\ModelManager.cpp(79,56): warning C4267: '=': 'size_t' から 'UINT' に変換しました。データが失われているかもしれません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         DynamicFontAtlas.cpp
+         TextRenderer.cpp
+         TcpNetworkClient.cpp
+         TcpNetworkHandlerBase.cpp
+         EnvLoader.cpp
+         HttpClient.cpp
+         FirebaseRankingManager.cpp
+       Link:
+         C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"C:\Users\Masat\source\repos\MyEngine\..\generated\outputs\MyEngine\Debug\CG.exe" /INCREMENTAL /ILK:"C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CG.ilk" /NOLOGO /LIBPATH:C:\Users\Masat\source\repos\MyEngine\externals\assimp\lib\Debug /WX "assimp-vc143-mtd.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Masat\source\repos\MyEngine\..\generated\outputs\MyEngine\Debug\CG.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Masat\source\repos\MyEngine\..\generated\outputs\MyEngine\Debug\CG.lib" /MACHINE:X64 /ignore:4049 /ignore:4098 /ignore:4099 "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Boss.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\EditorUI.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\EditorManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CommandManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\LanguageManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameSceneManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\JsonScene.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\LineRenderer.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameObjectManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CollisionManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\MaterialComponent.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ColliderComponent.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\AssetManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Player.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Collision.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Obstacle.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\StageSettings.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Cylinder.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameApplication.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Cube.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Sphere.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Triangle.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CharacterAnimator.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\LightManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\PointLight.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ObjectBase.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\RenderTexture.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Ring.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Emitter.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\FreezeTransition.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Camera.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameScene.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameSceneEffect.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\HexBarrier.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\PostEffect.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GamePadInput.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Line.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Grid.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\DepthStencil.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\DescriptorHeap.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\DirectionalLight.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GpuSyncManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GpuProfiler.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\DebugCamera.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Sprite.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ComputePipeline.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\PipelineState.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ShaderCompiler.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Audio.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Input.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Engine.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Calculation.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CommandContext.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Draw.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ImGuizmo.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui_demo.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui_draw.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui_impl_dx12.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui_impl_win32.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui_tables.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\imgui_widgets.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GraphicsDevice.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GraphicsPipelineState.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\LogHandler.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\main.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\RootSignature.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\WindowConfig.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ImGuiManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\MaterialFactory.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Model.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Load.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TextureLoader.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\RenderTargetView.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Sampler.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ResourceBarrierHelper.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\SwapChain.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Texture.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ViewportScissor.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\SceneManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ModelManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\EffectDefinition.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\SpotLight.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TransformAnimation.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TestScene.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\PauseSystem.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\SoundManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameCameraController.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CrashEffect.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\RankingCutinEffect.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\Achievement.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\AchievementManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\BossBattleController.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\ScoreManager.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TitleDirector.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\GameHUD.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\MsdfGenerator.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\DynamicFontAtlas.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TextRenderer.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TcpNetworkClient.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\TcpNetworkHandlerBase.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\EnvLoader.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\HttpClient.obj"
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\FirebaseRankingManager.obj"
+         C:\Users\Masat\source\repos\MyEngine\externals\DirectXTex\Bin\Desktop_2022_Win10\x64\Debug\DirectXTex.lib
+         CG.vcxproj -> C:\Users\Masat\source\repos\generated\outputs\MyEngine\Debug\CG.exe
+       PostBuildEvent:
+         copy "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\dxcompiler.dll" "C:\Users\Masat\source\repos\generated\outputs\MyEngine\Debug\dxcompiler.dll"
+         copy "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\dxil.dll" "C:\Users\Masat\source\repos\generated\outputs\MyEngine\Debug\dxil.dll"
+         robocopy "C:\Users\Masat\source\repos\MyEngine\Resources" "C:\Users\Masat\source\repos\generated\outputs\MyEngine\Debug\Resources" /E /XO /NDL /NFL /NJH /NJS
+         if %ERRORLEVEL% LSS 8 exit /b 0
+         :VCEnd
+                 1 file(s) copied.
+                 1 file(s) copied.
+         
+       TlogCleanup:
+         プロジェクトまたはビルドから削除された tlog から次の項目を削除しています: C:\Users\Masat\source\repos\MyEngine\Game\Direction\Fade.cpp
+       FinalizeBuildStatus:
+         ファイル "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CG.tlog\unsuccessfulbuild" を削除しています。
+         "C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\CG.tlog\CG.lastbuildstate" のタッチ タスクを実行しています。
+     2>プロジェクト "C:\Users\Masat\source\repos\MyEngine\CG.vcxproj" (既定のターゲット) のビルドが完了しました。
+     1>プロジェクト "C:\Users\Masat\source\repos\MyEngine\CG.sln" (既定のターゲット) のビルドが完了しました。
+
+ビルドに成功しました。
+
+       "C:\Users\Masat\source\repos\MyEngine\CG.sln" (既定のターゲット) (1) ->
+       "C:\Users\Masat\source\repos\MyEngine\CG.vcxproj" (既定のターゲット) (2) ->
+       (PrepareForBuild ターゲット) -> 
+         C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(550,5): warning MSB8028: 中間ディレクトリ (C:\Users\Masat\source\repos\MyEngine\..\generated\$CG\Debug\) に別のプロジェクト (DirectXTex.vcxproj, TD2_02.vcxproj) と共有されているファイルが含まれています。これにより、クリーンしてリビルド動作が適切に行われない可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+
+
+       "C:\Users\Masat\source\repos\MyEngine\CG.sln" (既定のターゲット) (1) ->
+       "C:\Users\Masat\source\repos\MyEngine\CG.vcxproj" (既定のターゲット) (2) ->
+       (ClCompile ターゲット) -> 
+         C:\Users\Masat\source\repos\MyEngine\Game\GameScene\Stage\StageSettings.cpp(185,64): warning C4100: 'view': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\Game\JsonScene\JsonScene.cpp(127,37): warning C4101: 'e': ローカル変数は 1 度も使われていません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: '=': 'int' から 'char' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(1694,11): warning C4456: 'availSize' を宣言すると、以前のローカル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(1695,11): warning C4456: 'imageSize' を宣言すると、以前のローカル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\Editer\EditorManager.cpp(1696,11): warning C4456: 'cursorStart' を宣言すると、以前のローカル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: '=': 'int' から 'char' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(759,28): warning C4245: '初期化中': 'int' から 'ImGuiID' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245: '引数': 'int' から 'const T' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:         with [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:         [ [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:             T=ImU32 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(769,32): warning C4245:         ] [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(1989,35): warning C4245: '=': 'int' から 'ImGuiID' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2574,35): warning C4245: '=': 'int' から 'ImGuiID' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245: '引数': 'int' から 'const T' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:         with [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:         [ [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:             T=ImU32 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+       C:\Users\Masat\source\repos\MyEngine\externals\imgui\ImGuizmo.cpp(2639,38): warning C4245:         ] [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Input\Input.cpp(100,31): warning C4244: '初期化中': 'LONG' から 'float' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Input\Input.cpp(100,49): warning C4244: '初期化中': 'LONG' から 'float' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: '=': 'int' から 'char' への変換です。データが失われる可能性があります。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(73,33): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(79,34): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(83,34): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\Audio.cpp(98,29): warning C4245: '引数': '__MIDL___MIDL_itf_mfreadwrite_0000_0001_0001' から 'DWORD' に変換しました。signed/unsigned が一致しません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Engine.cpp(284,27): warning C4458: 'descriptorHeaps' を宣言すると、クラス メンバーが隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Engine.cpp(413,25): warning C4458: 'descriptorHeaps' を宣言すると、クラス メンバーが隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO\GraphicsPipelineState.cpp(11,115): warning C4100: 'device': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO\GraphicsPipelineState.cpp(11,72): warning C4100: 'blendMode': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\PSO\GraphicsPipelineState.cpp(11,50): warning C4100: 'shaderName': 参照されないパラメーター [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\ModelManager.cpp(38,42): warning C4459: 'modelNumber' を宣言すると、グローバル宣言が隠蔽されます [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+         C:\Users\Masat\source\repos\MyEngine\MatchaEngine\Resource\ModelManager.cpp(79,56): warning C4267: '=': 'size_t' から 'UINT' に変換しました。データが失われているかもしれません。 [C:\Users\Masat\source\repos\MyEngine\CG.vcxproj]
+
+    27 個の警告
+    0 エラー
+
+経過時間 00:00:20.96

@@ -1,13 +1,16 @@
 #pragma once
 #include "../../Editer/EditorUI.h"
-#include "../Direction/Fade.h"
 #include "../Direction/FreezeTransition.h"
 #include "../IScene.h"
 #include "Camera/GameCameraController.h"
+#include "DirectionalLight.h"
 #include "Effect/CrashEffect.h"
 #include "Effect/GameSceneEffect.h"
+#include "Effect/RankingCutinEffect.h"
 #include "GameObjectManager.h"
+#include "PointLight.h"
 #include "RenderObject.h"
+#include "System/AchievementManager.h"
 #include "System/BossBattleController.h"
 #include "System/ScoreManager.h"
 #include "System/TitleDirector.h"
@@ -17,17 +20,31 @@
 #include <Entity/Collision.h>
 #include <Entity/Player.h>
 #include <Stage/StageSettings.h>
-#include <System/CollisionManager.h>
 #include <memory>
 #include <string>
 
+class IGameSceneState;
+class IPlayingState;
+
 class GameScene : public IScene {
+  friend class TitleSceneState;
+  friend class PlayingSceneState;
+  friend class PausedSceneState;
+  friend class PlayerHitSceneState;
+  friend class FirstPlaceCutInSceneState;
+  friend class GameOverSceneState;
+  friend class EditorSceneState;
+  friend class ThreeLanePlayingState;
+  friend class OneLanePlayingState;
+  friend class BossPlayingState;
+
 public:
   enum GameState {
     Title,
     Playing,
     Paused,
     PlayerHit,
+    FirstPlaceCutIn,
     GameClear,
     GameOver,
     Editor
@@ -39,27 +56,50 @@ private:
   // 基本システム・アセット
   std::unique_ptr<Texture> texture_ = std::make_unique<Texture>();
 
-  // ゲーム状態
+  // ゲーム状態（Stateパターン）
   GameState gameState_ = GameState::Title;
   PlayingState playingState_ = PlayingState::ThreeLane;
+  const IGameSceneState *currentGameState_ = nullptr;
+  const IPlayingState *currentPlayingState_ = nullptr;
+
+  void SetGameState(GameState newState);
+  static const IGameSceneState *ResolveGameSceneState(GameState state);
+  static const IPlayingState *ResolvePlayingState(PlayingState state);
 
   // 分離したモジュールクラス群
   std::unique_ptr<GameCameraController> cameraController_ =
       std::make_unique<GameCameraController>();
   std::unique_ptr<ScoreManager> scoreManager_ =
       std::make_unique<ScoreManager>();
-  std::unique_ptr<CrashEffect> crashEffect_ =
-      std::make_unique<CrashEffect>();
+  std::unique_ptr<AchievementManager> achievementManager_ =
+      std::make_unique<AchievementManager>();
+  std::unique_ptr<CrashEffect> crashEffect_ = std::make_unique<CrashEffect>();
+  std::unique_ptr<RankingCutinEffect> rankingCutinEffect_ =
+      std::make_unique<RankingCutinEffect>();
+  bool forceFirstPlaceCutInTest_ = false;
+  int testCutinType_ = 0; // 0: Score, 1: Distance, 2: Double
   std::unique_ptr<BossBattleController> bossBattleController_ =
       std::make_unique<BossBattleController>();
   std::unique_ptr<TitleDirector> titleDirector_ =
       std::make_unique<TitleDirector>();
-  std::unique_ptr<GameHUD> gameHUD_ =
-      std::make_unique<GameHUD>();
+  std::unique_ptr<GameHUD> gameHUD_ = std::make_unique<GameHUD>();
+
+  // 実績トラッキング用変数
+  float playTime_ = 0.0f;
+  int jumpCount_ = 0;
+  int rollCount_ = 0;
+  int laneChangeCount_ = 0;
+  float unMovedTime_ = 0.0f;
+  int barrierBlockCount_ = 0;
+  int clearBombCount_ = 0;
+  int itemGetCount_ = 0;
+  int oneLaneClearCount_ = 0;
+  bool wasJumping_ = false;
+  bool wasRolling_ = false;
+  int lastPlayerLane_ = 0;
 
   // 定数
   static constexpr Vector3 kDefaultSkyBoxScale = {100.0f, 100.0f, 100.0f};
-  static constexpr float kDefaultFadeDuration = 0.5f;
   static constexpr float kOneLaneTotalDistance = 200.0f;
   static constexpr float kDustGroundThresholdY = 3.01f;
   static constexpr float kInvertedCameraThresholdRotateY = 1.57f;
@@ -83,11 +123,17 @@ private:
   // エンティティ・ワールド管理
   std::shared_ptr<Player> player_ = std::make_shared<Player>();
   std::shared_ptr<Boss> boss_ = std::make_shared<Boss>();
+  std::shared_ptr<DirectionalLight> mainDirLight_ =
+      std::make_shared<DirectionalLight>();
+  std::shared_ptr<DirectionalLight> subDirLight_ =
+      std::make_shared<DirectionalLight>();
+  std::shared_ptr<PointLight> coursePointLight_ =
+      std::make_shared<PointLight>();
+  std::shared_ptr<PointLight> bossPointLight_ = std::make_shared<PointLight>();
   std::unique_ptr<GameObjectManager> gameObjectManager_ =
       std::make_unique<GameObjectManager>();
   std::unique_ptr<StageSettings> stageSettings_ =
       std::make_unique<StageSettings>();
-  std::unique_ptr<CollisionManager> collisionManager_;
   std::unique_ptr<GameSceneEffect> effectManager_ =
       std::make_unique<GameSceneEffect>();
   std::unique_ptr<EditorUI> editorUI_ = std::make_unique<EditorUI>();
@@ -99,48 +145,358 @@ private:
   // ボス戦終了後のクールタイム開始用フラグ
   bool wasBossBattle_ = false;
 
-  // 画面遷移・フェード演出
-  std::unique_ptr<Fade> fade_ = std::make_unique<Fade>();
+  // 画面遷移
   enum class ResultTransition { None, Restart, Title };
   ResultTransition resultTransition_ = ResultTransition::None;
-  float fadeDuration_ = kDefaultFadeDuration;
+  float resultTimer_ = 0.0f;
+  int resultAchievementScrollOffset_ = 0;
+  float resultScrollRepeatTimer_ = 0.0f;
 
-  // シーン読み込み用
-  std::string initialSceneJson_ = "Resources/Json/Scene/scene.json";
   float uiTimer_ = 0.0f;
   class Draw *draw_ = nullptr;
 
+  /// <summary>
+  /// ワールド内オブジェクトの一括更新
+  /// </summary>
+  void UpdateWorldEntities(float timeScale, float speedMultiplier);
+
+  /// <summary>
+  /// プレイヤーと障害物の当たり判定処理
+  /// </summary>
   void CheckCollisions();
+
+  /// <summary>
+  /// スライディング継続判定処理
+  /// </summary>
   void CheckKeepRolling();
+
+  /// <summary>
+  /// 画面遷移演出（氷結・破砕）の開始
+  /// </summary>
+  /// <param name="target">遷移先（リスタート / タイトル復帰）</param>
   void StartResultTransition(ResultTransition target);
 
+  /// <summary>
+  /// シーン内のデフォルトライト配置・パラメータ設定
+  /// </summary>
+  void SetupDefaultLights();
+
+  /// <summary>
+  /// 太陽の軌道運動・時間帯に応じたライト方向・色・強度の更新
+  /// </summary>
+  /// <param name="dt">デルタタイム（秒）</param>
+  void UpdateSunLight(float dt);
+
+  /// <summary>
+  /// ジャンプ・しゃがみタイミングのガイド線描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
+  void DrawActionGuideLines(class Draw &draw);
+
+  // ジャンプ・しゃがみタイミングガイド線設定
+  bool showActionGuideLines_ = true;
+  float guideLineHeight_ = 2.18f;        // ガイド線の地面高さ（雪面よりわずかに上）
+  float jumpGuideTimingDistance_ = 3.0f; // ジャンプ推奨手前距離（約15フレーム分、3.0m）
+  float rollGuideTimingDistance_ = 3.0f; // しゃがみ/ロール推奨手前距離（ジャンプと同タイミング、3.0m）
+  Vector4 jumpGuideColor_ = {0.15f, 0.95f, 0.35f, 1.0f};  // ジャンプガイド色（ネオングリーン）
+  Vector4 rollGuideColor_ = {1.0f, 0.65f, 0.05f, 1.0f};   // しゃがみガイド色（鮮やかオレンジ）
+  bool showPlayerTargetLine_ = true;                     // プレイヤー判定線の表示
+  Vector4 playerTargetLineColor_ = {0.35f, 0.85f, 1.0f, 0.7f}; // プレイヤー判定線色（シアン）
+
+  bool isMasterLightingEnabled_ = true;
+  bool isSunOrbitEnabled_ = true;
+  bool isSunColorTransitionEnabled_ = true;
+  float sunCycleDuration_ = 24.0f; // 1周（昼→夕→夜→朝→昼）にかかる秒数
+  float sunAngle_ = 0.45f;         // 太陽の軌道角 (rad: 0=昼, π/2=夕, π=夜, 3π/2=朝)
+  float sunOrbitRadius_ = 35.0f;   // 太陽の軌道半径 (m)
+  float sunMaxElevation_ = 28.0f;  // 南中時の最大高度Y (m)
+  float sunMinElevation_ = 7.0f;   // 朝夕・夜間の最低高度Y (m)
+  float sunOrbitOffsetZ_ = -15.0f; // カメラ手前側のZオフセット (m)
+
+  // 時間帯別ライティング設定（昼: 白で明るく / 夕: 赤色で薄暗く / 夜: くらくして / 朝: 赤色で薄暗く）
+  Vector4 dayMainColor_ = {1.00f, 0.99f, 0.96f, 1.0f};    // 昼の太陽光色 (白)
+  Vector4 daySubColor_ = {0.70f, 0.85f, 1.00f, 1.0f};     // 昼の環境補助光色
+  Vector4 daySkyColor_ = {1.00f, 1.00f, 1.00f, 1.0f};     // 昼の空色 (白く明るい空)
+  float dayMainIntensity_ = 1.15f;                        // 昼のメイン光強度 (明るく)
+  float daySubIntensity_ = 0.45f;                         // 昼の補助光強度
+
+  Vector4 sunsetMainColor_ = {1.00f, 0.15f, 0.08f, 1.0f}; // 夕方の太陽光色 (鮮やかな赤色)
+  Vector4 sunsetSubColor_ = {0.65f, 0.12f, 0.25f, 1.0f};  // 夕方の補助光色 (赤紫色の環境光)
+  Vector4 sunsetSkyColor_ = {0.75f, 0.18f, 0.16f, 1.0f};  // 夕方の空色 (赤色で薄暗く)
+  float sunsetMainIntensity_ = 0.58f;                     // 夕方のメイン光強度 (薄暗く)
+  float sunsetSubIntensity_ = 0.20f;                      // 夕方の補助光強度
+
+  Vector4 nightMainColor_ = {0.30f, 0.45f, 0.80f, 1.0f}; // 夜の月光色
+  Vector4 nightSubColor_ = {0.10f, 0.16f, 0.35f, 1.0f};  // 夜の環境補助光色
+  float nightMainIntensity_ = 0.16f;                      // 夜のメイン光強度 (くらくして)
+  float nightSubIntensity_ = 0.05f;                       // 夜の補助光強度
+  float nightSkyBrightness_ = 0.12f;                      // 夜の空の明るさ (暗い夜空)
+  float nightIntensityScale_ = 1.0f;                      // 夜の明るさ倍率 (0.0〜2.0)
+
+  Vector4 sunriseMainColor_ = {1.00f, 0.18f, 0.10f, 1.0f};// 朝の太陽光色 (赤色)
+  Vector4 sunriseSubColor_ = {0.60f, 0.15f, 0.30f, 1.0f}; // 朝の補助光色 (赤紫色の環境光)
+  Vector4 sunriseSkyColor_ = {0.75f, 0.20f, 0.18f, 1.0f}; // 朝の空色 (赤色で薄暗く)
+  float sunriseMainIntensity_ = 0.58f;                    // 朝のメイン光強度 (薄暗く)
+  float sunriseSubIntensity_ = 0.20f;                     // 朝の補助光強度
+
 public:
+  /// <summary>
+  /// シーン内すべての対象オブジェクトのライティングを一括でON/OFF設定
+  /// </summary>
+  /// <param name="enabled">有効時true</param>
+  void SetAllLighting(bool enabled);
+
+  /// <summary>
+  /// シーン内すべての対象オブジェクトのライティングを一括トグル切り替え
+  /// </summary>
+  void ToggleAllLighting();
+
+  bool IsMasterLightingEnabled() const { return isMasterLightingEnabled_; }
+
+public:
+  /// <summary>
+  /// デフォルトコンストラクタ
+  /// </summary>
   GameScene() = default;
+
+  /// <summary>
+  /// デストラクタ。コールバック登録の解除を行います。
+  /// </summary>
   ~GameScene() override;
 
+  /// <summary>
+  /// ゲームシーンの初期化
+  /// </summary>
   void Initialize() override;
+
+  /// <summary>
+  /// 毎フレーム更新処理
+  /// </summary>
   void Update() override;
+
+  /// <summary>
+  /// 3Dオブジェクトの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw) override;
+
+  /// <summary>
+  /// 2D UIおよび演出オーバーレイの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void DrawUI(class Draw &draw) override;
+
+  /// <summary>
+  /// ImGuiによるパラメータ調整ウィンドウの描画
+  /// </summary>
   void ImGui() override;
 
+  /// <summary>
+  /// プレイ状態（3レーン/1レーン/ボス戦）の切り替え
+  /// </summary>
+  /// <param name="newState">変更先の状態</param>
+  /// <param name="force">強制切り替えフラグ</param>
   void ChangePlayingState(PlayingState newState, bool force = false);
+
+  /// <summary>
+  /// ゲームプレイ状態のリセット
+  /// </summary>
   void ResetGame();
+
+  /// <summary>
+  /// タイトルからゲーム開始カウントダウンへの移行
+  /// </summary>
   void StartGame();
+
+  /// <summary>
+  /// カウントダウン終了後のプレイ開始
+  /// </summary>
   void StartPlaying();
+
+  /// <summary>
+  /// タイトル画面への復帰
+  /// </summary>
   void ReturnToTitle();
 
+  /// <summary>
+  /// タイトル画面中の更新処理
+  /// </summary>
   void TitleUpdate();
+
+  /// <summary>
+  /// ゲームプレイ中の更新処理
+  /// </summary>
   void PlayingUpdate();
+
+  /// <summary>
+  /// ポーズ中の更新処理
+  /// </summary>
   void PausedUpdate();
+
+  /// <summary>
+  /// プレイヤー被弾中の更新処理
+  /// </summary>
   void PlayerHitUpdate();
+
+  /// <summary>
+  /// 1位更新カットイン演出中の更新処理
+  /// </summary>
+  void FirstPlaceCutInUpdate();
+
+  /// <summary>
+  /// ゲームオーバー画面中の更新処理
+  /// </summary>
+  void GameOverUpdate();
+
+  /// <summary>
+  /// エディターモード中の更新処理
+  /// </summary>
   void EditorUpdate();
 
-  class ScoreManager* GetScoreManager() { return scoreManager_.get(); }
-  class GameSceneEffect* GetEffectManager() { return effectManager_.get(); }
-  class StageSettings* GetStageSettings() { return stageSettings_.get(); }
-  class Player* GetPlayer() { return player_.get(); }
-  class Boss* GetBoss() { return boss_.get(); }
+  /// <summary>
+  /// ゲームシーン設定をJSONファイルへ保存
+  /// </summary>
+  /// <param name="fileName">保存ファイル名</param>
+  /// <returns>保存成功時true</returns>
+  bool SaveSettingsToJson(const std::string &fileName = "GameSceneSettings");
+
+  /// <summary>
+  /// JSONファイルからゲームシーン設定を読み込み
+  /// </summary>
+  /// <param name="fileName">読み込みファイル名</param>
+  /// <returns>読み込み成功時true</returns>
+  bool LoadSettingsFromJson(const std::string &fileName = "GameSceneSettings");
+
+  /// <summary>
+  /// ゲームシーンの全パラメータをデフォルト値へリセット
+  /// </summary>
+  void ResetSettingsToDefault();
+
+public:
+  enum class TitleMenuItem {
+    PlayerName = 0,
+    GameStart,
+    Ranking,
+    Achievements,
+    HowToPlay,
+    Settings,
+    Exit,
+    Count
+  };
+
+  enum class TitleSubView { None = 0, Ranking, HowToPlay, Achievements, Settings };
+
+private:
+  TitleMenuItem titleMenuIndex_ = TitleMenuItem::GameStart;
+  TitleSubView titleSubView_ = TitleSubView::None;
+  int titleAchievementPage_ = 0;
+  std::string titlePlayerName_ = "Player";
+  bool isEditingTitlePlayerName_ = false;
+
+  // 設定ファイル（JSON）用
+  char settingsFileName_[128] = "GameSceneSettings";
+  std::string settingsStatusMessage_ = "";
+  float settingsStatusTimer_ = 0.0f;
+
+  // 設定画面（音量調整）用
+  bool isPauseSettingsOpen_ = false;
+  int settingsMenuIndex_ = 0; // 0: Master, 1: BGM, 2: SE, 3: Guide, 4: Reset, 5: Close
+  void UpdateSettingsInput();
+  void CloseSettings();
+
+  /// <summary>
+  /// タイトル画面でのプレイヤー名入力処理
+  /// </summary>
+  void UpdateTitleTextInput();
+
+public:
+  /// <summary>
+  /// スコアマネージャーを取得
+  /// </summary>
+  /// <returns>ScoreManagerへのポインタ</returns>
+  class ScoreManager *GetScoreManager() { return scoreManager_.get(); }
+
+  /// <summary>
+  /// 実績マネージャーを取得
+  /// </summary>
+  /// <returns>AchievementManagerへのポインタ</returns>
+  class AchievementManager *GetAchievementManager() {
+    return achievementManager_.get();
+  }
+
+  /// <summary>
+  /// エフェクトマネージャーを取得
+  /// </summary>
+  /// <returns>GameSceneEffectへのポインタ</returns>
+  class GameSceneEffect *GetEffectManager() { return effectManager_.get(); }
+
+  /// <summary>
+  /// ステージ設定・ギミック管理を取得
+  /// </summary>
+  /// <returns>StageSettingsへのポインタ</returns>
+  class StageSettings *GetStageSettings() { return stageSettings_.get(); }
+
+  /// <summary>
+  /// プレイヤーインスタンスを取得
+  /// </summary>
+  /// <returns>Playerへのポインタ</returns>
+  class Player *GetPlayer() { return player_.get(); }
+
+  /// <summary>
+  /// ボスインスタンスを取得
+  /// </summary>
+  /// <returns>Bossへのポインタ</returns>
+  class Boss *GetBoss() { return boss_.get(); }
+
+  /// <summary>
+  /// ゲームカメラコントローラーを取得
+  /// </summary>
+  /// <returns>GameCameraControllerへのポインタ</returns>
+  class GameCameraController *GetCameraController() {
+    return cameraController_.get();
+  }
+
+  /// <summary>
+  /// Sceneウィンドウ用のメインカメラ（デバッグカメラ）を取得
+  /// </summary>
+  Camera *GetCamera() override;
+
+  /// <summary>
+  /// 現在のゲームプレイ状態（3レーン/1レーン/ボス戦）を取得
+  /// </summary>
+  /// <returns>PlayingState</returns>
   PlayingState GetPlayingState() const { return playingState_; }
-  void TriggerPlayerHit(bool isTrip);
+  /// <summary>
+  /// プレイヤー被弾処理（クラッシュ演出、カメラ振動、SE、ランキング送信等）
+  /// </summary>
+  /// <param name="isTrip">つまずき転倒かどうか</param>
+  /// <param name="isLargeObstacle">大型障害物（カメラ激突対象）かどうか</param>
+  void TriggerPlayerHit(bool isTrip, bool isLargeObstacle = false);
+
+  /// <summary>
+  /// 実績トラッキング：アイテム取得カウント加算
+  /// </summary>
+  void AddItemGetCount() {
+    if (gameState_ == GameState::Playing) {
+      itemGetCount_++;
+    }
+  }
+
+  /// <summary>
+  /// 実績トラッキング：バリア防御カウント加算
+  /// </summary>
+  void AddBarrierBlockCount() {
+    if (gameState_ == GameState::Playing) {
+      barrierBlockCount_++;
+    }
+  }
+
+  /// <summary>
+  /// 実績トラッキング：ボム一掃カウント加算
+  /// </summary>
+  void AddClearBombCount() {
+    if (gameState_ == GameState::Playing) {
+      clearBombCount_++;
+    }
+  }
 };

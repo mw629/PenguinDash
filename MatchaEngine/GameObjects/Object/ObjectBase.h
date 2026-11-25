@@ -64,11 +64,31 @@ public:
 	void SetTransform(Transform&& transform) {
 		GameObject::SetTransform(transform);
 	}
-	void SetLighting(bool isActive) { 
+	virtual void SetLighting(bool isActive) { 
 		auto matComp = GetComponent<MaterialComponent>();
-		if(matComp) matComp->GetMaterialFactory()->SetMaterialLighting(isActive);
+		if(matComp && matComp->GetMaterialFactory()) matComp->GetMaterialFactory()->SetMaterialLighting(isActive);
 	}
-	void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) { textureSrvHandleGPU_ = textureSrvHandleGPU; }
+	bool GetLighting() const {
+		auto matComp = GetComponent<MaterialComponent>();
+		if (matComp && matComp->GetMaterialFactory()) {
+			return matComp->GetMaterialFactory()->IsMaterialLightingEnabled();
+		}
+		return false;
+	}
+	virtual void SetEnvironmentCoefficient(float coefficient) {
+		auto matComp = GetComponent<MaterialComponent>();
+		if (matComp && matComp->GetMaterialFactory()) {
+			matComp->GetMaterialFactory()->SetEnvironmentCoefficient(coefficient);
+		}
+	}
+	float GetEnvironmentCoefficient() const {
+		auto matComp = GetComponent<MaterialComponent>();
+		if (matComp && matComp->GetMaterialFactory()) {
+			return matComp->GetMaterialFactory()->GetEnvironmentCoefficient();
+		}
+		return 0.0f;
+	}
+	virtual void SetTexture(D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU) { textureSrvHandleGPU_ = textureSrvHandleGPU; }
 
 	void SetInstancing(bool isInstancing) { isInstancing_ = isInstancing; }
 	void AddInstanceTransform(Transform transform) { instancingTransforms_.push_back(transform); }
@@ -114,6 +134,14 @@ public:
 		if (auto mat = GetComponent<MaterialComponent>()) mat->SetBlend(blend); 
 	}
 
+	virtual void SetColor(const Vector4& color) {
+		if (auto mat = GetComponent<MaterialComponent>()) mat->SetColor(color);
+	}
+	Vector4 GetColor() const {
+		if (auto mat = GetComponent<MaterialComponent>()) return mat->GetColor();
+		return { 1.0f, 1.0f, 1.0f, 1.0f };
+	}
+
 	void SetCullMode(CullMode cull) {
 		cullMode_ = cull;
 		if (auto mat = GetComponent<MaterialComponent>()) mat->SetCullMode(cull);
@@ -138,8 +166,8 @@ public:
 	void SetLocalBoundingSphere(const BoundingSphere& sphere) { localSphere_ = sphere; }
 	const BoundingSphere& GetLocalBoundingSphere() const { return localSphere_; }
 
-	AABB GetWorldAABB() const;
-	BoundingSphere GetWorldBoundingSphere() const;
+	virtual AABB GetWorldAABB() const;
+	virtual BoundingSphere GetWorldBoundingSphere() const;
 
 	void SetFrustumCullingEnabled(bool enable) { isFrustumCullingEnabled_ = enable; }
 	bool IsFrustumCullingEnabled() const { return isFrustumCullingEnabled_; }

@@ -11,24 +11,142 @@ public:
   GameSceneEffect();
   ~GameSceneEffect() = default;
 
+  /// <summary>
+  /// エフェクト（雪、砂埃、六角形バリア等）の初期化
+  /// </summary>
   void Initialize();
 
+  /// <summary>
+  /// ゲームプレイ中のエフェクト更新（パーティクル放出・バリア追従）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="playerPos">プレイヤー座標</param>
   void PlayingUpdate(const Matrix4x4 &view, const Vector3 &playerPos);
+
+  /// <summary>
+  /// プレイヤー被弾時のエフェクト更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void PlayerHitUpdate(const Matrix4x4 &view);
+
+  /// <summary>
+  /// エディターモード時のエフェクト更新
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void EditorUpdate(const Matrix4x4 &view);
 
+  /// <summary>
+  /// 走行時の雪煙・砂埃パーティクルの発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
   void EmitDust(const Vector3 &playerPos);
 
-  Emitter* GetSnowEffect() const { return snowEffect_.get(); }
+  /// <summary>
+  /// ジャンプ踏み込み時のリング雪煙パーティクル発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
+  void EmitJump(const Vector3 &playerPos);
 
-  // バリア演出
+  /// <summary>
+  /// 着地時のスノーバーストパーティクル発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
+  void EmitLand(const Vector3 &playerPos);
+
+  /// <summary>
+  /// スライディング（お腹滑り）時の激しい雪しぶき発生
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
+  void EmitSlide(const Vector3 &playerPos);
+
+  /// <summary>
+  /// アイテム取得時のスパークル・キラキラバースト発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  /// <param name="itemType">0:魚/スコア(金), 1:バリア(水色), 2:ボム(赤橙), 3:ボス/その他(紫)</param>
+  void EmitItemGet(const Vector3 &pos, int itemType = 0);
+
+  /// <summary>
+  /// 障害物粉砕時の氷破片バースト発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitObstacleBreak(const Vector3 &pos);
+
+  /// <summary>
+  /// プレイヤー被弾時のクラッシュ・衝撃パーティクル発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitPlayerHit(const Vector3 &pos);
+
+  /// <summary>
+  /// バリア破壊時の氷結晶破散パーティクル発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitBarrierBreak(const Vector3 &pos);
+
+  /// <summary>
+  /// ボス攻撃着地やボス反射ヒット時の衝撃パーティクル発生
+  /// </summary>
+  /// <param name="pos">発生位置</param>
+  void EmitBossImpact(const Vector3 &pos);
+
+  /// <summary>
+  /// スピードライン（疾走風パーティクル）の有効・無効切り替え
+  /// </summary>
+  void SetSpeedTrailActive(bool active) { speedTrailActive_ = active; }
+  bool GetSpeedTrailActive() const { return speedTrailActive_; }
+
+  Emitter* GetSnowEffect() const { return snowEffect_.get(); }
+  Emitter* GetDiamondDustEffect() const { return diamondDustEffect_.get(); }
+
+  /// <summary>
+  /// 氷バリアの展開演出を開始
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
   void EmitBarrier(const Vector3 &playerPos);
+
+  /// <summary>
+  /// 氷バリアの破壊・破散演出を開始
+  /// </summary>
+  /// <param name="playerPos">プレイヤー座標</param>
   void BreakBarrier(const Vector3 &playerPos);
+
+  /// <summary>
+  /// 氷バリアを即時消去
+  /// </summary>
   void ClearBarrier();
+
+  /// <summary>
+  /// バリアが展開中または有効状態かどうかを取得
+  /// </summary>
   bool IsBarrierActive() const;
 
+  /// <summary>
+  /// 各種エフェクト（バリア、パーティクル）の描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw);
+
+  /// <summary>
+  /// ImGuiによるエフェクトパラメータ調整UI
+  /// </summary>
   void ImGui();
+
+  // バリアパラメータ設定・取得
+  const Vector3 &GetBarrierOffset() const { return barrierOffset_; }
+  void SetBarrierOffset(const Vector3 &offset) { barrierOffset_ = offset; }
+  const Vector3 &GetBarrierBaseScale() const { return barrierBaseScale_; }
+  void SetBarrierBaseScale(const Vector3 &scale) { barrierBaseScale_ = scale; }
+  const Vector4 &GetBarrierBaseColor() const { return barrierBaseColor_; }
+  void SetBarrierBaseColor(const Vector4 &color) { barrierBaseColor_ = color; }
+  const Vector4 &GetBarrierFlashColor() const { return barrierFlashColor_; }
+  void SetBarrierFlashColor(const Vector4 &color) { barrierFlashColor_ = color; }
+  float GetBarrierRadius() const { return barrier_ ? barrier_->GetRadius() : 0.5f; }
+  void SetBarrierRadius(float r) { if (barrier_) barrier_->SetRadius(r); }
+  bool GetBarrierPointyTopped() const { return barrier_ ? barrier_->GetPointyTopped() : false; }
+  void SetBarrierPointyTopped(bool p) { if (barrier_) barrier_->SetPointyTopped(p); }
+  int GetBarrierShape() const { return barrier_ ? static_cast<int>(barrier_->GetShape()) : 1; }
+  void SetBarrierShape(int s) { if (barrier_) barrier_->SetShape(static_cast<HexBarrierShape>(s)); }
 
 private:
   static constexpr float kDefaultBarrierDeployDuration = 0.25f;
@@ -55,6 +173,18 @@ private:
 
   std::unique_ptr<Emitter> dustEffect_;
   std::unique_ptr<Emitter> snowEffect_;
+  std::unique_ptr<Emitter> diamondDustEffect_;
+  std::unique_ptr<Emitter> jumpEffect_;
+  std::unique_ptr<Emitter> landEffect_;
+  std::unique_ptr<Emitter> slideEffect_;
+  std::unique_ptr<Emitter> speedTrailEffect_;
+  std::unique_ptr<Emitter> itemGetEffect_;
+  std::unique_ptr<Emitter> obstacleBreakEffect_;
+  std::unique_ptr<Emitter> playerHitEffect_;
+  std::unique_ptr<Emitter> barrierBreakEffect_;
+  std::unique_ptr<Emitter> bossImpactEffect_;
+
+  bool speedTrailActive_ = false;
 
   // バリア
   std::unique_ptr<HexBarrier> barrier_;

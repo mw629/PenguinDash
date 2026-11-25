@@ -2,10 +2,13 @@
 #include "AssetManager.h"
 #include "Core/LogHandler.h"
 #include "PSO/PipelineState.h"
+#include "Graphics/Render/Draw.h"
+#include "Graphics/Render/LineRenderer.h"
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
 #include <format>
+#include <imgui.h>
 
 
 void StageSettings::Initialize(
@@ -49,6 +52,9 @@ void StageSettings::Initialize(
     obstacles_[i]->Initialize(fallenTreeModelData, iceArchwayModelData,
                               iceWallModelData, bonusModelData, iceBomModelData,
                               reflectingAttackModelData, type);
+    obstacles_[i]->SetLighting(obstacleLighting_);
+    obstacles_[i]->SetEnvironmentReflection(obstacleEnvironmentReflection_);
+    obstacles_[i]->SetEnvironmentCoefficient(obstacleEnvironmentCoefficient_);
 
     if (manager)
       manager->AddObject(obstacles_[i]);
@@ -84,10 +90,19 @@ void StageSettings::Initialize(ModelData roadModelData,
 }
 
 void StageSettings::CalculateNextObstacleInterval() {
+  int currentLaneCount = GetLaneCountAtZ(spawnObstacleZ_);
+  bool isOneLane = (currentLaneCount == 1 || targetLaneCount_ == 1);
+
+  // 1レーン時は横移動がなく、ジャンプ/ローリングの連続回避アクションになるため、
+  // アクション所要フレームおよび猶予フレームを短縮してテンポよく障害物が流れるようにする
+  float minGrace = isOneLane ? (minGraceFrames_ * 0.4f) : minGraceFrames_;
+  float maxGrace = isOneLane ? (maxGraceFrames_ * 0.5f) : maxGraceFrames_;
+  float baseAction = isOneLane ? (baseActionFrames_ * 0.65f) : baseActionFrames_;
+
   // 猶予フレームを最小〜最大の間でランダムに選定（等間隔にならないようにバリエーションを持たせる）
-  float graceFrames = minGraceFrames_; // 決定された猶予フレーム数
+  float graceFrames = minGrace;
   int frameRange =
-      static_cast<int>(maxGraceFrames_ - minGraceFrames_); // 変動フレーム幅
+      static_cast<int>(maxGrace - minGrace); // 変動フレーム幅
   if (frameRange > 0) {
     graceFrames += static_cast<float>(std::rand() % (frameRange + 1));
   }
@@ -97,23 +112,26 @@ void StageSettings::CalculateNextObstacleInterval() {
       (std::max)(scrollSpeed_,
                  kMinEffectiveSpeed); // 停止時や低速時の0除算・0距離を防ぐ実効速度
   float totalFrames =
-      baseActionFrames_ + graceFrames; // 回避に必要な合計フレーム数
+      baseAction + graceFrames; // 回避に必要な合計フレーム数
   float calculatedDistance =
       effectiveSpeed * totalFrames; // 移動速度と猶予フレームから計算された距離
 
   // 確実に避けられる距離範囲（最小距離〜最大距離）に制限
-  // 速度が高速になってもアクション完了＋最小猶予フレーム（5f）を下回らないよう上限を動的ガード
+  // 速度が高速になってもアクション完了＋最小猶予フレームを下回らないよう上限を動的ガード
   float minRequiredDistance =
-      effectiveSpeed * (baseActionFrames_ + minGraceFrames_);
+      effectiveSpeed * (baseAction + minGrace);
+  float minDistance =
+      isOneLane ? (minObstacleDistance_ * 0.7f) : minObstacleDistance_;
   float dynamicMaxDistance =
       (std::max)(maxObstacleDistance_, minRequiredDistance);
 
   obstacleInterval_ =
-      (std::min)((std::max)(minObstacleDistance_, calculatedDistance),
+      (std::min)((std::max)(minDistance, calculatedDistance),
                  dynamicMaxDistance); // 次回生成までの距離
 }
 
 const StageSettings::ChunkRowInfo &
+
 StageSettings::GetChunkRowInfoAtZ(float z) const {
   float defaultWidth =
       (laneCount_ == 1) ? (laneWidth_ * oneLaneWidthMultiplier_) : laneWidth_;
@@ -166,13 +184,13 @@ void StageSettings::SetLaneCount(int count) {
     return;
   targetLaneCount_ = count;
 
-  // 画面外の奥（Z >= 70.0f）にあるチャンクを targetLaneCount_ に事前変換する
-  // これにより、画面内（プレイヤー視界内）の床は変えずに、地平線奥から即座に新レーンが出現して流れてくる
+  // 奥（Z >= kLaneChangeHorizonZ）にあるチャンクを targetLaneCount_ に事前変換する
+  // レーン数が減少する（1レーンになる）場合は、外側のレーンチャンクを急に消さず落下演出させる
   for (int i = 0; i < kChunkCount_; i++) {
     if (i < roadTransforms_.size() && !roadTransforms_[i].empty()) {
       if (roadTransforms_[i][0].translate.z >= kLaneChangeHorizonZ) {
         RebuildChunkRow(i, targetLaneCount_, roadTransforms_[i][0].translate.z,
-                        IdentityMatrix());
+                        IdentityMatrix(), true);
       }
     }
   }
@@ -181,6 +199,7 @@ void StageSettings::SetLaneCount(int count) {
 void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
   if (count < 1)
     count = 1;
+  ClearFallingChunks();
   targetLaneCount_ = count;
   laneCount_ = count;
   minLaneIndex_ = -(laneCount_ / 2);
@@ -188,22 +207,104 @@ void StageSettings::SetLaneCountImmediate(int count, Matrix4x4 view) {
   isDirty_ = true;
 }
 
+void StageSettings::SetupOneLaneInitialObstacles() {
+  // プレイヤーは Z ≈ 0 にいる。
+  // 1レーン移行開始時、奥（kLaneChangeHorizonZ = 45m 以上）から1レーンの床が出現して流れてくる。
+  // 実際に1レーンとなった最初の床チャンクのZ座標を基準に、最初の3ウェーブ分（最低25m）奥から配置を開始する。
+  // これにより、1レーンの床がプレイヤー足元に届く前に新規障害物が Z <= 15m に入ってカメラ移動がロックされるのを防ぎ、
+  // カメラが切り替わった直後も3ウェーブ分の安全区間（準備時間）を確保する。
+  float currentLaneWidth = GetEffectiveLaneWidthAtZ(0.0f);
+  int lane = 0;
+  float x = static_cast<float>(lane) * currentLaneWidth;
+
+  float currentSpeed = (std::max)(scrollSpeed_, kMinEffectiveSpeed);
+  // 約25〜30フレーム間隔（速度0.2なら 約5〜7m間隔）で連続配置
+  float spacing = (std::max)(minObstacleDistance_ * 0.8f, currentSpeed * 28.0f);
+
+  // 実際に1レーンに切り替わった最初のチャンクのZ座標を取得
+  float firstOneLaneZ = -1.0f;
+  for (int i = 0; i < kChunkCount_; i++) {
+    if (i < static_cast<int>(chunkRowInfos_.size()) &&
+        chunkRowInfos_[i].laneCount == 1 &&
+        i < static_cast<int>(roadTransforms_.size()) &&
+        !roadTransforms_[i].empty()) {
+      float cz = roadTransforms_[i][0].translate.z;
+      if (cz >= kLaneChangeHorizonZ &&
+          (firstOneLaneZ < 0.0f || cz < firstOneLaneZ)) {
+        firstOneLaneZ = cz;
+      }
+    }
+  }
+  if (firstOneLaneZ < 0.0f) {
+    firstOneLaneZ = kLaneChangeHorizonZ;
+  }
+
+  // 1レーン突入後の最初の3ウェーブ分（ボーナスアイテムのZオフセット-5mも考慮し最低25m）を安全区間にする
+  float safeLeadDistance = (std::max)(3.0f * spacing, 25.0f);
+  float startZ = firstOneLaneZ + safeLeadDistance;
+
+  // 既存の障害物のうち、プレイヤー直近（Z <= 15.0f）の障害物は回避中の可能性があるため残し、
+  // それより奥にある古い未ヒット障害物・アイテムは非アクティブ化して安全区間を確実に確保
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i] && obstacles_[i]->GetIsActive() &&
+        !obstacles_[i]->GetIsHit()) {
+      if (obstacles_[i]->GetTransform().translate.z > 15.0f) {
+        obstacles_[i]->Deactivate();
+      }
+    }
+  }
+
+  int pattern = 0;
+  for (float z = startZ; z <= spawnObstacleZ_; z += spacing) {
+    Obstacle::Type type = Obstacle::Type::Low;
+    float y = kObstacleSpawnYLow;
+
+    int roll = pattern % 5;
+    pattern++;
+
+    if (roll == 0 || roll == 3) {
+      type = Obstacle::Type::Low; // ジャンプで飛び越える
+      y = kObstacleSpawnYLow;
+    } else if (roll == 1 || roll == 4) {
+      type = Obstacle::Type::High; // ローリングで潜る
+      y = kObstacleSpawnYHigh;
+    } else {
+      type = Obstacle::Type::Bonus; // ボーナスアイテム（魚）
+      y = kItemSpawnY;
+    }
+
+    obstacles_[nextObstacleIndex_]->SetType(type);
+    obstacles_[nextObstacleIndex_]->Spawn(x, y, z);
+    nextObstacleIndex_ = (nextObstacleIndex_ + 1) % kMaxObstacles_;
+  }
+
+  // スポーン間隔を再計算し、spawnObstacleZ_ が startZ より手前に設定されている場合（例: 50m）でも
+  // 安全区間（startZ）がスポーン地点に到達するまで新規自動スポーンを待機させる
+  CalculateNextObstacleInterval();
+  if (startZ > spawnObstacleZ_) {
+    distanceSinceLastSpawn_ = obstacleInterval_ - (startZ - spawnObstacleZ_);
+  } else {
+    distanceSinceLastSpawn_ = 0.0f;
+  }
+}
+
 void StageSettings::SetRoadColor(const Vector4 &color) {
   roadColor_ = color;
   for (auto &row : roadChunks_) {
     for (auto &chunk : row) {
       if (chunk) {
-        if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
-          model->SetColor(roadColor_);
-        }
+        chunk->SetColor(roadColor_);
       }
+    }
+  }
+  for (auto &fc : fallingChunks_) {
+    if (fc.renderObj) {
+      fc.renderObj->SetColor(roadColor_);
     }
   }
   for (auto &chunk : chunkPool_) {
     if (chunk) {
-      if (auto model = dynamic_cast<Model *>(chunk->GetObjectBase().get())) {
-        model->SetColor(roadColor_);
-      }
+      chunk->SetColor(roadColor_);
     }
   }
 }
@@ -259,13 +360,178 @@ void StageSettings::SetDriftIceLighting(bool enabled) {
   }
 }
 
+void StageSettings::SetRoadLighting(bool enabled) {
+  roadLighting_ = enabled;
+  for (auto &row : roadChunks_) {
+    for (auto &chunk : row) {
+      if (chunk) {
+        chunk->SetLighting(roadLighting_);
+      }
+    }
+  }
+  for (auto &fc : fallingChunks_) {
+    if (fc.renderObj) {
+      fc.renderObj->SetLighting(roadLighting_);
+    }
+  }
+  for (auto &chunk : chunkPool_) {
+    if (chunk) {
+      chunk->SetLighting(roadLighting_);
+    }
+  }
+}
+
+void StageSettings::SetObstacleLighting(bool enabled) {
+  obstacleLighting_ = enabled;
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->SetLighting(obstacleLighting_);
+    }
+  }
+}
+
+void StageSettings::SetObstacleEnvironmentReflection(bool enabled) {
+  obstacleEnvironmentReflection_ = enabled;
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->SetEnvironmentReflection(obstacleEnvironmentReflection_);
+    }
+  }
+}
+
+void StageSettings::SetObstacleEnvironmentCoefficient(float coeff) {
+  obstacleEnvironmentCoefficient_ = coeff;
+  for (int i = 0; i < kMaxObstacles_; i++) {
+    if (obstacles_[i]) {
+      obstacles_[i]->SetEnvironmentCoefficient(obstacleEnvironmentCoefficient_);
+    }
+  }
+}
+
+void StageSettings::SetWaterLighting(bool enabled) {
+  waterLighting_ = enabled;
+  for (int i = 0; i < 2; ++i) {
+    if (sidePlanes_[i] && sidePlanes_[i]->GetObjectBase()) {
+      sidePlanes_[i]->GetObjectBase()->SetLighting(waterLighting_);
+    }
+  }
+}
+
+// =========================================================================
+// IDriftIceBehavior（流氷 / アザラシのポリモーフィックな振る舞い分離）
+// =========================================================================
+
+class StageSettings::IDriftIceBehavior {
+public:
+  virtual ~IDriftIceBehavior() = default;
+  virtual const ModelData &GetModelData(const StageSettings &stage) const = 0;
+  virtual std::shared_ptr<Model>
+  GetModel(const StageSettings::DriftIce &ice) const = 0;
+  virtual void RollDimensions(float &outW, float &outD, float &outH,
+                              float &outFloat) const = 0;
+  virtual float RollRotSpeed(float babySealSpinSpeed) const = 0;
+  virtual void
+  OnBabySealSpinSpeedChanged(StageSettings::DriftIce & /*ice*/,
+                             float /*babySealSpinSpeed*/) const {}
+};
+
+class StandardDriftIceBehavior final : public StageSettings::IDriftIceBehavior {
+public:
+  const ModelData &GetModelData(const StageSettings &stage) const override {
+    return stage.driftIceModelData_;
+  }
+  std::shared_ptr<Model>
+  GetModel(const StageSettings::DriftIce &ice) const override {
+    return ice.iceModel;
+  }
+  void RollDimensions(float &outW, float &outD, float &outH,
+                      float &outFloat) const override {
+    int sizeCategory = std::rand() % 100;
+    if (sizeCategory < StageSettings::kIceSmallCategoryChance) {
+      outW = StageSettings::kIceSmallWidth +
+             static_cast<float>(std::rand() % 11) / 10.0f;
+      outD = StageSettings::kIceSmallDepth +
+             static_cast<float>(std::rand() % 13) / 10.0f;
+      outH = StageSettings::kIceSmallHeight +
+             static_cast<float>(std::rand() % 31) / 100.0f;
+      outFloat = StageSettings::kIceSmallFloat +
+                 static_cast<float>(std::rand() % 11) / 100.0f;
+    } else if (sizeCategory < StageSettings::kIceMediumCategoryChance) {
+      outW = StageSettings::kIceMediumWidth +
+             static_cast<float>(std::rand() % 17) / 10.0f;
+      outD = StageSettings::kIceMediumDepth +
+             static_cast<float>(std::rand() % 21) / 10.0f;
+      outH = StageSettings::kIceMediumHeight +
+             static_cast<float>(std::rand() % 41) / 100.0f;
+      outFloat = StageSettings::kIceMediumFloat +
+                 static_cast<float>(std::rand() % 16) / 100.0f;
+    } else {
+      outW = StageSettings::kIceLargeWidth +
+             static_cast<float>(std::rand() % 31) / 10.0f;
+      outD = StageSettings::kIceLargeDepth +
+             static_cast<float>(std::rand() % 36) / 10.0f;
+      outH = StageSettings::kIceLargeHeight +
+             static_cast<float>(std::rand() % 61) / 100.0f;
+      outFloat = StageSettings::kIceLargeFloat +
+                 static_cast<float>(std::rand() % 21) / 100.0f;
+    }
+  }
+  float RollRotSpeed(float /*babySealSpinSpeed*/) const override {
+    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
+    return dir * (StageSettings::kIceRotSpeedBase +
+                  static_cast<float>(std::rand() % 120) / 1000.0f);
+  }
+};
+
+class BabySealDriftIceBehavior final : public StageSettings::IDriftIceBehavior {
+public:
+  const ModelData &GetModelData(const StageSettings &stage) const override {
+    return stage.babySealModelData_;
+  }
+  std::shared_ptr<Model>
+  GetModel(const StageSettings::DriftIce &ice) const override {
+    return ice.sealModel;
+  }
+  void RollDimensions(float &outW, float &outD, float &outH,
+                      float &outFloat) const override {
+    outW = StageSettings::kSealIceBaseWidth +
+           static_cast<float>(std::rand() % 12) / 10.0f;
+    outD = StageSettings::kSealIceBaseDepth +
+           static_cast<float>(std::rand() % 14) / 10.0f;
+    outH = StageSettings::kSealIceBaseHeight +
+           static_cast<float>(std::rand() % 41) / 100.0f;
+    outFloat = StageSettings::kSealIceBaseFloat +
+               static_cast<float>(std::rand() % 15) / 100.0f;
+  }
+  float RollRotSpeed(float babySealSpinSpeed) const override {
+    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
+    float speedVariation = StageSettings::kIceSealSpinVariationBase +
+                           static_cast<float>(std::rand() % 31) / 100.0f;
+    return dir * babySealSpinSpeed * speedVariation;
+  }
+  void OnBabySealSpinSpeedChanged(StageSettings::DriftIce &ice,
+                                  float babySealSpinSpeed) const override {
+    float sign = (ice.rotSpeed >= 0.0f) ? 1.0f : -1.0f;
+    float speedVariation =
+        0.85f + static_cast<float>(std::rand() % 31) / 100.0f;
+    ice.rotSpeed = sign * babySealSpinSpeed * speedVariation;
+  }
+};
+
+const StageSettings::IDriftIceBehavior *
+StageSettings::ResolveDriftIceBehavior(DriftIce::Type type) {
+  static const StandardDriftIceBehavior kStandard;
+  static const BabySealDriftIceBehavior kBabySeal;
+  return (type == DriftIce::Type::BabySeal)
+             ? static_cast<const IDriftIceBehavior *>(&kBabySeal)
+             : static_cast<const IDriftIceBehavior *>(&kStandard);
+}
+
 void StageSettings::SetBabySealSpinSpeed(float speed) {
   babySealSpinSpeed_ = speed;
   for (auto &ice : driftIces_) {
-    if (ice.type == DriftIce::Type::BabySeal) {
-      float sign = (ice.rotSpeed >= 0.0f) ? 1.0f : -1.0f;
-      float speedVariation = 0.85f + static_cast<float>(std::rand() % 31) / 100.0f;
-      ice.rotSpeed = sign * babySealSpinSpeed_ * speedVariation;
+    if (ice.behavior) {
+      ice.behavior->OnBabySealSpinSpeedChanged(ice, babySealSpinSpeed_);
     }
   }
 }
@@ -285,8 +551,60 @@ void StageSettings::SetWaterWidthScale(float scale) {
   UpdateSidePlanesTransform();
 }
 
+void StageSettings::ClearFallingChunks() {
+  for (auto &fc : fallingChunks_) {
+    if (manager_ && fc.renderObj) {
+      manager_->RemoveObject(fc.renderObj);
+    }
+    if (fc.renderObj) {
+      chunkPool_.push_back(fc.renderObj);
+    }
+  }
+  fallingChunks_.clear();
+}
+
+void StageSettings::UpdateFallingChunks(Matrix4x4 view, float currentScroll,
+                                        float dt) {
+  float recycleThreshold =
+      -static_cast<float>(kBackwardChunks_ + 1) * chunkLength_;
+  float speedFactor =
+      (baseScrollSpeed_ > 0.0f)
+          ? (std::max)(1.0f, scrollSpeed_ / baseScrollSpeed_)
+          : 1.0f;
+
+  for (auto it = fallingChunks_.begin(); it != fallingChunks_.end();) {
+    it->transform.translate.z -= currentScroll;
+
+    if (it->delayTimer > 0.0f) {
+      it->delayTimer -= dt * speedFactor;
+    } else {
+      it->velocityY -= kDefaultRoadChunkFallGravity * speedFactor * dt;
+      it->transform.translate.y += it->velocityY * dt;
+    }
+
+    if (it->renderObj) {
+      it->renderObj->SetTransform(it->transform);
+      it->renderObj->Update(view, 0.0f);
+    }
+
+    float droppedDist = it->initialY - it->transform.translate.y;
+    if (droppedDist >= kDefaultRoadChunkFallDespawnDrop ||
+        it->transform.translate.z < recycleThreshold) {
+      if (manager_ && it->renderObj) {
+        manager_->RemoveObject(it->renderObj);
+      }
+      if (it->renderObj) {
+        chunkPool_.push_back(it->renderObj);
+      }
+      it = fallingChunks_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
-                                    Matrix4x4 view) {
+                                    Matrix4x4 view, bool fallRemovedLanes) {
   if (rowIndex < 0 || rowIndex >= kChunkCount_)
     return;
 
@@ -301,15 +619,50 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
   }
 
   int currentCount = static_cast<int>(roadChunks_[rowIndex].size());
+  int newMinLane = -(newLaneCount / 2);
+  int newMaxLane = (newLaneCount - 1) / 2;
+
   if (currentCount > newLaneCount) {
-    for (int l = newLaneCount; l < currentCount; l++) {
-      if (manager_ && roadChunks_[rowIndex][l]) {
-        manager_->RemoveObject(roadChunks_[rowIndex][l]);
+    if (fallRemovedLanes &&
+        rowIndex < static_cast<int>( roadTransforms_.size()) &&
+        roadTransforms_[rowIndex].size() == roadChunks_[rowIndex].size()) {
+      int oldMinLane = chunkRowInfos_[rowIndex].minLaneIndex;
+      std::vector<std::shared_ptr<RenderObject>> keptChunks;
+      keptChunks.reserve(newLaneCount);
+
+      for (int l = 0; l < currentCount; l++) {
+        int oldLogicalLane = oldMinLane + l;
+        if (oldLogicalLane >= newMinLane && oldLogicalLane <= newMaxLane &&
+            static_cast<int>(keptChunks.size()) < newLaneCount) {
+          keptChunks.push_back(roadChunks_[rowIndex][l]);
+        } else {
+          // 1レーン化によって無くなる外側レーンを落下リストへ移行（即座に消さずに落下させる）
+          if (roadChunks_[rowIndex][l]) {
+            FallingChunk fc;
+            fc.renderObj = roadChunks_[rowIndex][l];
+            fc.transform = roadTransforms_[rowIndex][l];
+            fc.initialY = fc.transform.translate.y;
+            fc.velocityY = -kDefaultRoadChunkFallInitialSpeed;
+            fc.delayTimer =
+                (std::max)(0.0f, (newZ - kLaneChangeHorizonZ) *
+                                     kDefaultRoadChunkFallDelayPerMeter);
+            fallingChunks_.push_back(fc);
+          }
+        }
       }
-      chunkPool_.push_back(roadChunks_[rowIndex][l]);
+      roadChunks_[rowIndex] = std::move(keptChunks);
+      roadChunks_[rowIndex].resize(newLaneCount);
+      roadTransforms_[rowIndex].resize(newLaneCount);
+    } else {
+      for (int l = newLaneCount; l < currentCount; l++) {
+        if (manager_ && roadChunks_[rowIndex][l]) {
+          manager_->RemoveObject(roadChunks_[rowIndex][l]);
+        }
+        chunkPool_.push_back(roadChunks_[rowIndex][l]);
+      }
+      roadChunks_[rowIndex].resize(newLaneCount);
+      roadTransforms_[rowIndex].resize(newLaneCount);
     }
-    roadChunks_[rowIndex].resize(newLaneCount);
-    roadTransforms_[rowIndex].resize(newLaneCount);
   } else if (currentCount < newLaneCount) {
     roadChunks_[rowIndex].resize(newLaneCount);
     roadTransforms_[rowIndex].resize(newLaneCount);
@@ -319,9 +672,8 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
         renderObj = chunkPool_.back();
         chunkPool_.pop_back();
         if (renderObj) {
-          if (auto model = dynamic_cast<Model *>(renderObj->GetObjectBase().get())) {
-            model->SetColor(roadColor_);
-          }
+          renderObj->SetColor(roadColor_);
+          renderObj->SetLighting(roadLighting_);
         }
       } else {
         auto roadModel = std::make_shared<Model>();
@@ -329,7 +681,7 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
         if (auto matComp = roadModel->GetComponent<MaterialComponent>()) {
           matComp->SetTexturePath("Resources/Model/Ground/Ground.png");
         }
-        roadModel->SetLighting(false);
+        roadModel->SetLighting(roadLighting_);
         roadModel->SetTexture(
             texture_->TextureData("Resources/Model/Ground/Ground.png"));
         roadModel->SetColor(roadColor_);
@@ -393,6 +745,8 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
 }
 
 void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
+  ClearFallingChunks();
+
   // 既存のZ座標を保存（ゲーム中にレーン数が変わった際に地面が飛ぶのを防ぐため）
   std::vector<float> currentZs(kChunkCount_);
   for (int zIndex = 0; zIndex < kChunkCount_; zIndex++) {
@@ -425,7 +779,7 @@ void StageSettings::GenerateRoadChunks(Matrix4x4 view) {
       model->Initialize(planeModelData_);
       model->SetShader(WaterShader);
       model->SetColor(kDefaultWaterColor);
-      model->SetLighting(true);
+      model->SetLighting(waterLighting_);
       model->SetCullMode(kCullModeNone);
       if (auto matComp = model->GetComponent<MaterialComponent>()) {
         matComp->SetTexturePath("Resources/Texture/white64x64.png");
@@ -547,9 +901,10 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   // アザラシの出現確率（約15%：およそ6〜7個に1個の割合で時々アザラシが流れてくる）
   bool isSeal = (std::rand() % 100 < kBabySealSpawnChancePercent);
   ice.type = isSeal ? DriftIce::Type::BabySeal : DriftIce::Type::DriftIce;
+  ice.behavior = ResolveDriftIceBehavior(ice.type);
 
-  const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
-  auto currentModel = (ice.type == DriftIce::Type::BabySeal) ? ice.sealModel : ice.iceModel;
+  const auto &modelData = ice.behavior->GetModelData(*this);
+  auto currentModel = ice.behavior->GetModel(ice);
   if (ice.renderObj && currentModel) {
     ice.renderObj->SetObjectBase(currentModel);
   }
@@ -579,32 +934,8 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   float targetHeight = DriftIce::kDefaultTargetHeight;
   float floatingHeight = DriftIce::kDefaultFloatingHeight;
 
-  if (ice.type == DriftIce::Type::BabySeal) {
-    // 流氷に乗ったアザラシのサイズ感
-    targetWidth = kSealIceBaseWidth + static_cast<float>(std::rand() % 12) / 10.0f;
-    targetDepth = kSealIceBaseDepth + static_cast<float>(std::rand() % 14) / 10.0f;
-    targetHeight = kSealIceBaseHeight + static_cast<float>(std::rand() % 41) / 100.0f;
-    floatingHeight = kSealIceBaseFloat + static_cast<float>(std::rand() % 15) / 100.0f;
-  } else {
-    // 通常の流氷のサイズ設計 (極小 45%, 小〜中 35%, 中〜大型 20%)
-    int sizeCategory = std::rand() % 100;
-    if (sizeCategory < kIceSmallCategoryChance) {
-      targetWidth = kIceSmallWidth + static_cast<float>(std::rand() % 11) / 10.0f;
-      targetDepth = kIceSmallDepth + static_cast<float>(std::rand() % 13) / 10.0f;
-      targetHeight = kIceSmallHeight + static_cast<float>(std::rand() % 31) / 100.0f;
-      floatingHeight = kIceSmallFloat + static_cast<float>(std::rand() % 11) / 100.0f;
-    } else if (sizeCategory < kIceMediumCategoryChance) {
-      targetWidth = kIceMediumWidth + static_cast<float>(std::rand() % 17) / 10.0f;
-      targetDepth = kIceMediumDepth + static_cast<float>(std::rand() % 21) / 10.0f;
-      targetHeight = kIceMediumHeight + static_cast<float>(std::rand() % 41) / 100.0f;
-      floatingHeight = kIceMediumFloat + static_cast<float>(std::rand() % 16) / 100.0f;
-    } else {
-      targetWidth = kIceLargeWidth + static_cast<float>(std::rand() % 31) / 10.0f;
-      targetDepth = kIceLargeDepth + static_cast<float>(std::rand() % 36) / 10.0f;
-      targetHeight = kIceLargeHeight + static_cast<float>(std::rand() % 61) / 100.0f;
-      floatingHeight = kIceLargeFloat + static_cast<float>(std::rand() % 21) / 100.0f;
-    }
-  }
+  ice.behavior->RollDimensions(targetWidth, targetDepth, targetHeight,
+                               floatingHeight);
 
   // 全体サイズ倍率 & 厚み倍率を適用
   targetWidth *= driftIceSizeScale_;
@@ -649,16 +980,7 @@ void StageSettings::SetupSingleDriftIce(DriftIce &ice, bool spawnFarAway, int /*
   // 【流れる向きなどのバラバラ化】
   // 初期の向き（回転角度Y）：0〜360度ランダム
   ice.rotY = static_cast<float>(std::rand() % 628) / 100.0f;
-  if (ice.type == DriftIce::Type::BabySeal) {
-    // アザラシは水面をくるくるとスピン（自転）しながら流れる
-    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
-    float speedVariation = kIceSealSpinVariationBase + static_cast<float>(std::rand() % 31) / 100.0f;
-    ice.rotSpeed = dir * babySealSpinSpeed_ * speedVariation;
-  } else {
-    // 通常の流氷も右回り・左回り、回転速度にバリエーションを持たせて向きの変化を豊かに
-    float dir = (std::rand() % 2 == 0) ? 1.0f : -1.0f;
-    ice.rotSpeed = dir * (kIceRotSpeedBase + static_cast<float>(std::rand() % 120) / 1000.0f);
-  }
+  ice.rotSpeed = ice.behavior->RollRotSpeed(babySealSpinSpeed_);
 
   // 上下の揺れ（ボビング）
   ice.bobbingPhase = static_cast<float>(std::rand() % 628) / 100.0f;
@@ -680,7 +1002,10 @@ void StageSettings::UpdateDriftIce(Matrix4x4 view, float currentScroll, float ti
     auto &ice = driftIces_[i];
     if (!ice.renderObj) continue;
 
-    const auto &modelData = (ice.type == DriftIce::Type::BabySeal) ? babySealModelData_ : driftIceModelData_;
+    if (!ice.behavior) {
+      ice.behavior = ResolveDriftIceBehavior(ice.type);
+    }
+    const auto &modelData = ice.behavior->GetModelData(*this);
     float modelWidth = modelData.localAABB.max.x - modelData.localAABB.min.x;
     float modelHeight = modelData.localAABB.max.y - modelData.localAABB.min.y;
     float modelDepth = modelData.localAABB.max.z - modelData.localAABB.min.z;
@@ -870,16 +1195,16 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
     return;
 
   // スクロール速度の加速（最大速度まで徐々に上がる）
-  if (scrollSpeed_ < maxScrollSpeed_) {
-    scrollSpeed_ += scrollAcceleration_ * timeScale;
-    if (scrollSpeed_ > maxScrollSpeed_) {
-      scrollSpeed_ = maxScrollSpeed_;
+  // ※ baseScrollSpeed_ が 0 以下の場合は停止状態（リスタートカウントダウン中等）なので加速せず 0 を維持
+  if (baseScrollSpeed_ > 0.0f) {
+    if (scrollSpeed_ < maxScrollSpeed_) {
+      scrollSpeed_ += scrollAcceleration_ * timeScale;
+      if (scrollSpeed_ > maxScrollSpeed_) {
+        scrollSpeed_ = maxScrollSpeed_;
+      }
     }
-  }
-  if (scrollSpeed_ > maxScrollSpeed_ / 2) {
-    // PostEffect::SetActivePostEffect(PostEffect::Type::Vignetting);
   } else {
-    // PostEffect::SetActivePostEffect(PostEffect::Type::Normal);
+    scrollSpeed_ = 0.0f;
   }
 
   float currentScroll = scrollSpeed_ * timeScale;
@@ -917,11 +1242,19 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
     }
   }
 
-  // 海に浮かぶ流氷の更新
-  UpdateDriftIce(view, currentScroll, timeScale);
+  // 1レーン移行時等に外れた外側レーンチャンクの落下更新
+  float dt = Engine::kDefaultDeltaTime * timeScale;
+  UpdateFallingChunks(view, currentScroll, dt);
+
+  // 海に浮かぶ流氷の更新（道路が停止中・カウントダウン中も海の潮の流れによって自然に流れる）
+  float driftIceScroll = currentScroll;
+  if ((baseScrollSpeed_ <= 0.0f || driftIceScroll < kDefaultDriftIceFlowSpeed * timeScale) &&
+      isDriftIceFlowingWhenStopped_) {
+    driftIceScroll = kDefaultDriftIceFlowSpeed * timeScale;
+  }
+  UpdateDriftIce(view, driftIceScroll, timeScale);
 
   // アイテムのクールタイム減算（実時間・秒単位）
-  float dt = Engine::kDefaultDeltaTime * timeScale;
   for (auto &pair : itemCoolDowns_) {
     // スポーン停止中（ボス戦中やカメラ遷移中）はボスアイテムのクールタイムを減算しない
     if (pair.first == Obstacle::Type::BossItem && isSpawningPaused_) {
@@ -942,7 +1275,7 @@ void StageSettings::Update(Matrix4x4 view, float timeScale, float waterTime) {
   while (distanceSinceLastSpawn_ >= obstacleInterval_) {
     // 奥の固定位置(チャンクの向こう側)に生成
     if (!isSpawningPaused_) {
-      SpawnObstacles(kSpawnObstacleZ);
+      SpawnObstacles(spawnObstacleZ_);
     }
     distanceSinceLastSpawn_ -= obstacleInterval_;
 
@@ -978,7 +1311,60 @@ void StageSettings::EditorUpdate(Matrix4x4 view, float waterTime) {
 }
 
 void StageSettings::Draw(class Draw &draw) {
-  // 描画はGameObjectManagerが一括で行うため、ここでは何もしない
+#ifdef _USE_IMGUI
+  if (showSpawnGizmo_) {
+    LineRenderer *lineRenderer = draw.GetLineRenderer();
+    if (lineRenderer) {
+      float z = spawnObstacleZ_;
+      int currentMinLane = GetMinLaneIndexAtZ(z);
+      int currentMaxLane = GetMaxLaneIndexAtZ(z);
+      float currentLaneWidth = GetEffectiveLaneWidthAtZ(z);
+
+      float xLeft = (static_cast<float>(currentMinLane) - 0.5f) * currentLaneWidth;
+      float xRight = (static_cast<float>(currentMaxLane) + 0.5f) * currentLaneWidth;
+      float yGround = 0.05f;
+      float yTop = 5.5f;
+
+      Vector4 gateColor = {0.0f, 0.9f, 1.0f, 1.0f};      // シアン：スポーンゲート
+      Vector4 subGateColor = {0.0f, 0.5f, 0.8f, 0.6f};
+
+      // 外枠ゲート
+      lineRenderer->AddLine({xLeft, yGround, z}, {xRight, yGround, z}, gateColor);
+      lineRenderer->AddLine({xLeft, yTop, z}, {xRight, yTop, z}, gateColor);
+      lineRenderer->AddLine({xLeft, yGround, z}, {xLeft, yTop, z}, gateColor);
+      lineRenderer->AddLine({xRight, yGround, z}, {xRight, yTop, z}, gateColor);
+
+      // 各レーンの中心線と高さ指標
+      for (int lane = currentMinLane; lane <= currentMaxLane; lane++) {
+        float x = static_cast<float>(lane) * currentLaneWidth;
+
+        // レーン中心の縦線
+        lineRenderer->AddLine({x, yGround, z}, {x, yTop, z}, subGateColor);
+
+        // Low (木 / ジャンプ) 高さ: 緑
+        lineRenderer->AddLine({x - 0.45f, kObstacleSpawnYLow, z},
+                              {x + 0.45f, kObstacleSpawnYLow, z},
+                              {0.2f, 1.0f, 0.3f, 1.0f});
+
+        // High (アーチ / スライド) 高さ: 黄
+        lineRenderer->AddLine({x - 0.45f, kObstacleSpawnYHigh, z},
+                              {x + 0.45f, kObstacleSpawnYHigh, z},
+                              {1.0f, 0.9f, 0.2f, 1.0f});
+
+        // Wall (氷壁) 高さ: 赤橙
+        lineRenderer->AddLine({x - 0.45f, kObstacleSpawnYWall, z},
+                              {x + 0.45f, kObstacleSpawnYWall, z},
+                              {1.0f, 0.4f, 0.1f, 1.0f});
+      }
+
+      // アイテムスポーンライン（オフセット手前）
+      float itemZ = z + kItemSpawnZOffset;
+      Vector4 itemColor = {1.0f, 0.84f, 0.0f, 0.8f}; // ゴールド
+      lineRenderer->AddLine({xLeft, yGround, itemZ}, {xRight, yGround, itemZ}, itemColor);
+      lineRenderer->AddLine({xLeft, kItemSpawnY, itemZ}, {xRight, kItemSpawnY, itemZ}, itemColor);
+    }
+  }
+#endif
 }
 
 void StageSettings::SpawnObstacles(float z) {
@@ -1005,7 +1391,8 @@ void StageSettings::SpawnObstacles(float z) {
 
   // === 時々障害物が出ない（空ウェーブ/安全区間）判定 ===
   bool isEmptyWave = false; // 障害物を一切生成しない空ウェーブフラグ
-  if (consecutiveNoSpawnCount_ < maxConsecutiveNoSpawn_) {
+  // 1レーン時は障害物が少なくなるのを防ぐため、空ウェーブを発生させない
+  if (currentLaneCount > 1 && consecutiveNoSpawnCount_ < maxConsecutiveNoSpawn_) {
     int roll = std::rand() % 100; // 0〜99の乱数
     int chancePercent =
         static_cast<int>(noSpawnChance_ * 100.0f); // 確率をパーセンテージに変換
@@ -1016,11 +1403,10 @@ void StageSettings::SpawnObstacles(float z) {
       consecutiveNoSpawnCount_ = 0; // 障害物が出るためリセット
     }
   } else {
-    consecutiveNoSpawnCount_ = 0; // 連続上限に達したためリセット
+    consecutiveNoSpawnCount_ = 0; // 連続上限または1レーンのためリセット
   }
 
   // たまにボーナスまたはアイテムを配置する（各アイテムのクールタイムを考慮）
-  // ただし1レーンの場合は出さない
   int bonusLane =
       -1; // ボーナスまたはアイテムを配置するレーン番号（-1は配置なし）
   Obstacle::Type itemType = Obstacle::Type::Bonus; // アイテムの種類
@@ -1052,6 +1438,14 @@ void StageSettings::SpawnObstacles(float z) {
             itemCoolDowns_[itemType].duration;
       }
     }
+  } else if (currentLaneCount == 1) {
+    // 1レーン時は定期的にボーナス（魚）を配置して密度と楽しさを向上させる
+    int roll = std::rand() % 100;
+    int bonusPercent = 25; // 25%の確率でボーナス配置
+    if (roll < bonusPercent) {
+      bonusLane = 0;
+      itemType = Obstacle::Type::Bonus;
+    }
   }
 
   // 空ウェーブの場合は障害物を配置せず、アイテムのみ生成（または完全な安全区間）
@@ -1072,42 +1466,37 @@ void StageSettings::SpawnObstacles(float z) {
   int wallCount = 0;
   int noneCount = 0;
 
-  for (int i = 0; i < currentLaneCount; i++) {
-    laneSpawns[i] = std::rand() % 4; // 0~3
-    if (laneSpawns[i] == 3) {
-      wallCount++;
-    } else if (laneSpawns[i] == 0) {
-      noneCount++;
+  if (currentLaneCount == 1) {
+    // 1レーン時は確実にジャンプ(1:Low)またはローリング(2:High)を生成
+    laneSpawns[0] = 1 + (std::rand() % 2);
+  } else {
+    for (int i = 0; i < currentLaneCount; i++) {
+      laneSpawns[i] = std::rand() % 4; // 0~3
+      if (laneSpawns[i] == 3) {
+        wallCount++;
+      } else if (laneSpawns[i] == 0) {
+        noneCount++;
+      }
     }
-  }
 
-  // すべて「何もない(None)」の場合は、最低1つの障害物を配置する
-  if (noneCount == currentLaneCount) {
-    int changeIndex = std::rand() % currentLaneCount;
-    if (currentLaneCount == 1) {
-      // レーンが1つの場合はWall(3)を生成しないようにする(1:Low, 2:High)
-      laneSpawns[changeIndex] = 1 + (std::rand() % 2);
-    } else {
+    // すべて「何もない(None)」の場合は、最低1つの障害物を配置する
+    if (noneCount == currentLaneCount) {
+      int changeIndex = std::rand() % currentLaneCount;
       laneSpawns[changeIndex] = 1 + (std::rand() % 3); // 1, 2, 3 のどれか
     }
-  }
 
-  // noneCountの処理でWallが増えた可能性があるのでwallCountを再計算
-  wallCount = 0;
-  for (int i = 0; i < currentLaneCount; i++) {
-    if (laneSpawns[i] == 3) {
-      wallCount++;
+    // noneCountの処理でWallが増えた可能性があるのでwallCountを再計算
+    wallCount = 0;
+    for (int i = 0; i < currentLaneCount; i++) {
+      if (laneSpawns[i] == 3) {
+        wallCount++;
+      }
     }
-  }
 
-  // 全てWallの場合は1つを確実に通れるようにする
-  if (wallCount == currentLaneCount) {
-    int changeIndex = std::rand() % currentLaneCount;
-    if (currentLaneCount == 1) {
-      // 1レーンしかなく全てWallの場合は、必ず通れる障害物にする
-      laneSpawns[changeIndex] = 1 + (std::rand() % 2); // 1:Low または 2:High
-    } else {
-      laneSpawns[changeIndex] = 0; // Noneに変更
+    // 全てWallの場合は1つを確実に通れるようにする
+    if (wallCount == currentLaneCount) {
+      int changeIndex = std::rand() % currentLaneCount;
+      laneSpawns[changeIndex] = 0;
     }
   }
 
@@ -1155,7 +1544,7 @@ void StageSettings::SpawnObstacles(float z) {
         y = kObstacleSpawnYWall;
       }
 
-      // 障害物のタイプを変更して配置
+      // 障害物のタイプを設定して配置
       obstacles_[nextObstacleIndex_]->SetType(type);
       obstacles_[nextObstacleIndex_]->Spawn(x, y, z);
 
@@ -1189,6 +1578,7 @@ void StageSettings::ClearObstacles(float safeDistance) {
 }
 
 void StageSettings::Reset() {
+  ClearFallingChunks();
   isGameOver_ = false;
   isNarrowingSection_ = false;
   isSpawningPaused_ = false;
@@ -1266,3 +1656,487 @@ bool StageSettings::IsItemCoolDownReady(Obstacle::Type type) const {
   }
   return true;
 }
+
+#ifdef _USE_IMGUI
+
+void StageSettings::ImGui() {
+  // ステージデバッグパネル
+  if (ImGui::CollapsingHeader("ステージ設定デバッグ (Stage Settings)")) {
+    int currentLane = GetLaneCount();
+    ImGui::Text("現在レーン (プレイヤー位置): %d", currentLane);
+
+    int targetLane = GetTargetLaneCount();
+    if (ImGui::SliderInt("目標レーン数", &targetLane, 1, 11)) {
+      SetLaneCount(targetLane);
+    }
+
+    float laneWidth = GetLaneWidth();
+    if (ImGui::SliderFloat("レーン幅", &laneWidth, 1.0f, 10.0f)) {
+      SetLaneWidth(laneWidth);
+    }
+
+    float oneLaneMult = GetOneLaneWidthMultiplier();
+    if (ImGui::SliderFloat("1レーン時幅倍率", &oneLaneMult, 1.0f,
+                           3.0f, "%.2f")) {
+      SetOneLaneWidthMultiplier(oneLaneMult);
+    }
+
+    float baseSpeed = GetBaseScrollSpeed();
+    if (ImGui::SliderFloat("基本スクロール速度", &baseSpeed, 0.0f, 1.0f)) {
+      SetBaseScrollSpeed(baseSpeed);
+    }
+
+    float maxSpeed = GetMaxScrollSpeed();
+    if (ImGui::SliderFloat("最高スクロール速度", &maxSpeed, baseSpeed, 2.0f)) {
+      SetMaxScrollSpeed(maxSpeed);
+    }
+
+    float accel = GetScrollAcceleration();
+    if (ImGui::SliderFloat("スクロール加速度", &accel, 0.0f, 0.01f)) {
+      SetScrollAcceleration(accel);
+    }
+
+    float minDistance = GetMinObstacleDistance();
+    float maxDistance = GetMaxObstacleDistance();
+    if (ImGui::SliderFloat("最小障害物間隔", &minDistance, 3.0f, 30.0f,
+                           "%.1f m")) {
+      if (minDistance > maxDistance)
+        maxDistance = minDistance;
+      SetMinObstacleDistance(minDistance);
+      SetMaxObstacleDistance(maxDistance);
+    }
+    if (ImGui::SliderFloat("最大障害物間隔", &maxDistance, 5.0f, 60.0f,
+                           "%.1f m")) {
+      if (maxDistance < minDistance)
+        minDistance = maxDistance;
+      SetMinObstacleDistance(minDistance);
+      SetMaxObstacleDistance(maxDistance);
+    }
+
+    float baseActionFrames = GetBaseActionFrames();
+    if (ImGui::SliderFloat("基本アクション所要フレーム", &baseActionFrames, 0.0f,
+                           60.0f, "%.0f f")) {
+      SetBaseActionFrames(baseActionFrames);
+    }
+
+    float minGrace = GetMinGraceFrames();
+    float maxGrace = GetMaxGraceFrames();
+    if (ImGui::SliderFloat("最小猶予フレーム", &minGrace, 5.0f, 60.0f,
+                           "%.0f f")) {
+      if (minGrace > maxGrace)
+        maxGrace = minGrace;
+      SetMinGraceFrames(minGrace);
+      SetMaxGraceFrames(maxGrace);
+    }
+    if (ImGui::SliderFloat("最大猶予フレーム", &maxGrace, 5.0f, 80.0f,
+                           "%.0f f")) {
+      if (maxGrace < minGrace)
+        minGrace = maxGrace;
+      SetMinGraceFrames(minGrace);
+      SetMaxGraceFrames(maxGrace);
+    }
+
+    float noSpawnChance = GetNoSpawnChance() * 100.0f;
+    if (ImGui::SliderFloat("障害物スキップ確率 (%)", &noSpawnChance, 0.0f, 30.0f,
+                           "%.1f %%")) {
+      SetNoSpawnChance(noSpawnChance / 100.0f);
+    }
+
+    float currentSpeed = GetScrollSpeed();
+    float curInterval = GetObstacleInterval();
+    float estFrames =
+        currentSpeed > 0.0f ? (curInterval / currentSpeed) : 0.0f;
+    ImGui::Text("次回スポーン間隔: %.1f m (約 %.0f フレーム / %.2f 秒)",
+                curInterval, estFrames, estFrames / 60.0f);
+    ImGui::Text("回避可能間隔範囲: %.1f m 〜 %.1f m", minDistance, maxDistance);
+    if (ImGui::SliderFloat("障害物スポーンZ距離", &spawnObstacleZ_, 20.0f, 160.0f, "%.1f m")) {
+    }
+    ImGui::Text("デスポーンZ: %.1f m (プール上限: %d)",
+                Obstacle::kPlayerObstacleDespawnZ, kMaxObstacles_);
+
+    Vector4 roadColor = GetRoadColor();
+    float roadColorArr[4] = {roadColor.x, roadColor.y, roadColor.z,
+                             roadColor.w};
+    if (ImGui::ColorEdit4("地面の色 (Ground Color)", roadColorArr)) {
+      SetRoadColor({roadColorArr[0], roadColorArr[1],
+                    roadColorArr[2], roadColorArr[3]});
+    }
+    bool roadLighting = GetRoadLighting();
+    if (ImGui::Checkbox("地面ライティングを有効化", &roadLighting)) {
+      SetRoadLighting(roadLighting);
+    }
+    ImGui::SameLine();
+    bool obsLighting = GetObstacleLighting();
+    if (ImGui::Checkbox("障害物ライティングを有効化", &obsLighting)) {
+      SetObstacleLighting(obsLighting);
+    }
+    ImGui::SameLine();
+    bool obsReflect = GetObstacleEnvironmentReflection();
+    if (ImGui::Checkbox("障害物鏡面反射を有効化", &obsReflect)) {
+      SetObstacleEnvironmentReflection(obsReflect);
+    }
+    if (obsReflect) {
+      float coeff = GetObstacleEnvironmentCoefficient();
+      if (ImGui::SliderFloat("障害物鏡面反射強度", &coeff, 0.0f, 1.0f, "%.2f")) {
+        SetObstacleEnvironmentCoefficient(coeff);
+      }
+    }
+
+    bool driftIceEnabled = GetDriftIceEnabled();
+    if (ImGui::Checkbox("流氷を有効化 (Drift Ice)", &driftIceEnabled)) {
+      SetDriftIceEnabled(driftIceEnabled);
+    }
+    if (driftIceEnabled) {
+      Vector4 driftIceColor = GetDriftIceColor();
+      float driftIceColorArr[4] = {driftIceColor.x, driftIceColor.y,
+                                   driftIceColor.z, driftIceColor.w};
+      if (ImGui::ColorEdit4("流氷の色", driftIceColorArr)) {
+        SetDriftIceColor(
+            {driftIceColorArr[0], driftIceColorArr[1], driftIceColorArr[2],
+             driftIceColorArr[3]});
+      }
+      float bobbingScale = GetDriftIceBobbingScale();
+      if (ImGui::SliderFloat("流氷の揺れ幅",
+                             &bobbingScale, 0.0f, 3.0f, "%.2f")) {
+        SetDriftIceBobbingScale(bobbingScale);
+      }
+      float bobbingSpeed = GetDriftIceBobbingSpeedScale();
+      if (ImGui::SliderFloat("流氷の揺れ速度",
+                             &bobbingSpeed, 0.0f, 3.0f, "%.2f")) {
+        SetDriftIceBobbingSpeedScale(bobbingSpeed);
+      }
+      float sizeScale = GetDriftIceSizeScale();
+      if (ImGui::SliderFloat("流氷の大きさ倍率", &sizeScale,
+                             0.1f, 3.0f, "%.2f")) {
+        SetDriftIceSizeScale(sizeScale);
+      }
+      float thicknessScale = GetDriftIceThicknessScale();
+      if (ImGui::SliderFloat("流氷の厚み (縦の太さ)",
+                             &thicknessScale, 0.5f, 6.0f, "%.2f")) {
+        SetDriftIceThicknessScale(thicknessScale);
+      }
+      float heightOffset = GetDriftIceHeightOffset();
+      if (ImGui::SliderFloat("流氷の浮遊高度", &heightOffset,
+                             -1.0f, 5.0f, "%.2f m")) {
+        SetDriftIceHeightOffset(heightOffset);
+      }
+      float distOffset = GetDriftIceDistanceOffset();
+      if (ImGui::SliderFloat("流氷の配置間隔 (地面からの距離)",
+                             &distOffset, 0.0f, 20.0f, "%.1f m")) {
+        SetDriftIceDistanceOffset(distOffset);
+      }
+      bool lighting = GetDriftIceLighting();
+      if (ImGui::Checkbox("流氷ライティングを有効化", &lighting)) {
+        SetDriftIceLighting(lighting);
+      }
+      float sealSpin = GetBabySealSpinSpeed();
+      if (ImGui::SliderFloat("アザラシ回転速度",
+                             &sealSpin, 0.0f, 10.0f, "%.1f rad/s")) {
+        SetBabySealSpinSpeed(sealSpin);
+      }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("後方道路チャンク数: %d 個 (-%.0f m)",
+                GetBackwardChunks(),
+                static_cast<float>(GetBackwardChunks()) * GetChunkLength());
+    float waterForwardExt = GetWaterForwardExtension();
+    if (ImGui::SliderFloat("水面・前方拡張距離 (波奥)",
+                           &waterForwardExt, 50.0f, 1200.0f, "%.0f m")) {
+      SetWaterForwardExtension(waterForwardExt);
+    }
+    float waterBackwardExt = GetWaterBackwardExtension();
+    if (ImGui::SliderFloat("水面・後方拡張距離 (波手前)",
+                           &waterBackwardExt, 50.0f, 800.0f, "%.0f m")) {
+      SetWaterBackwardExtension(waterBackwardExt);
+    }
+    float waterWidthScale = GetWaterWidthScale();
+    if (ImGui::SliderFloat("水面・横幅スケール", &waterWidthScale,
+                           50.0f, 400.0f, "%.0f m")) {
+      SetWaterWidthScale(waterWidthScale);
+    }
+  }
+
+  // 障害物スポーン地点・状況モニター
+  if (ImGui::CollapsingHeader("Obstacle Spawn & Monitor (障害物スポーン地点・状況)",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    float currentSpeed = GetScrollSpeed();
+
+    // 1. スポーン地点の位置・設定
+    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "[ スポーン地点の位置・設定 ]");
+    ImGui::SliderFloat("Spawn Distance Z (奥の生成距離)", &spawnObstacleZ_,
+                       20.0f, 160.0f, "%.1f m");
+    ImGui::Text("プリセット:");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("50m")) { spawnObstacleZ_ = 50.0f; }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("80m")) { spawnObstacleZ_ = 80.0f; }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("105m(標準)")) { spawnObstacleZ_ = kDefaultSpawnObstacleZ; }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("130m")) { spawnObstacleZ_ = 130.0f; }
+
+    float framesToPlayer = currentSpeed > 0.0f ? (spawnObstacleZ_ / currentSpeed) : 0.0f;
+    ImGui::Text("スポーン位置: Z = +%.1f m (プレイヤーから前方 %.1f m)", spawnObstacleZ_, spawnObstacleZ_);
+    ImGui::Text("到達予測時間: 約 %.0f フレーム (%.2f 秒) [@ 速度 %.3f]",
+                framesToPlayer, framesToPlayer / 60.0f, currentSpeed);
+
+    ImGui::Checkbox("3Dビューにスポーンゲート・マーカーを描画 (Show 3D Spawn Gate)",
+                    &showSpawnGizmo_);
+    if (showSpawnGizmo_) {
+      ImGui::TextDisabled("  シアン: 外枠ゲート | 緑: Low(2.5m) | 黄: High(4.6m) | 赤橙: Wall(3.5m) | 金: アイテム");
+    }
+
+    ImGui::Separator();
+
+    // 2. 各レーンのスポーン座標 (X, Y, Z)
+    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "[ 各レーンのスポーン座標 (Z = +%.1f m) ]", spawnObstacleZ_);
+    int currentLaneCount = GetLaneCountAtZ(spawnObstacleZ_);
+    int currentMinLane = GetMinLaneIndexAtZ(spawnObstacleZ_);
+    int currentMaxLane = GetMaxLaneIndexAtZ(spawnObstacleZ_);
+    float currentLaneWidth = GetEffectiveLaneWidthAtZ(spawnObstacleZ_);
+
+    ImGui::Text("レーン数: %d | レーン幅: %.2f m (範囲: %d 〜 %d)",
+                currentLaneCount, currentLaneWidth, currentMinLane, currentMaxLane);
+
+    if (ImGui::BeginTable("SpawnPointsTable", 6,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_SizingStretchProp)) {
+      ImGui::TableSetupColumn("レーン", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+      ImGui::TableSetupColumn("World X", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+      ImGui::TableSetupColumn("Low(木/飛越)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("High(氷/潜り)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("Wall(氷壁/回避)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("Item(アイテム)", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableHeadersRow();
+
+      for (int lane = currentMinLane; lane <= currentMaxLane; lane++) {
+        ImGui::TableNextRow();
+        float x = static_cast<float>(lane) * currentLaneWidth;
+
+        ImGui::TableSetColumnIndex(0);
+        if (lane == 0) {
+          ImGui::Text("中央 (%+d)", lane);
+        } else if (lane < 0) {
+          ImGui::Text("左 (%+d)", lane);
+        } else {
+          ImGui::Text("右 (%+d)", lane);
+        }
+
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%+.2f m", x);
+
+        ImGui::TableSetColumnIndex(2);
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.3f, 1.0f), "Y=%.2fm", kObstacleSpawnYLow);
+
+        ImGui::TableSetColumnIndex(3);
+        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.2f, 1.0f), "Y=%.2fm", kObstacleSpawnYHigh);
+
+        ImGui::TableSetColumnIndex(4);
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.1f, 1.0f), "Y=%.2fm", kObstacleSpawnYWall);
+
+        ImGui::TableSetColumnIndex(5);
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "Y=%.2fm (Z%+.1fm)",
+                           kItemSpawnY, kItemSpawnZOffset);
+      }
+      ImGui::EndTable();
+    }
+
+    ImGui::Separator();
+
+    // 3. 次回スポーン進行度・タイミング
+    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "[ 次回スポーン進行度 ]");
+    if (isSpawningPaused_) {
+      ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "状態: 一時停止中 (PAUSED)");
+    } else {
+      ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "状態: スポーン稼働中 (ACTIVE)");
+    }
+
+    float remainingDist = (std::max)(0.0f, obstacleInterval_ - distanceSinceLastSpawn_);
+    float remFrames = currentSpeed > 0.0f ? (remainingDist / currentSpeed) : 0.0f;
+    float remSec = remFrames / 60.0f;
+
+    if (distanceSinceLastSpawn_ < 0.0f) {
+      ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f),
+                         "助走区間中: 残り %.1f m 走行後に通常スポーン開始",
+                         -distanceSinceLastSpawn_);
+    } else {
+      float progress = (obstacleInterval_ > 0.0f)
+                           ? (distanceSinceLastSpawn_ / obstacleInterval_)
+                           : 0.0f;
+      if (progress < 0.0f) progress = 0.0f;
+      if (progress > 1.0f) progress = 1.0f;
+
+      char progressBuf[96];
+      snprintf(progressBuf, sizeof(progressBuf),
+               "次回まで: %.1f m / %.1f m (約 %.0f f / %.2f s)",
+               remainingDist, obstacleInterval_, remFrames, remSec);
+      ImGui::ProgressBar(progress, ImVec2(-1, 0), progressBuf);
+    }
+
+    // 4. スポーン操作・テスト
+    if (ImGui::Button("今すぐスポーン実行 (Spawn Now)")) {
+      SpawnObstacles(spawnObstacleZ_);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(isSpawningPaused_ ? "スポーン再開 (Resume)" : "一時停止 (Pause)")) {
+      isSpawningPaused_ = !isSpawningPaused_;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("全障害物を消去 (Clear All)")) {
+      ClearObstacles();
+    }
+
+    ImGui::Separator();
+
+    // 5. 出現中の障害物一覧
+    int activeCount = 0;
+    for (int i = 0; i < kMaxObstacles_; i++) {
+      if (obstacles_[i] && obstacles_[i]->GetIsActive()) {
+        activeCount++;
+      }
+    }
+
+    char activeHeader[64];
+    snprintf(activeHeader, sizeof(activeHeader), "出現中の障害物一覧 (%d / %d 個使用中)###ActiveObsList",
+             activeCount, kMaxObstacles_);
+    if (ImGui::TreeNode(activeHeader)) {
+      if (activeCount == 0) {
+        ImGui::TextDisabled("現在アクティブな障害物はありません。");
+      } else {
+        if (ImGui::BeginTable("ActiveObstaclesTable", 6,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable,
+                              ImVec2(0.0f, 180.0f))) {
+          ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 40.0f);
+          ImGui::TableSetupColumn("種別", ImGuiTableColumnFlags_WidthFixed, 130.0f);
+          ImGui::TableSetupColumn("座標 (X, Y, Z)", ImGuiTableColumnFlags_WidthStretch);
+          ImGui::TableSetupColumn("プレイヤー距離", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+          ImGui::TableSetupColumn("到達予測", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+          ImGui::TableSetupColumn("状態", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+          ImGui::TableHeadersRow();
+
+          for (int i = 0; i < kMaxObstacles_; i++) {
+            Obstacle *obs = obstacles_[i].get();
+            if (!obs || !obs->GetIsActive())
+              continue;
+
+            ImGui::TableNextRow();
+            const Transform &t = obs->GetTransform();
+            float distZ = t.translate.z; // プレイヤーは Z ≈ 0
+            float etaSec = (distZ > 0.0f && currentSpeed > 0.0f)
+                               ? (distZ / currentSpeed / 60.0f)
+                               : 0.0f;
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("#%d", i);
+
+            ImGui::TableSetColumnIndex(1);
+            const char *typeName = obs->GetDebugTypeName();
+            Vector4 col = obs->GetDebugTypeColor();
+            ImVec4 typeColor(col.x, col.y, col.z, col.w);
+            ImGui::TextColored(typeColor, "%s", typeName);
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("(%+.1f, %+.1f, %+.1f)", t.translate.x, t.translate.y,
+                        t.translate.z);
+
+            ImGui::TableSetColumnIndex(3);
+            if (distZ > 0.0f) {
+              ImGui::Text("%+.1f m", distZ);
+            } else {
+              ImGui::TextDisabled("通過済み (%+.1fm)", distZ);
+            }
+
+            ImGui::TableSetColumnIndex(4);
+            if (distZ > 0.0f && currentSpeed > 0.0f) {
+              if (etaSec < 1.0f) {
+                ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "%.2f s (近接!)",
+                                   etaSec);
+              } else if (etaSec < 2.5f) {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "%.2f s", etaSec);
+              } else {
+                ImGui::Text("%.2f s", etaSec);
+              }
+            } else {
+              ImGui::TextDisabled("---");
+            }
+
+            ImGui::TableSetColumnIndex(5);
+            if (obs->GetIsHit()) {
+              ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "衝突");
+            } else if (distZ < 0.0f) {
+              ImGui::TextDisabled("通過");
+            } else {
+              ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "接近中");
+            }
+          }
+          ImGui::EndTable();
+        }
+      }
+      ImGui::TreePop();
+    }
+  }
+
+  // アイテムクールタイム設定
+  if (ImGui::CollapsingHeader("アイテムクールタイム設定 (Item CoolDowns)",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    float spawnChance = GetItemSpawnChance() * 100.0f;
+    if (ImGui::SliderFloat("アイテム生成確率 (%)", &spawnChance, 0.0f,
+                           100.0f, "%.1f %%")) {
+      SetItemSpawnChance(spawnChance / 100.0f);
+    }
+    ImGui::Separator();
+
+    struct ItemInfo {
+      Obstacle::Type type;
+      const char *name;
+      const char *desc;
+    };
+    ItemInfo items[] = {
+        {Obstacle::Type::Bonus, "Bonus (ボーナス)", "スコア加算"},
+        {Obstacle::Type::BarrierItem, "Barrier (バリア)", "ミスを1回防御"},
+        {Obstacle::Type::ClearItem, "Clear (障害物全消去)",
+         "画面内の障害物を一掃"},
+        {Obstacle::Type::CameraItem, "Camera (視点切替)",
+         "1レーンモードへ移行"},
+        {Obstacle::Type::BossItem, "Boss (ボス戦突入)", "ボスバトル開始"},
+    };
+
+    for (const auto &item : items) {
+      ImGui::PushID(static_cast<int>(item.type));
+      float duration = GetItemCoolDownDuration(item.type);
+      float current = GetItemCoolDownTimer(item.type);
+
+      ImGui::Text("%s - %s", item.name, item.desc);
+      if (ImGui::SliderFloat("クールタイム (秒)", &duration, 0.0f, 120.0f,
+                             "%.1f s")) {
+        SetItemCoolDownDuration(item.type, duration);
+      }
+
+      if (current <= 0.0f) {
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f),
+                           "  状態: 出現可能 (READY)");
+      } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
+                           "  状態: クールダウン中 (残り %.1f 秒)", current);
+      }
+
+      ImGui::SameLine();
+      if (ImGui::SmallButton("即時可能にする (リセット)")) {
+        SetItemCoolDownTimer(item.type, 0.0f);
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("クールダウン開始")) {
+        SetItemCoolDownTimer(item.type, duration);
+      }
+      ImGui::Separator();
+      ImGui::PopID();
+    }
+  }
+}
+#else
+
+void StageSettings::ImGui() {}
+#endif
+

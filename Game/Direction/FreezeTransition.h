@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 #include <functional>
-#include <Sprite.h>
+#include <Graphics/Render/PostEffect.h>
 #include <Texture.h>
 
 class Draw;
@@ -13,74 +13,106 @@ class FreezeTransition {
 public:
     enum class Phase {
         None,       // 停止中
-        Freezing,   // 画面の周りから凍結が侵食してくる
-        Cracking,   // 凍結完了、ピキピキッと亀裂が走る (中間処理実行)
-        Shattering, // パリーン！と氷が割れて無数の破片が飛び散る
+        Freezing,   // 画面全体が凍結侵食してくる (Freeze Shader)
+        Cracking,   // 凍結完了、ピキピキッと亀裂が走る (Shatter Shader Crack phase, 中間処理実行)
+        Shattering, // パリーン！と氷が割れて無数のボロノイ破片が四散 (Shatter Shader Voronoi Fracture)
         Finished    // 遷移完了
     };
 
+    /// <summary>
+    /// シングルトンインスタンスを取得
+    /// </summary>
+    /// <returns>FreezeTransitionインスタンスへのポインタ</returns>
     static FreezeTransition* GetInstance();
 
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
     FreezeTransition();
+
+    /// <summary>
+    /// デストラクタ
+    /// </summary>
     ~FreezeTransition() = default;
 
-    // 初期化 (スプライト・テクスチャ・破片メッシュの事前構築)
+    /// <summary>
+    /// 初期化 (PostEffect・シェーダーパラメータ設定)
+    /// </summary>
     void Initialize();
 
-    // トランジション開始
-    // freezeDuration: 凍結にかかる時間 (秒)
-    // shatterDuration: 破片が飛び散る時間 (秒)
-    // onMidpoint: 凍結完了・割れる瞬間に呼ばれるコールバック (シーン初期化やステート切り替え等)
+    /// <summary>
+    /// 凍結・破砕画面遷移演出を開始
+    /// </summary>
+    /// <param name="freezeDuration">凍結にかかる時間 (秒)</param>
+    /// <param name="shatterDuration">破片が飛び散る時間 (秒)</param>
+    /// <param name="onMidpoint">凍結完了・割れる瞬間に呼ばれるコールバック</param>
     void Start(float freezeDuration, float shatterDuration, std::function<void()> onMidpoint = nullptr);
+
+    /// <summary>
+    /// デフォルト時間で凍結・破砕画面遷移演出を開始
+    /// </summary>
+    /// <param name="onMidpoint">凍結完了・割れる瞬間に呼ばれるコールバック</param>
     void Start(std::function<void()> onMidpoint = nullptr) { Start(kDefaultFreezeDuration, kDefaultShatterDuration, onMidpoint); }
 
-    // 毎フレームの更新処理
+    /// <summary>
+    /// デルタ時間を指定して毎フレームの更新処理
+    /// </summary>
+    /// <param name="deltaTime">フレーム経過時間</param>
     void Update(float deltaTime);
+
+    /// <summary>
+    /// 毎フレームの更新処理 (デフォルト60fps想定)
+    /// </summary>
     void Update() { Update(kDefaultDeltaTime); }
 
-    // 描画処理 (DrawUIから呼び出し)
+    /// <summary>
+    /// ポストエフェクトおよび破片パーティクルの描画処理
+    /// </summary>
+    /// <param name="draw">描画マネージャ</param>
     void Draw(class Draw& draw);
 
-    // 状態取得
+    /// <summary>
+    /// 現在の遷移フェーズを取得
+    /// </summary>
+    /// <returns>Phase列挙値</returns>
     Phase GetPhase() const { return phase_; }
+
+    /// <summary>
+    /// 演出が実行中かどうかを取得
+    /// </summary>
+    /// <returns>実行中の場合true</returns>
     bool IsActive() const { return phase_ != Phase::None && phase_ != Phase::Finished; }
+
+    /// <summary>
+    /// 演出が完全に終了したかどうかを取得
+    /// </summary>
+    /// <returns>終了した場合true</returns>
     bool IsFinished() const { return phase_ == Phase::Finished; }
+
+    /// <summary>
+    /// 凍結侵食中かどうかを取得
+    /// </summary>
+    /// <returns>凍結中の場合true</returns>
     bool IsFreezing() const { return phase_ == Phase::Freezing; }
+
+    /// <summary>
+    /// 氷が破砕した後の状態かどうかを取得
+    /// </summary>
+    /// <returns>破砕後または終了時の場合true</returns>
     bool IsShattered() const { return phase_ == Phase::Shattering || phase_ == Phase::Finished; }
 
-    // 強制リセット
+    /// <summary>
+    /// 演出の強制リセット
+    /// </summary>
     void Reset();
 
 private:
     static constexpr float kDefaultDeltaTime = 1.0f / 60.0f;
-    static constexpr float kDefaultFreezeDuration = 0.75f;
-    static constexpr float kDefaultCrackDuration = 0.12f;
-    static constexpr float kDefaultShatterDuration = 0.75f;
-    static constexpr float kShardGravity = 1150.0f;
-    static constexpr float kShardAirResistance = 0.985f;
-    static constexpr float kSpecularExponent = 5.0f;
-    static constexpr float kSpecularFlashStrength = 0.55f;
+    static constexpr float kDefaultFreezeDuration = 0.85f;
+    static constexpr float kDefaultCrackDuration = 0.50f;
+    static constexpr float kDefaultShatterDuration = 0.95f;
     static constexpr Vector2 kDefaultScreenCenter = { 640.0f, 360.0f };
     static constexpr float kFreezeSparkleRadius = 450.0f;
-
-    static constexpr Vector2 kCenterPivot = { 0.5f, 0.5f };
-    static constexpr Vector4 kClearWhiteColor = { 1.0f, 1.0f, 1.0f, 0.0f };
-    static constexpr Vector4 kFrostColor2 = { 0.9f, 0.95f, 1.0f, 0.0f };
-    static constexpr Vector4 kSurfaceColor = { 0.85f, 0.95f, 1.0f, 0.0f };
-
-    struct Shard {
-        std::unique_ptr<Sprite> sprite;
-        Vector2 initialPos;
-        Vector2 currentPos;
-        Vector2 velocity;
-        Vector3 rotation{ 0.0f, 0.0f, 0.0f };       // 3D回転 (X, Y, Z)
-        Vector3 angularVelocity{ 0.0f, 0.0f, 0.0f };// 3D回転速度 (X, Y, Z)
-        float scale = 1.0f;
-        float alpha = 1.0f;
-        Vector4 baseColor{ 0.92f, 0.97f, 1.0f, 1.0f }; // ガラス基本色
-        float shineSpeed = 1.0f;
-        float mass = 1.0f;
-    };
 
     struct IceSparkle {
         Vector2 pos;
@@ -97,7 +129,6 @@ private:
     float freezeDuration_ = kDefaultFreezeDuration;
     float crackDuration_ = kDefaultCrackDuration;
     float shatterDuration_ = kDefaultShatterDuration;
-    float shatterFlashTimer_ = 0.0f; // 破砕瞬間の閃光フラッシュタイマー
 
     std::function<void()> onMidpointCallback_ = nullptr;
     bool midpointExecuted_ = false;
@@ -108,24 +139,16 @@ private:
     int texCrackHandle_ = -1;
     int texSurfaceHandle_ = -1;
 
-    // スプライト
-    std::unique_ptr<Sprite> frostSprite1_; // 画面外周から侵食する霜 (正位置)
-    std::unique_ptr<Sprite> frostSprite2_; // 画面外周から侵食する霜 (180度回転・高密度化)
-    std::unique_ptr<Sprite> surfaceSprite_; // 画面全体を覆う氷の板
-    std::unique_ptr<Sprite> crackSprite_;   // ひび割れ (クラック)
-
-    // ガラス破片 (シャード)
-    static constexpr int kMeshCols = 14;
-    static constexpr int kMeshRows = 9;
-    std::vector<Shard> shards_;
+    // PostEffect シェーダーコントローラー
+    std::unique_ptr<PostEffect> freezePostEffect_;
+    std::unique_ptr<PostEffect> shatterPostEffect_;
 
     // キラキラ光る氷粉・ガラスダストパーティクル
     std::vector<IceSparkle> sparkles_;
 
     bool isInitialized_ = false;
 
-    void SetupShards();
-    void ResetShards();
     void EmitSparkles(const Vector2& center, int count, float minSpeed, float maxSpeed);
+    void EmitGlassCascade(int count);
     void UpdateSparkles(float deltaTime);
 };

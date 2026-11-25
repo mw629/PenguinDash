@@ -61,6 +61,11 @@ struct EffectDefinitionData {
 enum class EffectShape { Plane, Cylinder, Ring, Cube };
 
 struct EffectShapeData {
+  // Plane
+  Vector2 planeSize = {1.0f, 1.0f};
+  int planePivot = 0; // 0: Center, 1: Bottom, 2: Top
+  Vector2 planeOffset = {0.0f, 0.0f};
+
   int cylinderDivide = EffectConfig::kDefaultCylinderDivide;
   float cylinderTopRadius = EffectConfig::kDefaultRadius;
   float cylinderBottomRadius = EffectConfig::kDefaultRadius;

@@ -332,4 +332,18 @@ externals/DirectXTex/obj/
 imgui.ini
 **/imgui.ini
 
+# Environment / Secret files
+.env
+.env.*
+*.env
+!.env.example
+MatchaEngine/Network/Firebase/EmbeddedEnv.h
 
+# AI / User generated documents and outputs
+Generated/
+[Gg]enerated/
+[Gg]eneratedDocs/
+
+
+
+/CG.vcxproj.backup

@@ -11,6 +11,8 @@ enum SceneID
 	Json = 6
 };
 
+class Camera;
+
 class IScene
 {
 protected:
@@ -23,14 +25,37 @@ public:
 
 	virtual ~IScene() {};
 
+	/// <summary>
+	/// ImGuiデバッグウィンドウの描画
+	/// </summary>
 	virtual void ImGui() = 0;
 
+	/// <summary>
+	/// シーンの初期化
+	/// </summary>
 	virtual void Initialize() = 0;
 
+	/// <summary>
+	/// シーンの毎フレーム更新
+	/// </summary>
 	virtual void Update() = 0;
 
+	/// <summary>
+	/// 3Dオブジェクトの描画処理
+	/// </summary>
+	/// <param name="draw">描画マネージャ</param>
 	virtual void Draw(class Draw& draw) = 0;
-	virtual void DrawUI(class Draw& draw) {}
+
+	/// <summary>
+	/// 2D UIおよびオーバーレイの描画処理
+	/// </summary>
+	/// <param name="draw">描画マネージャ</param>
+	virtual void DrawUI(class Draw& /*draw*/) {}
+
+	/// <summary>
+	/// シーンのメインカメラ（Sceneウィンドウ表示用カメラ）を取得
+	/// </summary>
+	virtual Camera* GetCamera() { return nullptr; }
 
 	int GetSceneID() { return sceneID_; }
 	int GetNextSceneID() { return nextSceneID_; }

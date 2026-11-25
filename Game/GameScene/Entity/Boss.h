@@ -77,6 +77,7 @@ private:
 
 private:
   std::unique_ptr<Model> model_ = std::make_unique<Model>();
+  bool lightingEnabled_ = true;
   int hp_ = kMaxHP;
   bool isHit_ = false;
   float hitTimer_ = 0.0f;
@@ -88,17 +89,62 @@ private:
   Vector3 targetPos_;
 
 public:
+  /// <summary>
+  /// コンストラクタ
+  /// </summary>
   Boss();
+
+  /// <summary>
+  /// デストラクタ
+  /// </summary>
   ~Boss();
 
+  /// <summary>
+  /// ボスモデルの初期化
+  /// </summary>
+  /// <param name="modelData">ボス用3Dモデルデータ</param>
   void Initialize(ModelData modelData);
+
+  /// <summary>
+  /// ボス状態（HP、位置、ステート）のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// ボスをデフォルト位置で出現
+  /// </summary>
   void Spawn();
+
+  /// <summary>
+  /// ボスを指定座標に出現
+  /// </summary>
+  /// <param name="x">X座標</param>
+  /// <param name="y">Y座標</param>
+  /// <param name="z">Z座標</param>
   void Spawn(float x, float y, float z);
 
+  /// <summary>
+  /// ボスの毎フレーム更新処理
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
+  /// <param name="speedMultiplier">速度乗数</param>
   void Update(Matrix4x4 view, float speedMultiplier) override;
+
+  /// <summary>
+  /// ボスの毎フレーム更新処理（デフォルト速度）
+  /// </summary>
+  /// <param name="view">ビュー行列</param>
   void Update(Matrix4x4 view) { Update(view, kDefaultSpeedMultiplier); }
+
+  /// <summary>
+  /// ボスモデルの描画処理
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Draw(class Draw &draw) override;
+
+  /// <summary>
+  /// ImGuiインスペクター描画
+  /// </summary>
   void ImGuiInnerComponents() override;
 
   bool HasMaterial() const override {
@@ -106,23 +152,52 @@ public:
            GameObject::HasMaterial();
   }
 
+  /// <summary>
+  /// プレイヤー攻撃反射ヒット時のダメージ処理
+  /// </summary>
   void OnDamage();
+
+  /// <summary>
+  /// 現在のHPを取得
+  /// </summary>
   int GetHP() const { return hp_; }
+
+  /// <summary>
+  /// 最大HPを取得
+  /// </summary>
   int GetMaxHP() const { return kMaxHP; }
 
+  /// <summary>
+  /// 現在のボスステートを取得
+  /// </summary>
   BossState GetState() const;
-  float GetStateTimer() const { return stateTimer_; }
-  void ChangeState(BossState nextState);
-  void ChangeState(std::unique_ptr<IBossState> nextState);
 
-  Transform &GetTransformRef() { return transform_; }
+  /// <summary>
+  /// 現在のステート滞在時間を取得
+  /// </summary>
+  float GetStateTimer() const { return stateTimer_; }
+
+  /// <summary>
+  /// ボスステートの切り替え
+  /// </summary>
+  /// <param name="nextState">切り替え先ステート</param>
+  void ChangeState(BossState nextState);
+
+  /// <summary>
+  /// ボスステートの切り替え（カスタムステートインスタンス）
+  /// </summary>
+  /// <param name="nextState">ステートポインタ</param>
+  void ChangeState(std::unique_ptr<IBossState> nextState);
 
   Vector3 GetTargetPos() const { return targetPos_; }
   void SetTargetPos(const Vector3 &targetPos) { targetPos_ = targetPos; }
-  Vector3 &GetTargetPosRef() { return targetPos_; }
 
   const Vector3 &GetStartPos() const { return startPos_; }
   void SetStartPos(const Vector3 &startPos) { startPos_ = startPos; }
 
-  float &GetBattleAnimTimerRef() { return battleAnimTimer_; }
+  float GetBattleAnimTimer() const { return battleAnimTimer_; }
+  void SetBattleAnimTimer(float timer) { battleAnimTimer_ = timer; }
+
+  void SetLighting(bool enabled);
+  bool GetLighting() const { return lightingEnabled_; }
 };

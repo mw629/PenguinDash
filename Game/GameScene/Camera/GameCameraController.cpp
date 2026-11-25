@@ -1,13 +1,91 @@
 #include "GameCameraController.h"
+#include "../../../Editer/EditorManager.h"
 #include <Entity/Player.h>
 #include <Stage/StageSettings.h>
 #include <cmath>
 #include <imgui.h>
 
+// =========================================================================
+// ICameraTransitionPolicy（レーン種別ごとの遷移開始条件・スポーン方針）
+// =========================================================================
+
+class ICameraTransitionPolicy {
+public:
+  virtual ~ICameraTransitionPolicy() = default;
+  virtual bool ShouldPauseSpawningOnStart() const = 0;
+  virtual bool CanStartTransition(StageSettings *stageSettings,
+                                  float pendingTimer) const = 0;
+
+protected:
+  static bool HasActiveRegularObstacleInRange(StageSettings *stageSettings,
+                                              float maxZ) {
+    for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
+      Obstacle *obstacle = stageSettings->GetObstacle(i);
+      if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit() &&
+          obstacle->IsRegularObstacle()) {
+        float z = obstacle->GetTransform().translate.z;
+        if (z > 0.0f && z <= maxZ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
+class OneLaneTransitionPolicy final : public ICameraTransitionPolicy {
+public:
+  bool ShouldPauseSpawningOnStart() const override {
+    // 1レーン移行時はスポーンを止めず、奥から自然に流れてくるようにする
+    return false;
+  }
+  bool CanStartTransition(StageSettings *stageSettings,
+                          float pendingTimer) const override {
+    bool isOneLaneAtPlayer =
+        (stageSettings->GetLaneCountAtZ(0.0f) == 1 ||
+         stageSettings->GetLaneCountAtZ(5.0f) == 1 ||
+         stageSettings->GetLaneCountAtZ(12.0f) == 1 ||
+         stageSettings->GetScrollSpeed() <= 0.0001f ||
+         !EditorManager::IsPlaying());
+
+    bool hasNearObstacles = HasActiveRegularObstacleInRange(stageSettings, 12.0f);
+    return (!hasNearObstacles && isOneLaneAtPlayer) || pendingTimer >= 4.5f;
+  }
+};
+
+class StandardTransitionPolicy final : public ICameraTransitionPolicy {
+public:
+  bool ShouldPauseSpawningOnStart() const override { return true; }
+  bool CanStartTransition(StageSettings *stageSettings,
+                          float pendingTimer) const override {
+    bool hasActiveObstacles = HasActiveRegularObstacleInRange(stageSettings, 25.0f);
+    return !hasActiveObstacles || pendingTimer >= 2.5f ||
+           stageSettings->GetScrollSpeed() <= 0.0001f ||
+           !EditorManager::IsPlaying();
+  }
+};
+
+const ICameraTransitionPolicy *
+GameCameraController::ResolveTransitionPolicy(int laneCount) {
+  static const OneLaneTransitionPolicy kOneLane;
+  static const StandardTransitionPolicy kStandard;
+  return (laneCount == 1)
+             ? static_cast<const ICameraTransitionPolicy *>(&kOneLane)
+             : static_cast<const ICameraTransitionPolicy *>(&kStandard);
+}
+
 void GameCameraController::Initialize() {
+  camera_->SetDebugName("GameScene SceneCamera (DebugCamera)");
   camera_->SetTransform(cameraTransform_);
+  camera_->ResetDebugCamera(cameraTransform_);
+#ifdef _USE_IMGUI
+  camera_->SetDebugCamera(true);
+#else
+  camera_->SetDebugCamera(false);
+#endif
   camera_->Update();
 
+  gameCamera_->SetDebugName("GameScene GameCamera");
   gameCamera_->SetDebugCamera(false);
   gameCamera_->SetTransform(cameraTransform_);
   gameCamera_->Update();
@@ -19,10 +97,14 @@ void GameCameraController::Reset(const Transform &defaultTransform) {
   isCameraTransitionPending_ = false;
   isCameraTransitioning_ = false;
   cameraTransitionTimer_ = 0.0f;
+  currentFollowOffset_ = {0.0f, 0.0f, 0.0f};
+  currentBankRoll_ = 0.0f;
 
   cameraTransform_ = defaultTransform;
   camera_->SetTransform(cameraTransform_);
   gameCamera_->SetTransform(cameraTransform_);
+  camera_->Update();
+  gameCamera_->Update();
 }
 
 void GameCameraController::Update() {
@@ -44,28 +126,35 @@ void GameCameraController::SetDebugCamera(bool debug) {
 void GameCameraController::StartTransition(const Transform &targetTransform,
                                            int laneCount,
                                            StageSettings *stageSettings) {
-  if (stageSettings) {
-    stageSettings->SetSpawningPaused(true);
+  transitionPolicy_ = ResolveTransitionPolicy(laneCount);
+  if (stageSettings && transitionPolicy_) {
+    stageSettings->SetSpawningPaused(
+        transitionPolicy_->ShouldPauseSpawningOnStart());
     stageSettings->SetLaneCount(laneCount);
   }
+  isCameraTransitioning_ = false;
+  cameraTransitionTimer_ = 0.0f;
   isCameraTransitionPending_ = true;
   pendingCameraTargetTransform_ = targetTransform;
   pendingLaneCount_ = laneCount;
+  pendingTransitionTimer_ = 0.0f;
 }
 
 void GameCameraController::UpdateTransition(
     StageSettings *stageSettings, std::function<void()> onFinished) {
   if (isCameraTransitionPending_ && stageSettings) {
-    bool hasActiveObstacles = false;
-    for (int i = 0; i < stageSettings->GetMaxObstacles(); i++) {
-      Obstacle *obstacle = stageSettings->GetObstacle(i);
-      if (obstacle && obstacle->GetIsActive() && !obstacle->GetIsHit()) {
-        hasActiveObstacles = true;
-        break;
-      }
+    pendingTransitionTimer_ += Engine::kDefaultDeltaTime;
+
+    if (!transitionPolicy_) {
+      transitionPolicy_ = ResolveTransitionPolicy(pendingLaneCount_);
     }
 
-    if (!hasActiveObstacles) {
+    bool canStartTransition =
+        transitionPolicy_ &&
+        transitionPolicy_->CanStartTransition(stageSettings,
+                                              pendingTransitionTimer_);
+
+    if (canStartTransition) {
       isCameraTransitionPending_ = false;
       isCameraTransitioning_ = true;
       cameraTransitionTimer_ = 0.0f;
@@ -140,19 +229,136 @@ void GameCameraController::ToggleFirstPerson(Player *player) {
   }
 }
 
+void GameCameraController::UpdateGameplayCamera(Player *player, float dt) {
+  if (!player || isFirstPersonView_ || isCameraTransitioning_ || isCameraTransitionPending_) {
+    return;
+  }
+
+  if (isFollowPlayer_) {
+    Vector3 playerPos = player->GetTransform().translate;
+    float targetOffsetX = playerPos.x * followWeightX_;
+    float targetOffsetY = (playerPos.y > 0.0f ? playerPos.y : 0.0f) * followWeightY_;
+
+    float t = std::clamp(followSmoothSpeed_ * dt, 0.0f, 1.0f);
+    currentFollowOffset_.x = Lerp(currentFollowOffset_.x, targetOffsetX, t);
+    currentFollowOffset_.y = Lerp(currentFollowOffset_.y, targetOffsetY, t);
+    currentBankRoll_ = 0.0f;
+
+    Transform followTransform = cameraTransform_;
+    followTransform.translate.x += currentFollowOffset_.x;
+    followTransform.translate.y += currentFollowOffset_.y;
+
+    camera_->SetTransform(followTransform);
+    gameCamera_->SetTransform(followTransform);
+  } else {
+    currentFollowOffset_ = {0.0f, 0.0f, 0.0f};
+    currentBankRoll_ = 0.0f;
+    camera_->SetTransform(cameraTransform_);
+    gameCamera_->SetTransform(cameraTransform_);
+  }
+}
+
+// =================================================================
+// カメラ演出の同期委譲 (camera_ と gameCamera_ の両方に適用)
+// =================================================================
+void GameCameraController::Shake(float intensity, float duration, float frequency) {
+  if (camera_) camera_->Shake(intensity, duration, frequency);
+  if (gameCamera_) gameCamera_->Shake(intensity, duration, frequency);
+}
+
+void GameCameraController::ShakeDirectional(const Vector3 &direction, float intensity, float duration, float frequency) {
+  if (camera_) camera_->ShakeDirectional(direction, intensity, duration, frequency);
+  if (gameCamera_) gameCamera_->ShakeDirectional(direction, intensity, duration, frequency);
+}
+
+void GameCameraController::StopShake() {
+  if (camera_) camera_->StopShake();
+  if (gameCamera_) gameCamera_->StopShake();
+}
+
+void GameCameraController::ShakeImpact() {
+  Shake(0.85f, 0.4f, 25.0f);
+}
+
+void GameCameraController::ShakeDefeat() {
+  Shake(0.42f, 0.22f, 30.0f);
+}
+
+void GameCameraController::ShakeBossDefeat() {
+  Shake(1.2f, 0.6f, 20.0f);
+}
+
+void GameCameraController::ShakeLand() {
+  ShakeDirectional({0.0f, 1.0f, 0.0f}, 0.22f, 0.18f, 30.0f);
+}
+
+void GameCameraController::ShakeReflect() {
+  Shake(0.35f, 0.15f, 32.0f);
+}
+
+void GameCameraController::AnimateFov(float targetFov, float duration) {
+  if (camera_) camera_->AnimateFov(targetFov, duration);
+  if (gameCamera_) gameCamera_->AnimateFov(targetFov, duration);
+}
+
+void GameCameraController::AddFovImpulse(float deltaFov, float duration) {
+  if (camera_) camera_->AddFovImpulse(deltaFov, duration);
+  if (gameCamera_) gameCamera_->AddFovImpulse(deltaFov, duration);
+}
+
+void GameCameraController::ResetFov(float duration) {
+  if (camera_) camera_->ResetFov(duration);
+  if (gameCamera_) gameCamera_->ResetFov(duration);
+}
+
+void GameCameraController::SetPositionOffset(const Vector3 &offset) {
+  if (camera_) camera_->SetPositionOffset(offset);
+  if (gameCamera_) gameCamera_->SetPositionOffset(offset);
+}
+
+void GameCameraController::SetRotationOffset(const Vector3 &rotOffset) {
+  if (camera_) camera_->SetRotationOffset(rotOffset);
+  if (gameCamera_) gameCamera_->SetRotationOffset(rotOffset);
+}
+
+void GameCameraController::ClearOffsets() {
+  if (camera_) camera_->ClearOffsets();
+  if (gameCamera_) gameCamera_->ClearOffsets();
+}
+
+void GameCameraController::StartDollyZoom(const Vector3 &focusPoint, float targetDistance, float duration) {
+  if (camera_) camera_->StartDollyZoom(focusPoint, targetDistance, duration);
+  if (gameCamera_) gameCamera_->StartDollyZoom(focusPoint, targetDistance, duration);
+}
+
+void GameCameraController::StopDollyZoom() {
+  if (camera_) camera_->StopDollyZoom();
+  if (gameCamera_) gameCamera_->StopDollyZoom();
+}
+
 void GameCameraController::ImGui(Player *player,
                                  std::function<void(int)> onPresetSelected) {
 #ifdef _USE_IMGUI
-  camera_->ImGui();
-
-  if (ImGui::CollapsingHeader("GameScene Camera Settings",
+  if (ImGui::CollapsingHeader("ゲームカメラ設定",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
+    bool isDebug = camera_->GetDebugCamera();
+    if (ImGui::Checkbox("Scene View: Debug Camera (自由移動カメラ)", &isDebug)) {
+      camera_->SetDebugCamera(isDebug);
+    }
+    if (isDebug) {
+      ImGui::SameLine();
+      if (ImGui::Button("ゲームカメラ位置にリセット##gc")) {
+        camera_->ResetDebugCameraToGameCamera();
+      }
+    }
+    ImGui::Separator();
+
     bool cameraChanged = false;
-    if (ImGui::DragFloat3("Translate", &cameraTransform_.translate.x, 0.1f))
+    if (ImGui::DragFloat3("位置 (Translate)", &cameraTransform_.translate.x, 0.1f))
       cameraChanged = true;
-    if (ImGui::DragFloat3("Rotate", &cameraTransform_.rotate.x, 0.01f))
+    if (ImGui::DragFloat3("回転 (Rotate)", &cameraTransform_.rotate.x, 0.01f))
       cameraChanged = true;
-    if (ImGui::DragFloat3("Scale", &cameraTransform_.scale.x, 0.01f))
+    if (ImGui::DragFloat3("スケール (Scale)", &cameraTransform_.scale.x, 0.01f))
       cameraChanged = true;
 
     if (cameraChanged) {
@@ -161,38 +367,84 @@ void GameCameraController::ImGui(Player *player,
     }
 
     ImGui::Separator();
-    ImGui::Text("Presets:");
-    if (ImGui::Button("Behind View") && onPresetSelected) {
+    // プレイヤー追従設定
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "プレイヤー追従カメラ設定:");
+    ImGui::Checkbox("プレイヤー追従を有効化", &isFollowPlayer_);
+    if (isFollowPlayer_) {
+      ImGui::SliderFloat("追従速度", &followSmoothSpeed_, 1.0f, 30.0f);
+      ImGui::SliderFloat("レーンX追従ウェイト", &followWeightX_, 0.0f, 1.0f);
+      ImGui::SliderFloat("ジャンプY追従ウェイト", &followWeightY_, 0.0f, 1.0f);
+      ImGui::SliderFloat("バンク傾き量", &bankRollMultiplier_, 0.0f, 0.1f);
+    }
+
+    ImGui::Separator();
+    // カメラ演出テスト (Game View & Scene View 同期)
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "カメラ演出テスト (Game View 同期):");
+    static float gShakeInt = 0.7f;
+    static float gShakeDur = 0.35f;
+    ImGui::SliderFloat("揺れ強度##gc", &gShakeInt, 0.05f, 2.0f);
+    ImGui::SliderFloat("揺れ持続時間##gc", &gShakeDur, 0.05f, 1.5f);
+    if (ImGui::Button("衝撃シェイク##gc")) {
+      ShakeImpact();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("撃破シェイク##gc")) {
+      ShakeDefeat();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("着地シェイク##gc")) {
+      ShakeLand();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("シェイク停止##gc")) {
+      StopShake();
+    }
+
+    if (ImGui::Button("高速時FOV (0.60)")) {
+      AnimateFov(0.60f, 0.4f);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("FOVリセット##gc")) {
+      ResetFov(0.3f);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("被弾ズーム (-0.08)")) {
+      AddFovImpulse(-0.08f, 0.15f);
+    }
+
+    ImGui::Separator();
+    ImGui::Text("視点プリセット:");
+    if (ImGui::Button("後方視点 (Behind)") && onPresetSelected) {
       onPresetSelected(static_cast<int>(Preset::BehindView));
     }
     ImGui::SameLine();
-    if (ImGui::Button("Left Side View")) {
+    if (ImGui::Button("左サイド視点 (Left)")) {
       cameraTransform_ = kDefaultLeftSideViewTransform;
       camera_->SetTransform(cameraTransform_);
       gameCamera_->SetTransform(cameraTransform_);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Right Side View") && onPresetSelected) {
+    if (ImGui::Button("右サイド視点 (Right)") && onPresetSelected) {
       onPresetSelected(static_cast<int>(Preset::RightSideView));
     }
     ImGui::SameLine();
-    if (ImGui::Button("Boss View") && onPresetSelected) {
+    if (ImGui::Button("ボス視点 (Boss)") && onPresetSelected) {
       onPresetSelected(static_cast<int>(Preset::BossView));
     }
     ImGui::SameLine();
-    if (ImGui::Button(isFirstPersonView_ ? "Disable FPV (F2)" : "First Person View (F2)")) {
+    if (ImGui::Button(isFirstPersonView_ ? "一人称解除 (F2)" : "一人称視点 (F2)")) {
       ToggleFirstPerson(player);
     }
 
     ImGui::Separator();
-    if (ImGui::Button("Reset Debug Camera to Game Camera")) {
+    if (ImGui::Button("デバッグカメラをゲームカメラ位置にリセット")) {
       camera_->ResetDebugCamera(cameraTransform_);
     }
   }
 
-  if (ImGui::CollapsingHeader("First Person Camera Settings (F2)",
+  if (ImGui::CollapsingHeader("一人称視点カメラ設定 (F2)",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
-    if (ImGui::Checkbox("Enable First Person View (F2)", &isFirstPersonView_)) {
+    if (ImGui::Checkbox("一人称視点を有効化 (F2)", &isFirstPersonView_)) {
       if (!isFirstPersonView_) {
         camera_->SetTransform(cameraTransform_);
         gameCamera_->SetTransform(cameraTransform_);
@@ -201,9 +453,10 @@ void GameCameraController::ImGui(Player *player,
         }
       }
     }
-    ImGui::Checkbox("Draw Player Body in First Person", &drawPlayerInFirstPerson_);
-    ImGui::DragFloat3("FPV Camera Offset", &firstPersonOffset_.x, 0.02f);
-    ImGui::DragFloat3("FPV Camera Rotate", &firstPersonRotate_.x, 0.01f);
+    ImGui::Checkbox("一人称時にプレイヤー体を表示", &drawPlayerInFirstPerson_);
+    ImGui::DragFloat3("一人称カメラ位置オフセット", &firstPersonOffset_.x, 0.02f);
+    ImGui::DragFloat3("一人称カメラ回転オフセット", &firstPersonRotate_.x, 0.01f);
   }
 #endif
 }
+

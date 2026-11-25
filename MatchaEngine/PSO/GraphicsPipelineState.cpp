@@ -281,6 +281,8 @@ void GraphicsPipelineState::ALLPSOCreate(std::ostream& os, ID3D12Device* device)
 		CopyImageShader,
 		"OutLineShader",
 		"FogShader",
+		"FreezeShader",
+		"ShatterShader",
 	};
 
 	// 基本パーティクルシェーダーも先行生成

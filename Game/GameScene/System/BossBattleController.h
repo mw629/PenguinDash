@@ -1,14 +1,34 @@
 #pragma once
+#include <Entity/Obstacle.h>
 #include <Math/Calculation.h>
 #include <functional>
+#include <vector>
 
 class Boss;
 class StageSettings;
 class GameSceneEffect;
 class GameCameraController;
+class IBossAttackPattern;
 
 class BossBattleController {
+public:
+  enum class PatternType {
+    Standard,       // 基本：3レーン中 1安全, 1通常, 1反射
+    JumpAction,     // アクション強制：低空ジャンプ回避 ＋ 追撃反射
+    SlideAction,    // アクション強制：高空スライディング回避 ＋ 追撃反射
+    SequentialWave, // 時間差ウェーブ：左→中→右 または 右→中→左 の連続落下
+    DoubleWave,     // 2連波状攻撃：時間差で2波が落ちてくる
+    Count
+  };
+
+  struct QueuedAttack {
+    float delayFrames = 0.0f;
+    int lane = 0; // 0:左, 1:中央, 2:右
+    Obstacle::Type type = Obstacle::Type::BossAttack;
+  };
+
 private:
+
   static constexpr float kDefaultAttackSpawnZ = -35.0f;
   static constexpr float kDefaultAttackDropHeight = 18.0f;
   static constexpr float kDefaultAttackFallDuration = 28.0f;
@@ -42,19 +62,72 @@ private:
   Vector3 bossCameraRotate_ = kDefaultBossCameraRotate;
 
   int currentReflectLane_ = kNoReflectLane;
+  int totalReflectCount_ = 0;
+
+  std::vector<QueuedAttack> attackQueue_;
+  int lastPatternIndex_ = -1;
+  PatternType currentPattern_ = PatternType::Standard;
+
+private:
+  static const IBossAttackPattern *ResolvePattern(PatternType pattern);
+  void EnqueuePattern(PatternType pattern);
+  void EnqueuePattern(const IBossAttackPattern &pattern);
+  void SpawnAttack(StageSettings *stageSettings, int lane, Obstacle::Type type);
+  PatternType SelectNextPattern(int bossHP);
 
 public:
   BossBattleController() = default;
   ~BossBattleController() = default;
 
+  /// <summary>
+  /// ボス戦攻撃キューやタイマー状態のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// ボス戦攻撃パターンの生成、落下更新、カウンター反射判定の更新
+  /// </summary>
+  /// <param name="timeScale">時間スケール</param>
+  /// <param name="boss">ボスオブジェクト</param>
+  /// <param name="stageSettings">ステージ設定</param>
+  /// <param name="effectManager">エフェクトマネージャ</param>
+  /// <param name="cameraController">カメラコントローラ</param>
   void Update(float timeScale, Boss *boss, StageSettings *stageSettings,
-              GameSceneEffect *effectManager);
+              GameSceneEffect *effectManager,
+              GameCameraController *cameraController = nullptr);
+
+  /// <summary>
+  /// 指定した攻撃パターンを即時発動（デバッグ用・テスト用）
+  /// </summary>
+  /// <param name="pattern">発動する攻撃パターン</param>
+  void TriggerPattern(PatternType pattern) {
+    attackQueue_.clear();
+    EnqueuePattern(pattern);
+  }
 
   int GetReflectLane() const { return currentReflectLane_; }
+  int GetTotalReflectCount() const { return totalReflectCount_; }
+  void ResetTotalReflectCount() { totalReflectCount_ = 0; }
   const Vector3 &GetBossCameraTranslate() const { return bossCameraTranslate_; }
+  void SetBossCameraTranslate(const Vector3 &tr) { bossCameraTranslate_ = tr; }
   const Vector3 &GetBossCameraRotate() const { return bossCameraRotate_; }
+  void SetBossCameraRotate(const Vector3 &rot) { bossCameraRotate_ = rot; }
   float GetReflectMinZ() const { return bossAttackReflectMinZ_; }
+  PatternType GetCurrentPattern() const { return currentPattern_; }
+  size_t GetQueuedAttackCount() const { return attackQueue_.size(); }
+
+  float GetAttackSpawnZ() const { return bossAttackSpawnZ_; }
+  void SetAttackSpawnZ(float z) { bossAttackSpawnZ_ = z; }
+  float GetAttackDropHeight() const { return bossAttackDropHeight_; }
+  void SetAttackDropHeight(float h) { bossAttackDropHeight_ = h; }
+  float GetAttackFallDuration() const { return bossAttackFallDuration_; }
+  void SetAttackFallDuration(float d) { bossAttackFallDuration_ = d; }
+  float GetAttackReflectMinZ() const { return bossAttackReflectMinZ_; }
+  void SetAttackReflectMinZ(float z) { bossAttackReflectMinZ_ = z; }
+  float GetReflectArcHeight() const { return bossReflectArcHeight_; }
+  void SetReflectArcHeight(float h) { bossReflectArcHeight_ = h; }
+  float GetReflectDuration() const { return bossReflectDuration_; }
+  void SetReflectDuration(float d) { bossReflectDuration_ = d; }
 
   void ImGui(Boss *boss, GameCameraController *cameraController,
              bool isPlayingBoss, bool isCameraTransitioning);

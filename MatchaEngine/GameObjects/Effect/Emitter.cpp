@@ -15,6 +15,106 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
+// =========================================================================
+// Emitter::IEmitterShape（形状別パラメータ参照のポリモーフィズム）
+// =========================================================================
+
+class Emitter::IEmitterShape {
+public:
+  virtual ~IEmitterShape() = default;
+  virtual Vector3 GetPosition(const Emitter &emitter) const = 0;
+  virtual float &GetFrequencyTime(Emitter &emitter) const = 0;
+  virtual float GetFrequency(const Emitter &emitter) const = 0;
+  virtual uint32_t GetEmitCount(const Emitter &emitter) const = 0;
+};
+
+class BoxEmitterShape final : public Emitter::IEmitterShape {
+public:
+  Vector3 GetPosition(const Emitter &emitter) const override {
+    return emitter.emitter_.transform.translate;
+  }
+  float &GetFrequencyTime(Emitter &emitter) const override {
+    return emitter.emitter_.frequencyTime;
+  }
+  float GetFrequency(const Emitter &emitter) const override {
+    return emitter.emitter_.frequency;
+  }
+  uint32_t GetEmitCount(const Emitter &emitter) const override {
+    return emitter.emitter_.count;
+  }
+};
+
+class SphereEmitterShape final : public Emitter::IEmitterShape {
+public:
+  Vector3 GetPosition(const Emitter &emitter) const override {
+    return emitter.emitterSphere_.translate;
+  }
+  float &GetFrequencyTime(Emitter &emitter) const override {
+    return emitter.emitterSphere_.frequencyTime;
+  }
+  float GetFrequency(const Emitter &emitter) const override {
+    return emitter.emitterSphere_.frequency;
+  }
+  uint32_t GetEmitCount(const Emitter &emitter) const override {
+    return emitter.emitterSphere_.count;
+  }
+};
+
+class CircleEmitterShape final : public Emitter::IEmitterShape {
+public:
+  Vector3 GetPosition(const Emitter &emitter) const override {
+    return emitter.emitterCircle_.translate;
+  }
+  float &GetFrequencyTime(Emitter &emitter) const override {
+    return emitter.emitterCircle_.frequencyTime;
+  }
+  float GetFrequency(const Emitter &emitter) const override {
+    return emitter.emitterCircle_.frequency;
+  }
+  uint32_t GetEmitCount(const Emitter &emitter) const override {
+    return emitter.emitterCircle_.count;
+  }
+};
+
+class ConeEmitterShape final : public Emitter::IEmitterShape {
+public:
+  Vector3 GetPosition(const Emitter &emitter) const override {
+    return emitter.emitterCone_.translate;
+  }
+  float &GetFrequencyTime(Emitter &emitter) const override {
+    return emitter.emitterCone_.frequencyTime;
+  }
+  float GetFrequency(const Emitter &emitter) const override {
+    return emitter.emitterCone_.frequency;
+  }
+  uint32_t GetEmitCount(const Emitter &emitter) const override {
+    return emitter.emitterCone_.count;
+  }
+};
+
+const Emitter::IEmitterShape *Emitter::ResolveEmitterShape(EmitterType type) {
+  static const BoxEmitterShape kBox;
+  static const SphereEmitterShape kSphere;
+  static const CircleEmitterShape kCircle;
+  static const ConeEmitterShape kCone;
+
+  switch (type) {
+  case EmitterType::Sphere:
+    return &kSphere;
+  case EmitterType::Circle:
+    return &kCircle;
+  case EmitterType::Cone:
+    return &kCone;
+  case EmitterType::Box:
+  default:
+    return &kBox;
+  }
+}
+
+Vector3 Emitter::GetPosition() const {
+  return ResolveEmitterShape(emitterType_)->GetPosition(*this);
+}
+
 void Emitter::SetTexturePath(const std::string &path) {
   texturePath_ = path;
   effectDefinition_->SetTexturePath(path);
@@ -282,7 +382,18 @@ void Emitter::ImGui() {
       }
 
       bool shapeChanged = false;
-      if (shape_ == EffectShape::Cylinder) {
+      if (shape_ == EffectShape::Plane) {
+        shapeChanged |= ImGui::DragFloat2(
+            LanguageManager::Tr("Plane Size"),
+            &shapeData_.planeSize.x, 0.05f, 0.01f, 100.0f, "%.2f");
+        const char *pivotItems[] = {"Center", "Bottom", "Top"};
+        shapeChanged |= ImGui::Combo(
+            LanguageManager::Tr("Plane Pivot"),
+            &shapeData_.planePivot, pivotItems, IM_ARRAYSIZE(pivotItems));
+        shapeChanged |= ImGui::DragFloat2(
+            LanguageManager::Tr("Plane Offset"),
+            &shapeData_.planeOffset.x, 0.05f, -50.0f, 50.0f, "%.2f");
+      } else if (shape_ == EffectShape::Cylinder) {
         shapeChanged |=
             ImGui::DragInt(LanguageManager::Tr("Cylinder Divide"),
                            &shapeData_.cylinderDivide, 1.0f, 3, 128);
@@ -511,6 +622,10 @@ void Emitter::SaveToJson(const std::string &name) {
   root["visual"]["isBillboard"] = GetBillboard();
   root["visual"]["shader"] = shaderName_;
   root["visual"]["useGpuParticle"] = GetUseGpuParticle();
+
+  root["visual"]["planeSize"] = {shapeData_.planeSize.x, shapeData_.planeSize.y};
+  root["visual"]["planePivot"] = shapeData_.planePivot;
+  root["visual"]["planeOffset"] = {shapeData_.planeOffset.x, shapeData_.planeOffset.y};
 
   root["visual"]["cylinderDivide"] = shapeData_.cylinderDivide;
   root["visual"]["cylinderTopRadius"] = shapeData_.cylinderTopRadius;
@@ -855,6 +970,18 @@ void Emitter::LoadFromJson(const std::string &name) {
       SetTexturePath(root["visual"]["texturePath"].get<std::string>());
     }
 
+    if (root["visual"].contains("planeSize")) {
+      shapeData_.planeSize.x = root["visual"]["planeSize"][0];
+      shapeData_.planeSize.y = root["visual"]["planeSize"][1];
+    }
+    if (root["visual"].contains("planePivot")) {
+      shapeData_.planePivot = root["visual"]["planePivot"];
+    }
+    if (root["visual"].contains("planeOffset")) {
+      shapeData_.planeOffset.x = root["visual"]["planeOffset"][0];
+      shapeData_.planeOffset.y = root["visual"]["planeOffset"][1];
+    }
+
     if (root["visual"].contains("cylinderDivide")) {
       shapeData_.cylinderDivide = root["visual"]["cylinderDivide"];
       shapeData_.cylinderTopRadius = root["visual"]["cylinderTopRadius"];
@@ -1059,33 +1186,17 @@ void Emitter::Update(Matrix4x4 viewMatrix) {
     manualEmitTriggered_ = false;
   }
   if (!isStop_ && isLoop_) {
-    float *pFreqTime = &emitter_.frequencyTime;
-    float freq = emitter_.frequency;
-    switch (emitterType_) {
-    case EmitterType::Sphere:
-      pFreqTime = &emitterSphere_.frequencyTime;
-      freq = emitterSphere_.frequency;
-      break;
-    case EmitterType::Circle:
-      pFreqTime = &emitterCircle_.frequencyTime;
-      freq = emitterCircle_.frequency;
-      break;
-    case EmitterType::Cone:
-      pFreqTime = &emitterCone_.frequencyTime;
-      freq = emitterCone_.frequency;
-      break;
-    case EmitterType::Box:
-    default:
-      break;
-    }
+    const IEmitterShape *shape = ResolveEmitterShape(emitterType_);
+    float &freqTime = shape->GetFrequencyTime(*this);
+    float freq = shape->GetFrequency(*this);
 
-    *pFreqTime += EffectConfig::kDefaultDeltaTime;
-    if (freq <= 0.0f || freq <= *pFreqTime) {
+    freqTime += EffectConfig::kDefaultDeltaTime;
+    if (freq <= 0.0f || freq <= freqTime) {
       Emit();
       emitFrame = true;
       manualEmitTriggered_ = false;
       if (freq > 0.0f)
-        *pFreqTime -= freq;
+        freqTime -= freq;
     }
   }
 
@@ -1194,33 +1305,17 @@ void Emitter::Update(
     manualEmitTriggered_ = false;
   }
   if (!isStop_ && isLoop_) {
-    float *pFreqTime = &emitter_.frequencyTime;
-    float freq = emitter_.frequency;
-    switch (emitterType_) {
-    case EmitterType::Sphere:
-      pFreqTime = &emitterSphere_.frequencyTime;
-      freq = emitterSphere_.frequency;
-      break;
-    case EmitterType::Circle:
-      pFreqTime = &emitterCircle_.frequencyTime;
-      freq = emitterCircle_.frequency;
-      break;
-    case EmitterType::Cone:
-      pFreqTime = &emitterCone_.frequencyTime;
-      freq = emitterCone_.frequency;
-      break;
-    case EmitterType::Box:
-    default:
-      break;
-    }
+    const IEmitterShape *shape = ResolveEmitterShape(emitterType_);
+    float &freqTime = shape->GetFrequencyTime(*this);
+    float freq = shape->GetFrequency(*this);
 
-    *pFreqTime += EffectConfig::kDefaultDeltaTime;
-    if (freq <= 0.0f || freq <= *pFreqTime) {
+    freqTime += EffectConfig::kDefaultDeltaTime;
+    if (freq <= 0.0f || freq <= freqTime) {
       Emit();
       emitFrame = true;
       manualEmitTriggered_ = false;
       if (freq > 0.0f)
-        *pFreqTime -= freq;
+        freqTime -= freq;
     }
   }
 
@@ -1461,21 +1556,7 @@ bool Emitter::OnCollision(EffectDefinitionData particleData) {
 }
 
 void Emitter::Emit() {
-  uint32_t count = emitter_.count;
-  switch (emitterType_) {
-  case EmitterType::Sphere:
-    count = emitterSphere_.count;
-    break;
-  case EmitterType::Circle:
-    count = emitterCircle_.count;
-    break;
-  case EmitterType::Cone:
-    count = emitterCone_.count;
-    break;
-  case EmitterType::Box:
-  default:
-    break;
-  }
+  uint32_t count = ResolveEmitterShape(emitterType_)->GetEmitCount(*this);
   if (!GetUseGpuParticle()) {
     for (uint32_t i = 0; i < count; ++i) {
       effectDefinitionData_.push_back(MakeNewParticle());

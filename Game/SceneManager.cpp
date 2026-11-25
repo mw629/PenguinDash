@@ -17,19 +17,6 @@ void SceneManager::ImGui() {
 	if (scene_) {
 		scene_->ImGui();
 	}
-
-#ifdef _USE_IMGUI
-	if (ImGui::Begin("Scene Transition")) {
-		if (ImGui::Button("Test Freeze & Shatter", ImVec2(220, 30))) {
-			FreezeTransition::GetInstance()->Start();
-		}
-		ImGui::SameLine();
-		const char* phaseNames[] = { "None", "Freezing", "Cracking", "Shattering", "Finished" };
-		int p = static_cast<int>(FreezeTransition::GetInstance()->GetPhase());
-		ImGui::Text("Phase: %s", (p >= 0 && p <= 4) ? phaseNames[p] : "Unknown");
-	}
-	ImGui::End();
-#endif
 }
 
 void SceneManager::Initialize() {
@@ -77,9 +64,10 @@ void SceneManager::Draw(class Draw& draw) {
 void SceneManager::DrawUI(class Draw& draw) {
 	if (scene_) {
 		scene_->DrawUI(draw);
+	} else {
+		// 最前面に氷結・破片トランジションを描画（シーン未ロード時）
+		FreezeTransition::GetInstance()->Draw(draw);
 	}
-	// 最前面に氷結・破片トランジションを描画
-	FreezeTransition::GetInstance()->Draw(draw);
 }
 
 void SceneManager::Run(class Draw& draw)
@@ -87,6 +75,10 @@ void SceneManager::Run(class Draw& draw)
 	ImGui();
 	Update();
 	Draw(draw);
+}
+
+Camera* SceneManager::GetCamera() {
+	return scene_ ? scene_->GetCamera() : nullptr;
 }
 
 std::unique_ptr<IScene> SceneManager::CreateScene(int sceneID)
@@ -98,3 +90,4 @@ std::unique_ptr<IScene> SceneManager::CreateScene(int sceneID)
 	default: return nullptr;
 	}
 }
+

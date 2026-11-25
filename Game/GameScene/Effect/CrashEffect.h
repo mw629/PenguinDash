@@ -21,17 +21,61 @@ private:
   Vector2 crashBaseSize_ = kDefaultBaseSize;
   Vector2 crashPosition_ = kDefaultPosition;
 
+  bool isActive_ = false;
+
 public:
   CrashEffect() = default;
   ~CrashEffect() = default;
 
+  /// <summary>
+  /// クラッシュスプライトリソースの初期化
+  /// </summary>
   void Initialize(class Texture *texture);
+
+  /// <summary>
+  /// 激突・クラッシュ演出を発動
+  /// </summary>
   void Trigger();
+
+  /// <summary>
+  /// クラッシュ演出タイマー等のリセット
+  /// </summary>
   void Reset();
+
+  /// <summary>
+  /// クラッシュ演出アニメーションの毎フレーム更新
+  /// </summary>
+  /// <param name="dt">デルタタイム</param>
   void Update(float dt);
+
+  /// <summary>
+  /// クラッシュ演出アニメーションの毎フレーム更新（デフォルト時間）
+  /// </summary>
   void Update() { Update(Engine::kDefaultDeltaTime); }
+
+  /// <summary>
+  /// クラッシュスプライトの描画
+  /// </summary>
+  /// <param name="draw">描画マネージャ</param>
   void Render(class Draw &draw);
+
+  /// <summary>
+  /// ImGuiによるクラッシュ演出パラメータ調整UI
+  /// </summary>
   void ImGui();
 
-  Sprite *GetSprite() const { return crashSprite_.get(); }
+  bool IsActive() const { return isActive_; }
+  Sprite *GetSprite() const { return isActive_ ? crashSprite_.get() : nullptr; }
+  const Vector2 &GetCrashPosition() const { return crashPosition_; }
+  void SetCrashPosition(const Vector2 &pos) { crashPosition_ = pos; }
+  float GetCrashScaleDuration() const { return crashScaleDuration_; }
+  void SetCrashScaleDuration(float dur) { crashScaleDuration_ = dur; }
+  const Vector2 &GetCrashBaseSize() const { return crashBaseSize_; }
+  void SetCrashBaseSize(const Vector2 &size) {
+    crashBaseSize_ = size;
+    if (crashSprite_) {
+      crashSprite_->SetSize(crashBaseSize_);
+      crashSprite_->UpdateVertexBuffer();
+    }
+  }
 };

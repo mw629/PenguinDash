@@ -43,10 +43,8 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings"></ImportGroup>
+  <ImportGroup Label="Shared"></ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -89,6 +87,9 @@
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
@@ -118,6 +119,9 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
@@ -150,6 +154,9 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)MatchaEngine\Network\Firebase\GenerateEmbeddedEnv.ps1" -projectDir "$(ProjectDir)\."</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
@@ -187,7 +194,6 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="MatchaEngine\Graphics\RenderTexture.cpp" />
     <ClCompile Include="MatchaEngine\GameObjects\Object\3d\Ring.cpp" />
     <ClCompile Include="MatchaEngine\GameObjects\Effect\Emitter.cpp" />
-    <ClCompile Include="Game\Direction\Fade.cpp" />
     <ClCompile Include="Game\Direction\FreezeTransition.cpp" />
     <ClCompile Include="MatchaEngine\GameObjects\Camera\Camera.cpp" />
     <ClCompile Include="Game\GameScene\GameScene.cpp" />
@@ -267,6 +273,9 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="Game\GameScene\System\SoundManager.cpp" />
     <ClCompile Include="Game\GameScene\Camera\GameCameraController.cpp" />
     <ClCompile Include="Game\GameScene\Effect\CrashEffect.cpp" />
+    <ClCompile Include="Game\GameScene\Effect\RankingCutinEffect.cpp" />
+    <ClCompile Include="Game\GameScene\System\Achievement.cpp" />
+    <ClCompile Include="Game\GameScene\System\AchievementManager.cpp" />
     <ClCompile Include="Game\GameScene\System\BossBattleController.cpp" />
     <ClCompile Include="Game\GameScene\System\ScoreManager.cpp" />
     <ClCompile Include="Game\GameScene\System\TitleDirector.cpp" />
@@ -276,123 +285,9 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClCompile Include="MatchaEngine\Graphics\Font\TextRenderer.cpp" />
     <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.cpp" />
     <ClCompile Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Resources\Shader\ComputeShader\Particle.CS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Particle.PS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Particle.VS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Line.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Line.VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Object3d.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\Object3d.VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\SkinningObject3d.CS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\SkinningObject3d.PS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\SkinningObject3d.VS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-    </FxCompile>
-    <FxCompile Include="resources\Shader\SkyBox.VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
+    <ClCompile Include="MatchaEngine\Network\Firebase\EnvLoader.cpp" />
+    <ClCompile Include="MatchaEngine\Network\Firebase\HttpClient.cpp" />
+    <ClCompile Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\GameScene\Effect\HexBarrier.h" />
@@ -432,13 +327,15 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="MatchaEngine\Graphics\RenderTexture.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Object\3d\Ring.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Effect\Emitter.h" />
-    <ClInclude Include="Game\Direction\Fade.h" />
     <ClInclude Include="Game\Direction\FreezeTransition.h" />
     <ClInclude Include="Game\IScene.h" />
     <ClInclude Include="MatchaEngine\GameObjects\Camera\Camera.h" />
     <ClInclude Include="Game\GameScene\GameScene.h" />
     <ClInclude Include="Game\GameScene\Camera\GameCameraController.h" />
     <ClInclude Include="Game\GameScene\Effect\CrashEffect.h" />
+    <ClInclude Include="Game\GameScene\Effect\RankingCutinEffect.h" />
+    <ClInclude Include="Game\GameScene\System\Achievement.h" />
+    <ClInclude Include="Game\GameScene\System\AchievementManager.h" />
     <ClInclude Include="Game\GameScene\System\BossBattleController.h" />
     <ClInclude Include="Game\GameScene\System\ScoreManager.h" />
     <ClInclude Include="Game\GameScene\System\TitleDirector.h" />
@@ -509,6 +406,13 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
     <ClInclude Include="Game\GameScene\System\SoundManager.h" />
     <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkClient.h" />
     <ClInclude Include="MatchaEngine\Network\TCPTcpNetwork\TcpNetworkHandlerBase.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\EnvLoader.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\EmbeddedEnv.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\HttpClient.h" />
+    <ClInclude Include="MatchaEngine\Network\Firebase\FirebaseRankingManager.h" />
+    <ClInclude Include="MatchaEngine\Core\Color.h" />
+    <ClInclude Include="MatchaEngine\Core\VariableTypes\Vector4.h" />
+    <ClInclude Include="MatchaEngine\Math\Ray.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
@@ -520,41 +424,59 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
-    <None Include="resources\Shader\Line.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="resources\Shader\Object3d.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="resources\Shader\Particle.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="resources\Shader\PostEffect\PostEffect.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="resources\Shader\SkinningObject3d.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="resources\Shader\SkyBox.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="resources\Shader\SkyBox.PS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
+    <None Include="Resources\Shader\LineShader\Line.hlsli" />
+    <None Include="Resources\Shader\LineShader\Line.PS.hlsl" />
+    <None Include="Resources\Shader\LineShader\Line.VS.hlsl" />
+    <None Include="Resources\Shader\MSDFShader\MSDF.hlsli" />
+    <None Include="Resources\Shader\MSDFShader\MSDF.PS.hlsl" />
+    <None Include="Resources\Shader\MSDFShader\MSDF.VS.hlsl" />
+    <None Include="Resources\Shader\ObjectShader\IceShader.PS.hlsl" />
+    <None Include="Resources\Shader\ObjectShader\Object3d.hlsli" />
+    <None Include="Resources\Shader\ObjectShader\Object3d.PS.hlsl" />
+    <None Include="Resources\Shader\ObjectShader\Object3d.VS.hlsl" />
+    <None Include="Resources\Shader\ObjectShader\Water.PS.hlsl" />
+    <None Include="Resources\Shader\ObjectShader\Water.VS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\BoxEmitterParticle.CS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\InitializeParticle.CS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\Particle.hlsli" />
+    <None Include="Resources\Shader\ParticleShader\Particle.PS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\Particle.VS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\Smoke.PS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\SnowSparkle.PS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\SphereEmitterParticle.CS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\ToonParticle.PS.hlsl" />
+    <None Include="Resources\Shader\ParticleShader\UpdateParticle.CS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Bloom.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\CopyImage.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Dissolve.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Fog.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Freeze.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\GaussianFilter.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\GrayScale.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\GrayScaleSepiaTone.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\HalftoneDot.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\LuminanceOutLine.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\NormalVectorOutLine.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\OutLine.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Pixelate.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\PostEffect.hlsli" />
+    <None Include="Resources\Shader\PostEffect\PostEffect.VS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Posterization.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\RadialBlur.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\RadialZoom.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Random.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Shatter.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Smoothing.PS.hlsl" />
+    <None Include="Resources\Shader\PostEffect\Vignetting.PS.hlsl" />
+    <None Include="Resources\Shader\SkinningShader\Skinning.CS.hlsl" />
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.CS.hlsl" />
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.hlsli" />
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.PS.hlsl" />
+    <None Include="Resources\Shader\SkinningShader\SkinningObject3d.VS.hlsl" />
+    <None Include="Resources\Shader\SkyBoxShader\SkyBox.hlsli" />
+    <None Include="Resources\Shader\SkyBoxShader\SkyBox.PS.hlsl" />
+    <None Include="Resources\Shader\SkyBoxShader\SkyBox.VS.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets"></ImportGroup>
 </Project>

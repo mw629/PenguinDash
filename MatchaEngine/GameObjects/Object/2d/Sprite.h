@@ -101,24 +101,61 @@ public:
 	Sprite();
 	~Sprite();
 
-	// 画面サイズ・基準解像度の設定
+	/// <summary>
+	/// 画面サイズ（ピクセル）の設定
+	/// </summary>
 	static void SetScreenSize(Vector2 screenSize);
 	static Vector2 GetScreenSize();
+
+	/// <summary>
+	/// 仮想解像度（基準解像度）の設定
+	/// </summary>
 	static void SetReferenceResolution(Vector2 refResolution);
 	static Vector2 GetReferenceResolution();
 
+	/// <summary>
+	/// スプライトの初期化
+	/// </summary>
+	/// <param name="spriteData">初期スプライトデータ</param>
+	/// <param name="textureHandle">テクスチャハンドル</param>
 	void Initialize(SpriteData spriteData, int textureHandle);
 
+	/// <summary>
+	/// 頂点リソースの生成
+	/// </summary>
 	void CreateVertexData();
+
+	/// <summary>
+	/// インデックスリソースの生成
+	/// </summary>
 	void CreateIndexResource();
+
+	/// <summary>
+	/// WVP定数バッファの生成
+	/// </summary>
 	void CreateWVP();
+
+	/// <summary>
+	/// スプライトリソース一括生成
+	/// </summary>
 	void CreateSprite();
 
+	/// <summary>
+	/// WVP行列の計算および定数バッファ転送
+	/// </summary>
 	void SettingWvp();
+
+	/// <summary>
+	/// 頂点バッファデータの更新（位置・UV）
+	/// </summary>
 	void UpdateVertexBuffer();
+
+	/// <summary>
+	/// カスタム三角形頂点の設定
+	/// </summary>
 	void SetCustomTriangleVertices(const Vector2 positions[3], const Vector2 uvs[3]);
 
-	void SetTransform(Transform transform);
+	void SetTransform(const Transform& transform) override;
 	void SetSize(Vector2 size);
 	void SetTextureArea(Vector2 textureArea[2]);
 	void SetPivot(Vector2 pivot);
@@ -130,8 +167,15 @@ public:
 	SpriteAnchor GetAnchor() const { return anchor_; }
 	Vector2 GetSize() const { return size_; }
 
+	/// <summary>
+	/// アンカー・スケールモードを適用した画面上座標とスケールを計算
+	/// </summary>
 	ScreenTransformResult CalculateScreenTransform() const;
 
+	/// <summary>
+	/// スプライトデータの毎フレーム更新
+	/// </summary>
+	/// <param name="spriteData">更新後スプライトデータ</param>
 	void Update(SpriteData spriteData);
 
 	void SetMaterialLighting(bool isActive) { 
@@ -145,8 +189,6 @@ public:
 	ID3D12Resource* GetVertexResource() { return wvpResource_.Get(); }
 	D3D12_INDEX_BUFFER_VIEW* GetIndexBufferView() { return &indexBufferView_; }
 
-	Transform& GetTransform() { return transform_; }
-	
 	MaterialFactory* GetMaterial() { 
 		auto matComp = GetComponent<MaterialComponent>();
 		return matComp ? matComp->GetMaterialFactory() : nullptr;
