@@ -166,6 +166,10 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Game\GameScene\Entity\Boss.cpp" />
+    <ClCompile Include="Game\GameScene\Entity\State\BossStates.cpp" />
+    <ClCompile Include="Game\GameScene\Entity\State\PlayerStates.cpp" />
+    <ClCompile Include="Game\GameScene\State\PlayingStates.cpp" />
+    <ClCompile Include="Game\GameScene\State\GameSceneStates.cpp" />
     <ClCompile Include="Editer\EditorUI.cpp" />
     <ClCompile Include="Editer\EditorManager.cpp" />
     <ClCompile Include="Editer\Command\CommandManager.cpp" />
@@ -292,6 +296,14 @@ if %ERRORLEVEL% LSS 8 exit /b 0</Command>
   <ItemGroup>
     <ClInclude Include="Game\GameScene\Effect\HexBarrier.h" />
     <ClInclude Include="Game\GameScene\Entity\Boss.h" />
+    <ClInclude Include="Game\GameScene\Entity\State\IBossState.h" />
+    <ClInclude Include="Game\GameScene\Entity\State\BossStates.h" />
+    <ClInclude Include="Game\GameScene\Entity\State\IPlayerState.h" />
+    <ClInclude Include="Game\GameScene\Entity\State\PlayerStates.h" />
+    <ClInclude Include="Game\GameScene\State\IPlayingState.h" />
+    <ClInclude Include="Game\GameScene\State\PlayingStates.h" />
+    <ClInclude Include="Game\GameScene\State\IGameSceneState.h" />
+    <ClInclude Include="Game\GameScene\State\GameSceneStates.h" />
     <ClInclude Include="Editer\EditorUI.h" />
     <ClInclude Include="Editer\EditorManager.h" />
     <ClInclude Include="Editer\Command\ICommand.h" />

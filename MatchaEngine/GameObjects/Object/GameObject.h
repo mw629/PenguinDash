@@ -49,7 +49,16 @@ public:
 
 public:
     GameObject() {}
-    virtual ~GameObject() = default;
+    virtual ~GameObject() {
+        // 破棄時のダングリングポインタ防止：親から自身を解除し、全子の親参照をクリア
+        SetParent(nullptr);
+        auto childrenCopy = children_;
+        for (auto* child : childrenCopy) {
+            if (child) {
+                child->SetParent(nullptr);
+            }
+        }
+    }
 
     /// <summary>
     /// 新しいコンポーネントを生成してGameObjectに追加します。
@@ -307,6 +316,9 @@ public:
     /// ワールド行列の再計算フラグ（Dirty Flag）を立て、子オブジェクトにも再帰的に伝播します。
     /// </summary>
     virtual void MarkDirty() {
+        if (isWorldMatrixDirty_) {
+            return;
+        }
         isWorldMatrixDirty_ = true;
         for (auto* child : children_) {
             if (child) {

@@ -41,10 +41,10 @@ public:
 	virtual const Vector3& GetSize() const { static Vector3 s{1,1,1}; return s; }
 	virtual float GetRadius() const { return kDefaultExtent; }
 
-	// Double Dispatch for collision check
-	virtual bool IntersectsWith(const ColliderComponent* other) const;
-	virtual bool IntersectsBox(const BoxColliderComponent* other) const;
-	virtual bool IntersectsSphere(const SphereColliderComponent* other) const;
+	// Double Dispatch for collision check（純粋仮想関数で派生クラスのオーバーライド漏れを防止）
+	virtual bool IntersectsWith(const ColliderComponent* other) const = 0;
+	virtual bool IntersectsBox(const BoxColliderComponent* other) const = 0;
+	virtual bool IntersectsSphere(const SphereColliderComponent* other) const = 0;
 };
 
 class BoxColliderComponent : public ColliderComponent
