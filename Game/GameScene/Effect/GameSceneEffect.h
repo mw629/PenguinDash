@@ -100,6 +100,11 @@ public:
   Emitter* GetDiamondDustEffect() const { return diamondDustEffect_.get(); }
 
   /// <summary>
+  /// 氷バリアの親オブジェクトを設定（シーングラフ親子関係で追従）
+  /// </summary>
+  void SetBarrierParent(GameObject *parent);
+
+  /// <summary>
   /// 氷バリアの展開演出を開始
   /// </summary>
   /// <param name="playerPos">プレイヤー座標</param>
@@ -188,6 +193,7 @@ private:
 
   // バリア
   std::unique_ptr<HexBarrier> barrier_;
+  GameObject *barrierParent_ = nullptr;
   BarrierEffectState barrierState_ = BarrierEffectState::Inactive;
   float barrierDeployTimer_ = 0.0f;
   float barrierDeployDuration_ = kDefaultBarrierDeployDuration;

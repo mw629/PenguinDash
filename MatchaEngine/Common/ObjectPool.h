@@ -1,9 +1,10 @@
 #pragma once
-#include <vector>
-#include <memory>
-#include <functional>
-#include <concepts>
+#include <algorithm>
 #include <cassert>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <vector>
 
 namespace Matcha {
 
@@ -70,7 +71,6 @@ public:
 
         T* ptr = freeList_.back();
         freeList_.pop_back();
-        InitObject(*ptr);
         return ptr;
     }
 
@@ -79,6 +79,11 @@ public:
     /// </summary>
     void Release(T* obj) {
         if (!obj) return;
+        // 二重返却（Double Release）を防止
+        if (std::find(freeList_.begin(), freeList_.end(), obj) != freeList_.end()) {
+            assert(false && "ObjectPool::Release called twice for the same object");
+            return;
+        }
         // リセット処理を実行
         ResetObject(*obj);
         freeList_.push_back(obj);

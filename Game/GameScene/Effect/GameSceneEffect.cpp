@@ -313,17 +313,31 @@ void GameSceneEffect::EmitBossImpact(const Vector3 &pos) {
   bossImpactEffect_->TriggerBurst();
 }
 
+void GameSceneEffect::SetBarrierParent(GameObject *parent) {
+  barrierParent_ = parent;
+  if (barrier_ && barrierState_ != BarrierEffectState::Breaking) {
+    barrier_->SetParent(barrierParent_);
+  }
+}
+
 void GameSceneEffect::EmitBarrier(const Vector3 &playerPos) {
   barrierState_ = BarrierEffectState::Deploying;
   barrierDeployTimer_ = 0.0f;
   barrierPulseTimer_ = 0.0f;
   lastPlayerPos_ = playerPos;
+  if (barrier_) {
+    barrier_->SetParent(barrierParent_);
+  }
 }
 
 void GameSceneEffect::BreakBarrier(const Vector3 &playerPos) {
   barrierState_ = BarrierEffectState::Breaking;
   barrierBreakTimer_ = 0.0f;
   lastPlayerPos_ = playerPos;
+  // 破壊演出中はその場で砕け散るよう一時的に親から切り離す
+  if (barrier_) {
+    barrier_->SetParent(nullptr);
+  }
 }
 
 void GameSceneEffect::ClearBarrier() {
@@ -417,13 +431,17 @@ void GameSceneEffect::UpdateBarrier(const Matrix4x4 &view,
     }
   }
 
-  // プレイヤーの前方に配置
+  // プレイヤーの前方に配置（親オブジェクト設定時はシーングラフのローカルオフセットで追従）
   Transform barrierTransform;
   barrierTransform.scale = currentScale;
   barrierTransform.rotate = {0.0f, 0.0f, 0.0f};
-  barrierTransform.translate = {playerPos.x + barrierOffset_.x,
-                                playerPos.y + barrierOffset_.y,
-                                playerPos.z + barrierOffset_.z};
+  if (barrier_->GetParent() != nullptr) {
+    barrierTransform.translate = barrierOffset_;
+  } else {
+    barrierTransform.translate = {playerPos.x + barrierOffset_.x,
+                                  playerPos.y + barrierOffset_.y,
+                                  playerPos.z + barrierOffset_.z};
+  }
 
   barrier_->SetTransform(barrierTransform);
   barrier_->SettingWvp(view);

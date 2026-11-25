@@ -33,9 +33,8 @@ enum GameStateEnum {
   State_Paused = 2,
   State_PlayerHit = 3,
   State_FirstPlaceCutIn = 4,
-  State_GameClear = 5,
-  State_GameOver = 6,
-  State_Editor = 7
+  State_GameOver = 5,
+  State_Editor = 6
 };
 
 // PlayingState values matching GameScene

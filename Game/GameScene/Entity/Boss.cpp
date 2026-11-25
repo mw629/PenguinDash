@@ -1,7 +1,6 @@
 #include "Boss.h"
 #include "Graphics/Render/Draw.h"
-#include "Math/Calculation.h"
-#include <cmath>
+#include "State/BossStates.h"
 #include <imgui.h>
 
 Boss::Boss() {
@@ -25,96 +24,11 @@ void Boss::SetLighting(bool enabled) {
   }
 }
 
-// ==========================================
-// Boss States Implementation
-// ==========================================
-
-void BossAppearanceState::Enter(Boss &boss) {
-  boss.transform_.rotate = {0.0f, 0.0f, 0.0f};
-  boss.MarkDirty();
-}
-
-void BossAppearanceState::Update(Boss &boss, float speedMultiplier) {
-  (void)speedMultiplier;
-  float stateTimer = boss.GetStateTimer();
-  float t = stateTimer / Boss::kAppearanceDuration;
-  if (t > 1.0f)
-    t = 1.0f;
-
-  // EaseOutQuad (だんだんゆっくりに)
-  float easeT = 1.0f - (1.0f - t) * (1.0f - t);
-  const Vector3 &startPos = boss.GetStartPos();
-  const Vector3 &targetPos = boss.GetTargetPos();
-  Transform &transform = boss.transform_;
-
-  transform.translate.x = startPos.x + (targetPos.x - startPos.x) * easeT;
-  transform.translate.y = startPos.y + (targetPos.y - startPos.y) * easeT;
-  transform.translate.z = startPos.z + (targetPos.z - startPos.z) * easeT;
-
-  // 登場時は回転しながら降りてくる
-  transform.rotate.y = (1.0f - easeT) * k2Pi;
-
-  // 出現演出でシェイクさせる (だんだん揺れが収まる)
-  float shakeIntensity = (1.0f - easeT) * Boss::kMaxShakeIntensity;
-  transform.translate.x += std::sin(stateTimer * Boss::kShakeFreqX) * shakeIntensity;
-  transform.translate.y += std::cos(stateTimer * Boss::kShakeFreqY) * shakeIntensity;
-  transform.translate.z += std::sin(stateTimer * Boss::kShakeFreqZ) * shakeIntensity;
-  boss.MarkDirty();
-
-  if (stateTimer > Boss::kAppearanceDuration) {
-    transform.rotate.y = 0.0f;
-    boss.MarkDirty();
-    boss.ChangeState(BossState::Battle);
-  }
-}
-
-void BossBattleState::Enter(Boss &boss) {
-  boss.transform_.rotate.y = 0.0f;
-  boss.MarkDirty();
-}
-
-void BossBattleState::Update(Boss &boss, float speedMultiplier) {
-  boss.battleAnimTimer_ += Boss::kBattleAnimSpeed * speedMultiplier;
-  const Vector3 &targetPos = boss.GetTargetPos();
-  Transform &transform = boss.transform_;
-  transform.translate.x = targetPos.x;
-  transform.translate.z = targetPos.z;
-  transform.translate.y = targetPos.y + std::sin(boss.battleAnimTimer_) * Boss::kBattleBobbingAmplitude;
-  boss.MarkDirty();
-}
-
-void BossDefeatState::Enter(Boss &boss) {
-  (void)boss;
-}
-
-void BossDefeatState::Update(Boss &boss, float speedMultiplier) {
-  boss.transform_.translate.y -= Boss::kSinkSpeed * speedMultiplier;
-  boss.MarkDirty();
-  if (boss.GetStateTimer() > Boss::kDefeatDuration) {
-    boss.SetIsActive(false);
-  }
-}
-
-void BossVictoryState::Enter(Boss &boss) {
-  (void)boss;
-}
-
-void BossVictoryState::Update(Boss &boss, float speedMultiplier) {
-  boss.transform_.translate.y += Boss::kSinkSpeed * speedMultiplier;
-  boss.MarkDirty();
-}
-
-// ==========================================
-// Boss Implementation
-// ==========================================
-
 void Boss::Reset() {
   isActive_ = false;
   hp_ = kMaxHP;
   isHit_ = false;
   hitTimer_ = 0.0f;
-  stateTimer_ = 0.0f;
-  battleAnimTimer_ = 0.0f;
 
   startPos_ = kDefaultStartPos;
   targetPos_ = kDefaultTargetPos;
@@ -143,7 +57,6 @@ void Boss::Spawn(float x, float y, float z) {
   Reset();
   targetPos_ = {x, y, z};
   isActive_ = true;
-  ChangeState(BossState::Appearance);
 }
 
 BossState Boss::GetState() const {
@@ -151,20 +64,7 @@ BossState Boss::GetState() const {
 }
 
 void Boss::ChangeState(BossState nextState) {
-  switch (nextState) {
-  case BossState::Appearance:
-    ChangeState(std::make_unique<BossAppearanceState>());
-    break;
-  case BossState::Battle:
-    ChangeState(std::make_unique<BossBattleState>());
-    break;
-  case BossState::Defeat:
-    ChangeState(std::make_unique<BossDefeatState>());
-    break;
-  case BossState::Victory:
-    ChangeState(std::make_unique<BossVictoryState>());
-    break;
-  }
+  ChangeState(CreateBossState(nextState));
 }
 
 void Boss::ChangeState(std::unique_ptr<IBossState> nextState) {
@@ -172,20 +72,22 @@ void Boss::ChangeState(std::unique_ptr<IBossState> nextState) {
     currentState_->Exit(*this);
   }
   currentState_ = std::move(nextState);
-  stateTimer_ = 0.0f;
   if (currentState_) {
     currentState_->Enter(*this);
   }
 }
 
 void Boss::Update(Matrix4x4 view, float speedMultiplier) {
-  if (!isActive_)
+  if (!isActive_) {
     return;
-
-  stateTimer_ += Engine::kDefaultDeltaTime * speedMultiplier; // おおよその時間を加算
+  }
 
   if (currentState_) {
-    currentState_->Update(*this, speedMultiplier);
+    auto nextState =
+        currentState_->Update(*this, Engine::kDefaultDeltaTime, speedMultiplier);
+    if (nextState) {
+      ChangeState(std::move(nextState));
+    }
   }
 
   if (isHit_) {
@@ -193,20 +95,25 @@ void Boss::Update(Matrix4x4 view, float speedMultiplier) {
     if (hitTimer_ <= 0.0f) {
       isHit_ = false;
       model_->SetColor(kNormalColor);
-      model_->GetMaterial()->SetColor(kNormalColor);
+      if (model_->GetMaterial()) {
+        model_->GetMaterial()->SetColor(kNormalColor);
+      }
     }
   }
 
   Transform drawTransform = transform_;
-  drawTransform.translate.y -= transform_.scale.y * kScaleOffsetFactor; // 底面原点(Y=0)を当たり判定中心に合わせるオフセット
+  drawTransform.translate.y -=
+      transform_.scale.y *
+      kScaleOffsetFactor; // 底面原点(Y=0)を当たり判定中心に合わせるオフセット
   model_->SetTransform(drawTransform);
   model_->SettingWvp(view);
   GameObject::Update(view, speedMultiplier);
 }
 
 void Boss::Draw(class Draw &draw) {
-  if (!isActive_)
+  if (!isActive_) {
     return;
+  }
   draw.DrawObj(model_.get());
   GameObject::Draw(draw);
 }
@@ -219,34 +126,41 @@ void Boss::ImGuiInnerComponents() {
 
   const char *stateNames[] = {"Appearance", "Battle", "Defeat", "Victory"};
   ImGui::Text("Boss State: %s", stateNames[static_cast<int>(GetState())]);
-  ImGui::Text("State Timer: %.2f", stateTimer_);
+  ImGui::Text("State Timer: %.2f", GetStateTimer());
 
-  if (ImGui::Button("Spawn Boss"))
+  if (ImGui::Button("Spawn Boss")) {
     Spawn();
+  }
   ImGui::SameLine();
-  if (ImGui::Button("Reset Boss"))
+  if (ImGui::Button("Reset Boss")) {
     Reset();
+  }
 
-  if (ImGui::Button("Test Defeat State"))
+  if (ImGui::Button("Test Defeat State")) {
     ChangeState(BossState::Defeat);
+  }
   ImGui::SameLine();
-  if (ImGui::Button("Test Victory State"))
+  if (ImGui::Button("Test Victory State")) {
     ChangeState(BossState::Victory);
+  }
 #endif
 }
 
-void Boss::OnDamage() {
-  if (GetState() == BossState::Defeat)
-    return; // 撃破後はダメージを受けない
-
+void Boss::ApplyDamage() {
   hp_--;
   isHit_ = true;
   hitTimer_ = kDamageFlashDuration; // ダメージ演出時間
-  model_->SetColor(kDamageColor); // 赤く光る
-  model_->GetMaterial()->SetColor(kDamageColor);
-
-  if (hp_ <= 0 && GetState() == BossState::Battle) {
-    ChangeState(BossState::Defeat);
+  model_->SetColor(kDamageColor);   // 赤く光る
+  if (model_->GetMaterial()) {
+    model_->GetMaterial()->SetColor(kDamageColor);
   }
 }
 
+void Boss::OnDamage() {
+  if (!currentState_) {
+    return;
+  }
+  if (auto nextState = currentState_->OnDamage(*this)) {
+    ChangeState(std::move(nextState));
+  }
+}

@@ -297,9 +297,9 @@ void StageSettings::SetRoadColor(const Vector4 &color) {
       }
     }
   }
-  for (auto &fc : fallingChunks_) {
-    if (fc.renderObj) {
-      fc.renderObj->SetColor(roadColor_);
+  for (auto *fc : fallingChunks_) {
+    if (fc && fc->renderObj) {
+      fc->renderObj->SetColor(roadColor_);
     }
   }
   for (auto &chunk : chunkPool_) {
@@ -369,9 +369,9 @@ void StageSettings::SetRoadLighting(bool enabled) {
       }
     }
   }
-  for (auto &fc : fallingChunks_) {
-    if (fc.renderObj) {
-      fc.renderObj->SetLighting(roadLighting_);
+  for (auto *fc : fallingChunks_) {
+    if (fc && fc->renderObj) {
+      fc->renderObj->SetLighting(roadLighting_);
     }
   }
   for (auto &chunk : chunkPool_) {
@@ -552,15 +552,18 @@ void StageSettings::SetWaterWidthScale(float scale) {
 }
 
 void StageSettings::ClearFallingChunks() {
-  for (auto &fc : fallingChunks_) {
-    if (manager_ && fc.renderObj) {
-      manager_->RemoveObject(fc.renderObj);
+  for (auto *fc : fallingChunks_) {
+    if (!fc)
+      continue;
+    if (manager_ && fc->renderObj) {
+      manager_->RemoveObject(fc->renderObj);
     }
-    if (fc.renderObj) {
-      chunkPool_.push_back(fc.renderObj);
+    if (fc->renderObj) {
+      chunkPool_.push_back(fc->renderObj);
     }
   }
   fallingChunks_.clear();
+  fallingChunkPool_.ReleaseAll();
 }
 
 void StageSettings::UpdateFallingChunks(Matrix4x4 view, float currentScroll,
@@ -573,29 +576,36 @@ void StageSettings::UpdateFallingChunks(Matrix4x4 view, float currentScroll,
           : 1.0f;
 
   for (auto it = fallingChunks_.begin(); it != fallingChunks_.end();) {
-    it->transform.translate.z -= currentScroll;
+    FallingChunk *fc = *it;
+    if (!fc) {
+      it = fallingChunks_.erase(it);
+      continue;
+    }
 
-    if (it->delayTimer > 0.0f) {
-      it->delayTimer -= dt * speedFactor;
+    fc->transform.translate.z -= currentScroll;
+
+    if (fc->delayTimer > 0.0f) {
+      fc->delayTimer -= dt * speedFactor;
     } else {
-      it->velocityY -= kDefaultRoadChunkFallGravity * speedFactor * dt;
-      it->transform.translate.y += it->velocityY * dt;
+      fc->velocityY -= kDefaultRoadChunkFallGravity * speedFactor * dt;
+      fc->transform.translate.y += fc->velocityY * dt;
     }
 
-    if (it->renderObj) {
-      it->renderObj->SetTransform(it->transform);
-      it->renderObj->Update(view, 0.0f);
+    if (fc->renderObj) {
+      fc->renderObj->SetTransform(fc->transform);
+      fc->renderObj->Update(view, 0.0f);
     }
 
-    float droppedDist = it->initialY - it->transform.translate.y;
+    float droppedDist = fc->initialY - fc->transform.translate.y;
     if (droppedDist >= kDefaultRoadChunkFallDespawnDrop ||
-        it->transform.translate.z < recycleThreshold) {
-      if (manager_ && it->renderObj) {
-        manager_->RemoveObject(it->renderObj);
+        fc->transform.translate.z < recycleThreshold) {
+      if (manager_ && fc->renderObj) {
+        manager_->RemoveObject(fc->renderObj);
       }
-      if (it->renderObj) {
-        chunkPool_.push_back(it->renderObj);
+      if (fc->renderObj) {
+        chunkPool_.push_back(fc->renderObj);
       }
+      fallingChunkPool_.Release(fc);
       it = fallingChunks_.erase(it);
     } else {
       ++it;
@@ -636,14 +646,14 @@ void StageSettings::RebuildChunkRow(int rowIndex, int newLaneCount, float newZ,
             static_cast<int>(keptChunks.size()) < newLaneCount) {
           keptChunks.push_back(roadChunks_[rowIndex][l]);
         } else {
-          // 1レーン化によって無くなる外側レーンを落下リストへ移行（即座に消さずに落下させる）
+          // 1レーン化によって無くなる外側レーンを ObjectPool 経由で落下リストへ移行（即座に消さずに落下させる）
           if (roadChunks_[rowIndex][l]) {
-            FallingChunk fc;
-            fc.renderObj = roadChunks_[rowIndex][l];
-            fc.transform = roadTransforms_[rowIndex][l];
-            fc.initialY = fc.transform.translate.y;
-            fc.velocityY = -kDefaultRoadChunkFallInitialSpeed;
-            fc.delayTimer =
+            FallingChunk *fc = fallingChunkPool_.Acquire();
+            fc->renderObj = roadChunks_[rowIndex][l];
+            fc->transform = roadTransforms_[rowIndex][l];
+            fc->initialY = fc->transform.translate.y;
+            fc->velocityY = -kDefaultRoadChunkFallInitialSpeed;
+            fc->delayTimer =
                 (std::max)(0.0f, (newZ - kLaneChangeHorizonZ) *
                                      kDefaultRoadChunkFallDelayPerMeter);
             fallingChunks_.push_back(fc);
